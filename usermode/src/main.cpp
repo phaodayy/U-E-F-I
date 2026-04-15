@@ -11,17 +11,22 @@
 
 std::int32_t main()
 {
+	LOG_INFO("Starting Usermode...");
 	logs::set_up();
 
+	LOG_INFO("Setting up system...");
 	if (sys::set_up() == 0)
 	{
+		LOG_ERR("System set_up failed.");
 		std::system("pause");
 
 		return 1;
 	}
 
+	LOG_INFO("Parsing kernel modules...");
 	sys::kernel::parse_modules();
 
+	LOG_INFO("Ready!");
 	while (true)
 	{
 		LOG_PRINTNOLINE("> ");
