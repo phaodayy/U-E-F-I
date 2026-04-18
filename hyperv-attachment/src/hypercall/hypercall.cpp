@@ -369,6 +369,13 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
         const virtual_address_t target_gpa = { .address = callback_pa };
 
         const std::uint64_t result = slat::hook::add_host(target_gpa, shadow_hpa_struct);
+        
+        if (result)
+        {
+            // BẬT Exception Bitmap bit 3 (#BP) để VMEXIT khi guest thực thi INT3
+            arch::enable_breakpoint_intercept();
+        }
+
         trap_frame->rax = result ? 1 : 4;
 
         break;

@@ -249,22 +249,35 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
     }
     else if (arch::is_breakpoint_exit(exit_reason) == 1 && g_mouse_shadow_page_va != 0)
     {
-        trap_frame_t* trap_frame;
-#ifdef _INTELMACHINE
-        trap_frame = reinterpret_cast<trap_frame_t*>(a4);
-#else
-        trap_frame = reinterpret_cast<trap_frame_t*>(a2);
-#endif
-
-        // #BP VMEXIT từ shadow page INT3 của EPT Mouse Hook
-        // Bơm tọa độ chuột vào struct MOUSE_INPUT_DATA của guest, rồi skip INT3 (nâng RIP +1)
-        try_inject_mouse_from_bp(trap_frame);
-
-        // Skip qua INT3 byte (1 byte), tiếp tục thực thi code gốc trong shadow page
         const std::uint64_t rip = arch::get_guest_rip();
-        arch::set_guest_rip(rip + 1);
 
-        return do_vmexit_premature_return();
+        // Tính VA kỳ vọng: page base + offset hàm callback trong page
+        const std::uint64_t expected_hook_rip = (g_mouse_callback_va & ~0xFFFULL) | g_mouse_func_offset;
+
+        if (rip == expected_hook_rip)
+        {
+            // Đúng là hook của ta. Lấy trap_frame để đọc RDX.
+            trap_frame_t* trap_frame;
+#ifdef _INTELMACHINE
+            trap_frame = reinterpret_cast<trap_frame_t*>(a4);
+#else
+            trap_frame = reinterpret_cast<trap_frame_t*>(a2);
+#endif
+            // Bơm tọa độ chuột vào struct MOUSE_INPUT_DATA của guest
+            try_inject_mouse_from_bp(trap_frame);
+
+            // Skip qua INT3 byte (1 byte), tiếp tục thực thi code gốc
+            arch::set_guest_rip(rip + 1);
+
+            return do_vmexit_premature_return();
+        }
+        else
+        {
+            // Breakpoint không phải của ta (debugger, anti-cheat, etc.)
+            // Ném lại exception cho guest xử lý bình thường
+            arch::reinject_exception(3);
+            return do_vmexit_premature_return();
+        }
     }
 
     return reinterpret_cast<vmexit_handler_t>(original_vmexit_handler)(a1, a2, a3, a4);

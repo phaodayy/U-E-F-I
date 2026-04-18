@@ -127,16 +127,54 @@ std::uint8_t arch::is_breakpoint_exit(const std::uint64_t vmexit_reason)
 	const std::uint64_t raw_info = vmread(VMCS_VMEXIT_INTERRUPTION_INFORMATION);
 	const vmexit_interrupt_information info = { .flags = static_cast<std::uint32_t>(raw_info) };
 
-	// Vector 3 = #BP (INT3), type = hardware_exception
-	return (info.vector == 3 && info.interruption_type == interruption_type::hardware_exception) ? 1 : 0;
+	// Vector 3 = #BP (INT3). INT3 triggers software_exception (6). 
+    // Hardware breakpoints trigger hardware_exception (3). We accept both.
+	return (info.vector == 3 && 
+            (info.interruption_type == interruption_type::hardware_exception || 
+             info.interruption_type == interruption_type::software_exception)) ? 1 : 0;
 #else
 	// AMD: SVM exit code for exception #3 = 0x43 (SVM_EXIT_EXCEPTION_3)
-	const vmcb_t* const vmcb = get_vmcb();
-	if (vmexit_reason != 0x43) return 0; // #BP = Exception 3 = SVM exit code 0x43
-	(void)vmcb;
+	if (vmexit_reason != 0x43) return 0;
 	return 1;
 #endif
 }
+
+void arch::enable_breakpoint_intercept()
+{
+#ifdef _INTELMACHINE
+	// Đọc Exception Bitmap hiện tại từ VMCS, bật bit 3 (#BP = INT3)
+	const std::uint64_t current_bitmap = vmread(VMCS_CTRL_EXCEPTION_BITMAP);
+	vmwrite(VMCS_CTRL_EXCEPTION_BITMAP, current_bitmap | (1ULL << 3));
+#else
+	// AMD: Intercept exception #BP (vector 3) bằng cách bật bit 3 
+	// trong intercept_misc_vector_3 (VMCB offset 0x0C = intercept exceptions)
+	vmcb_t* const vmcb = get_vmcb();
+	vmcb->control.intercept_misc_vector_3 |= (1U << 3);
+	vmcb->control.clean.i = 0; // Đánh dấu dirty để SVM reload intercepts
+#endif
+}
+
+void arch::reinject_exception(const std::uint8_t vector)
+{
+#ifdef _INTELMACHINE
+	// Intel: Dùng nguyên VM-Exit Interruption-Information Field để ném lại đúng loại exception (hardware/software)
+	const std::uint32_t exit_info = static_cast<std::uint32_t>(vmread(VMCS_VMEXIT_INTERRUPTION_INFORMATION));
+	vmwrite(VMCS_CTRL_VMENTRY_INTERRUPTION_INFORMATION_FIELD, exit_info);
+	vmwrite(VMCS_CTRL_VMENTRY_INSTRUCTION_LENGTH, vmread(VMCS_VMEXIT_INSTRUCTION_LENGTH));
+#else
+	// AMD: Tương tự, copy exit_info hoặc ít nhất ném lại với type = exception (3)
+	vmcb_t* const vmcb = get_vmcb();
+	
+	const std::uint64_t eventinj = 
+		(static_cast<std::uint64_t>(vector))        |
+		(3ULL << 8)                                  |   // type = exception // AMD Type is 3 for ALL exceptions (hardware and software)
+		(1ULL << 31);                                    // valid
+	
+	*reinterpret_cast<std::uint64_t*>(
+		reinterpret_cast<std::uint8_t*>(&vmcb->control) + 0xA8) = eventinj;
+#endif
+}
+
 
 
 cr3 arch::get_guest_cr3()
