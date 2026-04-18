@@ -99,7 +99,19 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
 
         const hypercall_info_t hypercall_info = { .value = trap_frame->rcx };
 
-        if (hypercall_info.primary_key == current_primary_key && hypercall_info.secondary_key == current_secondary_key)
+        bool is_valid_key = (hypercall_info.primary_key == current_primary_key && hypercall_info.secondary_key == current_secondary_key);
+
+        // V4: Cho phép Client tự khởi tạo lại nếu nó gửi đúng Cờ khởi tạo kèm Khóa mặc định (tránh bị Block sau lần chạy đầu).
+        if (!is_valid_key && hypercall_info.call_type == hypercall_type_t::init_hypercall_context) 
+        {
+            if (hypercall_info.primary_key == hypercall_default_primary_key && 
+                hypercall_info.secondary_key == hypercall_default_secondary_key) 
+            {
+                is_valid_key = true;
+            }
+        }
+
+        if (is_valid_key)
         {
 #ifndef _INTELMACHINE
             vmcb_t* const vmcb = arch::get_vmcb();
