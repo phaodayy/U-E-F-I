@@ -2,8 +2,19 @@
 #include <iostream>
 #include <string>
 #include <shlobj.h> // Để dùng SHCreateDirectoryExA
+#include <chrono>
+#include <iomanip>
+#include <ctime>
 
 #pragma comment(lib, "Shell32.lib")
+
+void print_log(const std::string& msg) {
+    auto now = std::chrono::system_clock::now();
+    auto in_time_t = std::chrono::system_clock::to_time_t(now);
+    std::tm bt;
+    localtime_s(&bt, &in_time_t);
+    std::cout << "[" << std::put_time(&bt, "%H:%M:%S") << "] " << msg << std::endl;
+}
 
 bool is_admin() {
     BOOL admin = FALSE;
@@ -27,10 +38,10 @@ bool aggressive_copy(const std::string& src, const std::string& dst) {
     system(("attrib -s -h -r \"" + dst + "\" >nul 2>&1").c_str());
     DeleteFileA(dst.c_str());
     if (CopyFileA(src.c_str(), dst.c_str(), FALSE)) {
-        std::cout << "[+] SUCCESS: Updated " << dst << std::endl;
+        print_log("[+] SUCCESS: Updated " + dst);
         return true;
     }
-    std::cout << "[-] FAILED: Could not update " << dst << " (Error: " << GetLastError() << ")" << std::endl;
+    print_log("[-] FAILED: Could not update " + dst + " (Error: " + std::to_string(GetLastError()) + ")");
     return false;
 }
 
@@ -38,10 +49,21 @@ void verify_with_api(const std::string& path) {
     WIN32_FIND_DATAA data;
     HANDLE h = FindFirstFileA(path.c_str(), &data);
     if (h != INVALID_HANDLE_VALUE) {
-        std::cout << "[VERIFIED] " << data.cFileName << " | Size: " << data.nFileSizeLow << " bytes" << std::endl;
+        SYSTEMTIME stUTC, stLocal;
+        FileTimeToSystemTime(&data.ftLastWriteTime, &stUTC);
+        SystemTimeToTzSpecificLocalTime(NULL, &stUTC, &stLocal);
+
+        char time_str[32];
+        sprintf_s(time_str, "%02d/%02d/%d %02d:%02d:%02d",
+            stLocal.wDay, stLocal.wMonth, stLocal.wYear,
+            stLocal.wHour, stLocal.wMinute, stLocal.wSecond);
+
+        print_log("[VERIFIED] " + std::string(data.cFileName) + 
+                  " | Size: " + std::to_string(data.nFileSizeLow) + 
+                  " bytes | Time: " + std::string(time_str));
         FindClose(h);
     } else {
-        std::cout << "[NOT FOUND] File error: " << path << " (Error: " << GetLastError() << ")" << std::endl;
+        print_log("[NOT FOUND] File error: " + path + " (Error: " + std::to_string(GetLastError()) + ")");
     }
 }
 
@@ -54,18 +76,18 @@ int main() {
     // Ổ B cố định theo yêu cầu
     std::string drive_str = "B:";
 
-    std::cout << "[*] Cleaning up drive " << drive_str << " (if exists)..." << std::endl;
+    print_log("[*] Cleaning up drive " + drive_str + " (if exists)...");
     system(("mountvol " + drive_str + " /D >nul 2>&1").c_str());
     Sleep(500);
 
-    std::cout << "[*] Mounting EFI to " << drive_str << "..." << std::endl;
+    print_log("[*] Mounting EFI to " + drive_str + "...");
     system(("mountvol " + drive_str + " /S").c_str());
     Sleep(1000);
 
     // Kiểm tra xem ổ đã thực sự được mount chưa
     if (GetFileAttributesA(drive_str.c_str()) == INVALID_FILE_ATTRIBUTES) {
-        std::cout << "[-] ERROR: Failed to mount EFI partition to " << drive_str << "." << std::endl;
-        std::cout << "[!] Hay chac chan rang o B: khong bi chiem dung boi thiet bi khac." << std::endl;
+        print_log("[-] ERROR: Failed to mount EFI partition to " + drive_str + ".");
+        print_log("[!] Hay chac chan rang o B: khong bi chiem dung boi thiet bi khac.");
         system("pause");
         return 1;
     }
@@ -110,12 +132,14 @@ int main() {
     system("bcdedit /set hypervisorlaunchtype auto >nul 2>&1");
     system("bcdedit /set {fwbootmgr} displayorder {bootmgr} /addfirst >nul 2>&1");
 
-    std::cout << "\n[OK] BOOT UPDATED. Verifying Result:" << std::endl;
+    std::cout << "\n";
+    print_log("[OK] BOOT UPDATED. Verifying Result:");
     verify_with_api(ms_boot);
     verify_with_api(ms_dll);
     verify_with_api(fb_boot);
     
-    std::cout << "\n[!] RESTART NOW. Press any key to unmount and exit..." << std::endl;
+    std::cout << "\n";
+    print_log("[!] RESTART NOW. Press any key to unmount and exit...");
     system("pause >nul");
 
     system(("mountvol " + drive_str + " /D >nul 2>&1").c_str());

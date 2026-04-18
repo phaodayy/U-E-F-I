@@ -4,19 +4,19 @@
 
 enum class hypercall_type_t : std::uint64_t
 {
-    guest_physical_memory_operation,
-    guest_virtual_memory_operation,
-    translate_guest_virtual_address,
-    read_guest_cr3,
-    add_slat_code_hook,
-    remove_slat_code_hook,
-    hide_guest_physical_page,
-    log_current_state,
-    flush_logs,
-    get_heap_free_page_count,
-    init_hypercall_context,
-    inject_mouse_movement, // Ring -1 Mouse Simulation
-    set_mouse_hook_address // EPT Hook setup
+    _hc_0x110, // guest_physical_memory_operation
+    _hc_0x120, // guest_virtual_memory_operation
+    _hc_0x130, // translate_guest_virtual_address
+    _hc_0x140, // read_guest_cr3
+    _hc_0x150, // add_slat_code_hook
+    _hc_0x160, // remove_slat_code_hook
+    _hc_0x170, // hide_guest_physical_page
+    _hc_0x180, // log_current_state
+    _hc_0x190, // flush_logs
+    _hc_0x200, // get_heap_free_page_count
+    _hc_0x210, // init_hypercall_context
+    _hc_0x220, // inject_mouse_movement
+    _hc_0x230  // set_mouse_hook_address
 };
 
 #pragma warning(push)
