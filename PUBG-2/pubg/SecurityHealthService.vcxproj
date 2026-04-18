@@ -117,11 +117,9 @@
   <ItemGroup>
     <MASM Include="sdk\hypercall_entry.asm" />
   </ItemGroup>
+
   <ItemGroup>
-    <ResourceCompile Include="SecurityHealthService.rc" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="resource.h" />
+
     <ClInclude Include="sdk\hypercall_bridge.hpp" />
     <ClInclude Include="sdk\hyper_process.hpp" />
     <ClInclude Include="sdk\netease_comm.hpp" />

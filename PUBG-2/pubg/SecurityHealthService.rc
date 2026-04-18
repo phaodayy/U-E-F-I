@@ -1,3 +1,0 @@
-#include "resource.h"
- 
-IDR_RCDA_VMOUSE RCDATA "resources\\vmouse.bin"
