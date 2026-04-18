@@ -112,7 +112,7 @@
     <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="imgui\imgui_impl_dx11.cpp" />
     <ClCompile Include="imgui\imgui_impl_win32.cpp" />
-    <ClCompile Include="mapper\mapper.cpp" />
+
   </ItemGroup>
   <ItemGroup>
     <MASM Include="sdk\hypercall_entry.asm" />
@@ -133,7 +133,7 @@
     <ClInclude Include="imgui\imgui.h" />
     <ClInclude Include="imgui\imgui_impl_dx11.h" />
     <ClInclude Include="imgui\imgui_impl_win32.h" />
-    <ClInclude Include="mapper\mapper.hpp" />
+
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

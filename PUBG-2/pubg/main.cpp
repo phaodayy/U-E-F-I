@@ -34,7 +34,7 @@
 #include "overlay/overlay_menu.hpp"
 #include "sdk/skCrypt.h"
 #include "sdk/netease_comm.hpp"
-#include "mapper/secret_key.hpp"
+
 #include "sdk/Utils/WinSha256.h"
 #include "sdk/Utils/WinCrypto.h"
 #include "sdk/Utils/ADVobfuscator.h"
@@ -56,6 +56,9 @@ const std::vector<BYTE> RSA_PUBLIC_KEY = {
 };
 
 #include <intrin.h>
+
+// Session token (replaces mapper::secret::SESSION_TOKEN)
+static uint32_t g_session_token = 0;
 
 std::string GetHWID() {
     std::string hwid_raw = "";
@@ -276,7 +279,7 @@ bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) 
                     OBF_STR("\n[-] Integrity check failed! FAKE SERVER DETECTED.") : 
                     OBF_STR("\n[-] Integrity check failed! FAKE SERVER DETECTED.")) << std::endl;
             }
-            mapper::secret::SESSION_TOKEN = 0;
+            g_session_token = 0;
             return false;
         }
 
@@ -315,13 +318,13 @@ bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) 
         {
             HCRYPTPROV hCryptProv = 0;
             if (CryptAcquireContextA(&hCryptProv, NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
-                CryptGenRandom(hCryptProv, sizeof(mapper::secret::SESSION_TOKEN), (BYTE*)&mapper::secret::SESSION_TOKEN);
+                CryptGenRandom(hCryptProv, sizeof(g_session_token), (BYTE*)&g_session_token);
                 CryptReleaseContext(hCryptProv, 0);
             } else {
                 // Fallback: still better than predictable XOR
                 LARGE_INTEGER perf;
                 QueryPerformanceCounter(&perf);
-                mapper::secret::SESSION_TOKEN = (uint32_t)(perf.QuadPart ^ (uintptr_t)&hCryptProv ^ GetCurrentProcessId());
+                g_session_token = (uint32_t)(perf.QuadPart ^ (uintptr_t)&hCryptProv ^ GetCurrentProcessId());
             }
         }
         return true;
