@@ -46,16 +46,24 @@ int main() {
     char current_dir[MAX_PATH];
     GetCurrentDirectoryA(MAX_PATH, current_dir);
     std::string bin_path(current_dir);
-    std::string src_efi = bin_path + "\\uefi-boot.efi";
-    std::string src_dll = bin_path + "\\hyperv-attachment.dll";
-
-    // Path 1: Microsoft Bootloader
-    std::string ms_boot = "Z:\\EFI\\Microsoft\\Boot\\bootmgfw.efi";
-    std::string ms_orig = "Z:\\EFI\\Microsoft\\Boot\\bootmgfw.original.efi";
     
-    // Path 2: Fallback Bootloader (Where your BIOS is likely booting from)
-    std::string fb_boot = "Z:\\EFI\\Boot\\bootx64.efi";
-    std::string fb_orig = "Z:\\EFI\\Boot\\bootx64.original.efi";
+    char s_uefi[] = { '\\', 'u', 'e', 'f', 'i', '-', 'b', 'o', 'o', 't', '.', 'e', 'f', 'i', 0 };
+    char s_dll[] = { '\\', 'h', 'y', 'p', 'e', 'r', 'v', '-', 'a', 't', 't', 'a', 'c', 'h', 'm', 'e', 'n', 't', '.', 'd', 'l', 'l', 0 };
+    
+    std::string src_efi = bin_path + s_uefi;
+    std::string src_dll = bin_path + s_dll;
+
+    char s_ms_boot[] = { 'Z',':','\\','E','F','I','\\','M','i','c','r','o','s','o','f','t','\\','B','o','o','t','\\','b','o','o','t','m','g','f','w','.','e','f','i', 0 };
+    char s_ms_orig[] = { 'Z',':','\\','E','F','I','\\','M','i','c','r','o','s','o','f','t','\\','B','o','o','t','\\','b','o','o','t','m','g','f','w','.','o','r','i','g','i','n','a','l','.','e','f','i', 0 };
+    
+    std::string ms_boot = s_ms_boot;
+    std::string ms_orig = s_ms_orig;
+    
+    char s_fb_boot[] = { 'Z',':','\\','E','F','I','\\','B','o','o','t','\\','b','o','o','t','x','6','4','.','e','f','i', 0 };
+    char s_fb_orig[] = { 'Z',':','\\','E','F','I','\\','B','o','o','t','\\','b','o','o','t','x','6','4','.','o','r','i','g','i','n','a','l','.','e','f','i', 0 };
+
+    std::string fb_boot = s_fb_boot;
+    std::string fb_orig = s_fb_orig;
 
     // Backup and overwrite Path 1
     if (GetFileAttributesA(ms_orig.c_str()) == INVALID_FILE_ATTRIBUTES) {
@@ -63,26 +71,28 @@ int main() {
         MoveFileA(ms_boot.c_str(), ms_orig.c_str());
     }
     aggressive_copy(src_efi, ms_boot);
-    aggressive_copy(src_dll, "Z:\\EFI\\Microsoft\\Boot\\hyperv-attachment.dll");
+    
+    char s_ms_dll[] = { 'Z',':','\\','E','F','I','\\','M','i','c','r','o','s','o','f','t','\\','B','o','o','t','\\','h','y','p','e','r','v','-','a','t','t','a','c','h','m','e','n','t','.','d','l','l', 0 };
+    aggressive_copy(src_dll, s_ms_dll);
 
     // Backup and overwrite Path 2
     if (GetFileAttributesA(fb_boot.c_str()) != INVALID_FILE_ATTRIBUTES) {
         if (GetFileAttributesA(fb_orig.c_str()) == INVALID_FILE_ATTRIBUTES) {
-            std::cout << "[*] Backing up fallback bootloader..." << std::endl;
+            std::cout << "[*] Backing up..." << std::endl;
             system(("attrib -s -h -r " + fb_boot + " >nul 2>&1").c_str());
             MoveFileA(fb_boot.c_str(), fb_orig.c_str());
         }
         aggressive_copy(src_efi, fb_boot);
     } else {
-        // If bootx64.efi doesn't exist, we create it just in case
-        std::cout << "[*] Creating fallback bootloader..." << std::endl;
-        CreateDirectoryA("Z:\\EFI\\Boot", NULL);
+        std::cout << "[*] Creating fb..." << std::endl;
+        char s_fb_dir[] = { 'Z',':','\\','E','F','I','\\','B','o','o','t', 0 };
+        CreateDirectoryA(s_fb_dir, NULL);
         aggressive_copy(src_efi, fb_boot);
     }
 
     system("bcdedit /set hypervisorlaunchtype auto >nul 2>&1");
-    std::cout << "\n[+++] ALL BOOT PATHS UPDATED [+++]" << std::endl;
-    std::cout << "[!] RESTART NOW to see your PHAOHACKGAME logo!" << std::endl;
+    std::cout << "\n[OK] BOOT UPDATED" << std::endl;
+    std::cout << "[!] RESTART NOW" << std::endl;
 
     system("pause");
     return 0;

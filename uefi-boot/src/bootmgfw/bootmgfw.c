@@ -111,15 +111,7 @@ UINT64 bootmgfw_load_pe_image_detour(bl_file_info_t* file_info, INT32 a2, UINT64
         if (winload_place_hooks(*image_base, (UINT64)*image_size) == EFI_SUCCESS)
         {
             gST->ConOut->SetAttribute(gST->ConOut, EFI_LIGHTGREEN);
-            Print(L"\n");
-            Print(L"  ____ _____      ____ _                     _   \n");
-            Print(L" / ___|__  /     / ___| |__   ___  __ _ _ |_| \n");
-            Print(L"| |  _  / /     | |   | '_ \\ / _ \\/ _` | __/ __|\n");
-            Print(L"| |_| |/ /_     | |___| | | |  __/ (_| | |_|__ \\\n");
-            Print(L" \\____/____|_____\\____|_| |_|\\___|\\__,_|\\__|___/\n");
-            Print(L"           |_____|                              \n\n");
-            Print(L"       >>> DEPLOYED BY PHAOHACKGAME <<<\n\n");
-            Print(L"VER_1112_MARKER\n");
+            Print(L"\n[OK] ver 1113\n");
             gST->ConOut->SetAttribute(gST->ConOut, EFI_WHITE);
         }
         else

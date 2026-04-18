@@ -75,7 +75,7 @@ static void try_merge_of_next_entry(kernel_detour_holder::detour_entry_t* curren
 
 	if (next != nullptr && next->is_allocated == 0)
 	{
-		current_entry->size = next->size + sizeof(kernel_detour_holder::detour_entry_t);
+		current_entry->size += next->size + sizeof(kernel_detour_holder::detour_entry_t);
 	}
 }
 
