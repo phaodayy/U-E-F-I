@@ -36,7 +36,7 @@ bool PubgHyperCall::Init()
     hypercall_info_t hypercall_info = {};
     hypercall_info.primary_key = current_primary_key;
     hypercall_info.secondary_key = current_secondary_key;
-    hypercall_info.call_type = hypercall_type_t::init_hypercall_context;
+    hypercall_info.call_type = hypercall_type_t::_hc_0x210;
     hypercall_info.call_reserved_data = 0;
 
     // Obfuscated magic: compile-time XOR to avoid static signature
@@ -59,7 +59,7 @@ std::uint64_t PubgHyperCall::ReadGuestVirtualMemory(void* const guest_destinatio
                                                     const std::uint64_t size)
 {
     virt_memory_op_hypercall_info_t memory_op_call = {};
-    memory_op_call.call_type = hypercall_type_t::guest_virtual_memory_operation;
+    memory_op_call.call_type = hypercall_type_t::_hc_0x120;
     memory_op_call.memory_operation = memory_operation_t::read_operation;
     memory_op_call.address_of_page_directory = source_cr3 >> 12;
 
@@ -80,7 +80,7 @@ std::uint64_t PubgHyperCall::WriteGuestVirtualMemory(const void* const guest_sou
                                                      const std::uint64_t size)
 {
     virt_memory_op_hypercall_info_t memory_op_call = {};
-    memory_op_call.call_type = hypercall_type_t::guest_virtual_memory_operation;
+    memory_op_call.call_type = hypercall_type_t::_hc_0x120;
     memory_op_call.memory_operation = memory_operation_t::write_operation;
     memory_op_call.address_of_page_directory = destination_cr3 >> 12;
 
@@ -97,17 +97,17 @@ std::uint64_t PubgHyperCall::WriteGuestVirtualMemory(const void* const guest_sou
 
 std::uint64_t PubgHyperCall::ReadGuestCr3()
 {
-    return MakeHypercall(hypercall_type_t::read_guest_cr3, 0, 0, 0, 0);
+    return MakeHypercall(hypercall_type_t::_hc_0x140, 0, 0, 0, 0);
 }
 
 std::uint64_t PubgHyperCall::InjectMouseMovement(long x, long y)
 {
-    return MakeHypercall(hypercall_type_t::inject_mouse_movement, 0,
+    return MakeHypercall(hypercall_type_t::_hc_0x220, 0,
                          static_cast<std::uint64_t>(x),
                          static_cast<std::uint64_t>(y), 0);
 }
 
 bool PubgHyperCall::SetMouseHookAddress(std::uint64_t ept_hook_address)
 {
-    return MakeHypercall(hypercall_type_t::set_mouse_hook_address, 0, ept_hook_address, 0, 0) == 1;
+    return MakeHypercall(hypercall_type_t::_hc_0x230, 0, ept_hook_address, 0, 0) == 1;
 }

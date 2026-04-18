@@ -162,7 +162,7 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
         bool is_valid_key = (hypercall_info.primary_key == current_primary_key && hypercall_info.secondary_key == current_secondary_key);
 
         // V4: Cho phép Client tự khởi tạo lại nếu nó gửi đúng Cờ khởi tạo kèm Khóa mặc định (tránh bị Block sau lần chạy đầu).
-        if (!is_valid_key && hypercall_info.call_type == hypercall_type_t::init_hypercall_context) 
+        if (!is_valid_key && hypercall_info.call_type == hypercall_type_t::_hc_0x210) 
         {
             if (hypercall_info.primary_key == hypercall_default_primary_key && 
                 hypercall_info.secondary_key == hypercall_default_secondary_key) 
@@ -181,7 +181,7 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
 
             const std::uint64_t guest_cr3 = arch::get_guest_cr3().flags;
 
-            if (hypercall_info.call_type == hypercall_type_t::init_hypercall_context)
+            if (hypercall_info.call_type == hypercall_type_t::_hc_0x210)
             {
                 // Obfuscated magic: compile-time XOR to avoid static signature
                 constexpr std::uint64_t magic_seed_a = 0xDEADFACE12345678ULL;

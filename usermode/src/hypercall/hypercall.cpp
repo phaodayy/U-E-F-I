@@ -15,7 +15,7 @@ bool hypercall::init()
     hypercall_info_t hypercall_info;
     hypercall_info.primary_key = current_primary_key;
     hypercall_info.secondary_key = current_secondary_key;
-    hypercall_info.call_type = hypercall_type_t::init_hypercall_context;
+    hypercall_info.call_type = hypercall_type_t::_hc_0x210;
     hypercall_info.call_reserved_data = 0;
 
     // Obfuscated magic: compile-time XOR to avoid static signature
@@ -59,7 +59,7 @@ std::uint64_t hypercall::read_guest_physical_memory(void* const guest_destinatio
                                                     const std::uint64_t guest_source_physical_address,
                                                     const std::uint64_t size)
 {
-	constexpr auto call_type = hypercall_type_t::guest_physical_memory_operation;
+	constexpr auto call_type = hypercall_type_t::_hc_0x110;
 
 	constexpr auto operation_type = static_cast<std::uint64_t>(memory_operation_t::read_operation);
 	const auto guest_destination_virtual_address = reinterpret_cast<std::uint64_t>(guest_destination_buffer);
@@ -72,7 +72,7 @@ std::uint64_t hypercall::write_guest_physical_memory(const void* const guest_sou
                                                      const std::uint64_t guest_destination_physical_address,
                                                      const std::uint64_t size)
 {
-	constexpr auto call_type = hypercall_type_t::guest_physical_memory_operation;
+	constexpr auto call_type = hypercall_type_t::_hc_0x110;
 
 	constexpr auto operation_type = static_cast<std::uint64_t>(memory_operation_t::write_operation);
 	const auto guest_source_virtual_address = reinterpret_cast<std::uint64_t>(guest_source_buffer);
@@ -87,7 +87,7 @@ std::uint64_t hypercall::read_guest_virtual_memory(void* const guest_destination
 {
 	virt_memory_op_hypercall_info_t memory_op_call = {};
 
-	memory_op_call.call_type = hypercall_type_t::guest_virtual_memory_operation;
+	memory_op_call.call_type = hypercall_type_t::_hc_0x120;
 	memory_op_call.memory_operation = memory_operation_t::read_operation;
 	memory_op_call.address_of_page_directory = source_cr3 >> 12;
 
@@ -105,7 +105,7 @@ std::uint64_t hypercall::write_guest_virtual_memory(const void* const guest_sour
 {
 	virt_memory_op_hypercall_info_t memory_op_call = {};
 
-	memory_op_call.call_type = hypercall_type_t::guest_virtual_memory_operation;
+	memory_op_call.call_type = hypercall_type_t::_hc_0x120;
 	memory_op_call.memory_operation = memory_operation_t::write_operation;
 	memory_op_call.address_of_page_directory = destination_cr3 >> 12;
 
@@ -119,21 +119,21 @@ std::uint64_t hypercall::write_guest_virtual_memory(const void* const guest_sour
 std::uint64_t hypercall::translate_guest_virtual_address(const std::uint64_t guest_virtual_address,
                                                          const std::uint64_t guest_cr3)
 {
-	constexpr auto call_type = hypercall_type_t::translate_guest_virtual_address;
+	constexpr auto call_type = hypercall_type_t::_hc_0x130;
 
 	return make_hypercall(call_type, 0, guest_virtual_address, guest_cr3, 0);
 }
 
 std::uint64_t hypercall::set_mouse_hook_address(const std::uint64_t ept_hook_address)
 {
-	constexpr auto call_type = hypercall_type_t::set_mouse_hook_address;
+	constexpr auto call_type = hypercall_type_t::_hc_0x230;
 
 	return make_hypercall(call_type, 0, ept_hook_address, 0, 0);
 }
 
 std::uint64_t hypercall::read_guest_cr3()
 {
-	constexpr auto call_type = hypercall_type_t::read_guest_cr3;
+	constexpr auto call_type = hypercall_type_t::_hc_0x140;
 
 	return make_hypercall(call_type, 0, 0, 0, 0);
 }
@@ -141,42 +141,42 @@ std::uint64_t hypercall::read_guest_cr3()
 std::uint64_t hypercall::add_slat_code_hook(const std::uint64_t target_guest_physical_address,
                                             const std::uint64_t shadow_page_guest_physical_address)
 {
-	constexpr auto call_type = hypercall_type_t::add_slat_code_hook;
+	constexpr auto call_type = hypercall_type_t::_hc_0x150;
 
 	return make_hypercall(call_type, 0, target_guest_physical_address, shadow_page_guest_physical_address, 0);
 }
 
 std::uint64_t hypercall::remove_slat_code_hook(const std::uint64_t target_guest_physical_address)
 {
-	constexpr auto call_type = hypercall_type_t::remove_slat_code_hook;
+	constexpr auto call_type = hypercall_type_t::_hc_0x160;
 
 	return make_hypercall(call_type, 0, target_guest_physical_address, 0, 0);
 }
 
 std::uint64_t hypercall::hide_guest_physical_page(const std::uint64_t target_guest_physical_address)
 {
-	constexpr auto call_type = hypercall_type_t::hide_guest_physical_page;
+	constexpr auto call_type = hypercall_type_t::_hc_0x170;
 
 	return make_hypercall(call_type, 0, target_guest_physical_address, 0, 0);
 }
 
 std::uint64_t hypercall::flush_logs(std::vector<trap_frame_log_t>& logs)
 {
-	constexpr auto call_type = hypercall_type_t::flush_logs;
+	constexpr auto call_type = hypercall_type_t::_hc_0x190;
 
 	return make_hypercall(call_type, 0, reinterpret_cast<std::uint64_t>(logs.data()), logs.size(), 0);
 }
 
 std::uint64_t hypercall::get_heap_free_page_count()
 {
-	constexpr auto call_type = hypercall_type_t::get_heap_free_page_count;
+	constexpr auto call_type = hypercall_type_t::_hc_0x200;
 
 	return make_hypercall(call_type, 0, 0, 0, 0);
 }
 
 std::uint64_t hypercall::inject_mouse_movement(long x, long y)
 {
-	constexpr auto call_type = hypercall_type_t::inject_mouse_movement;
+	constexpr auto call_type = hypercall_type_t::_hc_0x220;
 
 	return make_hypercall(call_type, 0, static_cast<std::uint64_t>(x), static_cast<std::uint64_t>(y), 0);
 }

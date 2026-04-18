@@ -231,7 +231,7 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
 {
     switch (hypercall_info.call_type)
     {
-    case hypercall_type_t::guest_physical_memory_operation:
+    case hypercall_type_t::_hc_0x110:
     {
         const auto memory_operation = static_cast<memory_operation_t>(hypercall_info.call_reserved_data);
 
@@ -239,7 +239,7 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
 
         break;
     }
-    case hypercall_type_t::guest_virtual_memory_operation:
+    case hypercall_type_t::_hc_0x120:
     {
         const virt_memory_op_hypercall_info_t virt_memory_op_info = { .value = hypercall_info.value };
 
@@ -250,7 +250,7 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
 
         break;
     }
-    case hypercall_type_t::translate_guest_virtual_address:
+    case hypercall_type_t::_hc_0x130:
     {
         const virtual_address_t guest_virtual_address = { .address = trap_frame->rdx };
 
@@ -261,7 +261,7 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
 
         break;
     }
-    case hypercall_type_t::read_guest_cr3:
+    case hypercall_type_t::_hc_0x140:
     {
         const cr3 guest_cr3 = arch::get_guest_cr3();
 
@@ -269,7 +269,7 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
 
         break;
     }
-    case hypercall_type_t::add_slat_code_hook:
+    case hypercall_type_t::_hc_0x150:
     {
         const virtual_address_t target_guest_physical_address = { .address = trap_frame->rdx };
         const virtual_address_t shadow_page_guest_physical_address = { .address = trap_frame->r8 };
@@ -278,7 +278,7 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
 
         break;
     }
-    case hypercall_type_t::remove_slat_code_hook:
+    case hypercall_type_t::_hc_0x160:
     {
         const virtual_address_t target_guest_physical_address = { .address = trap_frame->rdx };
 
@@ -286,7 +286,7 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
 
         break;
     }
-    case hypercall_type_t::hide_guest_physical_page:
+    case hypercall_type_t::_hc_0x170:
     {
         const virtual_address_t target_guest_physical_address = { .address = trap_frame->rdx };
 
@@ -294,7 +294,7 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
 
         break;
     }
-    case hypercall_type_t::log_current_state:
+    case hypercall_type_t::_hc_0x180:
     {
         trap_frame_log_t trap_frame_log;
 
@@ -304,19 +304,19 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
 
         break;
     }
-    case hypercall_type_t::flush_logs:
+    case hypercall_type_t::_hc_0x190:
     {
         trap_frame->rax = flush_logs(trap_frame);
 
         break;
     }
-    case hypercall_type_t::get_heap_free_page_count:
+    case hypercall_type_t::_hc_0x200:
     {
         trap_frame->rax = heap_manager::get_free_page_count();
 
         break;
     }
-    case hypercall_type_t::inject_mouse_movement:
+    case hypercall_type_t::_hc_0x220:
     {
         const std::int32_t mouse_x = static_cast<std::int32_t>(static_cast<std::int16_t>(trap_frame->rdx));
         const std::int32_t mouse_y = static_cast<std::int32_t>(static_cast<std::int16_t>(trap_frame->r8));
@@ -327,7 +327,7 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
         trap_frame->rax = 1;
         break;
     }
-    case hypercall_type_t::set_mouse_hook_address:
+    case hypercall_type_t::_hc_0x230:
     {
         // Usermode gửi virtual address của mouclass!MouseClassServiceCallback.
         // Ring -1 sẽ: translate VA -> PA, cấp shadow page, copy code gốc,
