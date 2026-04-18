@@ -9,6 +9,10 @@ extern "C" std::uint64_t launch_raw_hypercall(hypercall_info_t rcx,
 
 namespace
 {
+    static std::uint64_t current_primary_key = hypercall_default_primary_key;
+    static std::uint64_t current_secondary_key = hypercall_default_secondary_key;
+    static bool is_initialized = false;
+
     std::uint64_t MakeHypercall(const hypercall_type_t call_type,
                                 const std::uint64_t call_reserved_data,
                                 const std::uint64_t rdx,
@@ -16,13 +20,34 @@ namespace
                                 const std::uint64_t r9)
     {
         hypercall_info_t hypercall_info = {};
-        hypercall_info.primary_key = hypercall_primary_key;
-        hypercall_info.secondary_key = hypercall_secondary_key;
+        hypercall_info.primary_key = current_primary_key;
+        hypercall_info.secondary_key = current_secondary_key;
         hypercall_info.call_type = call_type;
         hypercall_info.call_reserved_data = call_reserved_data;
 
         return launch_raw_hypercall(hypercall_info, rdx, r8, r9);
     }
+}
+
+bool PubgHyperCall::Init()
+{
+    if (is_initialized) return true;
+
+    hypercall_info_t hypercall_info = {};
+    hypercall_info.primary_key = current_primary_key;
+    hypercall_info.secondary_key = current_secondary_key;
+    hypercall_info.call_type = hypercall_type_t::init_hypercall_context;
+    hypercall_info.call_reserved_data = 0;
+
+    std::uint64_t result = launch_raw_hypercall(hypercall_info, 0, 0, 0);
+    if (result != 0)
+    {
+        current_primary_key = (result >> 16) & 0xFFFF;
+        current_secondary_key = result & 0x7F;
+        is_initialized = true;
+        return true;
+    }
+    return false;
 }
 
 std::uint64_t PubgHyperCall::ReadGuestVirtualMemory(void* const guest_destination_buffer,

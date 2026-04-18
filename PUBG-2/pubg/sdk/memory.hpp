@@ -21,6 +21,7 @@ namespace PubgMemory {
     inline bool ReadMemory(uint64_t src, void* dest, uint64_t size);
 
     inline bool InitializeHyperInterface() {
+        if (!PubgHyperCall::Init()) return false;
         return PubgHyperProcess::Initialize();
     }
 

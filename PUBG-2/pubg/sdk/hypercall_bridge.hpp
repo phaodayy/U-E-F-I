@@ -4,6 +4,8 @@
 
 namespace PubgHyperCall
 {
+    bool Init();
+    
     std::uint64_t ReadGuestVirtualMemory(void* guest_destination_buffer,
                                          std::uint64_t guest_source_virtual_address,
                                          std::uint64_t source_cr3,
