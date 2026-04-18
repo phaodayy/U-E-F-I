@@ -104,6 +104,16 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
 
             if (hypercall_info.call_type == hypercall_type_t::init_hypercall_context)
             {
+                if (trap_frame->rdx != 0x1337BEEFCAFEBABEULL)
+                {
+                    trap_frame->rax = 0;
+#ifndef _INTELMACHINE
+                    vmcb->save_state.rax = trap_frame->rax;
+#endif
+                    arch::advance_guest_rip();
+                    return do_vmexit_premature_return();
+                }
+
                 if (!is_hypercall_context_initialized)
                 {
                     authorized_caller_cr3 = guest_cr3;
@@ -127,7 +137,7 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
                 return do_vmexit_premature_return();
             }
 
-            if (is_hypercall_context_initialized && guest_cr3 != authorized_caller_cr3)
+            if (!is_hypercall_context_initialized || guest_cr3 != authorized_caller_cr3)
             {
                 trap_frame->rax = 0;
                 

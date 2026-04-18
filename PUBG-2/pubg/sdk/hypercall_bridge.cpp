@@ -39,7 +39,7 @@ bool PubgHyperCall::Init()
     hypercall_info.call_type = hypercall_type_t::init_hypercall_context;
     hypercall_info.call_reserved_data = 0;
 
-    std::uint64_t result = launch_raw_hypercall(hypercall_info, 0, 0, 0);
+    std::uint64_t result = launch_raw_hypercall(hypercall_info, 0x1337BEEFCAFEBABEULL, 0, 0);
     if (result != 0)
     {
         current_primary_key = (result >> 16) & 0xFFFF;
