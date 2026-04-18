@@ -32,6 +32,7 @@ void* memory_manager::map_guest_physical(const cr3 slat_cr3, const std::uint64_t
 std::uint64_t memory_manager::translate_guest_virtual_address(const cr3 guest_cr3, const cr3 slat_cr3, const virtual_address_t guest_virtual_address, std::uint64_t* const size_left_of_page)
 {
 	const auto pml4 = static_cast<const pml4e_64*>(map_guest_physical(slat_cr3, guest_cr3.address_of_page_directory << 12));
+	if (!pml4) return 0;
 	const pml4e_64 pml4e = pml4[guest_virtual_address.pml4_idx];
 
 	if (pml4e.present == 0)
@@ -40,6 +41,7 @@ std::uint64_t memory_manager::translate_guest_virtual_address(const cr3 guest_cr
 	}
 
 	const auto pdpt = static_cast<const pdpte_64*>(map_guest_physical(slat_cr3, pml4e.page_frame_number << 12));
+	if (!pdpt) return 0;
 	const pdpte_64 pdpte = pdpt[guest_virtual_address.pdpt_idx];
 
 	if (pdpte.present == 0)
@@ -61,6 +63,7 @@ std::uint64_t memory_manager::translate_guest_virtual_address(const cr3 guest_cr
 	}
 
 	const auto pd = static_cast<const pde_64*>(map_guest_physical(slat_cr3, pdpte.page_frame_number << 12));
+	if (!pd) return 0;
 	const pde_64 pde = pd[guest_virtual_address.pd_idx];
 
 	if (pde.present == 0)
@@ -82,6 +85,7 @@ std::uint64_t memory_manager::translate_guest_virtual_address(const cr3 guest_cr
 	}
 
 	const auto pt = static_cast<const pte_64*>(map_guest_physical(slat_cr3, pde.page_frame_number << 12));
+	if (!pt) return 0;
 	const pte_64 pte = pt[guest_virtual_address.pt_idx];
 
 	if (pte.present == 0)
@@ -188,6 +192,10 @@ std::uint64_t memory_manager::operate_on_guest_virtual_memory(const cr3 slat_cr3
 		}
 
 		void* guest_physical_mapped = map_guest_physical(slat_cr3, guest_physical_address, &size_left_of_slat_page);
+		if (!guest_physical_mapped)
+		{
+			break;
+		}
 		std::uint8_t* current_host_buffer = static_cast<std::uint8_t*>(host_buffer) + bytes_read;
 
 		const std::uint64_t size_left_of_pages = crt::min(size_left_of_virtual_page, size_left_of_slat_page);
