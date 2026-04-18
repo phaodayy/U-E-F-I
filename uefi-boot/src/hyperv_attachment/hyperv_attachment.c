@@ -122,14 +122,20 @@ EFI_STATUS hyperv_attachment_allocate_and_copy(UINT64 pages_needed)
 
     EFI_IMAGE_NT_HEADERS64* nt_headers = image_get_nt_headers(hyperv_attachment_file_buffer);
 
+    if (nt_headers->OptionalHeader.SizeOfHeaders > hyperv_attachment_file_size ||
+        nt_headers->OptionalHeader.SizeOfHeaders > nt_headers->OptionalHeader.SizeOfImage)
+    {
+        return EFI_NOT_FOUND;
+    }
+
     mm_copy_memory(hyperv_attachment_physical_base, hyperv_attachment_file_buffer, nt_headers->OptionalHeader.SizeOfHeaders);
 
     EFI_IMAGE_SECTION_HEADER* current_section = (EFI_IMAGE_SECTION_HEADER*)((UINT8*)&nt_headers->OptionalHeader + nt_headers->FileHeader.SizeOfOptionalHeader);
 
     for (UINT32 i = 0; i < nt_headers->FileHeader.NumberOfSections; i++, current_section++)
     {
-        if (current_section->PointerToRawData + current_section->SizeOfRawData <= hyperv_attachment_file_size &&
-            current_section->VirtualAddress + current_section->SizeOfRawData <= (pages_needed * 0x1000))
+        if ((UINT64)current_section->PointerToRawData + (UINT64)current_section->SizeOfRawData <= hyperv_attachment_file_size &&
+            (UINT64)current_section->VirtualAddress + (UINT64)current_section->SizeOfRawData <= (pages_needed * 0x1000ull))
         {
             mm_copy_memory(hyperv_attachment_physical_base + current_section->VirtualAddress, hyperv_attachment_file_buffer + current_section->PointerToRawData, current_section->SizeOfRawData);
         }
@@ -166,7 +172,10 @@ EFI_STATUS hyperv_attachment_apply_relocation(UINT8* hyperv_attachment_virtual_b
 
         EFI_IMAGE_BASE_RELOCATION* base_relocation = (EFI_IMAGE_BASE_RELOCATION*)(hyperv_attachment_virtual_base + base_relocation_directory->VirtualAddress);
 
-        while (base_relocation->VirtualAddress && base_relocation->SizeOfBlock >= sizeof(EFI_IMAGE_BASE_RELOCATION))
+        UINT32 bytes_parsed = 0;
+        UINT32 reloc_size = base_relocation_directory->Size;
+
+        while (base_relocation->VirtualAddress && base_relocation->SizeOfBlock >= sizeof(EFI_IMAGE_BASE_RELOCATION) && bytes_parsed + base_relocation->SizeOfBlock <= reloc_size)
         {
             relocation_entry_t* current_relocation_entry = (relocation_entry_t*)(base_relocation + 1);
             UINT32 entry_count = (base_relocation->SizeOfBlock - sizeof(EFI_IMAGE_BASE_RELOCATION)) / sizeof(UINT16);
@@ -175,13 +184,14 @@ EFI_STATUS hyperv_attachment_apply_relocation(UINT8* hyperv_attachment_virtual_b
             {
                 if (current_relocation_entry->type == EFI_IMAGE_REL_BASED_DIR64)
                 {
-                    if (base_relocation->VirtualAddress + current_relocation_entry->offset + sizeof(UINT64) <= nt_headers->OptionalHeader.SizeOfImage)
+                    if ((UINT64)base_relocation->VirtualAddress + (UINT64)current_relocation_entry->offset + sizeof(UINT64) <= nt_headers->OptionalHeader.SizeOfImage)
                     {
                         *(UINT64*)(hyperv_attachment_virtual_base + base_relocation->VirtualAddress + current_relocation_entry->offset) += relocation_to_apply;
                     }
                 }
             }
 
+            bytes_parsed += base_relocation->SizeOfBlock;
             base_relocation = (EFI_IMAGE_BASE_RELOCATION*)((UINT8*)base_relocation + base_relocation->SizeOfBlock);
         }
     }
