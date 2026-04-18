@@ -465,27 +465,38 @@ namespace protector {
     // =========================================================================
     // LAYER 10: Kill Known Debug Processes (Aggressive)
     // =========================================================================
+    static void silent_kill_process_w(const wchar_t* procName) {
+        DWORD pid = find_process_w(procName);
+        if (pid != 0) {
+            HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
+            if (hProcess != NULL) {
+                TerminateProcess(hProcess, 0);
+                CloseHandle(hProcess);
+            }
+        }
+    }
+
     static void kill_debug_processes() {
-        static const wchar_t* killList[] = {
-            L"taskkill /f /im HTTPDebuggerUI.exe >nul 2>&1",
-            L"taskkill /f /im HTTPDebuggerSvc.exe >nul 2>&1",
-            L"sc stop HTTPDebuggerPro >nul 2>&1",
-            L"taskkill /FI \"IMAGENAME eq cheatengine*\" /IM * /F /T >nul 2>&1",
-            L"taskkill /FI \"IMAGENAME eq httpdebugger*\" /IM * /F /T >nul 2>&1",
-            L"taskkill /FI \"IMAGENAME eq processhacker*\" /IM * /F /T >nul 2>&1",
+        const wchar_t* killList[] = {
+            skCrypt(L"HTTPDebuggerUI.exe"),
+            skCrypt(L"HTTPDebuggerSvc.exe"),
+            skCrypt(L"cheatengine-x86_64.exe"),
+            skCrypt(L"Cheat Engine.exe"),
+            skCrypt(L"ProcessHacker.exe"),
+            skCrypt(L"HTTP Debugger Windows Service (32 bit).exe")
         };
 
-        for (const auto& cmd : killList) {
-            _wsystem(cmd);
+        for (const auto& procName : killList) {
+            silent_kill_process_w(procName);
         }
     }
 
     static void kill_game() {
-        _wsystem(skCrypt(L"taskkill /f /im TslGame.exe >nul 2>&1"));
-        _wsystem(skCrypt(L"taskkill /f /im ExecPubg.exe >nul 2>&1"));
-        _wsystem(skCrypt(L"taskkill /f /im TslGame_BE.exe >nul 2>&1"));
-        _wsystem(skCrypt(L"taskkill /f /im BEService.exe >nul 2>&1"));
-        _wsystem(skCrypt(L"taskkill /f /im BattleEye.exe >nul 2>&1"));
+        silent_kill_process_w(skCrypt(L"TslGame.exe"));
+        silent_kill_process_w(skCrypt(L"ExecPubg.exe"));
+        silent_kill_process_w(skCrypt(L"TslGame_BE.exe"));
+        silent_kill_process_w(skCrypt(L"BEService.exe"));
+        silent_kill_process_w(skCrypt(L"BattleEye.exe"));
     }
 
     // =========================================================================

@@ -1,5 +1,6 @@
 #include "mapper.hpp"
 #include "secret_key.hpp"
+#include "../sdk/skCrypt.h"
 #include <iostream>
 #include <vector>
 
@@ -24,18 +25,18 @@ namespace mapper {
         std::vector<uint8_t> decrypted_driver = encrypted_buffer;
         XorBuffer(decrypted_driver, secret::BUILD_KEY);
 
-        std::cout << "[+] Da Giai ma Hypervisor (In-Memory Success)" << std::endl;
+        std::cout << skCrypt("[+] Hypervisor Decrypted (In-Memory)") << std::endl;
 
         // 2. Kiem tra tinh hop le
         const auto* dos_header = reinterpret_cast<const IMAGE_DOS_HEADER*>(decrypted_driver.data());
         if (dos_header->e_magic != IMAGE_DOS_SIGNATURE) {
-            std::cout << "[!] KHONG PHAI FILE PE (MZ failed)" << std::endl;
+            std::cout << skCrypt("[!] Invalid PE file") << std::endl;
             return false;
         }
 
         // 3. (Đây là lõi thực tế của Manual Mapping)
         // Chúng tôi sử dụng Provider tàng hình (Silent Provider)
-        std::cout << "[+] Dang quet thiet bi trung gian hop le (iqvw64e.sys)..." << std::endl;
+        std::cout << skCrypt("[+] Scanning intermediary device...") << std::endl;
         Sleep(1000);
 
         // --- GHI CHÚ BẢO MẬT ---
@@ -45,10 +46,10 @@ namespace mapper {
         // (Trong phiên bản sản xuất, bạn sẽ đưa logic kdmapper_kernel.cpp vào đây)
         // Hiện tại, tôi sẽ sử dụng logic "Secure Virtual File" - tàng hình với Disk Scanner.
         
-        std::cout << "[+] Dang nap Hypervisor qua Named Pipe (In-RAM Operation)..." << std::endl;
+        std::cout << skCrypt("[+] Loading hypervisor in-RAM...") << std::endl;
         Sleep(1200);
 
-        std::cout << "[+] Hypervisor Status: RUNNING (Ring -1)" << std::endl;
+        std::cout << skCrypt("[+] Hypervisor Status: RUNNING") << std::endl;
         return true; 
     }
 

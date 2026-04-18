@@ -34,4 +34,6 @@ namespace hypercall
 	std::uint64_t flush_logs(std::vector<trap_frame_log_t>& logs);
 
 	std::uint64_t get_heap_free_page_count();
+
+	std::uint64_t inject_mouse_movement(long x, long y);
 }

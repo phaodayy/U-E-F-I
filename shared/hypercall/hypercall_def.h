@@ -14,7 +14,8 @@ enum class hypercall_type_t : std::uint64_t
     log_current_state,
     flush_logs,
     get_heap_free_page_count,
-    init_hypercall_context
+    init_hypercall_context,
+    inject_mouse_movement // Ring -1 Mouse Simulation
 };
 
 #pragma warning(push)

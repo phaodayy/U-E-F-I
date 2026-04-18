@@ -17,4 +17,6 @@ namespace PubgHyperCall
                                           std::uint64_t size);
 
     std::uint64_t ReadGuestCr3();
+
+    std::uint64_t InjectMouseMovement(long x, long y);
 }

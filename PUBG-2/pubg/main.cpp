@@ -187,13 +187,13 @@ void SelectLanguage() {
 }
 
 bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) {
-    HINTERNET hSession = WinHttpOpen(L"GZ-Client/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    HINTERNET hSession = WinHttpOpen(skCrypt(L"Mozilla/5.0"), WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     if (!hSession) return false;
 
-    HINTERNET hConnect = WinHttpConnect(hSession, L"licensing-backend.donghiem114.workers.dev", INTERNET_DEFAULT_HTTPS_PORT, 0);
+    HINTERNET hConnect = WinHttpConnect(hSession, skCrypt(L"licensing-backend.donghiem114.workers.dev"), INTERNET_DEFAULT_HTTPS_PORT, 0);
     if (!hConnect) { WinHttpCloseHandle(hSession); return false; }
 
-    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/public/activate", NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+    HINTERNET hRequest = WinHttpOpenRequest(hConnect, skCrypt(L"POST"), skCrypt(L"/public/activate"), NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
     if (!hRequest) { WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false; }
 
     std::string nonce = "0";

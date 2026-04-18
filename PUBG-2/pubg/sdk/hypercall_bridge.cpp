@@ -39,7 +39,10 @@ bool PubgHyperCall::Init()
     hypercall_info.call_type = hypercall_type_t::init_hypercall_context;
     hypercall_info.call_reserved_data = 0;
 
-    std::uint64_t result = launch_raw_hypercall(hypercall_info, 0x1337BEEFCAFEBABEULL, 0, 0);
+    // Obfuscated magic: compile-time XOR to avoid static signature
+    constexpr std::uint64_t magic_seed_a = 0xDEADFACE12345678ULL;
+    constexpr std::uint64_t magic_seed_b = 0xE79A1423D87BECF6ULL; // magic_seed_a ^ 0x1337BEEFCAFEBABEULL
+    std::uint64_t result = launch_raw_hypercall(hypercall_info, magic_seed_a ^ magic_seed_b, 0, 0);
     if (result != 0)
     {
         current_primary_key = (result >> 16) & 0xFFFF;
@@ -95,4 +98,11 @@ std::uint64_t PubgHyperCall::WriteGuestVirtualMemory(const void* const guest_sou
 std::uint64_t PubgHyperCall::ReadGuestCr3()
 {
     return MakeHypercall(hypercall_type_t::read_guest_cr3, 0, 0, 0, 0);
+}
+
+std::uint64_t PubgHyperCall::InjectMouseMovement(long x, long y)
+{
+    return MakeHypercall(hypercall_type_t::inject_mouse_movement, 0,
+                         static_cast<std::uint64_t>(x),
+                         static_cast<std::uint64_t>(y), 0);
 }

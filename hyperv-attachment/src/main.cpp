@@ -111,7 +111,10 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
 
             if (hypercall_info.call_type == hypercall_type_t::init_hypercall_context)
             {
-                if (trap_frame->rdx != 0x1337BEEFCAFEBABEULL)
+                // Obfuscated magic: compile-time XOR to avoid static signature
+                constexpr std::uint64_t magic_seed_a = 0xDEADFACE12345678ULL;
+                constexpr std::uint64_t magic_seed_b = 0xE79A1423D87BECF6ULL;
+                if (trap_frame->rdx != (magic_seed_a ^ magic_seed_b))
                 {
                     trap_frame->rax = 0;
 #ifndef _INTELMACHINE

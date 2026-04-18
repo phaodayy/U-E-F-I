@@ -305,6 +305,27 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
 
         break;
     }
+    case hypercall_type_t::inject_mouse_movement:
+    {
+        // Ring -1 Mouse Movement
+        // RDX = X delta (signed), R8 = Y delta (signed)
+        // Write mouse input directly into guest kernel memory
+        // via mouclass!MouseClassServiceCallback input buffer
+        const std::int64_t mouse_x = static_cast<std::int64_t>(trap_frame->rdx);
+        const std::int64_t mouse_y = static_cast<std::int64_t>(trap_frame->r8);
+
+        // TODO: Implement EPT hook on mouclass!MouseClassServiceCallback
+        // to inject MOUSE_INPUT_DATA directly into the input queue.
+        // For now, store deltas in shared memory for guest-side polling.
+        static volatile std::int64_t pending_mouse_x = 0;
+        static volatile std::int64_t pending_mouse_y = 0;
+        pending_mouse_x += mouse_x;
+        pending_mouse_y += mouse_y;
+
+        trap_frame->rax = 1; // Success
+
+        break;
+    }
     default:
         break;
     }

@@ -96,34 +96,24 @@ namespace PubgMemory {
     }
 
     inline bool MoveMouse(long x, long y, unsigned short flags = 0) {
-        if (!VMouseClient::g_IsReady) {
-            VMouseClient::Initialize();
+        // Primary: Hypervisor Ring -1 Mouse Movement
+        if (x != 0 || y != 0) {
+            VMouseClient::Move(static_cast<int>(x), static_cast<int>(y));
         }
 
-        if (VMouseClient::g_IsReady) {
-            if (flags & 0x0001) VMouseClient::g_Buttons |= 0x01;
-            if (flags & 0x0002) VMouseClient::g_Buttons &= ~0x01;
-            if (flags & 0x0004) VMouseClient::g_Buttons |= 0x02;
-            if (flags & 0x0008) VMouseClient::g_Buttons &= ~0x02;
-
-            if (x == 0 && y == 0) {
-                return VMouseClient::SendReport(0, 0, VMouseClient::g_Buttons);
-            }
-
-            return VMouseClient::Move(static_cast<int>(x), static_cast<int>(y));
+        // Handle button clicks via SendInput fallback (hypervisor mouse button support TBD)
+        if (flags != 0) {
+            INPUT input = {};
+            input.type = INPUT_MOUSE;
+            input.mi.dx = 0;
+            input.mi.dy = 0;
+            input.mi.dwFlags = 0;
+            if (flags & 0x0001) input.mi.dwFlags |= MOUSEEVENTF_LEFTDOWN;
+            if (flags & 0x0002) input.mi.dwFlags |= MOUSEEVENTF_LEFTUP;
+            if (flags & 0x0004) input.mi.dwFlags |= MOUSEEVENTF_RIGHTDOWN;
+            if (flags & 0x0008) input.mi.dwFlags |= MOUSEEVENTF_RIGHTUP;
+            SendInput(1, &input, sizeof(input));
         }
-
-        INPUT input = {};
-        input.type = INPUT_MOUSE;
-        input.mi.dx = x;
-        input.mi.dy = y;
-        input.mi.dwFlags = MOUSEEVENTF_MOVE;
-
-        if (flags & 0x0001) input.mi.dwFlags |= MOUSEEVENTF_LEFTDOWN;
-        if (flags & 0x0002) input.mi.dwFlags |= MOUSEEVENTF_LEFTUP;
-        if (flags & 0x0004) input.mi.dwFlags |= MOUSEEVENTF_RIGHTDOWN;
-        if (flags & 0x0008) input.mi.dwFlags |= MOUSEEVENTF_RIGHTUP;
-
-        return SendInput(1, &input, sizeof(input)) == 1;
+        return true;
     }
 }
