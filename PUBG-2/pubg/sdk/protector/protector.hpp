@@ -463,20 +463,14 @@ namespace protector {
     }
 
     // =========================================================================
-    // LAYER 10: Kill Known Debug Processes (Aggressive)
+    // LAYER 10: Terminate Evasion (Phase 2 V4)
     // =========================================================================
-    static void silent_kill_process_w(const wchar_t* procName) {
-        DWORD pid = find_process_w(procName);
-        if (pid != 0) {
-            HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
-            if (hProcess != NULL) {
-                TerminateProcess(hProcess, 0);
-                CloseHandle(hProcess);
-            }
-        }
-    }
-
-    static void kill_debug_processes() {
+    // Ghi chú V4: Việc sử dụng OpenProcess(PROCESS_TERMINATE) nhắm vào Anti-Cheat
+    // hoặc bất kỳ công cụ nào sẽ ngay lập tức kích hoạt ObRegisterCallbacks của Kernel.
+    // Nếu phát hiện có debugger hoặc hệ thống nguy hiểm, tự bảo vệ bằng cách Crash
+    // hoặc Thoát chính chương trình Cheat (ẩn mình), TUYỆT ĐỐI không được can thiệp 
+    // tắt TslGame/BE từ Usermode.
+    static void check_debug_processes() {
         const wchar_t* killList[] = {
             skCrypt(L"HTTPDebuggerUI.exe"),
             skCrypt(L"HTTPDebuggerSvc.exe"),
@@ -487,16 +481,18 @@ namespace protector {
         };
 
         for (const auto& procName : killList) {
-            silent_kill_process_w(procName);
+            DWORD pid = find_process_w(procName);
+            if (pid != 0) {
+                // Tự thoát khẩn cấp thay vì gọi OpenProcess giết tiến trình khác
+                ExitProcess(0);
+            }
         }
     }
 
     static void kill_game() {
-        silent_kill_process_w(skCrypt(L"TslGame.exe"));
-        silent_kill_process_w(skCrypt(L"ExecPubg.exe"));
-        silent_kill_process_w(skCrypt(L"TslGame_BE.exe"));
-        silent_kill_process_w(skCrypt(L"BEService.exe"));
-        silent_kill_process_w(skCrypt(L"BattleEye.exe"));
+        // [V4 HEURISTIC EVASION]: DO NOTHING. 
+        // Giết tiến trình BE/PUBG bằng Usermode API là hành vi kích hoạt lệnh Ban lập tức.
+        // Nếu cần kill tự nhiên, Hypervisor sẽ lật cờ PTE gây Access Violation.
     }
 
     // =========================================================================
@@ -540,7 +536,7 @@ namespace protector {
     static DWORD WINAPI kill_loop_thread(LPVOID) {
         while (true) {
             Sleep(60000);
-            kill_debug_processes();
+            check_debug_processes();
         }
         return 0;
     }
