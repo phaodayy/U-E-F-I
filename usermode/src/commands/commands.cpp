@@ -573,6 +573,49 @@ static void process_gva(const CLI::App* const gva)
 	LOG_INFO("alias value: 0x{:X}", alias_value);
 }
 
+static CLI::App* init_mouse(CLI::App& app)
+{
+	CLI::App* mouse = app.add_subcommand("mouse", "test hypervisor mouse movement via inject_mouse_movement")->ignore_case();
+
+	add_command_option(mouse, "x")->required();
+	add_command_option(mouse, "y")->required();
+
+	return mouse;
+}
+
+static void process_mouse(const CLI::App* const mouse)
+{
+	const auto x = get_command_option<std::int32_t>(mouse, "x");
+	const auto y = get_command_option<std::int32_t>(mouse, "y");
+
+	LOG_INFO("Injecting mouse x: {}, y: {}", x, y);
+	
+	std::uint64_t result = hypercall::inject_mouse_movement(x, y);
+	if (result) {
+		LOG_INFO("Mouse injected successfully.");
+	} else {
+		LOG_ERR("Mouse injection failed.");
+	}
+}
+
+static CLI::App* init_click(CLI::App& app)
+{
+	CLI::App* click = app.add_subcommand("click", "test usermode SendInput click fallback")->ignore_case();
+	return click;
+}
+
+static void process_click(const CLI::App* const click)
+{
+	LOG_INFO("Simulating Left Click via Usermode Fallback...");
+	INPUT inp[2] = { 0 };
+	inp[0].type = INPUT_MOUSE;
+	inp[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+	inp[1].type = INPUT_MOUSE;
+	inp[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
+	SendInput(2, inp, sizeof(INPUT));
+	LOG_INFO("Click done.");
+}
+
 void commands::process(const std::string& command)
 {
 	if (command.empty())
@@ -605,6 +648,8 @@ void commands::process(const std::string& command)
 	CLI::App* const lkm = init_lkm(app);
 	const CLI::App* const kme = init_kme(app);
 	const CLI::App* const dkm = init_dkm(app);
+	const CLI::App* const mouse = init_mouse(app);
+	const CLI::App* const click = init_click(app);
 
 	try
 	{
@@ -626,6 +671,8 @@ void commands::process(const std::string& command)
 		PROCESS_COMMAND(lkm);
 		PROCESS_COMMAND(kme);
 		PROCESS_COMMAND(dkm);
+		PROCESS_COMMAND(mouse);
+		PROCESS_COMMAND(click);
 	}
 	catch (const CLI::ParseError& error)
 	{
