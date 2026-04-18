@@ -44,26 +44,33 @@ void clean_up_uefi_boot_image()
 
 void process_first_vmexit()
 {
-    static std::uint8_t is_first_vmexit = 1;
+    static volatile long is_first_vmexit = 1;
 
     if (is_first_vmexit == 1)
     {
-        slat::process_first_vmexit();
-        interrupts::set_up();
+        if (_InterlockedCompareExchange(&is_first_vmexit, 0, 1) == 1)
+        {
+            slat::process_first_vmexit();
+            interrupts::set_up();
 
-        clean_up_uefi_boot_image();
-
-        is_first_vmexit = 0;
+            clean_up_uefi_boot_image();
+        }
     }
 
-    static std::uint8_t has_hidden_heap_pages = 0;
-    static std::uint64_t vmexit_count = 0;
+    static volatile long has_hidden_heap_pages = 0;
+    static volatile long long vmexit_count = 0;
 
-    if (has_hidden_heap_pages == 0 && 10000 <= ++vmexit_count)
+    if (has_hidden_heap_pages == 0 && 10000 <= _InterlockedIncrement64(&vmexit_count))
     {
         // hides heap from Hyper-V slat cr3. when the hook slat cr3 is initialised, the heap must also be hidden from it
-
-        has_hidden_heap_pages = slat::hide_heap_pages(slat::hyperv_cr3());
+        if (_InterlockedCompareExchange(&has_hidden_heap_pages, 1, 0) == 0)
+        {
+            long result = slat::hide_heap_pages(slat::hyperv_cr3());
+            if (result == 0)
+            {
+                _InterlockedExchange(&has_hidden_heap_pages, 0); // Allow retry if failed
+            }
+        }
     }
 }
 
