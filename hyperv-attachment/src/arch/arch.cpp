@@ -116,6 +116,29 @@ std::uint8_t arch::is_non_maskable_interrupt_exit(const std::uint64_t vmexit_rea
 #endif
 }
 
+std::uint8_t arch::is_breakpoint_exit(const std::uint64_t vmexit_reason)
+{
+#ifdef _INTELMACHINE
+	if (vmexit_reason != VMX_EXIT_REASON_EXCEPTION_OR_NMI)
+	{
+		return 0;
+	}
+
+	const std::uint64_t raw_info = vmread(VMCS_VMEXIT_INTERRUPTION_INFORMATION);
+	const vmexit_interrupt_information info = { .flags = static_cast<std::uint32_t>(raw_info) };
+
+	// Vector 3 = #BP (INT3), type = hardware_exception
+	return (info.vector == 3 && info.interruption_type == interruption_type::hardware_exception) ? 1 : 0;
+#else
+	// AMD: SVM exit code for exception #3 = 0x43 (SVM_EXIT_EXCEPTION_3)
+	const vmcb_t* const vmcb = get_vmcb();
+	if (vmexit_reason != 0x43) return 0; // #BP = Exception 3 = SVM exit code 0x43
+	(void)vmcb;
+	return 1;
+#endif
+}
+
+
 cr3 arch::get_guest_cr3()
 {
 	cr3 guest_cr3;

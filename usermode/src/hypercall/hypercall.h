@@ -23,6 +23,8 @@ namespace hypercall
 
 	std::uint64_t translate_guest_virtual_address(std::uint64_t guest_virtual_address, std::uint64_t guest_cr3);
 
+	std::uint64_t set_mouse_hook_address(std::uint64_t ept_hook_address);
+
 	std::uint64_t read_guest_cr3();
 
 	std::uint64_t add_slat_code_hook(std::uint64_t target_guest_physical_address,

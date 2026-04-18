@@ -30,8 +30,68 @@ namespace
     
     std::uint64_t current_primary_key = hypercall_default_primary_key;
     std::uint64_t current_secondary_key = hypercall_default_secondary_key;
-    std::uint64_t authorized_caller_cr3 = 0;
     bool is_hypercall_context_initialized = false;
+}
+
+// Phải ở file scope (không trong anonymous namespace) để hypercall.cpp có thể extern-link
+std::uint64_t authorized_caller_cr3 = 0;
+
+// =========================================================================
+// EPT Mouse Hook - INT3 Injection Handler
+// Khi shadow page có INT3 được execute, bơm MOUSE_INPUT_DATA vào guest.
+// MOUSE_INPUT_DATA layout (WDM):
+//   +0x00: USHORT  UnitId
+//   +0x02: USHORT  Reserved
+//   +0x04: USHORT  Flags     (MOUSE_MOVE_RELATIVE = 0)
+//   +0x06: USHORT  Reserved2
+//   +0x08: ULONG   RawButtons
+//   +0x0C: ULONG   ButtonFlags
+//   +0x10: ULONG   ButtonData
+//   +0x14: ULONG   ExtraInformation
+//   +0x18: LONG    LastX  <- dx
+//   +0x1C: LONG    LastY  <- dy
+// =========================================================================
+static void try_inject_mouse_from_bp(const trap_frame_t* const trap_frame)
+{
+    const std::int32_t dx = g_pending_mouse_x;
+    const std::int32_t dy = g_pending_mouse_y;
+    g_pending_mouse_x = 0;
+    g_pending_mouse_y = 0;
+    if (dx == 0 && dy == 0) return;
+
+    // Tại thời điểm thực thi byte đầu tiên của MouseClassServiceCallback,
+    // Argument 2 (RDX) chứa con trỏ tới MOUSE_INPUT_DATA đầu tiên trong chuỗi.
+    const std::uint64_t input_data_gva = trap_frame->rdx;
+    if (input_data_gva == 0) return;
+
+    const cr3 guest_cr3  = arch::get_guest_cr3();
+    const cr3 slat_cr3   = slat::hyperv_cr3();
+
+    // Dịch InputDataStart (GVA) sang GPA để sửa
+    const std::uint64_t input_data_gpa = memory_manager::translate_guest_virtual_address(
+        guest_cr3, slat_cr3, { .address = input_data_gva });
+
+    if (input_data_gpa == 0) return;
+
+    // Map physical memory của guest ra host (0xFFFFFF... memory base)
+    auto* const mapped_input_data = static_cast<std::uint8_t*>(
+        memory_manager::map_host_physical(input_data_gpa));
+
+    if (mapped_input_data == nullptr) return;
+
+    // Flags (Offset +0x04)
+    auto* const flags = reinterpret_cast<std::uint16_t*>(mapped_input_data + 0x04);
+
+    // Xóa cờ MOUSE_MOVE_ABSOLUTE (1) để hệ thống nhận diện đây là Relative (0)
+    *flags &= ~1;
+
+    // LastX (Offset +0x18), LastY (Offset +0x1C)
+    // Sửa trực tiếp buffer mà Windows truyền cho MouseClassServiceCallback
+    auto* const last_x = reinterpret_cast<std::int32_t*>(mapped_input_data + 0x18);
+    auto* const last_y = reinterpret_cast<std::int32_t*>(mapped_input_data + 0x1C);
+
+    *last_x += dx;
+    *last_y += dy;
 }
 
 void clean_up_uefi_boot_image()
@@ -186,6 +246,25 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
     else if (arch::is_non_maskable_interrupt_exit(exit_reason) == 1)
     {
         interrupts::process_nmi();
+    }
+    else if (arch::is_breakpoint_exit(exit_reason) == 1 && g_mouse_shadow_page_va != 0)
+    {
+        trap_frame_t* trap_frame;
+#ifdef _INTELMACHINE
+        trap_frame = reinterpret_cast<trap_frame_t*>(a4);
+#else
+        trap_frame = reinterpret_cast<trap_frame_t*>(a2);
+#endif
+
+        // #BP VMEXIT từ shadow page INT3 của EPT Mouse Hook
+        // Bơm tọa độ chuột vào struct MOUSE_INPUT_DATA của guest, rồi skip INT3 (nâng RIP +1)
+        try_inject_mouse_from_bp(trap_frame);
+
+        // Skip qua INT3 byte (1 byte), tiếp tục thực thi code gốc trong shadow page
+        const std::uint64_t rip = arch::get_guest_rip();
+        arch::set_guest_rip(rip + 1);
+
+        return do_vmexit_premature_return();
     }
 
     return reinterpret_cast<vmexit_handler_t>(original_vmexit_handler)(a1, a2, a3, a4);

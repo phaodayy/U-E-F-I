@@ -582,7 +582,6 @@ static CLI::App* init_mouse(CLI::App& app)
 
 	return mouse;
 }
-
 static void process_mouse(const CLI::App* const mouse)
 {
 	const auto x = get_command_option<std::int32_t>(mouse, "x");
@@ -592,9 +591,109 @@ static void process_mouse(const CLI::App* const mouse)
 	
 	std::uint64_t result = hypercall::inject_mouse_movement(x, y);
 	if (result) {
+		// Gọi SendInput/mouse_event giả (0, 0) để tạo tín hiệu ép Windows gọi MouseClassServiceCallback!
+		// Hypervisor sẽ chộp được lời gọi này và ghi đè tọa độ (0, 0) bằng (x, y).
+		mouse_event(MOUSEEVENTF_MOVE, 0, 0, 0, 0);
+
 		LOG_INFO("Mouse injected successfully.");
 	} else {
 		LOG_ERR("Mouse injection failed.");
+	}
+}
+
+static CLI::App* init_hook_mouse(CLI::App& app)
+{
+	return app.add_subcommand("hook-mouse", "Scan kernel for MouseClassServiceCallback and set Ept Hook")->ignore_case();
+}
+
+static void process_hook_mouse(const CLI::App* const)
+{
+	LOG_INFO("Finding mouclass.sys...");
+	
+	// Access the kernel modules parsed by sys::kernel::parse_modules()
+	auto it = sys::kernel::modules_list.find("mouclass.sys");
+	if (it == sys::kernel::modules_list.end()) {
+		LOG_ERR("mouclass.sys not found in kernel modules list.");
+		return;
+	}
+
+	const std::uint64_t mouclass_base = it->second.base_address;
+	const std::uint32_t mouclass_size = it->second.size;
+	LOG_INFO("mouclass.sys base: 0x{:X}, size: 0x{:X}", mouclass_base, mouclass_size);
+
+	// Patterns to find MouseClassServiceCallback
+	const char* patterns[] = {
+		"48 8B C4 48 89 58 ? 48 89 68 ? 48 89 70 ? 57 41 54 41 55 41 56 41 57 48 83 EC",
+		"48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 41 54 41 55 41 56 41 57 48 83 EC",
+		"48 8B C4 55 56 57 41 54 41 55 41 56 41 57 48 8D 68 ? 48 81 EC"
+	};
+
+	// Helper: parse pattern
+	auto ParsePtn = [](const char* pattern, std::vector<std::uint8_t>& bytes, std::vector<bool>& mask) {
+		const char* p = pattern;
+		while (*p) {
+			if (*p == ' ') { p++; continue; }
+			if (*p == '?') {
+				bytes.push_back(0);
+				mask.push_back(false);
+				p++;
+				if (*p == '?') p++;
+			} else {
+				char hex[3] = { p[0], p[1], 0 };
+				bytes.push_back(static_cast<std::uint8_t>(strtol(hex, nullptr, 16)));
+				mask.push_back(true);
+				p += 2;
+			}
+		}
+	};
+
+	std::uint64_t found_addr = 0;
+	std::vector<std::uint8_t> buffer(mouclass_size);
+
+	// Reading kernel memory via hypercall (using host cr3/0 or common cr3)
+	const std::uint64_t cr3 = sys::current_cr3; 
+	if (hypercall::read_guest_virtual_memory(buffer.data(), mouclass_base, cr3, mouclass_size)) {
+		
+		for(const char* ptn : patterns) {
+			LOG_INFO("Scanning with pattern: {}", ptn);
+			std::vector<std::uint8_t> pbytes;
+			std::vector<bool> pmask;
+			ParsePtn(ptn, pbytes, pmask);
+
+			if (pbytes.empty() || pbytes.size() > buffer.size()) continue;
+
+			for (size_t i = 0; i < buffer.size() - pbytes.size(); ++i) {
+				bool match = true;
+				for (size_t j = 0; j < pbytes.size(); ++j) {
+					if (pmask[j] && buffer[i + j] != pbytes[j]) {
+						match = false;
+						break;
+					}
+				}
+				if (match) {
+					found_addr = mouclass_base + i;
+					break;
+				}
+			}
+			if (found_addr != 0) break;
+		}
+	} else {
+		LOG_ERR("Failed to read mouclass.sys memory.");
+		return;
+	}
+
+	if (found_addr == 0) {
+		LOG_ERR("Could not find MouseClassServiceCallback signature!");
+		return;
+	}
+
+	LOG_INFO("Found MouseClassServiceCallback at: 0x{:X}", found_addr);
+	
+	std::uint64_t result = hypercall::set_mouse_hook_address(found_addr);
+	if (result == 1) {
+		LOG_INFO("EPT Hook injected successfully into Hypervisor.");
+	} else {
+		LOG_ERR("Failed to set EPT Hook. Error code: {}", result);
 	}
 }
 
@@ -650,6 +749,7 @@ void commands::process(const std::string& command)
 	const CLI::App* const dkm = init_dkm(app);
 	const CLI::App* const mouse = init_mouse(app);
 	const CLI::App* const click = init_click(app);
+	const CLI::App* const hook_mouse = init_hook_mouse(app);
 
 	try
 	{
@@ -673,6 +773,7 @@ void commands::process(const std::string& command)
 		PROCESS_COMMAND(dkm);
 		PROCESS_COMMAND(mouse);
 		PROCESS_COMMAND(click);
+		PROCESS_COMMAND(hook_mouse);
 	}
 	catch (const CLI::ParseError& error)
 	{

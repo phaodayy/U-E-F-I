@@ -124,6 +124,13 @@ std::uint64_t hypercall::translate_guest_virtual_address(const std::uint64_t gue
 	return make_hypercall(call_type, 0, guest_virtual_address, guest_cr3, 0);
 }
 
+std::uint64_t hypercall::set_mouse_hook_address(const std::uint64_t ept_hook_address)
+{
+	constexpr auto call_type = hypercall_type_t::set_mouse_hook_address;
+
+	return make_hypercall(call_type, 0, ept_hook_address, 0, 0);
+}
+
 std::uint64_t hypercall::read_guest_cr3()
 {
 	constexpr auto call_type = hypercall_type_t::read_guest_cr3;

@@ -106,3 +106,8 @@ std::uint64_t PubgHyperCall::InjectMouseMovement(long x, long y)
                          static_cast<std::uint64_t>(x),
                          static_cast<std::uint64_t>(y), 0);
 }
+
+bool PubgHyperCall::SetMouseHookAddress(std::uint64_t ept_hook_address)
+{
+    return MakeHypercall(hypercall_type_t::set_mouse_hook_address, 0, ept_hook_address, 0, 0) == 1;
+}

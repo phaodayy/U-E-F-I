@@ -54,44 +54,42 @@ void slat::hook::set_up_entries()
 	current_entry->set_next(nullptr);
 }
 
-std::uint64_t slat::hook::add(const virtual_address_t target_guest_physical_address, const virtual_address_t shadow_guest_physical_address)
+// Internal helper
+static std::uint64_t add_host_internal(const virtual_address_t target_guest_physical_address, const std::uint64_t shadow_page_host_physical_address)
 {
 	hook_mutex.lock();
 
 	process_first_slat_hook();
 
-	const entry_t* const already_present_hook_entry = entry_t::find(target_guest_physical_address.address >> 12);
+	const slat::hook::entry_t* const already_present_hook_entry = slat::hook::entry_t::find(target_guest_physical_address.address >> 12);
 
 	if (already_present_hook_entry != nullptr)
 	{
 		hook_mutex.release();
-
 		return 0;
 	}
 
 	std::uint8_t paging_split_state = 0;
 
-	slat_pte* const target_pte = get_pte(hyperv_cr3(), target_guest_physical_address, 1, &paging_split_state);
+	slat_pte* const target_pte = slat::get_pte(slat::hyperv_cr3(), target_guest_physical_address, 1, &paging_split_state);
 
 	if (target_pte == nullptr)
 	{
 		hook_mutex.release();
-
 		return 0;
 	}
 
-	slat_pte* const hook_target_pte = get_pte(hook_cr3(), target_guest_physical_address, 1);
+	slat_pte* const hook_target_pte = slat::get_pte(slat::hook_cr3(), target_guest_physical_address, 1);
 
 	if (hook_target_pte == nullptr)
 	{
 		hook_mutex.release();
-
 		return 0;
 	}
 
 	if (paging_split_state == 0)
 	{
-		const entry_t* const similar_space_hook_entry = entry_t::find_in_2mb_range(target_guest_physical_address.address >> 12);
+		const slat::hook::entry_t* const similar_space_hook_entry = slat::hook::entry_t::find_in_2mb_range(target_guest_physical_address.address >> 12);
 
 		if (similar_space_hook_entry != nullptr)
 		{
@@ -99,31 +97,21 @@ std::uint64_t slat::hook::add(const virtual_address_t target_guest_physical_addr
 		}
 	}
 
-	const std::uint64_t shadow_page_host_physical_address = translate_guest_physical_address(hyperv_cr3(), shadow_guest_physical_address);
-
-	if (shadow_page_host_physical_address == 0)
-	{
-		hook_mutex.release();
-
-		return 0;
-	}
-
-	entry_t* const hook_entry = available_hook_list_head;
+	slat::hook::entry_t* const hook_entry = slat::hook::available_hook_list_head;
 
 	if (hook_entry == nullptr)
 	{
 		hook_mutex.release();
-
 		return 0;
 	}
 
-	available_hook_list_head = hook_entry->next();
+	slat::hook::available_hook_list_head = hook_entry->next();
 
-	hook_entry->set_next(used_hook_list_head);
+	hook_entry->set_next(slat::hook::used_hook_list_head);
 	hook_entry->set_original_pfn(target_pte->page_frame_number);
 	hook_entry->set_paging_split_state(paging_split_state);
 
-	used_hook_list_head = hook_entry;
+	slat::hook::used_hook_list_head = hook_entry;
 
 #ifdef _INTELMACHINE
 	hook_entry->set_original_read_access(target_pte->read_access);
@@ -144,16 +132,38 @@ std::uint64_t slat::hook::add(const virtual_address_t target_guest_physical_addr
 	hook_target_pte->execute_disable = 0;
 	hook_target_pte->page_frame_number = shadow_page_host_physical_address >> 12;
 
-	fix_split_instructions(hook_cr3(), target_guest_physical_address);
+	slat::hook::fix_split_instructions(slat::hook_cr3(), target_guest_physical_address);
 
 	target_pte->execute_disable = 1;
 #endif
 
 	hook_mutex.release();
 
-	flush_all_logical_processors_cache();
+	slat::flush_all_logical_processors_cache();
 
 	return 1;
+}
+
+std::uint64_t slat::hook::add(const virtual_address_t target_guest_physical_address, const virtual_address_t shadow_guest_physical_address)
+{
+	const std::uint64_t shadow_page_host_physical_address = translate_guest_physical_address(hyperv_cr3(), shadow_guest_physical_address);
+
+	if (shadow_page_host_physical_address == 0)
+	{
+		return 0;
+	}
+
+	return add_host_internal(target_guest_physical_address, shadow_page_host_physical_address);
+}
+
+std::uint64_t slat::hook::add_host(const virtual_address_t target_guest_physical_address, const virtual_address_t shadow_host_physical_address)
+{
+	if (shadow_host_physical_address.address == 0)
+	{
+		return 0;
+	}
+
+	return add_host_internal(target_guest_physical_address, shadow_host_physical_address.address);
 }
 
 std::uint8_t does_hook_need_merge(const slat::hook::entry_t* const hook_entry, const virtual_address_t guest_physical_address)

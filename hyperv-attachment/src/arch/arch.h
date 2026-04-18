@@ -11,6 +11,7 @@ namespace arch
 	std::uint8_t is_slat_violation(std::uint64_t vmexit_reason);
 
 	std::uint8_t is_non_maskable_interrupt_exit(std::uint64_t vmexit_reason);
+	std::uint8_t is_breakpoint_exit(std::uint64_t vmexit_reason);
 
 	cr3 get_guest_cr3();
 
