@@ -36,9 +36,7 @@ int main() {
         return 0;
     }
 
-    std::cout << "========================================" << std::endl;
-    std::cout << "    hyper-reV MULTI-BOOT LOADER v3.0    " << std::endl;
-    std::cout << "========================================" << std::endl;
+    // Silent banner
 
     system("mountvol Z: /S >nul 2>&1");
     Sleep(500);

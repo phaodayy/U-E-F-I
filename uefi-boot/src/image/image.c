@@ -32,6 +32,11 @@ EFI_STATUS scan_image(CHAR8** location_out, CHAR8* scan_base, UINT64 scan_max_si
 
     UINT64 mask_size = AsciiStrLen(mask);
 
+    if (scan_max_size < mask_size)
+    {
+        return EFI_NOT_FOUND;
+    }
+
     CHAR8* scan_limit = scan_base + scan_max_size - mask_size;
 
     for (CHAR8* current_byte = scan_base; current_byte <= scan_limit; current_byte++)
