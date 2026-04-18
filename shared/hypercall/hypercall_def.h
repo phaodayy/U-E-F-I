@@ -13,14 +13,15 @@ enum class hypercall_type_t : std::uint64_t
     hide_guest_physical_page,
     log_current_state,
     flush_logs,
-    get_heap_free_page_count
+    get_heap_free_page_count,
+    init_hypercall_context
 };
 
 #pragma warning(push)
 #pragma warning(disable: 4201)
 
-constexpr std::uint64_t hypercall_primary_key = 0x4E47;
-constexpr std::uint64_t hypercall_secondary_key = 0x7F;
+constexpr std::uint64_t hypercall_default_primary_key = 0x4E47;
+constexpr std::uint64_t hypercall_default_secondary_key = 0x7F;
 
 union hypercall_info_t
 {

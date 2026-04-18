@@ -4,13 +4,48 @@
 extern "C" std::uint64_t launch_raw_hypercall(hypercall_info_t rcx, std::uint64_t rdx, std::uint64_t r8,
                                               std::uint64_t r9);
 
+static std::uint64_t current_primary_key = hypercall_default_primary_key;
+static std::uint64_t current_secondary_key = hypercall_default_secondary_key;
+static bool is_initialized = false;
+
+bool hypercall::init()
+{
+    if (is_initialized) return true;
+
+    hypercall_info_t hypercall_info;
+    hypercall_info.primary_key = current_primary_key;
+    hypercall_info.secondary_key = current_secondary_key;
+    hypercall_info.call_type = hypercall_type_t::init_hypercall_context;
+    hypercall_info.call_reserved_data = 0;
+
+    std::uint64_t result = launch_raw_hypercall(hypercall_info, 0, 0, 0);
+    if (result != 0)
+    {
+        current_primary_key = (result >> 16) & 0xFFFF;
+        current_secondary_key = result & 0x7F;
+        is_initialized = true;
+        return true;
+    }
+    return false;
+}
+
+std::uint64_t hypercall::get_primary_key()
+{
+    return current_primary_key;
+}
+
+std::uint64_t hypercall::get_secondary_key()
+{
+    return current_secondary_key;
+}
+
 static std::uint64_t make_hypercall(const hypercall_type_t call_type, const std::uint64_t call_reserved_data,
                                     const std::uint64_t rdx, const std::uint64_t r8, const std::uint64_t r9)
 {
 	hypercall_info_t hypercall_info;
 
-	hypercall_info.primary_key = hypercall_primary_key;
-	hypercall_info.secondary_key = hypercall_secondary_key;
+	hypercall_info.primary_key = current_primary_key;
+	hypercall_info.secondary_key = current_secondary_key;
 	hypercall_info.call_type = call_type;
 	hypercall_info.call_reserved_data = call_reserved_data;
 

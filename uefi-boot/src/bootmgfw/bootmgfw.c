@@ -119,7 +119,7 @@ UINT64 bootmgfw_load_pe_image_detour(bl_file_info_t* file_info, INT32 a2, UINT64
             Print(L" \\____/____|_____\\____|_| |_|\\___|\\__,_|\\__|___/\n");
             Print(L"           |_____|                              \n\n");
             Print(L"       >>> DEPLOYED BY PHAOHACKGAME <<<\n\n");
-            Print(L"VER_8888_MARKER\n");
+            Print(L"VER_1111_MARKER\n");
             gST->ConOut->SetAttribute(gST->ConOut, EFI_WHITE);
         }
         else

@@ -1,0 +1,172 @@
+{
+    "resolution": "auto",
+    "sensitivity": {
+        "none": 3.0,
+        "reddot": 3.4,
+        "holosight": 3.9,
+        "2x": 3.3,
+        "3x": 5.0,
+        "4x": 7.0,
+        "6x": 5.0,
+        "8x": 5.7,
+        "15x": 10.0,
+        "shift": 1.5
+    },
+    "modifiers": {
+        "muzzle": {
+            "1": {
+                "v": 0.90,
+                "h": 0.90
+            },
+            "2": {
+                "v": 1.00,
+                "h": 1.00
+            },
+            "4": {
+                "v": 0.85,
+                "h": 0.90
+            }
+        },
+        "grip": {
+            "1": {
+                "v": 0.85,
+                "h": 1.00
+            },
+            "2": {
+                "v": 1.00,
+                "h": 0.85
+            },
+            "3": {
+                "v": 0.90,
+                "h": 0.90
+            },
+            "4": {
+                "v": 1.00,
+                "h": 1.00
+            }
+        }
+    },
+    "runtime": {
+        "prefer_external_data": true,
+        "macro_mode": 1,
+        "recoil_reset_ms": 300,
+        "pull_delay_ms": 9,
+        "pull_delay_jitter_ms": 2,
+        "x_jitter_range": 1,
+        "humanize_y_min": 0.95,
+        "humanize_y_max": 1.05,
+        "angle_to_pixel_x": 20.0,
+        "angle_to_pixel_y": 20.0,
+        "yaw_gain": 0.40,
+        "pitch_gain": 1.00,
+        "angle_deadzone": 0.01,
+        "ar_max_step_x": 50.0,
+        "ar_max_step_y": 50.0,
+        "sr_max_step_x": 10.0,
+        "sr_max_step_y": 10.0,
+        "dmr_max_step_x": 15.0,
+        "dmr_max_step_y": 15.0,
+        "ar_trigger_enabled": false,
+        "sr_trigger_enabled": true,
+        "dmr_trigger_enabled": true,
+        "sg_trigger_enabled": false,
+        "ar_trigger_fov": 4.5,
+        "sr_trigger_fov": 3.0,
+        "dmr_trigger_fov": 4.0,
+        "sg_trigger_fov": 10.0,
+        "trigger_delay_ms": 120,
+        "sr_autoshot_delay1": 50,
+        "sr_autoshot_delay2": 1200,
+        "ar_base_smoothing": 1.6,
+        "sr_base_smoothing": 1.2,
+        "dmr_base_smoothing": 1.4,
+        "max_smooth_increase": 0.45,
+        "smooth_fov": 10.0
+    },
+    "category_profiles": {
+        "default": {
+            "mode1": {
+                "enabled": true,
+                "multiplier": 1.00,
+                "delay_ms": 9,
+                "reset_ms": 300,
+                "yaw_gain": 0.40,
+                "pitch_gain": 1.00
+            },
+            "mode2": {
+                "enabled": true,
+                "multiplier": 1.15,
+                "delay_ms": 8,
+                "reset_ms": 260,
+                "yaw_gain": 0.45,
+                "pitch_gain": 1.05
+            }
+        },
+        "AR": {
+            "mode1": {
+                "multiplier": 1.00,
+                "delay_ms": 9,
+                "x_jitter": 1,
+                "yaw_gain": 0.40,
+                "pitch_gain": 1.00
+            },
+            "mode2": {
+                "multiplier": 1.20,
+                "delay_ms": 8,
+                "x_jitter": 1,
+                "yaw_gain": 0.45,
+                "pitch_gain": 1.10
+            }
+        },
+        "DMR": {
+            "mode1": {
+                "multiplier": 0.95,
+                "delay_ms": 11,
+                "x_jitter": 0,
+                "yaw_gain": 0.33,
+                "pitch_gain": 0.95
+            },
+            "mode2": {
+                "multiplier": 1.10,
+                "delay_ms": 10,
+                "x_jitter": 1,
+                "yaw_gain": 0.38,
+                "pitch_gain": 1.00
+            }
+        },
+        "SR": {
+            "mode1": {
+                "enabled": true,
+                "multiplier": 1.0,
+                "delay_ms": 15,
+                "reset_ms": 500
+            },
+            "mode2": {
+                "enabled": true,
+                "multiplier": 1.1,
+                "delay_ms": 12,
+                "reset_ms": 400
+            }
+        },
+        "SMG": {
+            "mode1": {
+                "multiplier": 1.05,
+                "delay_ms": 8
+            },
+            "mode2": {
+                "multiplier": 1.15,
+                "delay_ms": 7
+            }
+        },
+        "LMG": {
+            "mode1": {
+                "multiplier": 0.95,
+                "delay_ms": 10
+            },
+            "mode2": {
+                "multiplier": 1.05,
+                "delay_ms": 9
+            }
+        }
+    }
+}

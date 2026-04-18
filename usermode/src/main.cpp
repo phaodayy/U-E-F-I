@@ -8,10 +8,18 @@
 #include "hook/hook.h"
 #include "logs/logs.h"
 #include "system/system.h"
+#include "hypercall/hypercall.h"
 
 std::int32_t main()
 {
 	LOG_INFO("Starting Usermode...");
+	
+	if (!hypercall::init())
+	{
+		LOG_ERR("Failed to initialize hypervisor connection.");
+		std::system("pause");
+		return 1;
+	}
 	logs::set_up();
 
 	LOG_INFO("Setting up system...");

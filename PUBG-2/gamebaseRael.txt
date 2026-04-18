@@ -1,0 +1,147 @@
+// =================================== [ GIAI THICH CAC KY HIEU POINTER ] ===================================
+// @ Base      : ImageBase cua TslGame.exe (Diem bat dau vung nho cua game).
+// @ UWorld    : GWorld (Toan bo "The gioi" game - chua Level, Actors, GameState).
+// @ GI        : GameInstance (Doi tuong ton tai xuyen suot tu Menu den trong Tran).
+// @ LP        : LocalPlayer (Du lieu cho nguoi choi tai may cuc bo cua ban).
+// @ PC        : PlayerController (Bo dieu khien cua nguoi choi, quan ly Input va Camera).
+// @ PCM       : PlayerCameraManager (Quan ly camera, goc nhin, FOV cua ban).
+// @ Pawn      : Character/Pawn (Hinh the vat ly/Nhan vat cua ban hoac ke thich trong tran).
+// @ Root      : RootComponent (Component goc, quy dinh toa do, huong di chuyen thuc cua Actor).
+// @ Pawn + ...: Day la cac Offset con lay tu dia chi Pawn (vi du Health, Name, State).
+// @ Mesh      : SkeletalMesh (Khung xuong 3D cua nhan vat, dung de lay toa do Bone cho ESP/Aimbot).
+// @ Anim      : AnimScriptInstance (Instance quan ly chuyen dong, luu thong tin Goc quay/Recoil/Lean).
+// @ WP        : WeaponProcessor (Bo quan ly vu khi cua Pawn - dang cam sung gi, co bao nhieu sung).
+// @ EW        : EquippedWeapons (Mang cac vu khi nhan vat dang mang tren nguoi).
+// @ WTD       : WeaponTrajectoryData (Du lieu duong bay cua dan - trong luc, toc do dau nong).
+// @ VRC       : VehicleRiderComponent (Vung nho khi ban ngoi tren xe).
+// @ VP        : VehiclePawn (Chinh la chiec xe, chua thong tin vi tri/xang/mau cua xe).
+// @ GS        : GameState (Quan ly thong tin chung cua tran dau: thoi gian, danh sach nguoi choi).
+// @ Level     : CurrentLevel (Map hien tai ban dang choi).
+// @ Actors    : ActorList (Mang chua tat ca vat the ton tai: nguoi choi, item, xe co).
+// @ ObjID     : ID duy nhat cua mot vat the (Dung de tra cuu ten vat the qua GNames).
+// ==========================================================================================================
+
+GameBase (Base = ImageBase of TslGame.exe)
+│
+├─ XeDecryptPtr      @ Base + [Offset::XenuineDecrypt]
+├─ SPOOFCALL         @ Base + [Offset::SPOOFCALL]
+├─ GNames            @ Base + [Offset::GNames] (2 kademeli Xe decrypt)
+│
+└─ UWorld            @ Base + [Offset::UWorld] (Xe decrypt)
+    │
+    ├─ GameInstance   @ UWorld + [Offset::GameInstance] (Xe decrypt)
+    │   │
+    │   ├─ LocalPlayers @ GI + [Offset::LocalPlayer] (NO decrypt — uintptr_t)
+    │   │   │
+    │   │   └─ LocalPlayer[0]            (Xe decrypt)
+    │   │       │
+    │   │       └─ PlayerController      @ LP + [Offset::PlayerController] (Xe decrypt)
+    │   │           │
+    │   │           ├─ PlayerCameraManager @ PC + [Offset::PlayerCameraManager] (NO decrypt)
+    │   │           │   ├─ CameraCacheLocation  @ PCM + [Offset::CameraCacheLocation] (Vec3)
+    │   │           │   ├─ CameraCacheRotation  @ PCM + [Offset::CameraCacheRotation] (Vec3)
+    │   │           │   └─ CameraCacheFOV       @ PCM + [Offset::CameraCacheFOV] (float)
+    │   │           │
+    │   │           └─ AcknowledgedPawn  @ PC + [Offset::AcknowledgedPawn] (Xe decrypt)
+    │   │               │
+    │   │               ├─ RootComponent @ Pawn + [Offset::RootComponent] (Xe decrypt)
+    │   │               │   ├─ ComponentLocation  @ Root + [Offset::ComponentLocation] (Vec3)
+    │   │               │   └─ ComponentVelocity         [Offset::ComponentVelocity] (Vec3)
+    │   │               │
+    │   │               ├─ PlayerState   @ Pawn + [Offset::PlayerState] (NO decrypt)
+    │   │               ├─ LastTeamNum   @ Pawn + [Offset::LastTeamNum] (int)
+    │   │               ├─ SpectatedCount@ Pawn + [Offset::SpectatedCount] (int)
+    │   │               ├─ GroggyHealth  @ Pawn + [Offset::GroggyHealth] (float)
+    │   │               ├─ CharacterName @ Pawn + [Offset::CharacterName] (wchar_t*)
+    │   │               ├─ CharacterState@ Pawn + [Offset::CharacterState] (uint8_t)
+    │   │               │
+    │   │               ├─ Health Sistemi /im not using
+    │   │               │   ├─ HeaFlag   @ Pawn + [Offset::HeaFlag]
+    │   │               │   ├─ Health1   @ Pawn + [Offset::Health1]
+    │   │               │   ├─ Health2   @ Pawn + [Offset::Health2]
+    │   │               │   ├─ Health3   @ Pawn + [Offset::Health3]
+    │   │               │   ├─ Health4   @ Pawn + [Offset::Health4]
+    │   │               │   ├─ Health5   @ Pawn + [Offset::Health5]
+    │   │               │   ├─ Health6   @ Pawn + [Offset::Health6]
+    │   │               │   └─ Keys: [Offset::HealthKey0..15]
+    │   │               │
+    │   │               ├─ Mesh          @ Pawn + [Offset::Mesh] (NO decrypt)
+    │   │               │   │
+    │   │               │   ├─ ComponentToWorld  @ Mesh + [Offset::ComponentToWorld] (FTransform)
+    │   │               │   ├─ StaticMesh        @ Mesh + [Offset::StaticMesh] (uintptr_t)
+    │   │               │   ├─ BoneArray         @ Mesh + [Offset::StaticMesh] (uintptr_t)
+    │   │               │   ├─ BoneCount         @ Mesh + [Offset::BoneCount] (int) 
+    │   │               │   ├─ BoundBox          @ Mesh + [Offset::BoundBox] 
+    │   │               │   │
+    │   │               │   ├─ AnimScriptInstance @ Mesh + [Offset::AnimScriptInstance] (uintptr_t)
+    │   │               │   │   ├─ ControlRotation_CP    @ Anim + [Offset::ControlRotation_CP] (Vec3)
+    │   │               │   │   ├─ RecoilADSRotation_CP  @ Anim + [Offset::RecoilADSRotation_CP] (Vec3)
+    │   │               │   │   ├─ LeanLeftAlpha_CP      @ Anim + [Offset::LeanLeftAlpha_CP] (float/4)
+    │   │               │   │   └─ LeanRightAlpha_CP     @ Anim + [Offset::LeanRightAlpha_CP] (float/4)
+    │   │               │   │
+    │   │               │   ├─ LastSubmitTime           @ Mesh + [Offset::LastSubmitTime] (float)
+    │   │               │   ├─ LastRenderTimeOnScreen   @ Mesh + [Offset::LastRenderTimeOnScreen] (float)
+    │   │               │   ├─ Eyes                     @ Mesh + [Offset::Eyes] (float)
+    │   │               │   └─ bAlwaysCreatePhysicsState@ Mesh + [Offset::bAlwaysCreatePhysicsState] (BYTE)
+    │   │               │
+    │   │               ├─ WeaponProcessor @ Pawn + [Offset::WeaponProcessor] (uintptr_t)
+    │   │               │   ├─ EquippedWeapons    @ WP + [Offset::EquippedWeapons] (TArray)
+    │   │               │   │   ├─ WeaponSlot[0]  @ EW + 0x0
+    │   │               │   │   ├─ WeaponSlot[1]  @ EW + 0x8
+    │   │               │   │   └─ WeaponSlot[2]  @ EW + 0x10
+    │   │               │   │
+    │   │               │   ├─ CurrentWeaponIndex @ WP + [Offset::CurrentWeaponIndex] (BYTE)
+    │   │               │   │
+    │   │               │   └─ WeaponTrajectoryData @ WP + [Offset::WeaponTrajectoryData] (uintptr_t)
+    │   │               │       └─ TrajectoryConfig     @ WTD + [Offset::TrajectoryConfig]
+    │   │               │           └─ InitialSpeed     @ TC + 0x0   (float)
+    │   │               │
+    │   │               ├─ VehicleRiderComponent @ Pawn + [Offset::VehicleRiderComponent] (uintptr_t)
+    │   │               │   ├─ SeatIndex           @ VRC + [Offset::SeatIndex] (int)
+    │   │               │   ├─ LastVehiclePawn      @ VRC + [Offset::LastVehiclePawn] (uintptr_t)
+    │   │               │   │   └─ ReplicatedMovement @ VP + [Offset::ReplicatedMovement] (Vec3)
+    │   │               │   └─ VehicleMovement      @ VRC + [Offset::VehicleMovement]
+    │   │               │
+    │   │               └─ (Grenade/Projectile)
+    │   │                   ├─ TimeTillExplosion    @ Pawn + [Offset::TimeTillExplosion] (float)
+    │   │                   └─ ExplodeState         @ Pawn + [Offset::ExplodeState]
+    │   │
+    │   └─ GameState @ GI + [Offset::GameState]
+    │       └─ PlayerArray @ GS + [Offset::PlayerArray]
+    │
+    └─ CurrentLevel      @ UWorld + [Offset::CurrentLevel] (Xe decrypt)
+        │
+        └─ Actors         @ Level + [Offset::Actors] (Xe decrypt)
+            │
+            ├─ Actors_Array  @ Actors + 0x0  (NO decrypt — Data pointer)
+            │   │
+            │   ├─ Actor[i]  @ Array + (i * 0x8)  (DWORD_PTR)
+            │   │   │
+            │   │   ├─ ObjID          @ Actor + [Offset::ObjID] (CIndex decrypt)
+            │   │   ├─ PlayerState    @ Actor + [Offset::PlayerState] (validation check)
+            │   │   ├─ LastTeamNum    @ Actor + [Offset::LastTeamNum] (int)
+            │   │   ├─ GroggyHealth   @ Actor + [Offset::GroggyHealth] (float)
+            │   │   ├─ CharacterState @ Actor + [Offset::CharacterState] (uint8)
+            │   │   │
+            │   │   ├─ RootComponent  @ Actor + [Offset::RootComponent] (Xe decrypt)
+            │   │   │   └─ ComponentLocation @ Root + [Offset::ComponentLocation] (Vec3)
+            │   │   │
+            │   │   ├─ Mesh           @ Actor + [Offset::Mesh] (NO decrypt)
+            │   │   │   ├─ ComponentToWorld  @ Mesh + [Offset::ComponentToWorld] (FTransform)
+            │   │   │   ├─ Eyes              @ Mesh + [Offset::Eyes] (float)
+            │   │   │   ├─ BoneArray         @ Mesh + [Offset::StaticMesh] (uintptr_t)
+            │   │   │   │   ├─ Bone[0]  @ BA + 0x00
+            │   │   │   │   ├─ Bone[1]  @ BA + 0x30
+            │   │   │   │   ├─ Bone[6]  @ BA + 0x120  (Head)
+            │   │   │   │
+            │   │   │   └─ AnimScriptInstance @ Mesh + [Offset::AnimScriptInstance]
+            │   │   │       └─ ControlRotation_CP @ Anim + [Offset::ControlRotation_CP] (Vec3)
+            │   │   │
+            │   │   └─ WeaponProcessor @ Actor + [Offset::WeaponProcessor]
+            │   │       ├─ CurrentWeaponIndex @ WP + [Offset::CurrentWeaponIndex]
+            │   │       └─ EquippedWeapons    @ WP + [Offset::EquippedWeapons]
+            │   │           └─ Weapon[idx] → ObjID → GNames → Silah adı
+            │   │
+            │   └─ Actor[i+1] …
+            │
+            └─ Actors_Count  @ Actors + 0x8  (int, max 2000)

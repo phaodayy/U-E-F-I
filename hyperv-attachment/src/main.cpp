@@ -14,6 +14,8 @@
 #include "slat/cr3/cr3.h"
 #include "slat/violation/violation.h"
 
+#include <intrin.h>
+
 #ifndef _INTELMACHINE
 #include <intrin.h>
 #endif
@@ -25,6 +27,11 @@ namespace
     std::uint8_t* original_vmexit_handler = nullptr;
     std::uint64_t uefi_boot_physical_base_address = 0;
     std::uint64_t uefi_boot_image_size = 0;
+    
+    std::uint64_t current_primary_key = hypercall_default_primary_key;
+    std::uint64_t current_secondary_key = hypercall_default_secondary_key;
+    std::uint64_t authorized_caller_cr3 = 0;
+    bool is_hypercall_context_initialized = false;
 }
 
 void clean_up_uefi_boot_image()
@@ -85,13 +92,51 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
 
         const hypercall_info_t hypercall_info = { .value = trap_frame->rcx };
 
-        if (hypercall_info.primary_key == hypercall_primary_key && hypercall_info.secondary_key == hypercall_secondary_key)
+        if (hypercall_info.primary_key == current_primary_key && hypercall_info.secondary_key == current_secondary_key)
         {
 #ifndef _INTELMACHINE
             vmcb_t* const vmcb = arch::get_vmcb();
 
             trap_frame->rax = vmcb->save_state.rax;
 #endif
+
+            const std::uint64_t guest_cr3 = arch::get_guest_cr3().flags;
+
+            if (hypercall_info.call_type == hypercall_type_t::init_hypercall_context)
+            {
+                if (!is_hypercall_context_initialized)
+                {
+                    authorized_caller_cr3 = guest_cr3;
+                    is_hypercall_context_initialized = true;
+
+                    current_primary_key = (guest_cr3 ^ __rdtsc()) & 0xFFFF;
+                    if (current_primary_key == 0) current_primary_key = 0x1337;
+                    current_secondary_key = (__rdtsc() >> 8) & 0x7F;
+
+                    trap_frame->rax = (current_primary_key << 16) | current_secondary_key;
+                }
+                else 
+                {
+                    trap_frame->rax = 0;
+                }
+
+#ifndef _INTELMACHINE
+                vmcb->save_state.rax = trap_frame->rax;
+#endif
+                arch::advance_guest_rip();
+                return do_vmexit_premature_return();
+            }
+
+            if (is_hypercall_context_initialized && guest_cr3 != authorized_caller_cr3)
+            {
+                trap_frame->rax = 0;
+                
+#ifndef _INTELMACHINE
+                vmcb->save_state.rax = trap_frame->rax;
+#endif
+                arch::advance_guest_rip();
+                return do_vmexit_premature_return();
+            }
 
             trap_frame->rsp = arch::get_guest_rsp();
 

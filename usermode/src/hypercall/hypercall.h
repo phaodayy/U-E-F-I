@@ -6,6 +6,10 @@
 
 namespace hypercall
 {
+	bool init();
+	std::uint64_t get_primary_key();
+	std::uint64_t get_secondary_key();
+
 	std::uint64_t read_guest_physical_memory(void* guest_destination_buffer,
 	                                         std::uint64_t guest_source_physical_address, std::uint64_t size);
 	std::uint64_t write_guest_physical_memory(const void* guest_source_buffer,
