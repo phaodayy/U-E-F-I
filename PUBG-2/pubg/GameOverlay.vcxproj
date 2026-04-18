@@ -14,7 +14,7 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{A7B8C9D0-1E2F-3A4B-5C6D-7E8F9A0B1C2D}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>SecurityHealthService</RootNamespace>
+    <RootNamespace>GameOverlay</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -46,13 +46,13 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>..\bin\</OutDir>
     <IntDir>$(SolutionDir)pubg\build\$(Configuration)\</IntDir>
-    <TargetName>SecurityHealthService</TargetName>
+    <TargetName>GameOverlay</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>..\bin\</OutDir>
     <IntDir>$(SolutionDir)pubg\build\$(Configuration)\</IntDir>
-    <TargetName>SecurityHealthService</TargetName>
+    <TargetName>GameOverlay</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -97,7 +97,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <TargetName>SecurityHealthService</TargetName>
+    <TargetName>GameOverlay</TargetName>
   </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />

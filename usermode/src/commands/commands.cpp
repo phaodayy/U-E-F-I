@@ -591,9 +591,18 @@ static void process_mouse(const CLI::App* const mouse)
 	
 	std::uint64_t result = hypercall::inject_mouse_movement(x, y);
 	if (result) {
-		// Gọi SendInput/mouse_event giả (0, 0) để tạo tín hiệu ép Windows gọi MouseClassServiceCallback!
-		// Hypervisor sẽ chộp được lời gọi này và ghi đè tọa độ (0, 0) bằng (x, y).
-		mouse_event(MOUSEEVENTF_MOVE, 0, 0, 0, 0);
+		// [FIX-5] Trigger MouseClassServiceCallback bằng SendInput với tiny jitter ngẫu nhiên.
+		// KHÔNG dùng (0,0) vì BE hook NtUserSendInput và cờ pattern MOUSEEVENTF_MOVE + (0,0) là IOC rõ ràng.
+		// Jitter 1-2px trông như sub-pixel noise tự nhiên. Hypervisor sẽ ghi đè tọa độ thật khi bắt #BP.
+		const SHORT jitter_x = (static_cast<SHORT>(GetTickCount64() & 3) - 1); // -1, 0, 1, hoặc 2
+		const SHORT jitter_y = (static_cast<SHORT>((GetTickCount64() >> 2) & 1)); // 0 hoặc 1
+
+		INPUT inp = {};
+		inp.type        = INPUT_MOUSE;
+		inp.mi.dwFlags  = MOUSEEVENTF_MOVE;
+		inp.mi.dx       = jitter_x;
+		inp.mi.dy       = jitter_y;
+		SendInput(1, &inp, sizeof(INPUT));
 
 		LOG_INFO("Mouse injected successfully.");
 	} else {
@@ -693,7 +702,7 @@ static void process_hook_mouse(const CLI::App* const)
 	if (result == 1) {
 		LOG_INFO("EPT Hook injected successfully into Hypervisor.");
 	} else {
-		LOG_ERR("Failed to set EPT Hook. Error code: {}", result);
+		LOG_ERR("Failed to set EPT Hook."); // [FIX-3] No error code exposed
 	}
 }
 

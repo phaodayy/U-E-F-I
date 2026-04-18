@@ -346,11 +346,11 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
         const std::uint64_t callback_pa = memory_manager::translate_guest_virtual_address(
             guest_cr3, slat_cr3, { .address = callback_va });
 
-        if (callback_pa == 0) { trap_frame->rax = 2; break; }
+        if (callback_pa == 0) { trap_frame->rax = 0; break; } // [FIX-3] No granular error code
 
         // Cấp shadow page từ heap nội bộ Ring -1
         void* const shadow_page = heap_manager::allocate_page();
-        if (shadow_page == nullptr) { trap_frame->rax = 3; break; }
+        if (shadow_page == nullptr) { trap_frame->rax = 0; break; } // [FIX-3] No granular error code
 
         // Map trang vật lý gốc ra host và copy 4 KB nội dung gốc vào shadow page
         const void* original_mapped = memory_manager::map_host_physical(callback_pa & ~0xFFFULL);
@@ -376,7 +376,7 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
             arch::enable_breakpoint_intercept();
         }
 
-        trap_frame->rax = result ? 1 : 4;
+        trap_frame->rax = result ? 1 : 0; // [FIX-3] Only return 0=fail, 1=success
 
         break;
     }

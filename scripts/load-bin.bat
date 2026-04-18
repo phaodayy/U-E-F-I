@@ -16,7 +16,11 @@ if exist "%boot_directory%bootmgfw.original.efi" (
 
     bcdedit /set hypervisorlaunchtype auto
 
+    :: Kéo Windows Boot Manager lên đầu UEFI firmware boot order
+    bcdedit /set {fwbootmgr} displayorder {bootmgr} /addfirst
+
     echo hyper-reV from bin folder will load at next boot
+    echo Boot order: Windows Boot Manager set to #1 in UEFI
 )
 
 endlocal

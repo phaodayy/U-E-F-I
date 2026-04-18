@@ -874,7 +874,7 @@ int main() {
 
     g_Menu.Initialize(nullptr);
     
-    std::cout << (g_is_vietnamese ? skCrypt("\n[+] He thong SecurityHealthService (Tool) dang Chay!") : skCrypt("\n[+] Security Health Service Running!")) << std::endl;
+    std::cout << (g_is_vietnamese ? skCrypt("\n[+] He thong Tool dang Chay!") : skCrypt("\n[+] Game Overlay Service Running!")) << std::endl;
     std::cout << (g_is_vietnamese ? skCrypt("[+] Bam [F5] de Dong/Mo Menu | Bam [F11] de Tat Tool") : skCrypt("[+] F5: Menu | F11: Clean Exit")) << std::endl;
     
     Sleep(2000);
