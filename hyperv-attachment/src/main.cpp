@@ -124,21 +124,16 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
                     return do_vmexit_premature_return();
                 }
 
-                if (!is_hypercall_context_initialized)
-                {
-                    authorized_caller_cr3 = guest_cr3;
-                    is_hypercall_context_initialized = true;
+                // Bỏ chặn "chỉ khởi tạo 1 lần" để cho phép restart lại Cheat (mà không cần khởi động lại PC).
+                // Magic seed chính là chìa khóa định danh an toàn.
+                authorized_caller_cr3 = guest_cr3;
+                is_hypercall_context_initialized = true;
 
-                    current_primary_key = (guest_cr3 ^ __rdtsc()) & 0xFFFF;
-                    if (current_primary_key == 0) current_primary_key = 0x1337;
-                    current_secondary_key = (__rdtsc() >> 8) & 0x7F;
+                current_primary_key = (guest_cr3 ^ __rdtsc()) & 0xFFFF;
+                if (current_primary_key == 0) current_primary_key = 0x1337;
+                current_secondary_key = (__rdtsc() >> 8) & 0x7F;
 
-                    trap_frame->rax = (current_primary_key << 16) | current_secondary_key;
-                }
-                else 
-                {
-                    trap_frame->rax = 0;
-                }
+                trap_frame->rax = (current_primary_key << 16) | current_secondary_key;
 
 #ifndef _INTELMACHINE
                 vmcb->save_state.rax = trap_frame->rax;
