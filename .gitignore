@@ -400,6 +400,3 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 
-# Documentation
-*.md
-[Dd]oc/
