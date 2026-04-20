@@ -1440,10 +1440,12 @@ void OverlayMenu::Shutdown() {
 }
 
 void OverlayMenu::UpdateAntiScreenshot() {
+    // HIDDEN/WARNING: Calling SetWindowDisplayAffinity on a hijacked window (Discord/NVIDIA)
+    // is a major IOC. Anti-cheats will detect that the window property was changed by a 3rd party.
+    // We disable this for maximum stealth when using external hijacks.
+
+    /*
     if (!target_hwnd) return;
-    
-    // WDA_EXCLUDEFROMCAPTURE (0x00000011) - New Win10 builds, completely hidden/no black box
-    // WDA_NONE (0) - Visible
     
     DWORD affinity = anti_screenshot ? 0x00000011 : 0x00000000;
 
@@ -1455,6 +1457,7 @@ void OverlayMenu::UpdateAntiScreenshot() {
             swda(target_hwnd, affinity);
         }
     }
+    */
 }
 
 void OverlayMenu::DoAimbot() {
