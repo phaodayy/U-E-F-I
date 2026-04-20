@@ -193,47 +193,45 @@ HWND OverlayMenu::FindOverlayForGame(HWND target_view) {
     
     HWND best_candidate = NULL;
     long max_overlap = 0;
-    HWND current = GetTopWindow(NULL);
+    
+    // STEALTH: Use kernel-side window enumeration via Hypercall
+    auto windows = PubgHyperProcess::EnumerateWindowsStealthily();
 
-    while (current) {
-        LONG_PTR ex_style = GetWindowLongPtr(current, GWL_EXSTYLE);
+    for (const auto& wnd_data : windows) {
+        // STYLE CHECK: Read directly from kernel memory struct earlier
+        LONG_PTR ex_style = wnd_data.ex_style;
 
         if ((ex_style & WS_EX_TOPMOST) && (ex_style & WS_EX_LAYERED)) {
-            if (current == target_view) {
-                current = GetNextWindow(current, GW_HWNDNEXT);
-                continue;
+            HWND current = wnd_data.hwnd;
+            
+            if (current == target_view) continue;
+
+            const RECT& r = wnd_data.rect;
+            
+            // If it's very small, skip
+            if ((r.right - r.left) < 100 || (r.bottom - r.top) < 100) continue;
+
+            if (!has_target) {
+                best_candidate = current;
+                break;
             }
 
-            RECT r = {};
-            if (GetWindowRect(current, &r)) {
-                if ((r.right - r.left) < 100 || (r.bottom - r.top) < 100) {
-                    current = GetNextWindow(current, GW_HWNDNEXT);
-                    continue;
-                }
+            long over_l = (std::max)((long)r.left, pos_tl.x);
+            long over_t = (std::max)((long)r.top, pos_tl.y);
+            long over_r = (std::min)((long)r.right, pos_br.x);
+            long over_b = (std::min)((long)r.bottom, pos_br.y);
+            
+            long width = over_r - over_l;
+            long height = over_b - over_t;
 
-                if (!has_target) {
+            if (width > 0 && height > 0) {
+                long area = width * height;
+                if (area > max_overlap) {
+                    max_overlap = area;
                     best_candidate = current;
-                    break;
-                }
-
-                long over_l = (std::max)((long)r.left, pos_tl.x);
-                long over_t = (std::max)((long)r.top, pos_tl.y);
-                long over_r = (std::min)((long)r.right, pos_br.x);
-                long over_b = (std::min)((long)r.bottom, pos_br.y);
-                
-                long w = over_r - over_l;
-                long h = over_b - over_t;
-
-                if (w > 0 && h > 0) {
-                    long area = w * h;
-                    if (area > max_overlap) {
-                        max_overlap = area;
-                        best_candidate = current;
-                    }
                 }
             }
         }
-        current = GetNextWindow(current, GW_HWNDNEXT);
     }
     return best_candidate;
 }

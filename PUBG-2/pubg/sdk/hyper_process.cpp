@@ -27,6 +27,7 @@ typedef struct _SHAREDINFO {
     PHANDLEENTRY aheList;
 } SHAREDINFO, * PSHAREDINFO;
 
+
 namespace
 {
     constexpr auto kSystemModuleInformationClass = static_cast<SYSTEM_INFORMATION_CLASS>(11);
@@ -303,6 +304,87 @@ bool PubgHyperProcess::SetWindowStyleStealthily(HWND hwnd, LONG_PTR new_style)
     // We'll use g_CurrentCr3 (Launcher) which we know can read/write kernel memory.
     
     return PubgHyperCall::WriteGuestVirtualMemory(&new_style, ex_style_addr, g_CurrentCr3, sizeof(new_style)) == sizeof(new_style);
+}
+
+std::vector<uint32_t> PubgHyperProcess::GetSafeOverlayPids()
+{
+    std::vector<uint32_t> pids;
+    const char* targets[] = { "Discord.exe", "NVIDIA Share", "Medal.exe", "MedalEncoder.exe" };
+    
+    for (const char* target : targets) {
+        std::vector<uint32_t> found = FindAllPidsByGhostWalk(target);
+        for (uint32_t pid : found) {
+            pids.push_back(pid);
+        }
+    }
+
+    return pids;
+}
+
+std::vector<uint32_t> PubgHyperProcess::FindAllPidsByGhostWalk(const char* target_name)
+{
+    std::vector<uint32_t> found_pids;
+    std::uint64_t current_eprocess = 0;
+    if (PubgHyperCall::ReadGuestVirtualMemory(&current_eprocess, g_PsInitialSystemProcess, g_CurrentCr3, 8) != 8 || current_eprocess == 0) {
+        return found_pids;
+    }
+
+    const auto start_eprocess = current_eprocess;
+    int check_count = 0;
+    do {
+        std::uint64_t pid = 0;
+        PubgHyperCall::ReadGuestVirtualMemory(&pid, current_eprocess + eprocess::UniqueProcessId, g_CurrentCr3, 8);
+
+        char name[16] = {};
+        if (PubgHyperCall::ReadGuestVirtualMemory(name, current_eprocess + g_ImageFileNameOffset, g_CurrentCr3, 15) > 0) {
+            if (strstr(name, target_name) != nullptr) {
+                found_pids.push_back((uint32_t)pid);
+            }
+        }
+
+        std::uint64_t next_link = 0;
+        PubgHyperCall::ReadGuestVirtualMemory(&next_link, current_eprocess + eprocess::ActiveProcessLinks, g_CurrentCr3, 8);
+        current_eprocess = next_link - eprocess::ActiveProcessLinks;
+        check_count++;
+    } while (current_eprocess != 0 && current_eprocess != start_eprocess && check_count < 2000);
+
+    return found_pids;
+}
+
+std::vector<kernel_window_data> PubgHyperProcess::EnumerateWindowsStealthily()
+{
+    auto safe_pids = GetSafeOverlayPids();
+    std::vector<kernel_window_data> found;
+
+    if (safe_pids.empty()) {
+        return found;
+    }
+
+    HWND hwnd = GetTopWindow(NULL);
+    while (hwnd) {
+        uint32_t pid = 0;
+        GetWindowThreadProcessId(hwnd, (LPDWORD)&pid);
+
+        bool is_safe = false;
+        for (uint32_t safe_pid : safe_pids) {
+            if (pid == safe_pid) {
+                is_safe = true;
+                break;
+            }
+        }
+
+        if (is_safe) {
+            kernel_window_data data = {};
+            data.hwnd = hwnd;
+            data.process_id = pid;
+            data.ex_style = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+            GetWindowRect(hwnd, &data.rect);
+            found.push_back(data);
+        }
+        hwnd = GetNextWindow(hwnd, GW_HWNDNEXT);
+    }
+    
+    return found;
 }
 
 DWORD PubgHyperProcess::FindProcessIdByName(const wchar_t* const process_name)
