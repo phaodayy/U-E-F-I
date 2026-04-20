@@ -187,17 +187,18 @@ HWND OverlayMenu::FindWindowManual(const char* className) {
 }
 
 HWND OverlayMenu::FindOverlayForGame(HWND game_hwnd) {
-    if (!game_hwnd || !IsWindow(game_hwnd))
-        return FindWindowManual("Chrome_WidgetWin_1");
-    
     RECT gameRect = {};
-    if (!GetClientRect(game_hwnd, &gameRect))
-        return FindWindowManual("Chrome_WidgetWin_1");
-    
-    POINT tl = {gameRect.left, gameRect.top};
-    POINT br = {gameRect.right, gameRect.bottom};
-    ClientToScreen(game_hwnd, &tl);
-    ClientToScreen(game_hwnd, &br);
+    POINT tl = {0, 0};
+    POINT br = {0, 0};
+    bool useRect = false;
+
+    if (game_hwnd && IsWindow(game_hwnd) && GetClientRect(game_hwnd, &gameRect)) {
+        tl = {gameRect.left, gameRect.top};
+        br = {gameRect.right, gameRect.bottom};
+        ClientToScreen(game_hwnd, &tl);
+        ClientToScreen(game_hwnd, &br);
+        useRect = true;
+    }
     
     HWND best = NULL;
     long bestArea = 0;
@@ -205,53 +206,73 @@ HWND OverlayMenu::FindOverlayForGame(HWND game_hwnd) {
     while (hwnd) {
         char cls[256];
         GetClassNameA(hwnd, cls, 256);
-        if (strcmp(cls, "Chrome_WidgetWin_1") == 0) {
-            RECT r = {};
-            if (GetWindowRect(hwnd, &r)) {
-                long overlapLeft = (std::max)((long)r.left, tl.x);
-                long overlapTop = (std::max)((long)r.top, tl.y);
-                long overlapRight = (std::min)((long)r.right, br.x);
-                long overlapBottom = (std::min)((long)r.bottom, br.y);
-                long w = overlapRight - overlapLeft, h = overlapBottom - overlapTop;
-                if (w > 0 && h > 0) {
-                    long area = w * h;
-                    if (area > bestArea) {
-                        bestArea = area;
-                        best = hwnd;
+        
+        // Potential stealth targets: Discord, NVIDIA, Medal, Overwolf
+        bool isTarget = (strcmp(cls, "Chrome_WidgetWin_1") == 0 || 
+                         strcmp(cls, "CEF-OSC-WIDGET") == 0 || 
+                         strcmp(cls, "MedalOverlayClass") == 0);
+
+        if (isTarget) {
+            LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+            // We need TOPMOST and LAYERED at minimum to avoid modifying them.
+            // Some overlays initialize TRANSPARENT only when drawing starts.
+            if ((exStyle & WS_EX_TOPMOST) && (exStyle & WS_EX_LAYERED)) {
+                if (!useRect) {
+                    best = hwnd;
+                    break;
+                }
+                RECT r = {};
+                if (GetWindowRect(hwnd, &r)) {
+                    long overlapLeft = (std::max)((long)r.left, tl.x);
+                    long overlapTop = (std::max)((long)r.top, tl.y);
+                    long overlapRight = (std::min)((long)r.right, br.x);
+                    long overlapBottom = (std::min)((long)r.bottom, br.y);
+                    long w = overlapRight - overlapLeft, h = overlapBottom - overlapTop;
+                    if (w > 0 && h > 0) {
+                        long area = w * h;
+                        if (area > bestArea) {
+                            bestArea = area;
+                            best = hwnd;
+                        }
                     }
                 }
             }
         }
         hwnd = GetNextWindow(hwnd, GW_HWNDNEXT);
     }
-    return best ? best : FindWindowManual("Chrome_WidgetWin_1");
+    return best;
 }
 
 void OverlayMenu::Initialize(HWND game_hwnd) {
-    // HIJACK DISCORD/NVIDIA OVERLAY (Chrome_WidgetWin_1)
-    target_hwnd = FindOverlayForGame(game_hwnd);
+    std::cout << "[*] Searching for stealth overlay window...\n";
+    
+    // Retry for up to 10 seconds to give Discord/NVIDIA time to activate
+    for (int i = 0; i < 10; i++) {
+        target_hwnd = FindOverlayForGame(game_hwnd);
+        if (target_hwnd) break;
+        
+        if (i % 2 == 0) std::cout << "[.] Still waiting for Overlay (Discord/NVIDIA/Medal)...\n";
+        Sleep(1000);
+    }
 
     if (!target_hwnd) {
-        std::cout << "[-] Discord/NVIDIA Overlay window not found. Falling back to internal.\n";
-        // Nếu không thấy thì mới tự tạo
-        wchar_t randClass[16] = {0};
-        for (int i = 0; i < 15; i++) randClass[i] = (wchar_t)((rand() % 26) + 'a');
-        WNDCLASSEXW wc = { sizeof(WNDCLASSEXW), CS_CLASSDC, WindowProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, randClass, NULL };
-        RegisterClassExW(&wc);
-        target_hwnd = CreateWindowExW(WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_LAYERED, randClass, L"", WS_POPUP, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), NULL, NULL, wc.hInstance, NULL);
+        std::cout << "[-] FATAL: No suitable stealth overlay found.\n";
+        std::cout << "[-] Please ensure Discord Overlay or NVIDIA Overlay is ENABLED for PUBG.\n";
+        Sleep(5000);
+        exit(0); 
     } else {
-        std::cout << "[+] Hijacking Overlay Window: 0x" << std::hex << target_hwnd << std::dec << "\n";
+        char cls[256] = {0};
+        GetClassNameA(target_hwnd, cls, 256);
+        DWORD target_pid = 0;
+        GetWindowThreadProcessId(target_hwnd, &target_pid);
+        
+        std::cout << "[+] Hijacking Stealth Window: [" << cls << "] (PID: " << target_pid << ")\n";
+        if (strcmp(cls, "Chrome_WidgetWin_1") == 0) std::cout << "[*] Found Discord/Overlay target.\n";
+        else if (strcmp(cls, "CEF-OSC-WIDGET") == 0) std::cout << "[*] Found NVIDIA Overlay target.\n";
     }
 
-    if (!target_hwnd) return;
-
-    // Thiết lập thuộc tính cho cửa sổ Hijacked
-    ShowWindow(target_hwnd, SW_SHOW);
-    LONG_PTR exStyle = GetWindowLongPtr(target_hwnd, GWL_EXSTYLE);
-    if (!(exStyle & WS_EX_LAYERED)) {
-        SetWindowLongPtr(target_hwnd, GWL_EXSTYLE, exStyle | WS_EX_LAYERED);
-    }
-    SetLayeredWindowAttributes(target_hwnd, 0, 255, LWA_ALPHA);
+    // HIDDEN: SetWindowLong and SetLayeredWindowAttributes removed to avoid IOC detection.
+    // We only use windows that ALREADY have the correct styles.
 
     MARGINS margin = { -1 };
     DwmExtendFrameIntoClientArea(target_hwnd, &margin);
