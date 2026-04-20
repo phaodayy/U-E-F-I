@@ -826,17 +826,13 @@ int main() {
             << " cycles=" << g_pid_debug.selected_cycles
             << std::endl;
   
-  PubgMemory::g_ProcessId = pid;
-  query_process_data_packet qdata = {};
-  if (!QueryProcessData(pid, &qdata)) {
+  if (!PubgMemory::AttachToGameStealthily()) {
       SetConsoleColor(12);
-      std::cout << skCrypt("\n[-] Critical Communication Error!") << std::endl;
+      std::cout << skCrypt("\n[-] Critical Communication Error (Stealth Auth Fail)!") << std::endl;
       Sleep(3000);
       return 1;
   }
-  uint64_t base = (uint64_t)qdata.base_address;
-  PubgMemory::g_BaseAddress = base;
-  PubgMemory::g_ProcessCr3 = qdata.cr3;
+  uint64_t base = PubgMemory::g_BaseAddress;
 
   TypewriterPrint("\n[", 10, 8);
   TypewriterPrint("4", 10, 11);

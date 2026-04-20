@@ -28,10 +28,7 @@ namespace PubgMemory {
 
     inline bool InitializeHyperInterface() {
         if (!PubgHyperCall::Init()) return false;
-        if (!PubgHyperProcess::Initialize()) return false;
-        
-        // Auto-detect and attach to game logic without usermode PID input
-        return AttachToGameStealthily();
+        return PubgHyperProcess::Initialize();
     }
 
     inline bool QueryProcessData(uint32_t pid, query_process_data_packet* output) {
