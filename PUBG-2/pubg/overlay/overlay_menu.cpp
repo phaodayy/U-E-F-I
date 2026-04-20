@@ -598,53 +598,37 @@ void OverlayMenu::RenderFrame() {
             float dt = (GetTickCount64() - G_LastScanTime) / 1000.0f;
             if (dt > 2.0f) dt = 0.0f;
 
-            if (hasHudMiniMapRect || G_Radar.IsMiniMapVisible) {
-                const Vector3 localP = G_LocalPlayerPos;
-                const float worldRange = expandedMiniMap ? 37000.0f : 20000.0f;
-                for (const auto& player : localPlayers) {
-                    if (player.IsTeammate) {
-                        if (!g_Menu.esp_show_teammates) continue;
-                    } else {
-                        if (!g_Menu.esp_show_enemies) continue;
-                    }
-
-                    const Vector3 enemyP = player.Position + (player.Velocity * dt);
-                    const float deltaX = enemyP.x - localP.x;
-                    const float deltaY = enemyP.y - localP.y;
-                    if (deltaX > worldRange || deltaX < -worldRange || deltaY > worldRange || deltaY < -worldRange) {
-                        continue;
-                    }
-
-                    const float finalX = roundf(deltaX / 20000.0f * mapDiv) + centerX;
-                    const float finalY = roundf(deltaY / 20000.0f * mapDiv) + centerY;
-
-                    const float clampedX = std::clamp(finalX, miniLeft + 3.0f, miniRight - 3.0f);
-                    const float clampedY = std::clamp(finalY, miniTop + 3.0f, miniBottom - 3.0f);
-
-                    ImU32 teamColor = GetTeamColor(player.TeamID);
-                    DrawRadarTeamMarker(draw, clampedX, clampedY, player.TeamID, teamColor, g_Menu.radar_dot_size);
-                }
-
-                if (g_Menu.show_radar_center) {
-                    draw->AddLine(ImVec2(centerX - 10.0f, centerY), ImVec2(centerX + 10.0f, centerY), IM_COL32(255, 255, 255, 255), 1.0f);
-                    draw->AddLine(ImVec2(centerX, centerY - 10.0f), ImVec2(centerX, centerY + 10.0f), IM_COL32(255, 255, 255, 255), 1.0f);
-                }
-            }
-
             const bool keyWorldMapPressed = PubgMemory::IsKeyDown('M');
             const bool canDrawWorldMap = (G_Radar.IsWorldMapVisible || keyWorldMapPressed) &&
-                G_Radar.MapSizeFactored > 1.0f &&
-                G_Radar.MapWorldSize > 0.0f;
+                G_Radar.MapWorldSize > 1000.0f; 
+
+            bool worldMapDrawn = false;
+
+            // --- 1. WORLD MAP DOTS (Drawn first to check if we should hide minimap dots) ---
             if (canDrawWorldMap) {
                 float worldLeft = G_Radar.WorldMapX;
                 float worldTop = G_Radar.WorldMapY;
                 float worldRight = worldLeft + G_Radar.WorldMapWidth;
                 float worldBottom = worldTop + G_Radar.WorldMapHeight;
-                if (!G_Radar.IsWorldMapVisible || G_Radar.WorldMapWidth <= 100.0f || G_Radar.WorldMapHeight <= 100.0f) {
-                    worldLeft = (ScreenWidth - ScreenHeight) * 0.5f;
+                
+                // Diagnostic Logging (Throttled to 1s)
+                static ULONGLONG lastWorldMapLog = 0;
+                if (GetTickCount64() - lastWorldMapLog > 1000) {
+                    lastWorldMapLog = GetTickCount64();
+                    printf("[DEBUG][WORLDMAP] Visible=%d Key=%d Origin={%.1f, %.1f} Center={%.1f, %.1f} Factored=%.1f Size=%.1f\n",
+                        G_Radar.IsWorldMapVisible, keyWorldMapPressed, 
+                        G_Radar.WorldOriginLocation.x, G_Radar.WorldOriginLocation.y,
+                        G_Radar.WorldCenterLocation.x, G_Radar.WorldCenterLocation.y,
+                        G_Radar.MapSizeFactored, G_Radar.MapWorldSize);
+                }
+                
+                // Fallback: If HUD widget rect is unknown, assume center square (standard PUBG behavior)
+                if (G_Radar.WorldMapWidth <= 10.0f || G_Radar.WorldMapHeight <= 10.0f) {
+                    float mapSize = ScreenHeight;
+                    worldLeft = (ScreenWidth - mapSize) * 0.5f;
                     worldTop = 0.0f;
-                    worldRight = worldLeft + ScreenHeight;
-                    worldBottom = ScreenHeight;
+                    worldRight = worldLeft + mapSize;
+                    worldBottom = mapSize;
                 }
 
                 for (const auto& player : localPlayers) {
@@ -663,14 +647,52 @@ void OverlayMenu::RenderFrame() {
                     const float radarPosX = worldLocation.x - G_Radar.WorldCenterLocation.x;
                     const float radarPosY = worldLocation.y - G_Radar.WorldCenterLocation.y;
 
-                    const float mapX = ScreenCenterX + (radarPosX / G_Radar.MapSizeFactored) * (ScreenHeight * 0.5f);
-                    const float mapY = ScreenCenterY + (radarPosY / G_Radar.MapSizeFactored) * (ScreenHeight * 0.5f);
+                    // Support dynamic zoom if MapSizeFactored is valid, otherwise use full map.
+                    // Use zoom factor for accurate scaling on the world map
+                    const float mapX = worldLeft + (worldRight - worldLeft) * 0.5f + (radarPosX / G_Radar.MapWorldSize) * G_Radar.WorldMapZoomFactor * (worldRight - worldLeft) * 0.5f;
+                    const float mapY = worldTop + (worldBottom - worldTop) * 0.5f + (radarPosY / G_Radar.MapWorldSize) * G_Radar.WorldMapZoomFactor * (worldBottom - worldTop) * 0.5f;
+                    
                     if (mapX < worldLeft || mapX > worldRight || mapY < worldTop || mapY > worldBottom) {
                         continue;
                     }
 
                     ImU32 teamColor = GetTeamColor(player.TeamID);
-                    DrawRadarTeamMarker(draw, mapX, mapY, player.TeamID, teamColor, g_Menu.radar_dot_size + 1.0f);
+                    DrawRadarTeamMarker(draw, mapX, mapY, player.TeamID, teamColor, g_Menu.radar_dot_size * 1.5f);
+                }
+                worldMapDrawn = true;
+            }
+
+            // --- 2. MINI MAP DOTS (Only draw if world map is NOT drawn) ---
+            if (!worldMapDrawn && (hasHudMiniMapRect || G_Radar.IsMiniMapVisible)) {
+                for (const auto& player : localPlayers) {
+                    if (player.IsTeammate) {
+                        if (!g_Menu.esp_show_teammates) continue;
+                    } else {
+                        if (!g_Menu.esp_show_enemies) continue;
+                    }
+
+                    const Vector3 localP = G_LocalPlayerPos;
+                    const float worldRange = expandedMiniMap ? 37000.0f : 20000.0f;
+                    const float dx = player.Position.x - localP.x;
+                    const float dy = player.Position.y - localP.y;
+
+                    if (dx > worldRange || dx < -worldRange || dy > worldRange || dy < -worldRange) {
+                        continue;
+                    }
+
+                    const float finalX = roundf(dx / 20000.0f * mapDiv) + centerX;
+                    const float finalY = roundf(dy / 20000.0f * mapDiv) + centerY;
+
+                    const float clampedX = std::clamp(finalX, miniLeft + 3.0f, miniRight - 3.0f);
+                    const float clampedY = std::clamp(finalY, miniTop + 3.0f, miniBottom - 3.0f);
+
+                    ImU32 teamColor = GetTeamColor(player.TeamID);
+                    DrawRadarTeamMarker(draw, clampedX, clampedY, player.TeamID, teamColor, g_Menu.radar_dot_size);
+                }
+
+                if (g_Menu.show_radar_center) {
+                    draw->AddLine(ImVec2(centerX - 10.0f, centerY), ImVec2(centerX + 10.0f, centerY), IM_COL32(255, 255, 255, 255), 1.0f);
+                    draw->AddLine(ImVec2(centerX, centerY - 10.0f), ImVec2(centerX, centerY + 10.0f), IM_COL32(255, 255, 255, 255), 1.0f);
                 }
             }
         }

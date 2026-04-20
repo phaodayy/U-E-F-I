@@ -74,13 +74,14 @@ namespace {
     }
 
     bool IsSlateVisible(uint8_t visibilityValue) {
-        return visibilityValue <= 2;
+        // 0: Visible, 1: Collapsed, 2: Hidden, 3: HitTestInvisible, 4: SelfHitTestInvisible
+        return visibilityValue == 0 || visibilityValue == 3 || visibilityValue == 4; 
     }
-
+    
     bool IsWorldMapWidgetClass(const std::string& className) {
-        return className.find("WorldMapWidget") != std::string::npos ||
-            className.find("NewWorldMapWidget") != std::string::npos ||
-            className.find("MapGrid") != std::string::npos;
+        return className.find("WorldMap") != std::string::npos ||
+            className.find("MapGrid") != std::string::npos ||
+            className.find("ChildCenter") != std::string::npos;
     }
 
     float GetMapWorldSize(const std::string& mapName) {
@@ -290,6 +291,38 @@ namespace PubgContext {
             float worldAlignY = 0.5f;
 
             if (G_LocalHUD) {
+                uint64_t widgetListAddress = G_LocalHUD + PubgOffsets::BlockInputWidgetList;
+                uint32_t widgetCount = Read<uint32_t>(widgetListAddress + 0x8);
+                uint64_t widgetData = Read<uint64_t>(widgetListAddress);
+                
+                static ULONGLONG lastWidgetDebug = 0;
+                bool shouldDebug = (GetTickCount64() - lastWidgetDebug > 2000);
+                if (shouldDebug) {
+                    lastWidgetDebug = GetTickCount64();
+                    float v_A04 = Read<float>(G_UWorld + 0xA04);
+                    float v_940 = Read<float>(G_UWorld + 0x940);
+                    float v_930 = Read<float>(G_UWorld + 0x930);
+                    printf("[DEBUG][WIDGETS] HUD=%llX World=%llX OriginA04=%.1f Origin940=%.1f Origin930=%.1f Count=%d\n", 
+                        G_LocalHUD, G_UWorld, v_A04, v_940, v_930, widgetCount);
+                }
+
+                if (widgetData && widgetCount > 0 && widgetCount < 200) {
+                    for (uint32_t i = 0; i < widgetCount; i++) {
+                        uint64_t widgetPtr = Read<uint64_t>(widgetData + (i * 8));
+                        if (widgetPtr) {
+                            uint32_t widgetIdRaw = Read<uint32_t>(widgetPtr + PubgOffsets::ObjID);
+                            uint32_t widgetIdDec = PubgOffsets::DecryptCIndex(widgetIdRaw);
+                            std::string className = FNameUtils::GetNameFast(widgetIdDec);
+                            
+                            uint8_t vis = Read<uint8_t>(widgetPtr + PubgOffsets::Visibility);
+                            
+                            if (shouldDebug) {
+                                printf("  [%d] Class: %s (Vis: %d) ID: %X -> %X\n", i, className.c_str(), vis, widgetIdRaw, widgetIdDec);
+                            }
+                        }
+                    }
+                }
+
                 uint64_t blockList = Read<uint64_t>(G_LocalHUD + PubgOffsets::BlockInputWidgetList);
                 int count = Read<int>(G_LocalHUD + PubgOffsets::BlockInputWidgetList + 0x8);
                 if (count > 0 && count < 500) {
@@ -369,16 +402,16 @@ namespace PubgContext {
                                 worldAlignX = alignX;
                                 worldAlignY = alignY;
 
+                                const float zoomState = Read<float>(widget + 0xA28);
+                                G_Radar.WorldMapZoomFactor = (zoomState > 0.001f) ? zoomState : 1.0f;
+                                
                                 const float currentPosX = (width * (alignX - 0.5f)) - left;
                                 const float currentPosY = (height * (alignY - 0.5f)) - top;
-                                const float zoomFactor = width / 1080.0f;
-                                if (zoomFactor > 0.001f) {
-                                    G_Radar.WorldMapZoomFactor = zoomFactor;
-                                    G_Radar.WorldMapPosition = {
-                                        currentPosX / 1080.0f / zoomFactor * 2.0f,
-                                        currentPosY / 1080.0f / zoomFactor * 2.0f
-                                    };
-                                }
+                                
+                                G_Radar.WorldMapPosition = {
+                                    currentPosX / 1080.0f,
+                                    currentPosY / 1080.0f
+                                };
                             }
                         }
                     }
@@ -391,36 +424,46 @@ namespace PubgContext {
                 const std::string mapName = FNameUtils::GetNameFast(mapObjId);
                 G_Radar.MapWorldSize = GetMapWorldSize(mapName);
 
-                const int worldOriginX = Read<int>(G_UWorld + PubgOffsets::WorldToMap);
-                const int worldOriginY = Read<int>(G_UWorld + PubgOffsets::WorldToMap + 0x4);
-                G_Radar.WorldOriginLocation = { (float)worldOriginX, (float)worldOriginY, 0.0f };
+                float worldOriginX = Read<float>(G_UWorld + PubgOffsets::WorldToMap);
+                float worldOriginY = Read<float>(G_UWorld + PubgOffsets::WorldToMap + 0x4);
+                
+                // Fallback scan for origin if primary offset returns zero
+                if (worldOriginX == 0.0f && worldOriginY == 0.0f) {
+                    worldOriginX = Read<float>(G_UWorld + 0x940);
+                    worldOriginY = Read<float>(G_UWorld + 0x944);
+                    if (worldOriginX == 0.0f && worldOriginY == 0.0f) {
+                        worldOriginX = Read<float>(G_UWorld + 0x930);
+                        worldOriginY = Read<float>(G_UWorld + 0x934);
+                    }
+                }
+
+                // SECURITY CLEANUP: If it's still garbage (-7.9e20), set to zero
+                if (worldOriginX < -1000000.0f || worldOriginX > 1000000.0f) worldOriginX = 0.0f;
+                if (worldOriginY < -1000000.0f || worldOriginY > 1000000.0f) worldOriginY = 0.0f;
+
+                G_Radar.WorldOriginLocation = { worldOriginX, worldOriginY, 0.0f };
             }
 
-            if (G_Radar.IsWorldMapVisible && G_Radar.WorldMapWidth > 10.0f && G_Radar.MapWorldSize > 0.0f) {
-                const float mapScale = G_Radar.WorldMapZoomFactor;
-                if (mapScale > 0.001f) {
-                    const float posX = G_Radar.WorldMapPosition.x;
-                    const float posY = G_Radar.WorldMapPosition.y;
-
-                    G_Radar.MapSizeFactored = G_Radar.MapWorldSize / mapScale;
-                    G_Radar.WorldCenterLocation = {
-                        G_Radar.MapWorldSize * (1.0f + posX),
-                        G_Radar.MapWorldSize * (1.0f + posY),
-                        0.0f
-                    };
+            // Update G_Radar.IsWorldMapVisible and other properties based on widget scan
+            if (!G_Radar.IsWorldMapVisible) {
+                // Minimap defaults (handled by minimap widgets)
+            } else {
+                // FORCE PIXEL SCALE: The MapSizeFactored must be in screen pixels (e.g. 1080)
+                // If the read width is garbage or world-units, override with screenHeight
+                G_Radar.MapSizeFactored = (float)screenHeight; 
+                
+                // If we have a valid width from widget, use it but cap it at screenWidth
+                if (G_Radar.WorldMapWidth > 50.0f && G_Radar.WorldMapWidth <= (float)screenWidth) {
+                    G_Radar.MapSizeFactored = G_Radar.WorldMapWidth;
                 }
             }
 
-            // Keep sane defaults so world-map overlay still has a valid transform
-            // when map widget metadata is missing.
-            if (G_Radar.MapWorldSize > 0.0f) {
-                if (G_Radar.MapSizeFactored <= 1.0f) {
-                    G_Radar.MapSizeFactored = G_Radar.MapWorldSize;
-                }
-                if (G_Radar.WorldCenterLocation.IsZero()) {
-                    G_Radar.WorldCenterLocation = { G_Radar.MapWorldSize, G_Radar.MapWorldSize, 0.0f };
-                }
+            // Training Map Special: Range_Main usually centers at 0,0 with 2km size
+            if (G_Radar.MapWorldSize == 101175.0f) {
+                G_Radar.WorldCenterLocation = { 0.0f, 0.0f, 0.0f };
             }
+
+            // Removed legacy scaling logic that was causing coordinate drift
         }
 
         // Dynamic fallback when HUD widget is not ready
