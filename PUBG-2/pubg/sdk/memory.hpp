@@ -101,7 +101,9 @@ namespace PubgMemory {
             VMouseClient::Move(static_cast<int>(x), static_cast<int>(y));
         }
 
-        // Handle button clicks via SendInput fallback (hypervisor mouse button support TBD)
+        // [SECURITY] SendInput fallback for clicks is DISABLED to avoid BattlEye flags.
+        // Use a kernel driver or HID injector for clicks.
+        /*
         if (flags != 0) {
             INPUT input = {};
             input.type = INPUT_MOUSE;
@@ -114,6 +116,7 @@ namespace PubgMemory {
             if (flags & 0x0008) input.mi.dwFlags |= MOUSEEVENTF_RIGHTUP;
             SendInput(1, &input, sizeof(input));
         }
+        */
         return true;
     }
 }

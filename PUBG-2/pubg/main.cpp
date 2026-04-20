@@ -26,6 +26,34 @@
 
 #include ".shared/shared.hpp"
 #include "sdk/memory.hpp"
+
+typedef struct _PUBG_SYSTEM_PROCESS_INFORMATION {
+    ULONG NextEntryOffset;
+    ULONG NumberOfThreads;
+    BYTE Reserved1[48];
+    UNICODE_STRING ImageName;
+    KPRIORITY BasePriority;
+    HANDLE UniqueProcessId;
+    PVOID Reserved2;
+    ULONG HandleCount;
+    ULONG SessionId;
+    PVOID Reserved3;
+    SIZE_T PeakVirtualSize;
+    SIZE_T VirtualSize;
+    ULONG Reserved4;
+    SIZE_T PeakWorkingSetSize;
+    SIZE_T WorkingSetSize;
+    PVOID Reserved5;
+    SIZE_T QuotaPeakPagedPoolUsage;
+    SIZE_T QuotaPagedPoolUsage;
+    SIZE_T QuotaPeakNonPagedPoolUsage;
+    SIZE_T QuotaNonPagedPoolUsage;
+    SIZE_T PagefileUsage;
+    SIZE_T PeakPagefileUsage;
+    SIZE_T PrivatePageCount;
+    LARGE_INTEGER Reserved6[6];
+} PUBG_SYSTEM_PROCESS_INFORMATION, *PPUBG_SYSTEM_PROCESS_INFORMATION;
+
 #include "sdk/hyper_process.hpp"
 #include "sdk/offsets.hpp"
 #include "sdk/context.hpp"
@@ -580,77 +608,79 @@ struct ProcessPickDebugInfo {
 
 static ProcessPickDebugInfo g_pid_debug = {};
 
-DWORD GetProcessIdByName(const wchar_t *name) {
-  HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-  if (snap == INVALID_HANDLE_VALUE) return 0;
-  PROCESSENTRY32W pe = {sizeof(pe)};
+DWORD GetProcessIdByName(const wchar_t* name) {
+    ULONG bufferSize = 0x10000;
+    void* buffer = nullptr;
+    NTSTATUS status;
 
-  g_pid_debug = {};
-  DWORD finalPid = 0;
-  uint64_t bestScore = 0;
-
-  if (Process32FirstW(snap, &pe)) {
     do {
-      if (_wcsicmp(pe.szExeFile, name) == 0) {
-        g_pid_debug.matched_name++;
-        DWORD currentPid = pe.th32ProcessID;
-        PubgMemory::g_ProcessId = currentPid; 
+        buffer = malloc(bufferSize);
+        if (!buffer) return 0;
+        status = ((NTSTATUS(NTAPI*)(ULONG, PVOID, ULONG, PULONG))GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtQuerySystemInformation"))(5, buffer, bufferSize, &bufferSize);
+        if (status == 0xC0000004L) {
+            free(buffer);
+            bufferSize *= 2;
+        }
+    } while (status == 0xC0000004L);
 
+    if (status != 0) {
+        if (buffer) free(buffer);
+        return 0;
+    }
+
+    DWORD finalPid = 0;
+    SIZE_T maxMemory = 0;
+    auto systemProcInfo = (PPUBG_SYSTEM_PROCESS_INFORMATION)buffer;
+
+    while (true) {
+        if (systemProcInfo->ImageName.Buffer && _wcsicmp(systemProcInfo->ImageName.Buffer, name) == 0) {
+            g_pid_debug.matched_name++;
+            DWORD candPid = (DWORD)(uintptr_t)systemProcInfo->UniqueProcessId;
+            SIZE_T candMemory = systemProcInfo->WorkingSetSize;
+            
+            // Debug the found process memory to the user
+            if (candMemory > 500 * 1024 * 1024) { // Only print for large-ish processes to avoid flooding
+                 // std::cout << "\n[DEBUG][PID] Found TslGame: PID=" << candPid << " RAM=" << (candMemory / (1024 * 1024)) << " MB";
+            }
+
+            if (candMemory > maxMemory) {
+                maxMemory = candMemory;
+                finalPid = candPid;
+            }
+        }
+
+        if (systemProcInfo->NextEntryOffset == 0) break;
+        systemProcInfo = (PPUBG_SYSTEM_PROCESS_INFORMATION)((BYTE*)systemProcInfo + systemProcInfo->NextEntryOffset);
+    }
+
+    free(buffer);
+
+    if (finalPid != 0) {
         query_process_data_packet qdata = {};
-        if (!QueryProcessData(currentPid, &qdata)) {
-          g_pid_debug.query_fail++;
-          PubgMemory::g_ProcessId = 0;
-          continue;
-        }
+        if (QueryProcessData(finalPid, &qdata)) {
+            g_pid_debug.query_ok++;
+            uint64_t base = (uintptr_t)qdata.base_address;
 
-        g_pid_debug.query_ok++;
-        uint64_t base = (uint64_t)qdata.base_address;
-        if (qdata.cr3 == 0 || base == 0) {
-          g_pid_debug.invalid_ctx++;
-          PubgMemory::g_ProcessId = 0;
-          continue;
-        }
+            // CRITICAL: Must set CR3 before calling PubgMemory::Read
+            PubgMemory::g_ProcessId = finalPid;
+            PubgMemory::g_ProcessCr3 = qdata.cr3;
 
-        uint16_t mz = PubgMemory::Read<uint16_t>(base);
-        if (mz != 0x5A4D) {
-          g_pid_debug.invalid_mz++;
-          PubgMemory::g_ProcessId = 0;
-          continue;
-        }
-
-        uint64_t cycles = 0;
-        uint64_t working_set = 0;
-        uint64_t private_usage = 0;
-        HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, FALSE, currentPid);
-        if (hProc) {
-          QueryProcessCycleTime(hProc, &cycles);
-          PROCESS_MEMORY_COUNTERS_EX pmc = {};
-          if (GetProcessMemoryInfo(hProc, reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&pmc), sizeof(pmc))) {
-            working_set = static_cast<uint64_t>(pmc.WorkingSetSize);
-            private_usage = static_cast<uint64_t>(pmc.PrivateUsage);
-          }
-          CloseHandle(hProc);
+            uint16_t mz = PubgMemory::Read<uint16_t>(base);
+            if (mz == 0x5A4D) {
+                g_pid_debug.selected_pid = finalPid;
+                g_pid_debug.selected_base = base;
+                g_pid_debug.selected_cr3 = qdata.cr3;
+                g_pid_debug.selected_working_set = (uint64_t)maxMemory;
+                return finalPid;
+            } else {
+                g_pid_debug.invalid_mz++;
+            }
         } else {
-          g_pid_debug.open_fail++;
+            g_pid_debug.query_fail++;
         }
+    }
 
-        // Prioritize the real game process: high CPU history + high memory footprint.
-        const uint64_t score = (cycles * 4ull) + working_set + private_usage;
-        if (finalPid == 0 || score > bestScore) {
-          bestScore = score;
-          finalPid = currentPid;
-          g_pid_debug.selected_pid = currentPid;
-          g_pid_debug.selected_base = base;
-          g_pid_debug.selected_cr3 = qdata.cr3;
-          g_pid_debug.selected_cycles = cycles;
-          g_pid_debug.selected_working_set = working_set;
-          g_pid_debug.selected_private_usage = private_usage;
-        }
-      }
-    } while (Process32NextW(snap, &pe));
-  }
-  CloseHandle(snap);
-  return finalPid;
+    return 0;
 }
 
 int main() {

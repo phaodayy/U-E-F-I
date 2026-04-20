@@ -187,41 +187,74 @@ HWND OverlayMenu::FindWindowManual(const char* className) {
 }
 
 HWND OverlayMenu::FindOverlayForGame(HWND game_hwnd) {
-    // Không dùng Discord hijack nữa, tự tạo window
-    return NULL; 
+    if (!game_hwnd || !IsWindow(game_hwnd))
+        return FindWindowManual("Chrome_WidgetWin_1");
+    
+    RECT gameRect = {};
+    if (!GetClientRect(game_hwnd, &gameRect))
+        return FindWindowManual("Chrome_WidgetWin_1");
+    
+    POINT tl = {gameRect.left, gameRect.top};
+    POINT br = {gameRect.right, gameRect.bottom};
+    ClientToScreen(game_hwnd, &tl);
+    ClientToScreen(game_hwnd, &br);
+    
+    HWND best = NULL;
+    long bestArea = 0;
+    HWND hwnd = GetTopWindow(NULL);
+    while (hwnd) {
+        char cls[256];
+        GetClassNameA(hwnd, cls, 256);
+        if (strcmp(cls, "Chrome_WidgetWin_1") == 0) {
+            RECT r = {};
+            if (GetWindowRect(hwnd, &r)) {
+                long overlapLeft = (std::max)((long)r.left, tl.x);
+                long overlapTop = (std::max)((long)r.top, tl.y);
+                long overlapRight = (std::min)((long)r.right, br.x);
+                long overlapBottom = (std::min)((long)r.bottom, br.y);
+                long w = overlapRight - overlapLeft, h = overlapBottom - overlapTop;
+                if (w > 0 && h > 0) {
+                    long area = w * h;
+                    if (area > bestArea) {
+                        bestArea = area;
+                        best = hwnd;
+                    }
+                }
+            }
+        }
+        hwnd = GetNextWindow(hwnd, GW_HWNDNEXT);
+    }
+    return best ? best : FindWindowManual("Chrome_WidgetWin_1");
 }
 
 void OverlayMenu::Initialize(HWND game_hwnd) {
-    // Tự động sinh tên Class và Title ngẫu nhiên (1-15 ký tự) để chống bị quét
-    wchar_t randClass[16] = {0};
-    wchar_t randTitle[16] = {0};
-    for (int i = 0; i < 15; i++) randClass[i] = (wchar_t)((rand() % 26) + 'a');
-    for (int i = 0; i < 15; i++) randTitle[i] = (wchar_t)((rand() % 26) + 'A');
-
-    WNDCLASSEXW wc = { sizeof(WNDCLASSEXW), CS_CLASSDC, WindowProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, randClass, NULL };
-    RegisterClassExW(&wc);
-    
-    // Tạo cửa sổ siêu trong suốt và chìm trên cùng màn hình
-    target_hwnd = CreateWindowExW(
-        WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_LAYERED,
-        randClass, randTitle, 
-        WS_POPUP, 
-        0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), 
-        NULL, NULL, wc.hInstance, NULL
-    );
+    // HIJACK DISCORD/NVIDIA OVERLAY (Chrome_WidgetWin_1)
+    target_hwnd = FindOverlayForGame(game_hwnd);
 
     if (!target_hwnd) {
-        std::cout << "[-] Failed to create overlay window.\n";
-        return;
+        std::cout << "[-] Discord/NVIDIA Overlay window not found. Falling back to internal.\n";
+        // Nếu không thấy thì mới tự tạo
+        wchar_t randClass[16] = {0};
+        for (int i = 0; i < 15; i++) randClass[i] = (wchar_t)((rand() % 26) + 'a');
+        WNDCLASSEXW wc = { sizeof(WNDCLASSEXW), CS_CLASSDC, WindowProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, randClass, NULL };
+        RegisterClassExW(&wc);
+        target_hwnd = CreateWindowExW(WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_LAYERED, randClass, L"", WS_POPUP, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), NULL, NULL, wc.hInstance, NULL);
+    } else {
+        std::cout << "[+] Hijacking Overlay Window: 0x" << std::hex << target_hwnd << std::dec << "\n";
     }
 
+    if (!target_hwnd) return;
+
+    // Thiết lập thuộc tính cho cửa sổ Hijacked
+    ShowWindow(target_hwnd, SW_SHOW);
+    LONG_PTR exStyle = GetWindowLongPtr(target_hwnd, GWL_EXSTYLE);
+    if (!(exStyle & WS_EX_LAYERED)) {
+        SetWindowLongPtr(target_hwnd, GWL_EXSTYLE, exStyle | WS_EX_LAYERED);
+    }
     SetLayeredWindowAttributes(target_hwnd, 0, 255, LWA_ALPHA);
 
     MARGINS margin = { -1 };
     DwmExtendFrameIntoClientArea(target_hwnd, &margin);
-
-    ShowWindow(target_hwnd, SW_SHOWDEFAULT);
-    UpdateWindow(target_hwnd);
 
     UpdateAntiScreenshot();
 
@@ -232,6 +265,7 @@ void OverlayMenu::Initialize(HWND game_hwnd) {
     ImGui_ImplWin32_Init(target_hwnd);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
+    // Default configs...
     for (int i = 0; i < 9; i++) {
         aim_configs[i].enabled = true;
         aim_configs[i].fov = 10.0f;
@@ -240,7 +274,6 @@ void OverlayMenu::Initialize(HWND game_hwnd) {
         aim_configs[i].key = VK_RBUTTON;
         aim_configs[i].max_dist = 400.0f;
         aim_configs[i].prediction = true;
-
         if (i == 0 || i == 3 || i == 4) aim_configs[i].max_dist = 70.0f;
         else if (i == 1) { aim_configs[i].smooth = 1.6f; aim_configs[i].fov = 8.0f; aim_configs[i].max_dist = 500.0f; }
         else if (i == 2) { aim_configs[i].smooth = 2.5f; aim_configs[i].fov = 12.0f; aim_configs[i].max_dist = 250.0f; }
@@ -249,6 +282,7 @@ void OverlayMenu::Initialize(HWND game_hwnd) {
 
     LoadConfig("dataMacro/Config/settings.json");
     SetClickable(showmenu);
+    std::cout << "[+] Overlay Hijack ready.\n";
 }
 
 void OverlayMenu::SetupStyle() {
