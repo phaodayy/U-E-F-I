@@ -34,7 +34,6 @@ public:
   void CleanupRenderTarget();
 
   HWND target_hwnd = NULL;
-  static HWND FindWindowManual(const char *className);
   static HWND FindOverlayForGame(HWND game_hwnd);
 
   float ScreenWidth = (float)GetSystemMetrics(SM_CXSCREEN);

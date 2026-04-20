@@ -176,71 +176,65 @@ void OverlayMenu::CleanupRenderTarget() {
     if (g_mainRenderTargetView) { g_mainRenderTargetView->Release(); g_mainRenderTargetView = nullptr; }
 }
 
-HWND OverlayMenu::FindWindowManual(const char* className) {
-    HWND hwnd = GetTopWindow(NULL);
-    while (hwnd) {
-        char cls[256]; GetClassNameA(hwnd, cls, 256);
-        if (strcmp(cls, className) == 0) return hwnd;
-        hwnd = GetNextWindow(hwnd, GW_HWNDNEXT);
-    }
-    return NULL;
-}
+HWND OverlayMenu::FindOverlayForGame(HWND target_view) {
+    RECT target_rect = {};
+    POINT pos_tl = {0, 0};
+    POINT pos_br = {0, 0};
+    bool has_target = false;
 
-HWND OverlayMenu::FindOverlayForGame(HWND game_hwnd) {
-    RECT gameRect = {};
-    POINT tl = {0, 0};
-    POINT br = {0, 0};
-    bool useRect = false;
-
-    if (game_hwnd && IsWindow(game_hwnd) && GetClientRect(game_hwnd, &gameRect)) {
-        tl = {gameRect.left, gameRect.top};
-        br = {gameRect.right, gameRect.bottom};
-        ClientToScreen(game_hwnd, &tl);
-        ClientToScreen(game_hwnd, &br);
-        useRect = true;
+    if (target_view && IsWindow(target_view) && GetClientRect(target_view, &target_rect)) {
+        pos_tl = {target_rect.left, target_rect.top};
+        pos_br = {target_rect.right, target_rect.bottom};
+        ClientToScreen(target_view, &pos_tl);
+        ClientToScreen(target_view, &pos_br);
+        has_target = true;
     }
     
-    HWND best = NULL;
-    long bestArea = 0;
-    HWND hwnd = GetTopWindow(NULL);
-    while (hwnd) {
-        char cls[256];
-        GetClassNameA(hwnd, cls, 256);
-        
-        // Potential stealth targets: Discord, NVIDIA, Medal, Overwolf
-        bool isTarget = (strcmp(cls, "Chrome_WidgetWin_1") == 0 || 
-                         strcmp(cls, "CEF-OSC-WIDGET") == 0 || 
-                         strcmp(cls, "MedalOverlayClass") == 0);
+    HWND best_candidate = NULL;
+    long max_overlap = 0;
+    HWND current = GetTopWindow(NULL);
 
-        if (isTarget) {
-            LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
-            // We need TOPMOST and LAYERED at minimum to avoid modifying them.
-            // Some overlays initialize TRANSPARENT only when drawing starts.
-            if ((exStyle & WS_EX_TOPMOST) && (exStyle & WS_EX_LAYERED)) {
-                if (!useRect) {
-                    best = hwnd;
+    while (current) {
+        LONG_PTR ex_style = GetWindowLongPtr(current, GWL_EXSTYLE);
+
+        if ((ex_style & WS_EX_TOPMOST) && (ex_style & WS_EX_LAYERED)) {
+            if (current == target_view) {
+                current = GetNextWindow(current, GW_HWNDNEXT);
+                continue;
+            }
+
+            RECT r = {};
+            if (GetWindowRect(current, &r)) {
+                if ((r.right - r.left) < 100 || (r.bottom - r.top) < 100) {
+                    current = GetNextWindow(current, GW_HWNDNEXT);
+                    continue;
+                }
+
+                if (!has_target) {
+                    best_candidate = current;
                     break;
                 }
-                RECT r = {};
-                if (GetWindowRect(hwnd, &r)) {
-                    long overlapLeft = (std::max)((long)r.left, tl.x);
-                    long overlapTop = (std::max)((long)r.top, tl.y);
-                    long overlapRight = (std::min)((long)r.right, br.x);
-                    long overlapBottom = (std::min)((long)r.bottom, br.y);
-                    long w = overlapRight - overlapLeft, h = overlapBottom - overlapTop;
-                    if (w > 0 && h > 0) {
-                        long area = w * h;
-                        if (area > bestArea) {
-                            bestArea = area;
-                            best = hwnd;
-                        }
+
+                long over_l = (std::max)((long)r.left, pos_tl.x);
+                long over_t = (std::max)((long)r.top, pos_tl.y);
+                long over_r = (std::min)((long)r.right, pos_br.x);
+                long over_b = (std::min)((long)r.bottom, pos_br.y);
+                
+                long w = over_r - over_l;
+                long h = over_b - over_t;
+
+                if (w > 0 && h > 0) {
+                    long area = w * h;
+                    if (area > max_overlap) {
+                        max_overlap = area;
+                        best_candidate = current;
                     }
                 }
             }
         }
-        hwnd = GetNextWindow(hwnd, GW_HWNDNEXT);
+        current = GetNextWindow(current, GW_HWNDNEXT);
     }
-    return best;
+    return best_candidate;
 }
 
 void OverlayMenu::Initialize(HWND game_hwnd) {
