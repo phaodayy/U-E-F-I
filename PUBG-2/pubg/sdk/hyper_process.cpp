@@ -19,6 +19,7 @@ namespace
         constexpr std::uint64_t DirectoryTableBase = 0x28;
         constexpr std::uint64_t SectionBaseAddress = 0x520;
         constexpr std::uint64_t Peb = 0x550;
+        constexpr std::uint64_t ImageFileName = 0x5a8;
     }
 
     using NtQuerySystemInformation_t = NTSTATUS(NTAPI*)(SYSTEM_INFORMATION_CLASS, PVOID, ULONG, PULONG);
@@ -201,9 +202,21 @@ bool PubgHyperProcess::QueryProcessData(const std::uint32_t pid, query_process_d
         ReadKernelValue(current_eprocess + eprocess::SectionBaseAddress, &current_base);
         ReadKernelValue(current_eprocess + eprocess::Peb, &current_peb);
 
-        if (current_pid == pid && current_cr3 != 0)
+        bool match = false;
+        if (pid != 0) {
+            match = (current_pid == pid);
+        } else {
+            char name[16] = {};
+            if (PubgHyperCall::ReadGuestVirtualMemory(name, current_eprocess + eprocess::ImageFileName, g_CurrentCr3, 15) > 0) {
+                if (strstr(name, "TslGame.exe") != nullptr) {
+                    match = true;
+                }
+            }
+        }
+
+        if (match && current_cr3 != 0)
         {
-            output->process_id = pid;
+            output->process_id = static_cast<uint32_t>(current_pid);
             output->cr3 = current_cr3;
             output->base_address = reinterpret_cast<void*>(current_base);
             output->peb = reinterpret_cast<void*>(current_peb);

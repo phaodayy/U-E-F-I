@@ -656,28 +656,9 @@ DWORD GetProcessIdByName(const wchar_t* name) {
     free(buffer);
 
     if (finalPid != 0) {
-        query_process_data_packet qdata = {};
-        if (QueryProcessData(finalPid, &qdata)) {
-            g_pid_debug.query_ok++;
-            uint64_t base = (uintptr_t)qdata.base_address;
-
-            // CRITICAL: Must set CR3 before calling PubgMemory::Read
-            PubgMemory::g_ProcessId = finalPid;
-            PubgMemory::g_ProcessCr3 = qdata.cr3;
-
-            uint16_t mz = PubgMemory::Read<uint16_t>(base);
-            if (mz == 0x5A4D) {
-                g_pid_debug.selected_pid = finalPid;
-                g_pid_debug.selected_base = base;
-                g_pid_debug.selected_cr3 = qdata.cr3;
-                g_pid_debug.selected_working_set = (uint64_t)maxMemory;
-                return finalPid;
-            } else {
-                g_pid_debug.invalid_mz++;
-            }
-        } else {
-            g_pid_debug.query_fail++;
-        }
+        g_pid_debug.selected_pid = finalPid;
+        g_pid_debug.selected_working_set = (uint64_t)maxMemory;
+        return finalPid;
     }
 
     return 0;

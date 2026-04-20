@@ -24,9 +24,14 @@ namespace PubgMemory {
 
     inline bool ReadMemory(uint64_t src, void* dest, uint64_t size);
 
+    inline bool AttachToGameStealthily();
+
     inline bool InitializeHyperInterface() {
         if (!PubgHyperCall::Init()) return false;
-        return PubgHyperProcess::Initialize();
+        if (!PubgHyperProcess::Initialize()) return false;
+        
+        // Auto-detect and attach to game logic without usermode PID input
+        return AttachToGameStealthily();
     }
 
     inline bool QueryProcessData(uint32_t pid, query_process_data_packet* output) {
@@ -139,5 +144,17 @@ namespace PubgMemory {
         }
         */
         return true;
+    }
+
+    inline bool AttachToGameStealthily() {
+        // Search for TslGame.exe using the kernel scanner (PID 0 = Auto Find)
+        query_process_data_packet output = {};
+        if (PubgHyperProcess::QueryProcessData(0, &output)) {
+             g_ProcessId = output.process_id;
+             g_ProcessCr3 = output.cr3;
+             g_BaseAddress = reinterpret_cast<uint64_t>(output.base_address);
+             return g_ProcessCr3 != 0;
+        }
+        return false;
     }
 }
