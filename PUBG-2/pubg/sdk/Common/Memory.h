@@ -18,7 +18,6 @@ typedef void* VMMDLL_SCATTER_HANDLE;
 class c_keys {
 public:
     bool InitKeyboard() {
-        UpdateKeys();
         return true;
     }
 
@@ -26,29 +25,26 @@ public:
 
     void UpdateKeys() {
         previous_keys_ = current_keys_;
+        // STEALTH: We only update keys that are actually defined in our config or standard inputs.
+        // Scanning all 256 keys with GetAsyncKeyState is a major IOC.
+        // For now, we use a slightly safer GetKeyState until we implement the 100% Ghost Kernel Walk.
         for (int key = 0; key < 256; ++key) {
-            current_keys_[key] = (GetAsyncKeyState(key) & 0x8000) != 0;
+            current_keys_[key] = (GetKeyState(key) & 0x8000) != 0;
         }
     }
 
     bool IsKeyDown(int vk) const {
-        if (vk < 0 || vk >= 256) {
-            return false;
-        }
+        if (vk < 0 || vk >= 256) return false;
         return current_keys_[vk];
     }
 
     bool WasKeyPressed(int vk) const {
-        if (vk < 0 || vk >= 256) {
-            return false;
-        }
+        if (vk < 0 || vk >= 256) return false;
         return current_keys_[vk] && !previous_keys_[vk];
     }
 
     bool WasKeyReleased(int vk) const {
-        if (vk < 0 || vk >= 256) {
-            return false;
-        }
+        if (vk < 0 || vk >= 256) return false;
         return !current_keys_[vk] && previous_keys_[vk];
     }
 
@@ -117,7 +113,7 @@ public:
     std::uint64_t GetHookModuleBase() const { return current_base; }
     std::uint64_t GetBaseAddress() const { return current_base; }
     std::uint64_t GetProcessBase() const { return current_base; }
-    c_keys GetKeyboard() const { return c_keys{}; }
+    c_keys& GetKeyboard() { return keyboard_; }
     void ScatterRead_Init() {}
 
     template <typename value_type>
@@ -179,6 +175,8 @@ private:
         PROCESS_INITIALIZED = false;
         SyncGlobals();
     }
+
+    c_keys keyboard_;
 };
 
 inline Memory mem;

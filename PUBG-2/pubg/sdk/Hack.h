@@ -122,10 +122,10 @@ namespace Hack {
 				int MapID = Decrypt::CIndex(mem.Read<int>(GameData.UWorld + Offset::ObjID));
 				GameData.MapName = GNames::GetNameByID(MapID);
 
-				if (GetAsyncKeyState(VK_F5) & 0x8000) {
+				if (PubgMemory::IsKeyDown(VK_F5)) {
 					if (GameData.Scene != Scene::Gaming && !Utils::IsLobby(GameData.MapName)) GameData.Scene = Scene::Gaming;
 					Sleep(300);
-				} else if (GetAsyncKeyState(VK_F6) & 0x8000) {
+				} else if (PubgMemory::IsKeyDown(VK_F6)) {
 					if (GameData.Scene != Scene::Lobby) GameData.Scene = Scene::Lobby;
 					Sleep(300);
 				}

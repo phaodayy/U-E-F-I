@@ -852,7 +852,7 @@ public:
             }
         }
 
-        if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) && sens.contains("shift"))
+        if (PubgMemory::IsKeyDown(VK_SHIFT) && sens.contains("shift"))
         {
             try
             {

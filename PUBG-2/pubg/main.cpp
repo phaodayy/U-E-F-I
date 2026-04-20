@@ -906,7 +906,7 @@ int main() {
     }, NULL, 0, NULL);
     
     while (true) {
-      if (GetAsyncKeyState(VK_F11) & 0x8000) break;
+      if (PubgMemory::IsKeyDown(VK_F11)) break;
 
       g_Menu.RenderFrame();
       // Task 3.3: Randomizing Gates in render loop

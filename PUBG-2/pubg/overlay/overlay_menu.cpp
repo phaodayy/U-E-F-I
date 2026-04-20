@@ -510,7 +510,7 @@ void OverlayMenu::RenderFrame() {
 
         /*
         // --- MOUSE TEST KEY (F8) ---
-        if (GetAsyncKeyState(VK_F8) & 1) {
+        if (PubgMemory::IsKeyDown(VK_F8)) {
             printf("[DEBUG] F8 pressed: Attempting mouse movement test...\n");
             bool success = true;
             for (int i = 0; i < 20; i++) {
@@ -728,7 +728,7 @@ void OverlayMenu::RenderFrame() {
             Vector3 delta = player.Velocity * dt_esp; 
 
             // --- INTEGRATED AIMBOT TARGET CHECK (Optimization) ---
-            if (isAimbotTarget && (GetAsyncKeyState(activeKey) & 0x8000)) {
+            if (isAimbotTarget && PubgMemory::IsKeyDown(activeKey)) {
                 if (!player.IsTeammate && player.Health > 0) {
                     if (!aim_visible_only || player.IsVisible) {
                         // SMART-BONE LOGIC: Check Head, Neck, Chest on the player and pick the one closest to crosshair
@@ -761,7 +761,7 @@ void OverlayMenu::RenderFrame() {
 
                             // SHIFT OVERRIDE: If holding Shift, override the choice to HEAD (ID 6)
                             BonePos selected = bones_to_check[0];
-                            if (GetAsyncKeyState(VK_SHIFT) & 0x8000) {
+                            if (PubgMemory::IsKeyDown(VK_SHIFT)) {
                                 for (auto& bp : bones_to_check) { if (bp.id == 6) { selected = bp; break; } }
                             }
 
