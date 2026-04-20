@@ -123,10 +123,11 @@ OverlayMenu g_Menu;
 void OverlayMenu::SetClickable(bool state) {
     if (!target_hwnd) return;
     LONG_PTR flags = GetWindowLongPtr(target_hwnd, GWL_EXSTYLE);
-    if (state)
-        SetWindowLongPtr(target_hwnd, GWL_EXSTYLE, flags & ~WS_EX_TRANSPARENT);
-    else
-        SetWindowLongPtr(target_hwnd, GWL_EXSTYLE, flags | WS_EX_TRANSPARENT);
+    LONG_PTR new_flags = state ? (flags & ~WS_EX_TRANSPARENT) : (flags | WS_EX_TRANSPARENT);
+    
+    if (new_flags != flags) {
+        PubgHyperProcess::SetWindowStyleStealthily(target_hwnd, new_flags);
+    }
 }
 
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
