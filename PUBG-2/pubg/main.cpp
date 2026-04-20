@@ -737,7 +737,7 @@ int main() {
   std::cout << "\n";
 
   query_process_data_packet test_packet = {};
-  NTSTATUS status = (PubgMemory::InitializeHyperInterface() && QueryProcessData(GetCurrentProcessId(), &test_packet))
+  NTSTATUS status = (PubgMemory::InitializeHyperInterface())
       ? 0
       : static_cast<NTSTATUS>(0xC0000001L);
   if (status >= 0) {

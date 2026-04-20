@@ -12,6 +12,7 @@ namespace
 {
     constexpr auto kSystemModuleInformationClass = static_cast<SYSTEM_INFORMATION_CLASS>(11);
 
+
     namespace eprocess
     {
         constexpr std::uint64_t UniqueProcessId = 0x440;
@@ -19,7 +20,6 @@ namespace
         constexpr std::uint64_t DirectoryTableBase = 0x28;
         constexpr std::uint64_t SectionBaseAddress = 0x520;
         constexpr std::uint64_t Peb = 0x550;
-        constexpr std::uint64_t ImageFileName = 0x5a8;
     }
 
     using NtQuerySystemInformation_t = NTSTATUS(NTAPI*)(SYSTEM_INFORMATION_CLASS, PVOID, ULONG, PULONG);
@@ -46,6 +46,7 @@ namespace
 
     std::uint64_t g_CurrentCr3 = 0;
     std::uint64_t g_PsInitialSystemProcess = 0;
+    std::uint64_t g_ImageFileNameOffset = 0x5a8; // Auto-calibrated
 
     template <typename value_type>
     bool ReadKernelValue(const std::uint64_t address, value_type* value)
@@ -139,6 +140,7 @@ namespace
         const auto kernel_base = reinterpret_cast<std::uint64_t>(ntoskrnl.ImageBase);
         const auto image_path = ResolveKernelImagePath(reinterpret_cast<const char*>(ntoskrnl.FullPathName));
 
+
         if (kernel_base == 0 || image_path.empty())
         {
             return false;
@@ -161,6 +163,22 @@ namespace
         FreeLibrary(local_ntoskrnl);
 
         g_PsInitialSystemProcess = kernel_base + export_rva;
+ 
+        // --- DYNAMIC OFFSET CALIBRATION (SYSTEM PROCESS SCAN) ---
+        // Scan EPROCESS of PID 4 for "System" to find ImageFileName offset
+        std::uint64_t system_eprocess = 0;
+        if (PubgHyperCall::ReadGuestVirtualMemory(&system_eprocess, g_PsInitialSystemProcess, g_CurrentCr3, 8) == 8) {
+            for (std::uint64_t offset = 0x400; offset < 0x800; offset++) {
+                char buf[8] = {};
+                if (PubgHyperCall::ReadGuestVirtualMemory(buf, system_eprocess + offset, g_CurrentCr3, 6) == 6) {
+                    if (strcmp(buf, "System") == 0) {
+                        g_ImageFileNameOffset = offset;
+                        break;
+                    }
+                }
+            }
+        }
+
         return g_PsInitialSystemProcess != 0;
     }
 }
@@ -172,7 +190,7 @@ bool PubgHyperProcess::Initialize()
 
 bool PubgHyperProcess::QueryProcessData(const std::uint32_t pid, query_process_data_packet* const output)
 {
-    if (pid == 0 || output == nullptr)
+    if (output == nullptr)
     {
         return false;
     }
@@ -183,7 +201,9 @@ bool PubgHyperProcess::QueryProcessData(const std::uint32_t pid, query_process_d
     }
 
     std::uint64_t current_eprocess = 0;
-    if (!ReadKernelValue(g_PsInitialSystemProcess, &current_eprocess) || current_eprocess == 0)
+    std::uint64_t walk_cr3 = g_CurrentCr3;
+
+    if (PubgHyperCall::ReadGuestVirtualMemory(&current_eprocess, g_PsInitialSystemProcess, walk_cr3, 8) != 8 || current_eprocess == 0)
     {
         return false;
     }
@@ -197,18 +217,18 @@ bool PubgHyperProcess::QueryProcessData(const std::uint32_t pid, query_process_d
         std::uint64_t current_base = 0;
         std::uint64_t current_peb = 0;
 
-        ReadKernelValue(current_eprocess + eprocess::UniqueProcessId, &current_pid);
-        ReadKernelValue(current_eprocess + eprocess::DirectoryTableBase, &current_cr3);
-        ReadKernelValue(current_eprocess + eprocess::SectionBaseAddress, &current_base);
-        ReadKernelValue(current_eprocess + eprocess::Peb, &current_peb);
+        PubgHyperCall::ReadGuestVirtualMemory(&current_pid, current_eprocess + eprocess::UniqueProcessId, walk_cr3, 8);
+        PubgHyperCall::ReadGuestVirtualMemory(&current_cr3, current_eprocess + eprocess::DirectoryTableBase, walk_cr3, 8);
+        PubgHyperCall::ReadGuestVirtualMemory(&current_base, current_eprocess + eprocess::SectionBaseAddress, walk_cr3, 8);
+        PubgHyperCall::ReadGuestVirtualMemory(&current_peb, current_eprocess + eprocess::Peb, walk_cr3, 8);
 
         bool match = false;
-        if (pid != 0) {
-            match = (current_pid == pid);
-        } else {
-            char name[16] = {};
-            if (PubgHyperCall::ReadGuestVirtualMemory(name, current_eprocess + eprocess::ImageFileName, g_CurrentCr3, 15) > 0) {
-                if (strstr(name, "TslGame.exe") != nullptr) {
+        char name[16] = {};
+        if (PubgHyperCall::ReadGuestVirtualMemory(name, current_eprocess + g_ImageFileNameOffset, walk_cr3, 15) > 0) {
+            if (pid != 0) {
+                match = (current_pid == pid);
+            } else {
+                if (_strnicmp(name, "TslGame", 7) == 0) {
                     match = true;
                 }
             }
@@ -224,7 +244,7 @@ bool PubgHyperProcess::QueryProcessData(const std::uint32_t pid, query_process_d
         }
 
         std::uint64_t next_link = 0;
-        if (!ReadKernelValue(current_eprocess + eprocess::ActiveProcessLinks, &next_link) || next_link == 0)
+        if (PubgHyperCall::ReadGuestVirtualMemory(&next_link, current_eprocess + eprocess::ActiveProcessLinks, walk_cr3, 8) != 8 || next_link == 0)
         {
             break;
         }
