@@ -244,6 +244,10 @@ namespace protector {
     //   NOTE: JMP ExitProcess REMOVED - x64 relative offset overflows 32-bit
     // =========================================================================
     static void patch_anti_attach() {
+        // [SECURITY] PATCHING NTDLL IS A HUGE IOC.
+        // BattlEye/EasyAntiCheat will detect modified bytes in system DLLs.
+        // We disable this usermode patch and rely on Hypervisor-level protection instead.
+        /*
         HMODULE hNtdll = GetModuleHandleA("ntdll.dll");
         if (!hNtdll) return;
 
@@ -258,7 +262,6 @@ namespace protector {
         }
 
         // 2. Patch DbgUiRemoteBreakin -> RET (0xC3)
-        //    Blocks debugger from attaching to process at runtime
         auto pDbgUiRemote = (BYTE*)GetProcAddress(hNtdll, "DbgUiRemoteBreakin");
         if (pDbgUiRemote) {
             DWORD oldProt;
@@ -267,6 +270,7 @@ namespace protector {
                 VirtualProtect(pDbgUiRemote, 4, oldProt, &oldProt);
             }
         }
+        */
     }
 
     // =========================================================================
