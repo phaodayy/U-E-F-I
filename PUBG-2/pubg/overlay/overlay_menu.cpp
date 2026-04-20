@@ -549,7 +549,7 @@ void OverlayMenu::RenderFrame() {
         ImDrawList* draw = ImGui::GetBackgroundDrawList();
 
         // --- 0. RADAR (MINI MAP + WORLD MAP) ---
-        if (esp_toggle) {
+        if (esp_toggle && radar_enabled) {
             const bool expandedMiniMap = G_Radar.SelectMinimapSizeIndex > 0;
             const bool hasHudMiniMapRect = G_Radar.ScreenPosX > 1.0f && G_Radar.ScreenPosY > 1.0f &&
                                            G_Radar.ScreenSize > 40.0f && G_Radar.ScreenSizeY > 40.0f;
@@ -592,6 +592,7 @@ void OverlayMenu::RenderFrame() {
                 miniRight = centerX + mapDiv;
                 miniBottom = centerY + mapDiv;
             }
+
             if (mapDiv < 50.0f) mapDiv = 50.0f;
 
             float dt = (GetTickCount64() - G_LastScanTime) / 1000.0f;
@@ -621,7 +622,7 @@ void OverlayMenu::RenderFrame() {
                     const float clampedY = std::clamp(finalY, miniTop + 3.0f, miniBottom - 3.0f);
 
                     ImU32 teamColor = GetTeamColor(player.TeamID);
-                    DrawRadarTeamMarker(draw, clampedX, clampedY, player.TeamID, teamColor, 4.5f);
+                    DrawRadarTeamMarker(draw, clampedX, clampedY, player.TeamID, teamColor, g_Menu.radar_dot_size);
                 }
 
                 if (g_Menu.show_radar_center) {
@@ -669,7 +670,7 @@ void OverlayMenu::RenderFrame() {
                     }
 
                     ImU32 teamColor = GetTeamColor(player.TeamID);
-                    DrawRadarTeamMarker(draw, mapX, mapY, player.TeamID, teamColor, 5.5f);
+                    DrawRadarTeamMarker(draw, mapX, mapY, player.TeamID, teamColor, g_Menu.radar_dot_size + 1.0f);
                 }
             }
         }
@@ -1366,8 +1367,17 @@ void OverlayMenu::RenderFrame() {
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.8f, 1.0f), "RADAR AUTO ALIGN");
                     ImGui::Separator();
                     ImGui::BeginChild("##RadarContent");
-                    ImGui::Checkbox(Lang.ShowCrosshair, &g_Menu.show_radar_center);
-                    ImGui::TextUnformatted("Auto sync from game HUD widget (no manual calibration).");
+                    
+                    if (g_Menu.language == 1) {
+                        ImGui::Checkbox("Bat tat Radar", &g_Menu.radar_enabled);
+                        ImGui::SliderFloat("Kich co cham (Dot Size)", &g_Menu.radar_dot_size, 1.0f, 10.0f, "%.1f");
+                    } else {
+                        ImGui::Checkbox("Enable Radar", &g_Menu.radar_enabled);
+                        ImGui::SliderFloat("Dot Size", &g_Menu.radar_dot_size, 1.0f, 10.0f, "%.1f");
+                    }
+
+                    ImGui::Separator();
+                    ImGui::Text("System Info:");
                     ImGui::Text("MiniMap: %.1f, %.1f | %.1fx%.1f", G_Radar.ScreenPosX, G_Radar.ScreenPosY, G_Radar.ScreenSize, G_Radar.ScreenSizeY);
                     ImGui::Text("WorldMap: %s | %.1fx%.1f", G_Radar.IsWorldMapVisible ? "Visible" : "Hidden", G_Radar.WorldMapWidth, G_Radar.WorldMapHeight);
                     ImGui::EndChild();
@@ -1566,6 +1576,7 @@ void OverlayMenu::LoadConfig(const char* path) {
             radar_offset_x = 0.0f;
             radar_offset_y = 0.0f;
             radar_zoom_multiplier = 1.0f;
+            radar_dot_size = 8.0f;
             radar_rotation_offset = 0.0f;
             if (j.contains("macro_enabled")) {
                 macro_enabled = j["macro_enabled"];

@@ -108,7 +108,10 @@ public:
   float radar_offset_x = 0.0f;
   float radar_offset_y = 0.0f;
   float radar_zoom_multiplier = 1.0f;
+  float radar_scale = 1.0f;
+  float radar_dot_size = 8.0f;
   float radar_rotation_offset = 0.0f;
+  bool radar_enabled = true;
   bool show_radar_center = false;
   bool anti_screenshot = true;
 
