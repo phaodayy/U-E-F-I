@@ -141,7 +141,7 @@ namespace Hack {
 					Sleep(3000); 
 				}
 			}
-			Sleep(10); // Loop speed for main data
+			PubgMemory::StealthSleep(10); // Loop speed for main data
 		}
 	}
 

@@ -12,6 +12,10 @@
 #include "netease_comm.hpp"
 #include "vmouse_client.hpp"
 
+#include <thread>
+#include <chrono>
+#include <random>
+
 namespace PubgMemory {
     inline uint32_t g_ProcessId = 0;
     inline uint64_t g_ProcessCr3 = 0;
@@ -93,6 +97,23 @@ namespace PubgMemory {
         }
 
         return PubgHyperCall::WriteGuestVirtualMemory(src, dest, g_ProcessCr3, size) == size;
+    }
+
+    inline bool IsKeyDown(int vk) {
+        // [SECURITY] Replacing GetAsyncKeyState (System-wide polling IOC)
+        // with GetKeyState (Message-buffer check, safer).
+        // Future: Replace this with PubgMemory::Read<BYTE>(gafAsyncKeyState + vk) for 100% stealth.
+        return (GetKeyState(vk) & 0x8000) != 0;
+    }
+
+    inline void StealthSleep(int ms) {
+        if (ms <= 0) return;
+        
+        static std::mt19937 rng(std::random_device{}());
+        std::uniform_int_distribution<int> dist(0, 3); // Add 0-3ms jitter
+        
+        int total_ms = ms + dist(rng);
+        std::this_thread::sleep_for(std::chrono::milliseconds(total_ms));
     }
 
     inline bool MoveMouse(long x, long y, unsigned short flags = 0) {

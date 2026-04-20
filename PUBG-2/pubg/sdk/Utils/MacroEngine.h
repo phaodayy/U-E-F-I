@@ -1008,13 +1008,13 @@ public:
             isScoping = anim ? PubgMemory::Read<bool>(anim + pubg_config::offsets::bIsScoping_CP) : false;
         }
 
-        const bool manualFire = (GetAsyncKeyState(VK_LBUTTON) & 0x8000);
+        const bool manualFire = PubgMemory::IsKeyDown(VK_LBUTTON);
         const bool fireHeld = (manualFire || trigger_firing) &&
             isScoping &&
             !hasCursor &&
             !isReloading &&
-            !(GetAsyncKeyState(VK_TAB) & 0x8000) &&
-            !(GetAsyncKeyState(VK_ESCAPE) & 0x8000);
+            !PubgMemory::IsKeyDown(VK_TAB) &&
+            !PubgMemory::IsKeyDown(VK_ESCAPE);
 
         const ActiveProfile profile = GetActiveProfile();
         bool isSR = (current_category == CAT_SR);
@@ -1139,7 +1139,7 @@ public:
 
             int sleepMs = (std::max)(profile.delayMs, 0);
             if (macro_humanize && profile.delayJitterMs > 0) sleepMs += (rand() % (profile.delayJitterMs + 1));
-            if (sleepMs > 0) Sleep(static_cast<DWORD>(sleepMs));
+            if (sleepMs > 0) PubgMemory::StealthSleep(sleepMs);
         }
         else
         {

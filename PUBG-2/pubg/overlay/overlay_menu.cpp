@@ -455,7 +455,7 @@ void OverlayMenu::RenderFrame() {
         if (need_to_release) {
             bool any_down = false;
             for (int i = 0x01; i <= 0xFE; i++) {
-                if (GetAsyncKeyState(i) & 0x8000) { any_down = true; break; }
+                if (PubgMemory::IsKeyDown(i)) { any_down = true; break; }
             }
             if (!any_down) need_to_release = false;
         }
@@ -463,14 +463,14 @@ void OverlayMenu::RenderFrame() {
         // Only search for NEW key if previous click is released
         if (!need_to_release) {
             for (int i = 0x01; i <= 0xFE; i++) {
-                if (GetAsyncKeyState(i) & 0x8000) {
+                if (PubgMemory::IsKeyDown(i)) {
                     if (i == VK_ESCAPE) { waiting_for_key = nullptr; last_waiting = nullptr; break; }
                     
                     *waiting_for_key = i;
                     waiting_for_key = nullptr;
                     last_waiting = nullptr;
                     // Wait for release
-                    while (GetAsyncKeyState(i) & 0x8000) Sleep(1); 
+                    while (PubgMemory::IsKeyDown(i)) PubgMemory::StealthSleep(1); 
                     break;
                 }
             }
@@ -482,13 +482,16 @@ void OverlayMenu::RenderFrame() {
         if (!target_hwnd) return;
 
         // --- TOGGLE MENU (F5) ---
-        if (GetAsyncKeyState(VK_F5) & 1) {
+        static bool f5_down = false;
+        bool f5_current = PubgMemory::IsKeyDown(VK_F5);
+        if (f5_current && !f5_down) {
             showmenu = !showmenu;
             SetClickable(showmenu);
             if (showmenu) {
                 SetForegroundWindow(target_hwnd);
             }
         }
+        f5_down = f5_current;
 
         // --- MOUSE INJECTION (FOR HIJACKED WINDOW) ---
         ImGuiIO& io = ImGui::GetIO();
@@ -496,7 +499,7 @@ void OverlayMenu::RenderFrame() {
             POINT p; GetCursorPos(&p);
             ScreenToClient(target_hwnd, &p);
             io.MousePos = ImVec2((float)p.x, (float)p.y);
-            io.MouseDown[0] = (GetAsyncKeyState(VK_LBUTTON) & 0x8000);
+            io.MouseDown[0] = PubgMemory::IsKeyDown(VK_LBUTTON);
         }
 
         // --- WINDOW MESSAGE HANDLING (VALORANT STYLE) ---
@@ -507,8 +510,8 @@ void OverlayMenu::RenderFrame() {
         }
 
         // 1-2 (Weapon), X (Holster), Tab (Bag), M (Map), G (Grenade), F (Interact/Equip)
-        if ((GetAsyncKeyState('1') & 1) || (GetAsyncKeyState('2') & 1) || (GetAsyncKeyState('X') & 1) || 
-            (GetAsyncKeyState(VK_TAB) & 1) || (GetAsyncKeyState('M') & 1) || (GetAsyncKeyState('G') & 1) || (GetAsyncKeyState('F') & 1)) {
+        if (PubgMemory::IsKeyDown('1') || PubgMemory::IsKeyDown('2') || PubgMemory::IsKeyDown('X') || 
+            PubgMemory::IsKeyDown(VK_TAB) || PubgMemory::IsKeyDown('M') || PubgMemory::IsKeyDown('G') || PubgMemory::IsKeyDown('F')) {
             MacroEngine::ForceScan();
         }
 
@@ -522,7 +525,7 @@ void OverlayMenu::RenderFrame() {
                     success = false;
                     break;
                 }
-                Sleep(2);
+                PubgMemory::StealthSleep(2);
             }
             if (success) {
                 printf("[DEBUG] Mouse Move test successful!\n");
@@ -634,7 +637,7 @@ void OverlayMenu::RenderFrame() {
                 }
             }
 
-            const bool keyWorldMapPressed = (GetAsyncKeyState('M') & 0x8000) != 0;
+            const bool keyWorldMapPressed = PubgMemory::IsKeyDown('M');
             const bool canDrawWorldMap = (G_Radar.IsWorldMapVisible || keyWorldMapPressed) &&
                 G_Radar.MapSizeFactored > 1.0f &&
                 G_Radar.MapWorldSize > 0.0f;
@@ -1392,8 +1395,8 @@ void OverlayMenu::RenderFrame() {
                         g_Menu.LoadConfig("dataMacro/Config/settings.json");
                     }
                     if (ImGui::Button(language == 1 ? "TEST CHUOT [5b] (KERNEL MOVE)" : "TEST MOUSE [5b] (KERNEL MOVE)", ImVec2(-1, 40))) {
-                        for (int i = 0; i < 30; i++) { PubgMemory::MoveMouse(4, 4, 0); Sleep(5); }
-                        for (int i = 0; i < 30; i++) { PubgMemory::MoveMouse(-4, -4, 0); Sleep(5); }
+                        for (int i = 0; i < 30; i++) { PubgMemory::MoveMouse(4, 4, 0); PubgMemory::StealthSleep(5); }
+                        for (int i = 0; i < 30; i++) { PubgMemory::MoveMouse(-4, -4, 0); PubgMemory::StealthSleep(5); }
                     }
 
                     if (ImGui::Button(language == 1 ? "TEST CLICK [6] (KERNEL CLICK)" : "TEST CLICK [6] (KERNEL CLICK)", ImVec2(-1, 40))) {
