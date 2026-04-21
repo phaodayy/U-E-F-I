@@ -183,8 +183,15 @@ void TypewriterPrint(const std::string& text, int delay_ms = 20, int color = 7) 
   }
   SetConsoleColor(7);
 }
+// --- LINKER CONFIG: WINDOWS FOR RELEASE, CONSOLE FOR DEBUG ---
+#ifdef _DEBUG
+#pragma comment(linker, "/SUBSYSTEM:CONSOLE")
+#else
+#pragma comment(linker, "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
+#endif
 
 void SelectLanguage() {
+#ifdef _DEBUG
     SetConsoleColor(10);
     std::cout << 
 "   ____            _____ \n"
@@ -216,6 +223,9 @@ void SelectLanguage() {
             std::cout << skCrypt("Invalid selection / Lua chon khong hop le. Try again.\n");
         }
     }
+#else
+    g_is_vietnamese = true;
+#endif
 }
 
 bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) {
@@ -579,6 +589,38 @@ bool IsUserAdmin() {
     return bIsAdmin;
 }
 
+bool IsProcessElevated(DWORD pid) {
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (!hProcess) return false;
+    HANDLE hToken = NULL;
+    bool elevated = false;
+    if (OpenProcessToken(hProcess, TOKEN_QUERY, &hToken)) {
+        TOKEN_ELEVATION elevation;
+        DWORD size = sizeof(TOKEN_ELEVATION);
+        if (GetTokenInformation(hToken, TokenElevation, &elevation, sizeof(elevation), &size)) {
+            elevated = elevation.TokenIsElevated;
+        }
+        CloseHandle(hToken);
+    }
+    CloseHandle(hProcess);
+    return elevated;
+}
+
+bool CheckDiscordPrivileges() {
+    auto windows = PubgHyperProcess::EnumerateWindowsStealthily();
+    DWORD discord_pid = 0;
+    for (const auto& w : windows) {
+        char cls[256]; GetClassNameA(w.hwnd, cls, 256);
+        if (strcmp(cls, "Chrome_WidgetWin_1") == 0) {
+            discord_pid = w.process_id;
+            break;
+        }
+    }
+    // MANDATORY CHECK: If Discord is not running, we cannot hijack its overlay.
+    if (discord_pid == 0) return false; 
+    return IsProcessElevated(discord_pid);
+}
+
 
 
 bool QueryProcessData(uint32_t pid, query_process_data_packet *output) {
@@ -603,6 +645,21 @@ struct ProcessPickDebugInfo {
 static ProcessPickDebugInfo g_pid_debug = {};
 
 int main() {
+  // SINGLE INSTANCE CHECK
+  HANDLE hMutex = CreateMutexA(NULL, TRUE, "GZ_PUBG_PROTECTOR_SINGLETON");
+  if (GetLastError() == ERROR_ALREADY_EXISTS) {
+#ifdef _DEBUG
+      std::cout << "[!] Tool is already running.\n";
+#else
+      MessageBoxA(NULL, 
+          "Tool is already running! Please wait or proceed to game.\n"
+          "Tool dang chay! Vui long doi hoac tien hanh vao game.", 
+          "GZ-PUBG - ALREADY RUNNING", MB_OK | MB_ICONWARNING | MB_SYSTEMMODAL | MB_TOPMOST);
+#endif
+      if (hMutex) CloseHandle(hMutex);
+      return 0;
+  }
+
   // protector::kill_game(); // Tam comment: khong tu dong tat game khi mo tool
   protector::scan_detection_time = 1000;
   protector::scan_exe = true;
@@ -683,12 +740,34 @@ int main() {
   }
   
   if (status < 0) {
+#ifdef _DEBUG
     SetConsoleColor(12);
-    std::cout << (g_is_vietnamese ? skCrypt("[-] Khong the giao tiep voi hypervisor!\n") : skCrypt("[-] Failed to communicate with hypervisor!\n"));
+    std::cout << (g_is_vietnamese ? skCrypt("[-] Khong thể giao tiep voi hypervisor!\n") : skCrypt("[-] Failed to communicate with hypervisor!\n"));
     SetConsoleColor(7);
-    Sleep(5000);
+#else
+    MessageBoxA(NULL, 
+        "CRITICAL ERROR: Hypervisor connection failed!\nLoi nghiem trong: Khong the ket noi Hypervisor!\n\n"
+        "Please run 'GZ-Loader' as Administrator first, then reopen this tool.\n"
+        "Vui long chay 'GZ-Loader' bang quyen Admin truoc, sau do mo lai Tool nay.", 
+        "GZ-PUBG - HYPERVISOR ERROR", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_TOPMOST);
+#endif
     return 1;
   }
+  
+  if (!CheckDiscordPrivileges()) {
+#ifdef _DEBUG
+    std::cout << skCrypt("[-] Discord mismatch: Not running or Not Admin.\n");
+#else
+    MessageBoxA(NULL, 
+        "CRITICAL ERROR: Discord is NOT running or NOT as Administrator!\nLoi nghiem trong: Chua mo Discord hoac Discord chua chay quyen Admin!\n\n"
+        "1. Please OPEN Discord first.\n"
+        "2. Make sure Discord is running as ADMINISTRATOR.\n\n"
+        "Vui long mo Discord bang quyen Admin truoc khi su dung Tool nay.", 
+        "GZ-PUBG - DISCORD REQUIREMENT", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_TOPMOST);
+#endif
+    return 1;
+  }
+
   Sleep(500);
   // (Removed VMouse KDU Loading as Logitech G-Hub is used instead)
 
@@ -769,12 +848,17 @@ int main() {
 
     g_Menu.Initialize(nullptr);
     
-    std::cout << (g_is_vietnamese ? skCrypt("\n[+] He thong Tool dang Chay!") : skCrypt("\n[+] Game Overlay Service Running!")) << std::endl;
+#ifdef _DEBUG
+    std::cout << (g_is_vietnamese ? skCrypt("\n[+] He thong da san sang! Hay mo game PUBG.") : skCrypt("\n[+] System Ready! Please open PUBG.")) << std::endl;
     std::cout << (g_is_vietnamese ? skCrypt("[+] Bam [F5] de Dong/Mo Menu | Bam [F11] de Tat Tool") : skCrypt("[+] F5: Menu | F11: Clean Exit")) << std::endl;
-    
-    Sleep(2000);
-    // ShowWindow(GetConsoleWindow(), SW_HIDE);
-    
+    std::cout << skCrypt("[DEBUG] Running in development mode. Console will remain open.\n");
+#else
+    // RELEASE MODE: Use Bilingual System Modal (Top 1) MessageBox
+    MessageBoxA(NULL, 
+        "System Ready! Please open PUBG.\nHe thong da san sang! Hay mo game PUBG.\n\nPress [F5] for Menu. / Bam [F5] de Dong/Mo Menu.", 
+        "GZ-PUBG - System Ready", MB_OK | MB_ICONINFORMATION | MB_SYSTEMMODAL | MB_SETFOREGROUND | MB_TOPMOST);
+#endif
+
     CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)[](LPVOID) {
         while (true) {
             GameData.Keyboard.UpdateKeys();
