@@ -39,10 +39,8 @@ bool PubgHyperCall::Init()
     hypercall_info.call_type = hypercall_type_t::_hc_0x210;
     hypercall_info.call_reserved_data = 0;
 
-    // Obfuscated magic: compile-time XOR to avoid static signature
-    constexpr std::uint64_t magic_seed_a = 0xDEADFACE12345678ULL;
-    constexpr std::uint64_t magic_seed_b = 0xE79A1423D87BECF6ULL; // magic_seed_a ^ 0x1337BEEFCAFEBABEULL
-    std::uint64_t result = launch_raw_hypercall(hypercall_info, magic_seed_a ^ magic_seed_b, 0, 0);
+    // Obfuscated magic: use centralized seeds from hypercall_def.h
+    std::uint64_t result = launch_raw_hypercall(hypercall_info, hypercall_magic_seed_a ^ hypercall_magic_seed_b, 0, 0);
     if (result != 0)
     {
         current_primary_key = (result >> 16) & 0xFFFF;

@@ -183,10 +183,8 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
 
             if (hypercall_info.call_type == hypercall_type_t::_hc_0x210)
             {
-                // Obfuscated magic: compile-time XOR to avoid static signature
-                constexpr std::uint64_t magic_seed_a = 0xDEADFACE12345678ULL;
-                constexpr std::uint64_t magic_seed_b = 0xE79A1423D87BECF6ULL;
-                if (trap_frame->rdx != (magic_seed_a ^ magic_seed_b))
+                // Obfuscated magic: use centralized seeds from hypercall_def.h
+                if (trap_frame->rdx != (hypercall_magic_seed_a ^ hypercall_magic_seed_b))
                 {
                     trap_frame->rax = 0;
 #ifndef _INTELMACHINE
@@ -202,7 +200,7 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
                 is_hypercall_context_initialized = true;
 
                 current_primary_key = (guest_cr3 ^ __rdtsc()) & 0xFFFF;
-                if (current_primary_key == 0) current_primary_key = 0x1337;
+                if (current_primary_key == 0) current_primary_key = 0xD3AD;
                 current_secondary_key = (__rdtsc() >> 8) & 0x7F;
 
                 trap_frame->rax = (current_primary_key << 16) | current_secondary_key;
