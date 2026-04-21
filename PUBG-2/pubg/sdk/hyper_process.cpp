@@ -432,7 +432,7 @@ std::vector<kernel_window_data> PubgHyperProcess::EnumerateWindowsStealthily()
             kernel_window_data data = {};
             data.hwnd = hwnd;
             data.process_id = pid;
-            data.ex_style = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+            data.ex_style = GetWindowStyleStealthily(hwnd);
             GetWindowRect(hwnd, &data.rect);
             found.push_back(data);
         }
