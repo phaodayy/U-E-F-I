@@ -842,7 +842,7 @@ void OverlayMenu::RenderFrame() {
                             float paddingW = (std::max)(boxW * 0.15f, 4.0f);
                             float paddingH = (std::max)(boxH * 0.12f, 4.0f);
                             
-                            finalBoxTop = minY - (boxH * 0.15f); // 15% Height offset to clear any Helmet/Hat
+                            finalBoxTop = minY - (boxH * 0.25f) - 5.0f; // 25% Height + 5px buffer to ensure it clears Helmet/Face
                             finalBoxBottom = maxY + paddingH;
                             finalBoxLeft = minX - paddingW;
                             finalBoxRight = maxX + paddingW;
