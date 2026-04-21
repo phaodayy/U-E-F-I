@@ -1,0 +1,4 @@
+#include "resource.h"
+
+IDR_EFI_BOOT   RCDATA  "..\\bin\\uefi-boot.efi"
+IDR_ATTACH_DLL RCDATA  "..\\bin\\hyperv-attachment.dll"

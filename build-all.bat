@@ -34,27 +34,25 @@ if %ERRORLEVEL% neq 0 (
     exit /b %ERRORLEVEL%
 )
 
-:: 3. Build hyper-reV Solution
-echo [*] Step 2: Building hyper-reV Project...
-"!MSBUILD_PATH!" "hyper-reV.sln" /t:Rebuild /p:Configuration=Release /p:Platform=x64 /m /verbosity:minimal
-if %ERRORLEVEL% neq 0 (
-    echo [ERROR] hyper-reV Build Failed!
-    pause
-    exit /b %ERRORLEVEL%
-)
+:: 3. Build Components first (to populate bin for resource embedding)
+echo [*] Step 2: Building Core Components...
+"!MSBUILD_PATH!" "uefi-boot\uefi-boot.vcxproj" /t:Rebuild /p:Configuration=Release /p:Platform=x64 /m /verbosity:minimal
+"!MSBUILD_PATH!" "hyperv-attachment\hyperv-attachment.vcxproj" /t:Rebuild /p:Configuration=Release /p:Platform=x64 /m /verbosity:minimal
 
-echo.
-echo [*] Step 3: Finalizing bin folder...
 if not exist bin mkdir bin
-
-:: Copy outputs from their respective build folders
 copy /Y "uefi-boot\build\x64\Release\uefi-boot.efi" bin\ >nul 2>&1
 copy /Y "hyperv-attachment\build\x64\Release\hyperv-attachment.dll" bin\ >nul 2>&1
-copy /Y "x64\Release\usermode.exe" bin\ >nul 2>&1
-copy /Y "x64\Release\loader.exe" bin\ >nul 2>&1
+
+:: 4. Build Launcher/Loader (Embeds files from bin)
+echo [*] Step 3: Building Loader and Usermode...
+"!MSBUILD_PATH!" "usermode\usermode.vcxproj" /t:Rebuild /p:Configuration=Release /p:Platform=x64 /m /verbosity:minimal
+"!MSBUILD_PATH!" "loader\loader.vcxproj" /t:Rebuild /p:Configuration=Release /p:Platform=x64 /m /verbosity:minimal
+
+copy /Y "usermode\x64\Release\usermode.exe" bin\ >nul 2>&1
+copy /Y "loader\x64\Release\loader.exe" bin\ >nul 2>&1
 
 echo.
-echo [+++] ALL PROJECTS BUILT SUCCESSFULLY! [+++]
+echo [+++] ALL PROJECTS BUILT AND PACKAGED SUCCESSFULLY! [+++]
 dir "%~dp0bin\*.exe" "%~dp0bin\*.dll" "%~dp0bin\*.efi"
 echo.
 pause
