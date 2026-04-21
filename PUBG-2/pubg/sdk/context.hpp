@@ -80,6 +80,7 @@ struct ItemData {
 };
 
 extern std::vector<PlayerData> G_Players;
+extern int G_LocalSpectatedCount;
 extern std::vector<ItemData> CachedItems;
 extern float G_CamFOV;
 

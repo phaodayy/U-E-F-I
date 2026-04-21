@@ -548,6 +548,35 @@ void OverlayMenu::RenderFrame() {
         float ScreenCenterY = ScreenHeight / 2.0f;
         ImDrawList* draw = ImGui::GetBackgroundDrawList();
 
+        // --- GLOBAL SPECTATOR WARNING ---
+        if (esp_toggle && g_Menu.esp_spectated && G_LocalSpectatedCount > 0) {
+            char specText[64];
+            sprintf_s(specText, sizeof(specText), "SPECTATORS: %d", G_LocalSpectatedCount);
+            
+            float fontSize = 23.0f;
+            ImVec2 txtSize = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, specText);
+            
+            float panelW = txtSize.x + 60.0f;
+            float panelH = txtSize.y + 20.0f;
+            float posX = (ScreenWidth - panelW) / 2.0f;
+            float posY = 60.0f; 
+            
+            ImVec2 pMin = ImVec2(posX, posY);
+            ImVec2 pMax = ImVec2(posX + panelW, posY + panelH);
+            
+            // Neon Orange Border + Glow + Glass Effect
+            ImGui::GetForegroundDrawList()->AddRectFilled(pMin, pMax, IM_COL32(0, 0, 0, 180), 8.0f);
+            ImGui::GetForegroundDrawList()->AddRect(pMin, pMax, IM_COL32(255, 120, 0, 255), 8.0f, 0, 2.5f);
+            
+            // Draw "EYE" Icon (Simple circle + dot)
+            float eyeX = posX + 22.0f;
+            float eyeY = posY + panelH / 2.0f;
+            ImGui::GetForegroundDrawList()->AddCircle(ImVec2(eyeX, eyeY), 8.0f, IM_COL32(255, 120, 0, 255), 12, 1.5f);
+            ImGui::GetForegroundDrawList()->AddCircleFilled(ImVec2(eyeX, eyeY), 3.0f, IM_COL32(255, 120, 0, 255));
+            
+            ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), fontSize, ImVec2(posX + 45, posY + 10.0f), IM_COL32(255, 120, 0, 255), specText);
+        }
+
         // --- 0. RADAR (MINI MAP + WORLD MAP) ---
         if (esp_toggle && radar_enabled) {
             const bool expandedMiniMap = G_Radar.SelectMinimapSizeIndex > 0;

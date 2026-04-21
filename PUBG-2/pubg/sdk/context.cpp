@@ -23,6 +23,7 @@ Vector3 G_CameraLocation = { 0, 0, 0 }, G_CameraRotation = { 0, 0, 0 }, G_LocalP
 uint64_t G_LastScanTime = 0;
 RadarData G_Radar;
 std::vector<PlayerData> G_Players;
+int G_LocalSpectatedCount = 0;
 std::vector<ItemData> CachedItems;
 float G_CamFOV = 103.0f;
 
@@ -247,6 +248,16 @@ namespace PubgContext {
 
                 if (G_LocalPawn > 0x1000000) {
                     inGame = true;
+                    
+                    // --- GET LOCAL SPECTATED COUNT ---
+                    uint64_t localPlayerState = Read<uint64_t>(G_LocalPawn + PubgOffsets::PlayerState);
+                    if (localPlayerState < 0x1000000) localPlayerState = ReadXe(G_LocalPawn + PubgOffsets::PlayerState);
+                    if (localPlayerState > 0x1000000) {
+                        G_LocalSpectatedCount = Read<int>(localPlayerState + PubgOffsets::SpectatedCount);
+                    } else {
+                        G_LocalSpectatedCount = 0;
+                    }
+                    
                     // Position/Velocity/Camera are now updated in real-time by UpdateCamera()
 
                     // Inventory filtering
@@ -470,7 +481,7 @@ namespace PubgContext {
         }
 
         g_Menu.current_scene = inGame ? Scene::Gaming : Scene::Lobby;
-        if (!inGame) { G_Players.clear(); CachedItems.clear(); return; }
+        if (!inGame) { G_Players.clear(); CachedItems.clear(); G_LocalSpectatedCount = 0; return; }
 
         std::vector<PlayerData> tempPlayers;
         std::vector<ItemData> tempItems;
