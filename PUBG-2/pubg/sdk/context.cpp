@@ -295,17 +295,6 @@ namespace PubgContext {
                 uint32_t widgetCount = Read<uint32_t>(widgetListAddress + 0x8);
                 uint64_t widgetData = Read<uint64_t>(widgetListAddress);
                 
-                static ULONGLONG lastWidgetDebug = 0;
-                bool shouldDebug = (GetTickCount64() - lastWidgetDebug > 2000);
-                if (shouldDebug) {
-                    lastWidgetDebug = GetTickCount64();
-                    float v_A04 = Read<float>(G_UWorld + 0xA04);
-                    float v_940 = Read<float>(G_UWorld + 0x940);
-                    float v_930 = Read<float>(G_UWorld + 0x930);
-                    printf("[DEBUG][WIDGETS] HUD=%llX World=%llX OriginA04=%.1f Origin940=%.1f Origin930=%.1f Count=%d\n", 
-                        G_LocalHUD, G_UWorld, v_A04, v_940, v_930, widgetCount);
-                }
-
                 if (widgetData && widgetCount > 0 && widgetCount < 200) {
                     for (uint32_t i = 0; i < widgetCount; i++) {
                         uint64_t widgetPtr = Read<uint64_t>(widgetData + (i * 8));
@@ -316,8 +305,10 @@ namespace PubgContext {
                             
                             uint8_t vis = Read<uint8_t>(widgetPtr + PubgOffsets::Visibility);
                             
-                            if (shouldDebug) {
-                                printf("  [%d] Class: %s (Vis: %d) ID: %X -> %X\n", i, className.c_str(), vis, widgetIdRaw, widgetIdDec);
+                            if (IsWorldMapWidgetClass(className)) {
+                                if (IsSlateVisible(vis)) {
+                                    // Logic for map data will follow after the loop or in a sub-check
+                                }
                             }
                         }
                     }

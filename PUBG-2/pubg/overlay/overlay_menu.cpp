@@ -611,16 +611,6 @@ void OverlayMenu::RenderFrame() {
                 float worldRight = worldLeft + G_Radar.WorldMapWidth;
                 float worldBottom = worldTop + G_Radar.WorldMapHeight;
                 
-                // Diagnostic Logging (Throttled to 1s)
-                static ULONGLONG lastWorldMapLog = 0;
-                if (GetTickCount64() - lastWorldMapLog > 1000) {
-                    lastWorldMapLog = GetTickCount64();
-                    printf("[DEBUG][WORLDMAP] Visible=%d Key=%d Origin={%.1f, %.1f} Center={%.1f, %.1f} Factored=%.1f Size=%.1f\n",
-                        G_Radar.IsWorldMapVisible, keyWorldMapPressed, 
-                        G_Radar.WorldOriginLocation.x, G_Radar.WorldOriginLocation.y,
-                        G_Radar.WorldCenterLocation.x, G_Radar.WorldCenterLocation.y,
-                        G_Radar.MapSizeFactored, G_Radar.MapWorldSize);
-                }
                 
                 // Fallback: If HUD widget rect is unknown, assume center square (standard PUBG behavior)
                 if (G_Radar.WorldMapWidth <= 10.0f || G_Radar.WorldMapHeight <= 10.0f) {
