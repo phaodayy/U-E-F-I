@@ -338,13 +338,20 @@ ImU32 GetTeamColor(int teamID) {
 }
 
 static void DrawRadarTeamMarker(ImDrawList* draw, float x, float y, int teamID, ImU32 color, float radius) {
-    draw->AddCircleFilled(ImVec2(x, y), radius + 1.2f, IM_COL32(0, 0, 0, 210), 20);
+    // 1. Outer Glow/Drop Shadow
+    draw->AddCircle(ImVec2(x, y), radius + 1.8f, IM_COL32(0, 0, 0, 160), 20, 1.0f);
+    
+    // 2. High Saturated Main Circle
     draw->AddCircleFilled(ImVec2(x, y), radius, color, 20);
+    
+    // 3. Inner Ring for Depth
+    draw->AddCircle(ImVec2(x, y), radius - 1.0f, IM_COL32(255, 255, 255, 80), 20, 0.5f);
 
     if (teamID > 0) {
         char teamText[16];
         sprintf_s(teamText, "%d", teamID % 100);
         ImVec2 textSize = ImGui::CalcTextSize(teamText);
+        // Draw Outline for text
         draw->AddText(ImVec2(x - textSize.x * 0.5f + 1.0f, y - textSize.y * 0.5f + 1.0f), IM_COL32(0, 0, 0, 255), teamText);
         draw->AddText(ImVec2(x - textSize.x * 0.5f, y - textSize.y * 0.5f), IM_COL32(255, 255, 255, 255), teamText);
     }
@@ -960,7 +967,7 @@ void OverlayMenu::RenderFrame() {
                                 break;
                         }
                         
-                        ImU32 hpColor = IM_COL32(0, 255, 120, 255); // Vibrant Green
+                        ImU32 hpColor = IM_COL32(0, 255, 100, 255); // Super Vibrant Neon Green
                         if (healthPercent < 0.75f) hpColor = IM_COL32(255, 255, 0, 255);
                         if (healthPercent < 0.35f) hpColor = IM_COL32(255, 50, 50, 255);
                         hpColor = ApplyAlpha(hpColor, alphaMult);
@@ -1162,7 +1169,7 @@ void OverlayMenu::RenderFrame() {
                         ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), baseFontSize * textScale, ImVec2(head_s.x - ss.x / 2, currentTopY), ApplyAlpha(specCol, alphaMult), specBuf);
                     }
                 } else {
-                    // --- 4. OFF-SCREEN INDICATORS (DMA STYLE) ---
+                    // --- 4. ADVANCED OFF-SCREEN INDICATORS ---
                     if (g_Menu.esp_offscreen && !player.IsTeammate && player.Distance < g_Menu.render_distance) {
                         float dx = player.Position.x - G_CameraLocation.x;
                         float dy = player.Position.y - G_CameraLocation.y;
@@ -1171,19 +1178,50 @@ void OverlayMenu::RenderFrame() {
                         float cam_yaw_rad = G_CameraRotation.y * (3.14159265f / 180.0f);
                         float rel_angle = angle_rad - cam_yaw_rad - (3.14159265f / 2.0f);
                         
-                        float radius = g_Menu.offscreen_radius; 
+                        float radius = g_Menu.offscreen_radius;
                         ImVec2 arrowPos = ImVec2(ScreenCenterX + cosf(rel_angle) * radius, (ScreenHeight / 2.0f) + sinf(rel_angle) * radius);
                         
-                        ImU32 arrowCol = player.IsVisible ? IM_COL32(0, 255, 150, 180) : IM_COL32(255, 255, 255, 100);
+                        // --- DISTANCE-BASED COLORING ---
+                        ImU32 arrowCol;
+                        if (g_Menu.offscreen_color_mode == 1) { // Distance Gradient
+                            float t = player.Distance / g_Menu.render_distance;
+                            if (t > 1.0f) t = 1.0f;
+                            
+                            float r = (g_Menu.offscreen_near_color[0] * (1.0f - t) + g_Menu.offscreen_far_color[0] * t) * 255.0f;
+                            float g = (g_Menu.offscreen_near_color[1] * (1.0f - t) + g_Menu.offscreen_far_color[1] * t) * 255.0f;
+                            float b = (g_Menu.offscreen_near_color[2] * (1.0f - t) + g_Menu.offscreen_far_color[2] * t) * 255.0f;
+                            float a = (g_Menu.offscreen_near_color[3] * (1.0f - t) + g_Menu.offscreen_far_color[3] * t) * 255.0f;
+                            arrowCol = IM_COL32((int)r, (int)g, (int)b, (int)a);
+                        } else { // Static / Visibility
+                            arrowCol = player.IsVisible ? IM_COL32(0, 255, 150, 180) : IM_COL32(255, 255, 255, 100);
+                        }
+                        
                         if (player.SpectatedCount > 0) arrowCol = IM_COL32(255, 170, 0, 220); 
                         
                         float sz = g_Menu.offscreen_size;
-                        ImVec2 p1 = ImVec2(arrowPos.x + cosf(rel_angle) * sz * 1.5f, arrowPos.y + sinf(rel_angle) * sz * 1.5f);
-                        ImVec2 p2 = ImVec2(arrowPos.x + cosf(rel_angle + 2.4f) * sz, arrowPos.y + sinf(rel_angle + 2.4f) * sz);
-                        ImVec2 p3 = ImVec2(arrowPos.x + cosf(rel_angle - 2.4f) * sz, arrowPos.y + sinf(rel_angle - 2.4f) * sz);
                         
-                        draw->AddTriangleFilled(p1, p2, p3, ApplyAlpha(arrowCol, alphaMult));
-                        draw->AddTriangle(p1, p2, p3, IM_COL32(0, 0, 0, (int)(150 * alphaMult)), 1.25f);
+                        if (g_Menu.esp_offscreen_style == 0) { // TRIANGLE
+                            ImVec2 p1 = ImVec2(arrowPos.x + cosf(rel_angle) * sz * 1.5f, arrowPos.y + sinf(rel_angle) * sz * 1.5f);
+                            ImVec2 p2 = ImVec2(arrowPos.x + cosf(rel_angle + 2.4f) * sz, arrowPos.y + sinf(rel_angle + 2.4f) * sz);
+                            ImVec2 p3 = ImVec2(arrowPos.x + cosf(rel_angle - 2.4f) * sz, arrowPos.y + sinf(rel_angle - 2.4f) * sz);
+                            draw->AddTriangleFilled(p1, p2, p3, ApplyAlpha(arrowCol, alphaMult));
+                        } 
+                        else if (g_Menu.esp_offscreen_style == 1) { // CHEVRON (V-SHAPE)
+                            ImVec2 tip = ImVec2(arrowPos.x + cosf(rel_angle) * sz * 1.5f, arrowPos.y + sinf(rel_angle) * sz * 1.5f);
+                            ImVec2 side1 = ImVec2(arrowPos.x + cosf(rel_angle + 2.4f) * sz, arrowPos.y + sinf(rel_angle + 2.4f) * sz);
+                            ImVec2 side2 = ImVec2(arrowPos.x + cosf(rel_angle - 2.4f) * sz, arrowPos.y + sinf(rel_angle - 2.4f) * sz);
+                            draw->AddPolyline(&tip, 1, ApplyAlpha(arrowCol, alphaMult), 0, 2.0f); // Just points for now, need proper V
+                            // Standard V-shape
+                            draw->AddLine(tip, side1, ApplyAlpha(arrowCol, alphaMult), 2.5f);
+                            draw->AddLine(tip, side2, ApplyAlpha(arrowCol, alphaMult), 2.5f);
+                        }
+                        else if (g_Menu.esp_offscreen_style == 2) { // ARC / MODERN
+                            draw->PathArcTo(arrowPos, sz, rel_angle - 0.8f, rel_angle + 0.8f, 10);
+                            draw->PathStroke(ApplyAlpha(arrowCol, alphaMult), 0, 3.0f);
+                            // Add a small tip
+                            ImVec2 tip = ImVec2(arrowPos.x + cosf(rel_angle) * sz * 1.2f, arrowPos.y + sinf(rel_angle) * sz * 1.2f);
+                            draw->AddCircleFilled(tip, 2.0f, ApplyAlpha(arrowCol, alphaMult));
+                        }
                     }
                 }
             }
@@ -1349,62 +1387,55 @@ void OverlayMenu::RenderFrame() {
             {
                 ImGui::Spacing();
                 if (active_tab == 0) {
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.8f, 1.0f), "VISUAL PERFORMANCE");
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.8f, 1.0f), Lang.VisualPerformance);
                     ImGui::Separator();
                     ImGui::BeginChild("##VisualsContent");
                     ImGui::Checkbox(Lang.MasterToggle, &esp_toggle);
-                    ImGui::Checkbox("Enemy ESP", &g_Menu.esp_show_enemies);
-                    ImGui::Checkbox("Teammate ESP", &g_Menu.esp_show_teammates);
+                    ImGui::Checkbox(Lang.EnemyESP, &g_Menu.esp_show_enemies);
+                    ImGui::Checkbox(Lang.TeammateESP, &g_Menu.esp_show_teammates);
                     ImGui::Checkbox(Lang.Box, &esp_box);
                     ImGui::Checkbox(Lang.Skeleton, &esp_skeleton);
                     if (esp_skeleton) {
-                        ImGui::SameLine(); ImGui::Checkbox("Interpolate", &g_Menu.esp_skel_interp);
+                        ImGui::SameLine(); ImGui::Checkbox(Lang.Interpolate, &g_Menu.esp_skel_interp);
                     }
                     ImGui::Checkbox(Lang.Name, &g_Menu.esp_name);
                     ImGui::Checkbox(Lang.ESP_Spectated, &g_Menu.esp_spectated);
-                    ImGui::Checkbox(Lang.ESP_Offscreen, &g_Menu.esp_offscreen);
-                    if (g_Menu.esp_offscreen) {
-                        ImGui::Indent(20.0f);
-                        ImGui::SliderFloat(Lang.IndicatorRadius, &g_Menu.offscreen_radius, 50.0f, 600.0f, "%.0f px");
-                        ImGui::SliderFloat(Lang.IndicatorSize, &g_Menu.offscreen_size, 4.0f, 30.0f, "%.0f px");
-                        ImGui::Unindent(20.0f);
-                    }
                     ImGui::Checkbox(Lang.Distance, &esp_distance);
-                    ImGui::Checkbox(language == 1 ? "Thanh mau (Health)" : "Health Bar", &g_Menu.esp_health);
+                    ImGui::Checkbox(Lang.HealthBar, &g_Menu.esp_health);
                     if (g_Menu.esp_health) {
                         const char* hpPos[] = { "LEFT", "RIGHT", "BOTTOM", "TOP" };
-                        ImGui::Combo(language == 1 ? "Vi tri Thanh mau" : "Health Bar Pos", &g_Menu.esp_health_pos, hpPos, IM_ARRAYSIZE(hpPos));
+                        ImGui::Combo(Lang.HealthPos, &g_Menu.esp_health_pos, hpPos, IM_ARRAYSIZE(hpPos));
                     }
-                    ImGui::Checkbox("Items & Vehicles", &g_Menu.esp_items);
+                    ImGui::Checkbox(Lang.ItemsVehicles, &g_Menu.esp_items);
                     ImGui::Separator();
                     
-                    if (ImGui::TreeNode("Distance Tresholds (Culling)")) {
-                        ImGui::Checkbox("Enable Smart LOD", &esp_distance_lod);
-                        ImGui::SliderInt("Box Max", &box_max_dist, 50, 1000);
-                        ImGui::SliderInt("Health Max", &hp_max_dist, 50, 600);
-                        ImGui::SliderInt("Skeleton Max", &skeleton_max_dist, 50, 600);
-                        ImGui::SliderInt("Name Max", &name_max_dist, 50, 600);
-                        ImGui::SliderInt("Distance Max", &distance_txt_max_dist, 50, 1000);
-                        ImGui::SliderInt("Weapon Max", &weapon_max_dist, 50, 400);
+                    if (ImGui::TreeNode(Lang.DistThresholds)) {
+                        ImGui::Checkbox(Lang.SmartLOD, &esp_distance_lod);
+                        ImGui::SliderInt(Lang.BoxMax, &box_max_dist, 50, 1000);
+                        ImGui::SliderInt(Lang.HealthMax, &hp_max_dist, 50, 600);
+                        ImGui::SliderInt(Lang.SkeletonMax, &skeleton_max_dist, 50, 600);
+                        ImGui::SliderInt(Lang.NameMax, &name_max_dist, 50, 600);
+                        ImGui::SliderInt(Lang.DistMax, &distance_txt_max_dist, 50, 1000);
+                        ImGui::SliderInt(Lang.WeaponMax, &weapon_max_dist, 50, 400);
                         ImGui::TreePop();
                     }
 
-                    if (ImGui::TreeNode("Individual Colors")) {
-                        ImGui::ColorEdit4("Visible Box", box_visible_color, ImGuiColorEditFlags_NoInputs);
-                        ImGui::ColorEdit4("Invisible Box", box_invisible_color, ImGuiColorEditFlags_NoInputs);
-                        ImGui::ColorEdit4("Skeleton Visible", skeleton_visible_color, ImGuiColorEditFlags_NoInputs);
-                        ImGui::ColorEdit4("Skeleton Invisible", skeleton_invisible_color, ImGuiColorEditFlags_NoInputs);
-                        ImGui::ColorEdit4(language == 1 ? "Mau Ten (Name)" : "Names", name_color, ImGuiColorEditFlags_NoInputs);
-                        ImGui::ColorEdit4("Distance Text", distance_color, ImGuiColorEditFlags_NoInputs);
-                        ImGui::ColorEdit4("Weapon Text", weapon_color, ImGuiColorEditFlags_NoInputs);
+                    if (ImGui::TreeNode(Lang.ColorsTitle)) {
+                        ImGui::ColorEdit4(Lang.VisBox, box_visible_color, ImGuiColorEditFlags_NoInputs);
+                        ImGui::ColorEdit4(Lang.InvBox, box_invisible_color, ImGuiColorEditFlags_NoInputs);
+                        ImGui::ColorEdit4(Lang.VisSkel, skeleton_visible_color, ImGuiColorEditFlags_NoInputs);
+                        ImGui::ColorEdit4(Lang.InvSkel, skeleton_invisible_color, ImGuiColorEditFlags_NoInputs);
+                        ImGui::ColorEdit4(Lang.ColorNames, name_color, ImGuiColorEditFlags_NoInputs);
+                        ImGui::ColorEdit4(Lang.ColorDist, distance_color, ImGuiColorEditFlags_NoInputs);
+                        ImGui::ColorEdit4(Lang.ColorWeapon, weapon_color, ImGuiColorEditFlags_NoInputs);
                         ImGui::TreePop();
                     }
                     ImGui::Separator();
                     ImGui::SliderInt(Lang.RenderDist, &render_distance, 50, 1000);
                     
                     ImGui::Separator();
-                    ImGui::Checkbox("Weapon Text / Icon", &g_Menu.esp_weapon);
-                    ImGui::Combo("Draw Mode", &g_Menu.esp_weapon_type, "Text Label\0Image (Assets)\0");
+                    ImGui::Checkbox(Lang.Weapon, &g_Menu.esp_weapon);
+                    ImGui::Combo(Lang.WeaponType, &g_Menu.esp_weapon_type, "Text Label\0Image (Assets)\0");
                     ImGui::EndChild();
                 }
                 else if (active_tab == 1) {
@@ -1603,12 +1634,27 @@ void OverlayMenu::RenderFrame() {
                     ImGui::Separator();
                     ImGui::BeginChild("##RadarContent");
                     
-                    if (g_Menu.language == 1) {
-                        ImGui::Checkbox("Bat tat Radar", &g_Menu.radar_enabled);
-                        ImGui::SliderFloat("Kich co cham (Dot Size)", &g_Menu.radar_dot_size, 1.0f, 10.0f, "%.1f");
-                    } else {
-                        ImGui::Checkbox("Enable Radar", &g_Menu.radar_enabled);
-                        ImGui::SliderFloat("Dot Size", &g_Menu.radar_dot_size, 1.0f, 10.0f, "%.1f");
+                    ImGui::Checkbox(Lang.RadarEnable, &g_Menu.radar_enabled);
+                    ImGui::SliderFloat(Lang.RadarDotSize, &g_Menu.radar_dot_size, 1.0f, 10.0f, "%.1f");
+
+                    ImGui::Separator();
+                    ImGui::Checkbox(Lang.ESP_Offscreen, &g_Menu.esp_offscreen);
+                    if (g_Menu.esp_offscreen) {
+                        ImGui::Indent(20.0f);
+                        const char* styles[] = { "Triangle", "Chevron", "Arc" };
+                        ImGui::Combo(Lang.IndicatorStyle, &g_Menu.esp_offscreen_style, styles, IM_ARRAYSIZE(styles));
+                        
+                        ImGui::SliderFloat(Lang.IndicatorRadius, &g_Menu.offscreen_radius, 50.0f, 600.0f, "%.0f px");
+                        ImGui::SliderFloat(Lang.IndicatorSize, &g_Menu.offscreen_size, 4.0f, 30.0f, "%.0f px");
+                        
+                        const char* colorModes[] = { "Static (Visibility)", "Distance Gradient" };
+                        ImGui::Combo(Lang.ColorMode, &g_Menu.offscreen_color_mode, colorModes, IM_ARRAYSIZE(colorModes));
+                        
+                        if (g_Menu.offscreen_color_mode == 1) {
+                            ImGui::ColorEdit4(Lang.ColorNear, g_Menu.offscreen_near_color, ImGuiColorEditFlags_NoInputs);
+                            ImGui::ColorEdit4(Lang.ColorFar, g_Menu.offscreen_far_color, ImGuiColorEditFlags_NoInputs);
+                        }
+                        ImGui::Unindent(20.0f);
                     }
 
                     ImGui::Separator();
@@ -1711,8 +1757,12 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["esp_show_enemies"] = esp_show_enemies;
         j["esp_show_teammates"] = esp_show_teammates;
         j["esp_offscreen"] = esp_offscreen;
+        j["esp_offscreen_style"] = esp_offscreen_style;
+        j["offscreen_color_mode"] = offscreen_color_mode;
         j["offscreen_radius"] = offscreen_radius;
         j["offscreen_size"] = offscreen_size;
+        j["offscreen_near_color"] = { offscreen_near_color[0], offscreen_near_color[1], offscreen_near_color[2], offscreen_near_color[3] };
+        j["offscreen_far_color"] = { offscreen_far_color[0], offscreen_far_color[1], offscreen_far_color[2], offscreen_far_color[3] };
         j["esp_box"] = esp_box;
         j["esp_skeleton"] = esp_skeleton;
         j["esp_name"] = esp_name;
@@ -1813,8 +1863,17 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("esp_weapon_type")) esp_weapon_type = j["esp_weapon_type"];
             if (j.contains("render_distance")) render_distance = j["render_distance"];
             if (j.contains("esp_offscreen")) esp_offscreen = j["esp_offscreen"];
+            if (j.contains("esp_offscreen_style")) esp_offscreen_style = j["esp_offscreen_style"];
+            if (j.contains("offscreen_color_mode")) offscreen_color_mode = j["offscreen_color_mode"];
             if (j.contains("offscreen_radius")) offscreen_radius = j["offscreen_radius"];
             if (j.contains("offscreen_size")) offscreen_size = j["offscreen_size"];
+            
+            if (j.contains("offscreen_near_color") && j["offscreen_near_color"].is_array()) {
+                for (int i = 0; i < 4; i++) offscreen_near_color[i] = j["offscreen_near_color"][i];
+            }
+            if (j.contains("offscreen_far_color") && j["offscreen_far_color"].is_array()) {
+                for (int i = 0; i < 4; i++) offscreen_far_color[i] = j["offscreen_far_color"][i];
+            }
             if (j.contains("language")) language = j["language"];
             if (j.contains("show_macro_overlay")) show_macro_overlay = j["show_macro_overlay"];
             if (j.contains("show_radar_center")) show_radar_center = j["show_radar_center"];

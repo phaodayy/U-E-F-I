@@ -12,27 +12,42 @@ namespace Translation {
         const char* TabRadar;
         const char* TabLoot; // NEW
         
+        const char* VisualPerformance;
         const char* MasterToggle;
+        const char* EnemyESP;
+        const char* TeammateESP;
         const char* PlayerESP;
         const char* InfoESP;
         const char* Box;
         const char* Skeleton;
+        const char* Interpolate;
         const char* HeadCircle;
         const char* VisCheck;
         const char* HealthBar;
+        const char* HealthPos;
         const char* Distance;
         const char* Name;
         const char* ESP_Spectated;
         const char* ESP_Offscreen;
         const char* IndicatorRadius;
         const char* IndicatorSize;
+        const char* IndicatorStyle;
+        const char* ColorMode;
+        const char* ColorNear;
+        const char* ColorFar;
         const char* Weapon;
+        const char* WeaponType;
+        const char* ItemsVehicles;
+        const char* DistThresholds;
+        const char* ColorsTitle;
         const char* RenderDist;
         const char* RadarOffsetX;
         const char* RadarOffsetY;
         const char* ShowCrosshair;
         const char* RadarZoom;
         const char* RadarRotation;
+        const char* RadarEnable;
+        const char* RadarDotSize;
         const char* TabDebug;
         
         const char* AimbotSoon;
@@ -88,9 +103,9 @@ namespace Translation {
         if (CurrentLanguage == 1) { // Vietnamese
             return {
                 "PHAN MEM GZ-CHEAT EXTERNAL", "Hien thi", "Tu ngam", "Macro", "Cai dat", "Radar", "Vat pham & Xe",
-                "Bat tat ESP", "ESP Nguoi choi", "Thong tin", "Khung", "Xuong", "Vong dau", "Cach vat can",
-                "Thanh mau", "Khoang cach", "Ten", "Hien thi nguoi xem", "Canh bao ngoai man hinh", "Khoang cach mui ten", "Kich thuoc mui ten", "Vu khi", "Khoang cach render",
-                "Le ngang Radar (X)", "Le doc Radar (Y)", "Hien tam Radar", "Ti le Zoom Radar", "Goc xoay Radar", "Vat pham",
+                "HIEU NANG HIEN THI", "Bat tat ESP", "ESP Ke dich", "ESP Dong doi", "ESP Nguoi choi", "Thong tin", "Khung", "Xuong", "Noi diem (Muot)", "Vong dau", "Cach vat can",
+                "Thanh mau", "Vi tri thanh mau", "Khoang cach", "Ten", "Hien thi nguoi xem", "Canh bao ngoai man hinh", "Khoang cach mui ten", "Kich thuoc mui ten", "Kieu mui ten", "Che do mau", "Mau o gan", "Mau o xa", "Vu khi", "Kieu ve vu khi", "Vat pham & Xe", "Gioi han khoang cach (Smart LOD)", "Mau sac rieng biet", "Khoang cach render",
+                "Le ngang Radar (X)", "Le doc Radar (Y)", "Hien tam Radar", "Ti le Zoom Radar", "Goc xoay Radar", "Bat tat Radar", "Kich co cham", "Vat pham",
                 "Aimbot dang phat trien", "Macro dang phat trien",
                 "Bat tu dong ngam", "Vung ngam (FOV)", "Do muot (Smooth)", "Phim bam", "Vi tri ngam", "Chi ngam khi thay", "Du doan quy dao",
                 "Bat Ghi tam (No-Recoil)", "Suc manh Ghi tam", "Nhan ban (Humanize)", "Hien thi OSD", "Quet lai phu kien", 
@@ -103,9 +118,9 @@ namespace Translation {
         }
         return {
             "GZ-CHEAT EXTERNAL", "Visuals", "Aimbot", "Macro", "Settings", "Radar", "Items & Vehicles",
-            "Master ESP Toggle", "Player ESP", "Information", "Box", "Skeleton", "Head Circle", "Visibility Check",
-            "Health Bar", "Distance", "Player Name", "Spectated Count", "Off-screen Indicators", "Indicator Radius", "Indicator Size", "Weapon Info", "Render Distance",
-            "Radar X Offset", "Radar Y Offset", "Show Radar Center", "Radar Zoom Scale", "Radar Rotation Offset", "Debug",
+            "VISUAL PERFORMANCE", "Master ESP Toggle", "Enemy ESP", "Teammate ESP", "Player ESP", "Information", "Box", "Skeleton", "Interpolate Joints", "Head Circle", "Visibility Check",
+            "Health Bar", "Health Bar Position", "Distance", "Player Name", "Spectated Count", "Off-screen Indicators", "Indicator Radius", "Indicator Size", "Indicator Style", "Color Mode", "Color (Near)", "Color (Far)", "Weapon Info", "Weapon Draw Mode", "Items & Vehicles", "Distance Thresholds (Culling)", "Individual Colors", "Render Distance",
+            "Radar X Offset", "Radar Y Offset", "Show Radar Center", "Radar Zoom Scale", "Radar Rotation Offset", "Enable Radar", "Dot Size", "Debug",
             "Aimbot Soon", "Macro Soon", 
             "Enable Aimbot", "Aimbot FOV", "Smoothness", "Aim Key", "Target Bone", "Visible Only", "Enable Prediction",
             "Enable No-Recoil", "Recoil Strength", "Humanize", "Show OSD", "Rescan Attachments",

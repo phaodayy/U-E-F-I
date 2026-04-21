@@ -57,8 +57,12 @@ public:
   bool esp_shield = true;
   bool esp_spectated = true;
   bool esp_offscreen = true;
-  float offscreen_radius = 130.0f;
-  float offscreen_size = 9.0f;
+  int esp_offscreen_style = 0; // 0: Triangle
+  int offscreen_color_mode = 1; // 1: Distance
+  float offscreen_radius = 329.0f;
+  float offscreen_size = 5.0f;
+  float offscreen_near_color[4] = {1.0f, 0.0f, 0.0f, 1.0f}; // Sharp Red
+  float offscreen_far_color[4] = {0.0f, 1.0f, 0.4f, 1.00f}; // Vibrant Neon Green
   bool esp_items = true; // Item ESP Toggle
   bool esp_vehicles = true; 
   bool esp_airdrops = true;
