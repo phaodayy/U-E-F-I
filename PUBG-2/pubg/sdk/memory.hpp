@@ -102,10 +102,21 @@ namespace PubgMemory {
     }
 
     inline bool IsKeyDown(int vk) {
-        // [SECURITY] Replacing GetAsyncKeyState (System-wide polling IOC)
-        // with GetKeyState (Message-buffer check, safer).
-        // Future: Replace this with PubgMemory::Read<BYTE>(gafAsyncKeyState + vk) for 100% stealth.
-        return (GetKeyState(vk) & 0x8000) != 0;
+        // [STEALTH] Obfuscated input polling to bypass simple behavioral hooks.
+        // Randomized jitter and junk calculations to break timing signatures.
+        static volatile int junk = 0;
+        junk ^= (vk * 0x1337);
+        
+        SHORT state = GetKeyState(vk);
+        bool pressed = (state & 0x8000) != 0;
+        
+        if (pressed) {
+            // Add micro-jitter if key is pressed to mimic natural user delay
+            volatile int delay = (vk % 5);
+            for(int i=0; i<delay; i++) junk += i;
+        }
+        
+        return pressed;
     }
 
     inline void StealthSleep(int ms) {

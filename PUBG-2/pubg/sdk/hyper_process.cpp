@@ -1,6 +1,7 @@
 #include "hyper_process.hpp"
 
 #include "hypercall_bridge.hpp"
+#include "skCrypt.h"
 
 #include <TlHelp32.h>
 #include <winternl.h>
@@ -174,14 +175,30 @@ namespace
             return false;
         }
 
-        const auto export_address = reinterpret_cast<std::uint8_t*>(GetProcAddress(local_ntoskrnl, "PsInitialSystemProcess"));
-        if (export_address == nullptr)
+        // STEALTH: Manual export resolution without GetProcAddress for sensitive kernel variables
+        auto GetExportRVA = [](HMODULE module, const std::string& name) -> std::uintptr_t {
+            auto* base = reinterpret_cast<std::uint8_t*>(module);
+            auto* dos = reinterpret_cast<PIMAGE_DOS_HEADER>(base);
+            auto* nt = reinterpret_cast<PIMAGE_NT_HEADERS>(base + dos->e_lfanew);
+            auto* export_dir = reinterpret_cast<PIMAGE_EXPORT_DIRECTORY>(base + nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress);
+            auto* names = reinterpret_cast<std::uint32_t*>(base + export_dir->AddressOfNames);
+            auto* ordinals = reinterpret_cast<std::uint16_t*>(base + export_dir->AddressOfNameOrdinals);
+            auto* functions = reinterpret_cast<std::uint32_t*>(base + export_dir->AddressOfFunctions);
+
+            for (std::uint32_t i = 0; i < export_dir->NumberOfNames; i++) {
+                if (name == reinterpret_cast<const char*>(base + names[i])) {
+                    return functions[ordinals[i]];
+                }
+            }
+            return 0;
+        };
+
+        const std::uintptr_t export_rva = GetExportRVA(local_ntoskrnl, skCrypt("PsInitialSystemProcess"));
+        if (export_rva == 0)
         {
             FreeLibrary(local_ntoskrnl);
             return false;
         }
-
-        const auto export_rva = reinterpret_cast<std::uintptr_t>(export_address) - reinterpret_cast<std::uintptr_t>(local_ntoskrnl);
         FreeLibrary(local_ntoskrnl);
 
         g_PsInitialSystemProcess = kernel_base + export_rva;
@@ -262,7 +279,7 @@ bool PubgHyperProcess::QueryProcessData(const std::uint32_t pid, query_process_d
             if (pid != 0) {
                 is_match = (current_pid == pid);
             } else {
-                if (_stricmp(name, "TslGame.exe") == 0) {
+                if (_stricmp(name, skCrypt("TslGame.exe")) == 0) {
                     is_match = true;
                 }
             }
@@ -347,14 +364,17 @@ bool PubgHyperProcess::SetWindowStyleStealthily(HWND hwnd, LONG_PTR new_style)
 std::vector<uint32_t> PubgHyperProcess::GetSafeOverlayPids()
 {
     std::vector<uint32_t> pids;
-    const char* targets[] = { "Discord.exe", "NVIDIA Share", "Medal.exe", "MedalEncoder.exe" };
     
-    for (const char* target : targets) {
+    auto check_and_add = [&](const char* target) {
         std::vector<uint32_t> found = FindAllPidsByGhostWalk(target);
-        for (uint32_t pid : found) {
-            pids.push_back(pid);
-        }
-    }
+        for (uint32_t pid : found) pids.push_back(pid);
+    };
+
+    check_and_add(skCrypt("Discord.exe"));
+    check_and_add(skCrypt("NVIDIA Share"));
+    check_and_add(skCrypt("Medal.exe"));
+    check_and_add(skCrypt("MedalEncoder.exe"));
+
     return pids;
 }
 

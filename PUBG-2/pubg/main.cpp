@@ -100,7 +100,7 @@ std::string GetHWID() {
     }
 
     // 2. Get Disk Physical Serial Number (SSD/HDD thật - Khó spoof)
-    HANDLE hDrive = CreateFileA("\\\\.\\PhysicalDrive0", 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+    HANDLE hDrive = CreateFileA(skCrypt("\\\\.\\PhysicalDrive0"), 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
     if (hDrive != INVALID_HANDLE_VALUE) {
         STORAGE_PROPERTY_QUERY query = { StorageDeviceProperty, PropertyStandardQuery };
         DWORD bytesReturned = 0;
@@ -137,7 +137,8 @@ std::string GetHWID() {
 
     // Hash toàn bộ thông tin phần cứng để tạo mã duy nhất (vẫn giữ format HWID- cho app)
     std::string hashed_raw = Sha::hmac_sha256(skCrypt("GZ_HARD_HWID_FINAL_V1"), hwid_raw);
-    return "HWID-" + hashed_raw.substr(0, 8); // Lấy 8 ký tự hash cho gọn
+    std::string prefix = skCrypt("HWID-");
+    return prefix + hashed_raw.substr(0, 8); // Lấy 8 ký tự hash cho gọn
 }
 
 std::string GetCurrentBinaryHash() {
@@ -228,8 +229,8 @@ bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) 
     if (!hRequest) { WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false; }
 
     std::string nonce = "0";
-    std::string body = "{\"key\":\"" + key + "\",\"hwid\":\"" + hwid + "\",\"nonce\":\"" + nonce + "\"}";
-    std::wstring headers = L"Content-Type: application/json\r\nJWT_SECRET_KEY: MIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHCuqB3nW1bZHqKr8oY74k44pxwhs3xObnHCYxNks2QDqqbxSSR0NFiXH3aqce0ithBBNeT7hE+RHwMSLbLpIgFsv3yfEZLXs4x3k5XKh5q7U+p7dLt3kzf9jwn9Y+NAXCjnV9kO2IT6JnhvsH5OahTDzVflm9EGJdmN6YBaF4b9AgMBAAE=\r\n";
+    std::string body = skCrypt("{\"key\":\"") + key + skCrypt("\",\"hwid\":\"") + hwid + skCrypt("\",\"nonce\":\"") + nonce + skCrypt("\"}");
+    std::wstring headers = skCrypt(L"Content-Type: application/json\r\nJWT_SECRET_KEY: MIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHCuqB3nW1bZHqKr8oY74k44pxwhs3xObnHCYxNks2QDqqbxSSR0NFiXH3aqce0ithBBNeT7hE+RHwMSLbLpIgFsv3yfEZLXs4x3k5XKh5q7U+p7dLt3kzf9jwn9Y+NAXCjnV9kO2IT6JnhvsH5OahTDzVflm9EGJdmN6YBaF4b9AgMBAAE=\r\n");
 
     bool bResults = WinHttpSendRequest(hRequest, headers.c_str(), -1, (LPVOID)body.c_str(), (DWORD)body.length(), (DWORD)body.length(), 0);
     

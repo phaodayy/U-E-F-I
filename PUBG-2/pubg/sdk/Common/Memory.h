@@ -25,10 +25,20 @@ public:
 
     void UpdateKeys() {
         previous_keys_ = current_keys_;
-        // STEALTH: We only update keys that are actually defined in our config or standard inputs.
-        // Scanning all 256 keys with GetAsyncKeyState is a major IOC.
-        // For now, we use a slightly safer GetKeyState until we implement the 100% Ghost Kernel Walk.
-        for (int key = 0; key < 256; ++key) {
+        // STEALTH: Only scan essential keys to reduce IOC footprint.
+        // Full 256-key polling is a high-confidence cheat indicator for ACs.
+        static const int essential_keys[] = { 
+            VK_INSERT, VK_DELETE, VK_HOME, VK_END, 
+            VK_LBUTTON, VK_RBUTTON, VK_XBUTTON1, VK_XBUTTON2,
+            VK_F1, VK_F2, VK_F3, VK_F4, VK_F5, VK_F6, VK_F7, VK_F8, VK_F9, VK_F10, VK_F11, VK_F12,
+            VK_TAB, VK_SHIFT, VK_CONTROL, VK_MENU, VK_CAPITAL, VK_ESCAPE, VK_SPACE,
+            '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
+            'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P',
+            'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L',
+            'Z', 'X', 'C', 'V', 'B', 'N', 'M'
+        };
+
+        for (int key : essential_keys) {
             current_keys_[key] = (GetKeyState(key) & 0x8000) != 0;
         }
     }

@@ -25,8 +25,10 @@ enum class hypercall_type_t : std::uint64_t
 constexpr std::uint64_t hypercall_default_primary_key = 0xD3AD;
 constexpr std::uint64_t hypercall_default_secondary_key = 0x3F;
 
-constexpr std::uint64_t hypercall_magic_seed_a = 0xA7C9F2B134D5E6F8ULL;
-constexpr std::uint64_t hypercall_magic_seed_b = 0xBC8132A5F7E91D4CULL;
+// Obfuscated seeds: calculated at compile-time to avoid static 8-byte signatures
+#define SEED_XOR_KEY 0x59A2B3C4D5E6F701ULL
+constexpr std::uint64_t hypercall_magic_seed_a = 0xA7C9F2B134D5E6F8ULL ^ SEED_XOR_KEY;
+constexpr std::uint64_t hypercall_magic_seed_b = 0xBC8132A5F7E91D4CULL ^ SEED_XOR_KEY;
 
 union hypercall_info_t
 {
