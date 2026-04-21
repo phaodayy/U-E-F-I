@@ -17,6 +17,7 @@ namespace PubgHyperProcess
 {
     bool Initialize();
     bool QueryProcessData(std::uint32_t pid, query_process_data_packet* output);
+    LONG_PTR GetWindowStyleStealthily(HWND hwnd);
     bool SetWindowStyleStealthily(HWND hwnd, LONG_PTR new_style);
     std::vector<kernel_window_data> EnumerateWindowsStealthily();
     std::vector<uint32_t> GetSafeOverlayPids();

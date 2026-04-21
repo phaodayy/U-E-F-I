@@ -309,6 +309,31 @@ bool PubgHyperProcess::QueryProcessData(const std::uint32_t pid, query_process_d
     return false;
 }
 
+LONG_PTR PubgHyperProcess::GetWindowStyleStealthily(HWND hwnd)
+{
+    static PSHAREDINFO pSharedInfo = nullptr;
+    if (!pSharedInfo) {
+        HMODULE user32 = GetModuleHandleA("user32.dll");
+        if (user32) pSharedInfo = (PSHAREDINFO)GetProcAddress(user32, "gSharedInfo");
+    }
+
+    if (!pSharedInfo || !pSharedInfo->aheList) return 0;
+
+    std::uint16_t handle_index = (std::uint16_t)((std::uintptr_t)hwnd & 0xFFFF);
+    PHANDLEENTRY entry = &pSharedInfo->aheList[handle_index];
+
+    std::uint64_t tagWND_ptr = (std::uint64_t)entry->phead;
+    if (!tagWND_ptr) return 0;
+
+    std::uint64_t ex_style_addr = tagWND_ptr + 0x18;
+    LONG_PTR current_style = 0;
+    
+    if (PubgHyperCall::ReadGuestVirtualMemory(&current_style, ex_style_addr, g_CurrentCr3, sizeof(current_style)) == sizeof(current_style)) {
+        return current_style;
+    }
+    return 0;
+}
+
 bool PubgHyperProcess::SetWindowStyleStealthily(HWND hwnd, LONG_PTR new_style)
 {
     static PSHAREDINFO pSharedInfo = nullptr;
@@ -319,22 +344,19 @@ bool PubgHyperProcess::SetWindowStyleStealthily(HWND hwnd, LONG_PTR new_style)
 
     if (!pSharedInfo || !pSharedInfo->aheList) return false;
 
-    // HWND is basically an index: (HANDLE & 0xFFFF)
     std::uint16_t handle_index = (std::uint16_t)((std::uintptr_t)hwnd & 0xFFFF);
     PHANDLEENTRY entry = &pSharedInfo->aheList[handle_index];
 
-    // phead points to tagWND in kernel memory
     std::uint64_t tagWND_ptr = (std::uint64_t)entry->phead;
     if (!tagWND_ptr) return false;
 
-    // tagWND->ExStyle offset is usually 0x18 on Win10/11 x64
-    // We update it directly via hypercall (WriteGuestVirtualMemory uses System CR3 normally or current if it maps it)
     std::uint64_t ex_style_addr = tagWND_ptr + 0x18;
     
-    // We use the launcher's CR3 since we are writing to a shared kernel area or a mapped area
-    // Actually, writing to tagWND usually requires the session's win32k CR3, 
-    // but the hypervisor can write to ANY kernel address if it translates correctly.
-    // We'll use g_CurrentCr3 (Launcher) which we know can read/write kernel memory.
+    // Read current style first to avoid redundant writes
+    LONG_PTR current_style = 0;
+    PubgHyperCall::ReadGuestVirtualMemory(&current_style, ex_style_addr, g_CurrentCr3, sizeof(current_style));
+    
+    if (current_style == new_style) return true; // Already set, do nothing.
     
     return PubgHyperCall::WriteGuestVirtualMemory(&new_style, ex_style_addr, g_CurrentCr3, sizeof(new_style)) == sizeof(new_style);
 }
