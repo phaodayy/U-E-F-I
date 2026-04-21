@@ -804,25 +804,73 @@ void OverlayMenu::RenderFrame() {
                 if (PubgContext::WorldToScreen(player.HeadPosition + delta, head_s) &&
                     PubgContext::WorldToScreen(player.FeetPosition + delta, feet_s)) {
 
-                    float h = abs(head_s.y - feet_s.y);
-                    float w = h * 0.65f; // Tăng chiều rộng để bao phủ súng/balo
-                    
-                    float boxTop = head_s.y - (h * 0.18f); // Kéo cao đỉnh Box lên 18% để không cắt ngang trán / mũ 3
-                    float boxBottom = feet_s.y + (h * 0.06f);
-                    
+                    // --- PERFECT DYNAMIC BOUNDING BOX (BONE SCANNING) ---
+                    float finalBoxTop, finalBoxBottom, finalBoxLeft, finalBoxRight;
+                    bool useDynamicBox = false;
+
+                    if (player.Skeleton) {
+                        float minX = 100000.0f, maxX = -100000.0f;
+                        float minY = 100000.0f, maxY = -100000.0f;
+                        bool foundValidBone = false;
+
+                        // Only scan bones that are actually updated (from SkeletonLists::Bones)
+                        for (int boneIdx : SkeletonLists::Bones) {
+                            if (boneIdx < 0 || boneIdx >= 256) continue;
+                            Vector2 screenPos = player.Skeleton->ScreenBones[boneIdx];
+                            if (screenPos.x == 0 && screenPos.y == 0) continue;
+                            
+                            minX = (std::min)(minX, screenPos.x);
+                            maxX = (std::max)(maxX, screenPos.x);
+                            minY = (std::min)(minY, screenPos.y);
+                            maxY = (std::max)(maxY, screenPos.y);
+                            foundValidBone = true;
+                        }
+
+                        if (foundValidBone) {
+                            float boxH = maxY - minY;
+                            float boxW = maxX - minX;
+                            
+                            // Padding 5% to avoid cutting off limbs
+                            float paddingW = boxW * 0.05f;
+                            float paddingH = boxH * 0.05f;
+                            
+                            finalBoxTop = minY - paddingH;
+                            finalBoxBottom = maxY + paddingH;
+                            finalBoxLeft = minX - paddingW;
+                            finalBoxRight = maxX + paddingW;
+
+                            // Clamp width to a reasonable ratio to avoid extreme stretching
+                            float currentW = finalBoxRight - finalBoxLeft;
+                            float currentH = finalBoxBottom - finalBoxTop;
+                            if (currentW > currentH * 1.2f) { // Max 1.2x height
+                                float center = (finalBoxLeft + finalBoxRight) / 2.0f;
+                                finalBoxLeft = center - (currentH * 0.6f);
+                                finalBoxRight = center + (currentH * 0.6f);
+                            }
+
+                            useDynamicBox = true;
+                        }
+                    }
+
+                    if (!useDynamicBox) {
+                        // Fallback to Ratio Box (using DMA-style 0.5 ratio for "tight" feel)
+                        float h = abs(head_s.y - feet_s.y);
+                        float w = h * 0.50f; 
+                        finalBoxTop = head_s.y - (h * 0.12f);
+                        finalBoxBottom = feet_s.y + (h * 0.05f);
+                        finalBoxLeft = head_s.x - w/2;
+                        finalBoxRight = head_s.x + w/2;
+                    }
+
                     float alphaMult = 1.0f;
                     if (g_Menu.esp_distance_lod) {
                         float fadeStart = (float)g_Menu.render_distance * 0.65f;
                         if (player.Distance > fadeStart) {
                            alphaMult = 1.0f - ((player.Distance - fadeStart) / ((float)g_Menu.render_distance - fadeStart));
-                           if (alphaMult < 0.15f) alphaMult = 0.15f; // Keep a faint ghost for visibility
+                           if (alphaMult < 0.15f) alphaMult = 0.15f; 
                         }
                     }
 
-                    ImU32 color = player.IsVisible ? PubgColors::Visible : PubgColors::Invisible;
-                    if (player.IsTeammate) color = PubgColors::Teammate;
-
-                    // Apply Alpha Scaling
                     auto ApplyAlpha = [&](ImU32 col, float mult) -> ImU32 {
                         int a = (int)((col >> 24) & 0xFF);
                         a = (int)(a * mult);
@@ -837,9 +885,8 @@ void OverlayMenu::RenderFrame() {
                     boxCol = ApplyAlpha(boxCol, alphaMult);
 
                     if (esp_box && player.Distance < g_Menu.box_max_dist) {
-                        // Drawing Box with Border & Soft Rounding
-                        draw->AddRect(ImVec2(head_s.x - w/2, boxTop), ImVec2(head_s.x + w/2, boxBottom), IM_COL32(0,0,0,(int)(180 * alphaMult)), 3.5f, 0, 2.5f); // Border
-                        draw->AddRect(ImVec2(head_s.x - w/2, boxTop), ImVec2(head_s.x + w/2, boxBottom), boxCol, 3.5f, 0, 1.25f);       // Main Box
+                        draw->AddRect(ImVec2(finalBoxLeft, finalBoxTop), ImVec2(finalBoxRight, finalBoxBottom), IM_COL32(0,0,0,(int)(180 * alphaMult)), 2.5f, 0, 2.5f); // Border
+                        draw->AddRect(ImVec2(finalBoxLeft, finalBoxTop), ImVec2(finalBoxRight, finalBoxBottom), boxCol, 2.5f, 0, 1.25f);       // Main Box
                     }
                     
                     // --- PREMIUM HEALTH BAR (DYNAMIC SCALING) ---
@@ -849,12 +896,38 @@ void OverlayMenu::RenderFrame() {
                         healthPercent = std::clamp(healthPercent, 0.0f, 1.0f);
                         
                         // Linear Scaling based on Box Height (PERFECT SCALING)
-                        float boxH = boxBottom - boxTop;
+                        float boxH = finalBoxBottom - finalBoxTop;
+                        float boxW = finalBoxRight - finalBoxLeft;
                         float barThickness = (std::max)(1.0f, boxH * 0.045f); // 4.5% of height, min 1px
                         float barOffset = (std::max)(2.0f, boxH * 0.075f);    // 7.5% of height, min 2px
                         
                         // Disable heavy effects for tiny boxes to avoid "blob" look
                         bool isTiny = (boxH < 35.0f);
+
+                        // 1. POSITIONING
+                        ImVec2 barPosStart, barPosEnd;
+                        bool horizontal = false;
+
+                        switch (g_Menu.esp_health_pos) {
+                            case 0: // Left
+                                barPosStart = ImVec2(finalBoxLeft - barOffset - barThickness, finalBoxTop);
+                                barPosEnd = ImVec2(finalBoxLeft - barOffset, finalBoxBottom);
+                                break;
+                            case 1: // Right
+                                barPosStart = ImVec2(finalBoxRight + barOffset, finalBoxTop);
+                                barPosEnd = ImVec2(finalBoxRight + barOffset + barThickness, finalBoxBottom);
+                                break;
+                            case 2: // Bottom
+                                horizontal = true;
+                                barPosStart = ImVec2(finalBoxLeft, finalBoxBottom + barOffset);
+                                barPosEnd = ImVec2(finalBoxRight, finalBoxBottom + barOffset + barThickness);
+                                break;
+                            case 3: // Top
+                                horizontal = true;
+                                barPosStart = ImVec2(finalBoxLeft, finalBoxTop - barOffset - barThickness);
+                                barPosEnd = ImVec2(finalBoxRight, finalBoxTop - barOffset);
+                                break;
+                        }
                         
                         ImU32 hpColor = IM_COL32(0, 255, 120, 255); // Vibrant Green
                         if (healthPercent < 0.75f) hpColor = IM_COL32(255, 255, 0, 255);
@@ -916,18 +989,7 @@ void OverlayMenu::RenderFrame() {
                             }
                         };
 
-                        if (g_Menu.esp_health_pos == 0) { // LEFT
-                            DrawHealthSegmented(ImVec2(head_s.x - w/2 - barOffset - barThickness, boxTop), ImVec2(head_s.x - w/2 - barOffset, boxBottom), true);
-                        } 
-                        else if (g_Menu.esp_health_pos == 1) { // RIGHT
-                            DrawHealthSegmented(ImVec2(head_s.x + w/2 + barOffset, boxTop), ImVec2(head_s.x + w/2 + barOffset + barThickness, boxBottom), true);
-                        }
-                        else if (g_Menu.esp_health_pos == 2) { // BOTTOM
-                            DrawHealthSegmented(ImVec2(head_s.x - w/2, boxBottom + barOffset), ImVec2(head_s.x + w/2, boxBottom + barOffset + barThickness), false);
-                        }
-                        else if (g_Menu.esp_health_pos == 3) { // TOP
-                            DrawHealthSegmented(ImVec2(head_s.x - w/2, boxTop - barOffset - barThickness), ImVec2(head_s.x + w/2, boxTop - barOffset), false);
-                        }
+                        DrawHealthSegmented(barPosStart, barPosEnd, !horizontal);
                     }
 
                     if (g_Menu.esp_skeleton && player.Distance < g_Menu.skeleton_max_dist) {
@@ -973,27 +1035,26 @@ void OverlayMenu::RenderFrame() {
                     if (player.IsGroggy) infoTag = "[KNOCKED] " + infoTag;
                     if (player.SpectatedCount > 0) infoTag += " [" + std::to_string(player.SpectatedCount) + " \xef\xbd\xa1]";
 
-                    // 1. KHOẢNG CÁCH DƯỚI CHÂN (Distance at feet)
+                    // 1. KHOẢNG CÁCH DƯỚI CHÂN
                     if (g_Menu.esp_distance && player.Distance < g_Menu.distance_txt_max_dist) {
                         char distStr[32];
                         sprintf_s(distStr, sizeof(distStr), "[%dm]", (int)player.Distance);
                         
-                        // Adaptive scale (Smaller when far)
                         float textScale = 1.0f;
                         if (player.Distance > 50.0f) {
                             textScale = 1.0f - ((player.Distance - 50.0f) / 1000.0f);
                             if (textScale < 0.65f) textScale = 0.65f;
                         }
 
-                        float baseFontSize = 13.0f; // Distance is secondary
+                        float baseFontSize = 13.0f;
                         ImVec2 distSize = ImGui::GetFont()->CalcTextSizeA(baseFontSize * textScale, FLT_MAX, 0.0f, distStr);
                         
                         ImU32 distCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.distance_color);
-                        ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), baseFontSize * textScale, ImVec2(head_s.x - distSize.x / 2, boxBottom + 2.0f), ApplyAlpha(distCol, alphaMult), distStr);
+                        ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), baseFontSize * textScale, ImVec2(head_s.x - distSize.x / 2, finalBoxBottom + 2.0f), ApplyAlpha(distCol, alphaMult), distStr);
                     }
 
-                    // 2. VŨ KHÍ NẰM TRÊN ĐẦU (Weapon above head)
-                    float currentTopY = boxTop - 2.0f; 
+                    // 2. VŨ KHÍ NẰM TRÊN ĐẦU
+                    float currentTopY = finalBoxTop - 2.0f; 
 
                     if (g_Menu.esp_weapon && !player.WeaponName.empty() && player.Distance < g_Menu.weapon_max_dist) {
                         if (g_Menu.esp_weapon_type == 1) { // IMAGE
@@ -1001,19 +1062,18 @@ void OverlayMenu::RenderFrame() {
                             if (tex && tex->SRV) {
                                 float distanceScale = (player.Distance < 5.0f) ? 5.0f : player.Distance;
                                 float targetWidth = 1200.0f / distanceScale; 
-                                
                                 if (targetWidth < 25.0f) targetWidth = 25.0f;
-                                if (targetWidth > 80.0f) targetWidth = 80.0f; // Capped for close range
+                                if (targetWidth > 80.0f) targetWidth = 80.0f; 
 
                                 float scale = targetWidth / tex->Width;
                                 float iconW = tex->Width * scale;
                                 float iconH = tex->Height * scale;
                                 
-                                currentTopY -= iconH; // Subtract height to move upwards
+                                currentTopY -= iconH;
                                 ImU32 weaponCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.weapon_color);
                                 draw->AddImage((ImTextureID)tex->SRV, ImVec2(head_s.x - iconW/2, currentTopY), ImVec2(head_s.x + iconW/2, currentTopY + iconH), ImVec2(0,0), ImVec2(1,1), ApplyAlpha(weaponCol, alphaMult * 0.85f));
-                                currentTopY -= 2.0f; // Add padding
-                            } else { // Fallback text
+                                currentTopY -= 2.0f; 
+                            } else { 
                                 ImVec2 ws = ImGui::CalcTextSize(player.WeaponName.c_str());
                                 currentTopY -= ws.y;
                                 ImU32 weaponCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.weapon_color);
@@ -1021,18 +1081,17 @@ void OverlayMenu::RenderFrame() {
                                 currentTopY -= 2.0f;
                             }
                         } else { // TEXT
-                        ImU32 weaponCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.weapon_color);
-                        float baseFontSize = 14.5f;
-                        ImVec2 ws = ImGui::GetFont()->CalcTextSizeA(baseFontSize, FLT_MAX, 0.0f, player.WeaponName.c_str());
-                        currentTopY -= ws.y;
-                        draw->AddText(ImVec2(head_s.x - ws.x/2, currentTopY), ApplyAlpha(weaponCol, alphaMult), player.WeaponName.c_str());
-                        currentTopY -= 2.0f;
+                            ImU32 weaponCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.weapon_color);
+                            float baseFontSize = 14.5f;
+                            ImVec2 ws = ImGui::GetFont()->CalcTextSizeA(baseFontSize, FLT_MAX, 0.0f, player.WeaponName.c_str());
+                            currentTopY -= ws.y;
+                            draw->AddText(ImVec2(head_s.x - ws.x/2, currentTopY), ApplyAlpha(weaponCol, alphaMult), player.WeaponName.c_str());
+                            currentTopY -= 2.0f;
                         }
                     }
 
-                    // 3. TÊN & TRẠNG THÁI NẰM CÙNG (Name/Status above Weapon)
+                    // 3. TÊN & TRẠNG THÁI
                     if ((g_Menu.esp_name || player.IsGroggy) && player.Distance < g_Menu.name_max_dist) { 
-                        // Adaptive scale
                         float textScale = 1.0f;
                         if (player.Distance > 50.0f) {
                             textScale = 1.0f - ((player.Distance - 50.0f) / 1000.0f);
