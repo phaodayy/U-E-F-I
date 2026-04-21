@@ -1035,7 +1035,6 @@ void OverlayMenu::RenderFrame() {
                     std::string infoTag = player.Name;
                     if (infoTag.empty() || infoTag == "Player") infoTag = "Unknown";
                     if (player.IsGroggy) infoTag = "[KNOCKED] " + infoTag;
-                    if (player.SpectatedCount > 0) infoTag += " [" + std::to_string(player.SpectatedCount) + " \xef\xbd\xa1]";
 
                     // 1. KHOẢNG CÁCH DƯỚI CHÂN
                     if (g_Menu.esp_distance && player.Distance < g_Menu.distance_txt_max_dist) {
@@ -1109,6 +1108,29 @@ void OverlayMenu::RenderFrame() {
                         if (player.IsGroggy) nameCol = IM_COL32(255, 0, 0, 255);
                         
                         ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), baseFontSize * textScale, ImVec2(head_s.x - ns.x / 2, currentTopY), ApplyAlpha(nameCol, alphaMult), infoTag.c_str());
+                    }
+
+                    // 4. SPECTATED COUNT (EYE WARNING)
+                    if (g_Menu.esp_spectated && player.SpectatedCount > 0 && player.Distance < g_Menu.name_max_dist) {
+                        char specBuf[64];
+                        sprintf_s(specBuf, sizeof(specBuf), "EYE: %d", player.SpectatedCount);
+                        
+                        float textScale = 1.0f;
+                        if (player.Distance > 50.0f) {
+                            textScale = 1.0f - ((player.Distance - 50.0f) / 1000.0f);
+                            if (textScale < 0.65f) textScale = 0.65f;
+                        }
+
+                        float baseFontSize = 15.0f; // Slightly larger for alert
+                        ImVec2 ss = ImGui::GetFont()->CalcTextSizeA(baseFontSize * textScale, FLT_MAX, 0.0f, specBuf);
+                        currentTopY -= (ss.y + 2.0f);
+                        
+                        // Vibrant Orange/Yellow Warning Color
+                        ImU32 specCol = IM_COL32(255, 170, 0, 255); 
+                        
+                        // Outline
+                        ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), baseFontSize * textScale, ImVec2(head_s.x - ss.x / 2 + 1, currentTopY + 1), IM_COL32(0, 0, 0, (int)(200 * alphaMult)), specBuf);
+                        ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), baseFontSize * textScale, ImVec2(head_s.x - ss.x / 2, currentTopY), ApplyAlpha(specCol, alphaMult), specBuf);
                     }
                 }
             }
@@ -1284,6 +1306,7 @@ void OverlayMenu::RenderFrame() {
                         ImGui::SameLine(); ImGui::Checkbox("Interpolate", &g_Menu.esp_skel_interp);
                     }
                     ImGui::Checkbox(Lang.Name, &g_Menu.esp_name);
+                    ImGui::Checkbox(Lang.ESP_Spectated, &g_Menu.esp_spectated);
                     ImGui::Checkbox(Lang.Distance, &esp_distance);
                     ImGui::Checkbox(language == 1 ? "Thanh mau (Health)" : "Health Bar", &g_Menu.esp_health);
                     if (g_Menu.esp_health) {
