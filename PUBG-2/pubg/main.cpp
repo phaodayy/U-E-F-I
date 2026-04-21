@@ -517,19 +517,11 @@ bool CheckHardwareBreakpoints() {
 
 bool CheckBlacklistedProcesses() {
     const wchar_t* blacklisted[] = { L"ida64.exe", L"x64dbg.exe", L"cheatengine-x86_64.exe", L"Fiddler.exe", L"wireshark.exe", L"HTTPDebuggerSvc.exe", L"ida.exe", L"x32dbg.exe" };
-    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    PROCESSENTRY32W pe = {sizeof(pe)};
-    if (Process32FirstW(snap, &pe)) {
-        do {
-            for (const auto& proc : blacklisted) {
-                if (_wcsicmp(pe.szExeFile, proc) == 0) {
-                    CloseHandle(snap);
-                    return true;
-                }
-            }
-        } while (Process32NextW(snap, &pe));
+    for (const auto& proc : blacklisted) {
+        if (PubgHyperProcess::FindProcessIdByName(proc) != 0) {
+            return true;
+        }
     }
-    CloseHandle(snap);
     return false;
 }
 
@@ -545,26 +537,27 @@ bool SecurityCheck() {
     typedef NTSTATUS (NTAPI *pNtQueryInformationProcess)(HANDLE, PROCESSINFOCLASS, PVOID, ULONG, PULONG);
     auto ntqip = (pNtQueryInformationProcess)GetProcAddress(GetModuleHandleA(skCrypt("ntdll.dll")), skCrypt("NtQueryInformationProcess"));
     if (ntqip) {
-        // [7] ProcessDebugPort
         DWORD_PTR debugPort = 0;
         if (ntqip(GetCurrentProcess(), (PROCESSINFOCLASS)7, &debugPort, sizeof(debugPort), NULL) == 0 && debugPort != 0)
             return false;
 
-        // [0x1E] ProcessDebugObjectHandle
         HANDLE debugObject = NULL;
         if (ntqip(GetCurrentProcess(), (PROCESSINFOCLASS)0x1E, &debugObject, sizeof(debugObject), NULL) == 0 && debugObject != NULL)
             return false;
 
-        // [0x1F] ProcessDebugFlags (Should be 1 if NO debugger, 0 if debugger)
         DWORD debugFlags = 1;
         if (ntqip(GetCurrentProcess(), (PROCESSINFOCLASS)0x1F, &debugFlags, sizeof(debugFlags), NULL) == 0 && debugFlags == 0)
             return false;
     }
 
-    // 3. Blacklist Window Check
-    if (GetModuleHandleA(skCrypt("renderdoc.dll"))) return false;
-    if (FindWindowA(skCrypt("Window"), skCrypt("x64dbg"))) return false;
-    if (FindWindowA(skCrypt("Window"), skCrypt("Cheat Engine"))) return false;
+    // 3. Stealth Window Check via Hyper-Kernel traversal
+    auto windows = PubgHyperProcess::EnumerateWindowsStealthily();
+    for (const auto& wnd : windows) {
+        // Simple class/title check on the stealthily enumerated windows
+        char className[256] = {};
+        GetClassNameA(wnd.hwnd, className, sizeof(className));
+        if (strstr(className, "x64dbg") || strstr(className, "Cheat Engine")) return false;
+    }
     
     if (CheckHardwareBreakpoints()) return false;
     if (CheckBlacklistedProcesses()) return false;
@@ -607,62 +600,6 @@ struct ProcessPickDebugInfo {
 };
 
 static ProcessPickDebugInfo g_pid_debug = {};
-
-DWORD GetProcessIdByName(const wchar_t* name) {
-    ULONG bufferSize = 0x10000;
-    void* buffer = nullptr;
-    NTSTATUS status;
-
-    do {
-        buffer = malloc(bufferSize);
-        if (!buffer) return 0;
-        status = ((NTSTATUS(NTAPI*)(ULONG, PVOID, ULONG, PULONG))GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtQuerySystemInformation"))(5, buffer, bufferSize, &bufferSize);
-        if (status == 0xC0000004L) {
-            free(buffer);
-            bufferSize *= 2;
-        }
-    } while (status == 0xC0000004L);
-
-    if (status != 0) {
-        if (buffer) free(buffer);
-        return 0;
-    }
-
-    DWORD finalPid = 0;
-    SIZE_T maxMemory = 0;
-    auto systemProcInfo = (PPUBG_SYSTEM_PROCESS_INFORMATION)buffer;
-
-    while (true) {
-        if (systemProcInfo->ImageName.Buffer && _wcsicmp(systemProcInfo->ImageName.Buffer, name) == 0) {
-            g_pid_debug.matched_name++;
-            DWORD candPid = (DWORD)(uintptr_t)systemProcInfo->UniqueProcessId;
-            SIZE_T candMemory = systemProcInfo->WorkingSetSize;
-            
-            // Debug the found process memory to the user
-            if (candMemory > 500 * 1024 * 1024) { // Only print for large-ish processes to avoid flooding
-                 // std::cout << "\n[DEBUG][PID] Found TslGame: PID=" << candPid << " RAM=" << (candMemory / (1024 * 1024)) << " MB";
-            }
-
-            if (candMemory > maxMemory) {
-                maxMemory = candMemory;
-                finalPid = candPid;
-            }
-        }
-
-        if (systemProcInfo->NextEntryOffset == 0) break;
-        systemProcInfo = (PPUBG_SYSTEM_PROCESS_INFORMATION)((BYTE*)systemProcInfo + systemProcInfo->NextEntryOffset);
-    }
-
-    free(buffer);
-
-    if (finalPid != 0) {
-        g_pid_debug.selected_pid = finalPid;
-        g_pid_debug.selected_working_set = (uint64_t)maxMemory;
-        return finalPid;
-    }
-
-    return 0;
-}
 
 int main() {
   // protector::kill_game(); // Tam comment: khong tu dong tat game khi mo tool
@@ -768,63 +705,37 @@ int main() {
   static wchar_t game_name[] = { 'T','s','l','G','a','m','e','.','e','x','e',0 };
   while (!pid) {
     wait_pid_count++;
-    DWORD candidate_pid = GetProcessIdByName(game_name);
-    if (!candidate_pid) {
+    query_process_data_packet candidate_data = {};
+    if (!PubgHyperProcess::QueryProcessData(0, &candidate_data)) {
       first_candidate_tick = 0;
       pending_pid = 0;
       std::cout << skCrypt(".");
       if (wait_pid_count % 5 == 0) {
-        std::cout << "\n[DEBUG][PID] try=" << wait_pid_count
-                  << " matched=" << g_pid_debug.matched_name
-                  << " q_ok=" << g_pid_debug.query_ok
-                  << " q_fail=" << g_pid_debug.query_fail
-                  << " bad_ctx=" << g_pid_debug.invalid_ctx
-                  << " bad_mz=" << g_pid_debug.invalid_mz
-                  << " open_fail=" << g_pid_debug.open_fail
-                  << std::endl;
+        std::cout << "\n[DEBUG][PID] try=" << wait_pid_count << " (Ghost-walking for TslGame...)" << std::endl;
       }
-      Sleep(1000 + (rand() % 500)); // Task 3.3: Random delay
+      Sleep(1000 + (rand() % 500));
       continue;
     }
+
+    DWORD candidate_pid = (DWORD)candidate_data.process_id;
 
     if (pending_pid != candidate_pid) {
       pending_pid = candidate_pid;
       first_candidate_tick = GetTickCount64();
       std::cout << "\n[DEBUG][PID] candidate_detected=" << pending_pid
-                << " matched=" << g_pid_debug.matched_name
-                << " wsMB=" << (g_pid_debug.selected_working_set / (1024ull * 1024ull))
-                << " privMB=" << (g_pid_debug.selected_private_usage / (1024ull * 1024ull))
-                << " cycles=" << g_pid_debug.selected_cycles
                 << " settling_ms=" << kPidSettleDelayMs
                 << std::endl;
     }
 
     const ULONGLONG elapsed = GetTickCount64() - first_candidate_tick;
     if (elapsed < kPidSettleDelayMs) {
-      if (wait_pid_count % 2 == 0) {
-        std::cout << "\n[DEBUG][PID] settling candidate=" << pending_pid
-                  << " elapsed_ms=" << elapsed
-                  << "/" << kPidSettleDelayMs
-                  << " matched=" << g_pid_debug.matched_name
-                  << " wsMB=" << (g_pid_debug.selected_working_set / (1024ull * 1024ull))
-                  << " privMB=" << (g_pid_debug.selected_private_usage / (1024ull * 1024ull))
-                  << " cycles=" << g_pid_debug.selected_cycles
-                  << std::endl;
-      }
+      // Throttled settling...
       Sleep(1000 + (rand() % 500));
       continue;
     }
 
     pid = candidate_pid;
   }
-  std::cout << std::endl;
-  std::cout << "[DEBUG][PID] selected=" << g_pid_debug.selected_pid
-            << " base=0x" << std::hex << g_pid_debug.selected_base
-            << " cr3=0x" << g_pid_debug.selected_cr3 << std::dec
-            << " wsMB=" << (g_pid_debug.selected_working_set / (1024ull * 1024ull))
-            << " privMB=" << (g_pid_debug.selected_private_usage / (1024ull * 1024ull))
-            << " cycles=" << g_pid_debug.selected_cycles
-            << std::endl;
   
   if (!PubgMemory::AttachToGameStealthily()) {
       SetConsoleColor(12);
@@ -845,30 +756,6 @@ int main() {
       sync_count++;
       std::cout << (g_is_vietnamese ? skCrypt("\r[*] Dang cho game san sang qua hyper [") : skCrypt("\r[*] Waiting for hyper-backed game state [")) << sync_count << skCrypt("]...   ") << std::flush;
       if (sync_count % 5 == 0) {
-          query_process_data_packet dbg_qdata = {};
-          bool qok = QueryProcessData(pid, &dbg_qdata);
-          uint64_t dbg_base = qok ? (uint64_t)dbg_qdata.base_address : PubgMemory::g_BaseAddress;
-          uint64_t rawUWorld = 0;
-          uint64_t decUWorld = 0;
-          uint64_t decLevel = 0;
-          if (dbg_base) {
-              rawUWorld = PubgMemory::Read<uint64_t>(dbg_base + pubg_config::offsets::UWorld);
-              decUWorld = PubgDecrypt::Xe(rawUWorld);
-              if (decUWorld > 0x1000000) {
-                  uint64_t rawLevel = PubgMemory::Read<uint64_t>(decUWorld + pubg_config::offsets::CurrentLevel);
-                  decLevel = PubgDecrypt::Xe(rawLevel);
-              }
-          }
-          std::cout << "\n[DEBUG][SYNC] try=" << sync_count
-                    << " pid=" << pid
-                    << " qok=" << (qok ? 1 : 0)
-                    << " base=0x" << std::hex << dbg_base
-                    << " cr3=0x" << (qok ? dbg_qdata.cr3 : PubgMemory::g_ProcessCr3)
-                    << " rawUW=0x" << rawUWorld
-                    << " decUW=0x" << decUWorld
-                    << " decLv=0x" << decLevel
-                    << std::dec
-                    << std::endl;
       }
       Sleep(1000 + (rand() % 200));
   }

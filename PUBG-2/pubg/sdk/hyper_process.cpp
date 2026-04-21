@@ -229,6 +229,12 @@ bool PubgHyperProcess::QueryProcessData(const std::uint32_t pid, query_process_d
     }
 
     const auto start_eprocess = current_eprocess;
+    
+    std::uint32_t best_pid = 0;
+    std::uint64_t best_cr3 = 0;
+    std::uint64_t best_base = 0;
+    std::uint64_t best_peb = 0;
+    std::uint64_t max_threads = 0;
 
     do
     {
@@ -236,31 +242,51 @@ bool PubgHyperProcess::QueryProcessData(const std::uint32_t pid, query_process_d
         std::uint64_t current_cr3 = 0;
         std::uint64_t current_base = 0;
         std::uint64_t current_peb = 0;
+        std::uint64_t current_commit = 0;
 
         PubgHyperCall::ReadGuestVirtualMemory(&current_pid, current_eprocess + eprocess::UniqueProcessId, walk_cr3, 8);
         PubgHyperCall::ReadGuestVirtualMemory(&current_cr3, current_eprocess + eprocess::DirectoryTableBase, walk_cr3, 8);
         PubgHyperCall::ReadGuestVirtualMemory(&current_base, current_eprocess + eprocess::SectionBaseAddress, walk_cr3, 8);
         PubgHyperCall::ReadGuestVirtualMemory(&current_peb, current_eprocess + eprocess::Peb, walk_cr3, 8);
+        
+        // EPROCESS + 0x5f0 is ActiveThreads (number of threads in this process)
+        // Main PUBG game usually has 50-100+ threads, while child/zombie processes have very few (<10).
+        std::uint64_t current_threads = 0;
+        PubgHyperCall::ReadGuestVirtualMemory(&current_threads, current_eprocess + 0x5f0, walk_cr3, 4); // It's a DWORD
 
-        bool match = false;
         char name[16] = {};
         if (PubgHyperCall::ReadGuestVirtualMemory(name, current_eprocess + g_ImageFileNameOffset, walk_cr3, 15) > 0) {
+            bool is_match = false;
             if (pid != 0) {
-                match = (current_pid == pid);
+                is_match = (current_pid == pid);
             } else {
-                if (_strnicmp(name, "TslGame", 7) == 0) {
-                    match = true;
+                if (_stricmp(name, "TslGame.exe") == 0) {
+                    is_match = true;
                 }
             }
-        }
 
-        if (match && current_cr3 != 0)
-        {
-            output->process_id = static_cast<uint32_t>(current_pid);
-            output->cr3 = current_cr3;
-            output->base_address = reinterpret_cast<void*>(current_base);
-            output->peb = reinterpret_cast<void*>(current_peb);
-            return true;
+            if (is_match) {
+
+                if (current_cr3 != 0) {
+                    if (pid != 0) {
+                        best_pid = (std::uint32_t)current_pid;
+                        best_cr3 = current_cr3;
+                        best_base = current_base;
+                        best_peb = current_peb;
+                        break; 
+                    } else {
+                        // Priority Heuristic: Pick the process with the MOST threads among TslGame.exe candidates.
+                        // This is much smarter than PID order as the main engine is always multi-threaded.
+                        if (best_pid == 0 || current_threads > max_threads) {
+                            max_threads = current_threads;
+                            best_pid = (std::uint32_t)current_pid;
+                            best_cr3 = current_cr3;
+                            best_base = current_base;
+                            best_peb = current_peb;
+                        }
+                    }
+                }
+            }
         }
 
         std::uint64_t next_link = 0;
@@ -268,10 +294,17 @@ bool PubgHyperProcess::QueryProcessData(const std::uint32_t pid, query_process_d
         {
             break;
         }
-
         current_eprocess = next_link - eprocess::ActiveProcessLinks;
     }
     while (current_eprocess != 0 && current_eprocess != start_eprocess);
+
+    if (best_pid != 0) {
+        output->process_id = best_pid;
+        output->cr3 = best_cr3;
+        output->base_address = reinterpret_cast<void*>(best_base);
+        output->peb = reinterpret_cast<void*>(best_peb);
+        return true;
+    }
 
     return false;
 }
@@ -394,30 +427,44 @@ DWORD PubgHyperProcess::FindProcessIdByName(const wchar_t* const process_name)
         return 0;
     }
 
-    const HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (snapshot == INVALID_HANDLE_VALUE)
+    if (!ResolvePsInitialSystemProcess()) return 0;
+
+    std::uint64_t current_eprocess = 0;
+    std::uint64_t walk_cr3 = g_CurrentCr3;
+
+    if (PubgHyperCall::ReadGuestVirtualMemory(&current_eprocess, g_PsInitialSystemProcess, walk_cr3, 8) != 8 || current_eprocess == 0)
     {
         return 0;
     }
 
-    PROCESSENTRY32W process_entry = {};
-    process_entry.dwSize = sizeof(process_entry);
-
-    DWORD result = 0;
-
-    if (Process32FirstW(snapshot, &process_entry))
+    const auto start_eprocess = current_eprocess;
+    do
     {
-        do
-        {
-            if (_wcsicmp(process_entry.szExeFile, process_name) == 0)
-            {
-                result = process_entry.th32ProcessID;
-                break;
+        std::uint64_t current_pid = 0;
+        PubgHyperCall::ReadGuestVirtualMemory(&current_pid, current_eprocess + eprocess::UniqueProcessId, walk_cr3, 8);
+
+        char name[16] = {};
+        if (PubgHyperCall::ReadGuestVirtualMemory(name, current_eprocess + g_ImageFileNameOffset, walk_cr3, 15) > 0) {
+            // Convert wchar_t input to char for comparison with kernel ImageFileName
+            char target_name[16] = {};
+            for (int i = 0; i < 15 && process_name[i] != L'\0'; ++i) {
+                target_name[i] = (char)process_name[i];
+            }
+
+            if (_strnicmp(name, target_name, 15) == 0) {
+                return (DWORD)current_pid;
             }
         }
-        while (Process32NextW(snapshot, &process_entry));
-    }
 
-    CloseHandle(snapshot);
-    return result;
+        std::uint64_t next_link = 0;
+        if (PubgHyperCall::ReadGuestVirtualMemory(&next_link, current_eprocess + eprocess::ActiveProcessLinks, walk_cr3, 8) != 8 || next_link == 0)
+        {
+            break;
+        }
+
+        current_eprocess = next_link - eprocess::ActiveProcessLinks;
+    }
+    while (current_eprocess != 0 && current_eprocess != start_eprocess);
+
+    return 0;
 }
