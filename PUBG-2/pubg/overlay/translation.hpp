@@ -23,6 +23,7 @@ namespace Translation {
         const char* Distance;
         const char* Name;
         const char* ESP_Spectated;
+        const char* ESP_Offscreen;
         const char* Weapon;
         const char* RenderDist;
         const char* RadarOffsetX;
@@ -86,7 +87,7 @@ namespace Translation {
             return {
                 "PHAN MEM GZ-CHEAT EXTERNAL", "Hien thi", "Tu ngam", "Macro", "Cai dat", "Radar", "Vat pham & Xe",
                 "Bat tat ESP", "ESP Nguoi choi", "Thong tin", "Khung", "Xuong", "Vong dau", "Cach vat can",
-                "Thanh mau", "Khoang cach", "Ten", "Hien thi nguoi xem", "Vu khi", "Khoang cach render",
+                "Thanh mau", "Khoang cach", "Ten", "Hien thi nguoi xem", "Canh bao ngoai man hinh", "Vu khi", "Khoang cach render",
                 "Le ngang Radar (X)", "Le doc Radar (Y)", "Hien tam Radar", "Ti le Zoom Radar", "Goc xoay Radar", "Vat pham",
                 "Aimbot dang phat trien", "Macro dang phat trien",
                 "Bat tu dong ngam", "Vung ngam (FOV)", "Do muot (Smooth)", "Phim bam", "Vi tri ngam", "Chi ngam khi thay", "Du doan quy dao",
@@ -101,7 +102,7 @@ namespace Translation {
         return {
             "GZ-CHEAT EXTERNAL", "Visuals", "Aimbot", "Macro", "Settings", "Radar", "Items & Vehicles",
             "Master ESP Toggle", "Player ESP", "Information", "Box", "Skeleton", "Head Circle", "Visibility Check",
-            "Health Bar", "Distance", "Player Name", "Spectated Count", "Weapon Info", "Render Distance",
+            "Health Bar", "Distance", "Player Name", "Spectated Count", "Off-screen Indicators", "Weapon Info", "Render Distance",
             "Radar X Offset", "Radar Y Offset", "Show Radar Center", "Radar Zoom Scale", "Radar Rotation Offset", "Debug",
             "Aimbot Soon", "Macro Soon", 
             "Enable Aimbot", "Aimbot FOV", "Smoothness", "Aim Key", "Target Bone", "Visible Only", "Enable Prediction",

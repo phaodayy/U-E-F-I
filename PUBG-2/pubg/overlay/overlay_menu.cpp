@@ -800,6 +800,20 @@ void OverlayMenu::RenderFrame() {
             }
 
             if (esp_toggle) {
+                float alphaMult = 1.0f;
+                if (g_Menu.esp_distance_lod) {
+                    float fadeStart = (float)g_Menu.render_distance * 0.65f;
+                    if (player.Distance > fadeStart) {
+                        alphaMult = 1.0f - ((player.Distance - fadeStart) / ((float)g_Menu.render_distance - fadeStart));
+                        if (alphaMult < 0.15f) alphaMult = 0.15f; 
+                    }
+                }
+                auto ApplyAlpha = [&](ImU32 col, float mult) -> ImU32 {
+                    int a = (int)((col >> 24) & 0xFF);
+                    a = (int)(a * mult);
+                    return (col & 0x00FFFFFF) | (a << 24);
+                };
+
                 Vector2 head_s, feet_s;
                 if (PubgContext::WorldToScreen(player.HeadPosition + delta, head_s) &&
                     PubgContext::WorldToScreen(player.FeetPosition + delta, feet_s)) {
@@ -864,20 +878,6 @@ void OverlayMenu::RenderFrame() {
                         finalBoxRight = head_s.x + w/2;
                     }
 
-                    float alphaMult = 1.0f;
-                    if (g_Menu.esp_distance_lod) {
-                        float fadeStart = (float)g_Menu.render_distance * 0.65f;
-                        if (player.Distance > fadeStart) {
-                           alphaMult = 1.0f - ((player.Distance - fadeStart) / ((float)g_Menu.render_distance - fadeStart));
-                           if (alphaMult < 0.15f) alphaMult = 0.15f; 
-                        }
-                    }
-
-                    auto ApplyAlpha = [&](ImU32 col, float mult) -> ImU32 {
-                        int a = (int)((col >> 24) & 0xFF);
-                        a = (int)(a * mult);
-                        return (col & 0x00FFFFFF) | (a << 24);
-                    };
 
                     ImU32 boxCol = player.IsVisible ? 
                         ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.box_visible_color) : 
@@ -1132,6 +1132,30 @@ void OverlayMenu::RenderFrame() {
                         ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), baseFontSize * textScale, ImVec2(head_s.x - ss.x / 2 + 1, currentTopY + 1), IM_COL32(0, 0, 0, (int)(200 * alphaMult)), specBuf);
                         ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), baseFontSize * textScale, ImVec2(head_s.x - ss.x / 2, currentTopY), ApplyAlpha(specCol, alphaMult), specBuf);
                     }
+                } else {
+                    // --- 4. OFF-SCREEN INDICATORS (DMA STYLE) ---
+                    if (g_Menu.esp_offscreen && !player.IsTeammate && player.Distance < g_Menu.render_distance) {
+                        float dx = player.Position.x - G_CameraLocation.x;
+                        float dy = player.Position.y - G_CameraLocation.y;
+                        
+                        float angle_rad = atan2f(dy, dx);
+                        float cam_yaw_rad = G_CameraRotation.y * (3.14159265f / 180.0f);
+                        float rel_angle = angle_rad - cam_yaw_rad - (3.14159265f / 2.0f);
+                        
+                        float radius = 130.0f; 
+                        ImVec2 arrowPos = ImVec2(ScreenCenterX + cosf(rel_angle) * radius, (ScreenHeight / 2.0f) + sinf(rel_angle) * radius);
+                        
+                        ImU32 arrowCol = player.IsVisible ? IM_COL32(0, 255, 150, 180) : IM_COL32(255, 255, 255, 100);
+                        if (player.SpectatedCount > 0) arrowCol = IM_COL32(255, 170, 0, 220); 
+                        
+                        float sz = 9.0f;
+                        ImVec2 p1 = ImVec2(arrowPos.x + cosf(rel_angle) * sz * 1.5f, arrowPos.y + sinf(rel_angle) * sz * 1.5f);
+                        ImVec2 p2 = ImVec2(arrowPos.x + cosf(rel_angle + 2.4f) * sz, arrowPos.y + sinf(rel_angle + 2.4f) * sz);
+                        ImVec2 p3 = ImVec2(arrowPos.x + cosf(rel_angle - 2.4f) * sz, arrowPos.y + sinf(rel_angle - 2.4f) * sz);
+                        
+                        draw->AddTriangleFilled(p1, p2, p3, ApplyAlpha(arrowCol, alphaMult));
+                        draw->AddTriangle(p1, p2, p3, IM_COL32(0, 0, 0, (int)(150 * alphaMult)), 1.25f);
+                    }
                 }
             }
         }
@@ -1307,6 +1331,7 @@ void OverlayMenu::RenderFrame() {
                     }
                     ImGui::Checkbox(Lang.Name, &g_Menu.esp_name);
                     ImGui::Checkbox(Lang.ESP_Spectated, &g_Menu.esp_spectated);
+                    ImGui::Checkbox(Lang.ESP_Offscreen, &g_Menu.esp_offscreen);
                     ImGui::Checkbox(Lang.Distance, &esp_distance);
                     ImGui::Checkbox(language == 1 ? "Thanh mau (Health)" : "Health Bar", &g_Menu.esp_health);
                     if (g_Menu.esp_health) {

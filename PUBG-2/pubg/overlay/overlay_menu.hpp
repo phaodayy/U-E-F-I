@@ -56,6 +56,7 @@ public:
   int esp_weapon_type = 1; // 0: Text, 1: Icon
   bool esp_shield = true;
   bool esp_spectated = true;
+  bool esp_offscreen = true;
   bool esp_items = true; // Item ESP Toggle
   bool esp_vehicles = true; 
   bool esp_airdrops = true;
