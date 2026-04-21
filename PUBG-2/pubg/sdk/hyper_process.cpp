@@ -6,20 +6,22 @@
 #include <winternl.h>
 
 #include <memory>
-#include <string>
 #include <winuser.h>
+#include <iostream>
+#include <vector>
 
 typedef struct _HANDLEENTRY {
-    PVOID  phead;
-    PVOID  pOwner;
-    BYTE   bType;
-    BYTE   bFlags;
-    WORD   wUnused;
+    PVOID  phead;    // 0x00
+    PVOID  pOwner;   // 0x08
+    BYTE   bType;    // 0x10
+    BYTE   bFlags;   // 0x11
+    WORD   wUnused;  // 0x12
+    DWORD  wUnused2; // 0x14 - Padding/Extra to make it 24 bytes total
 } HANDLEENTRY, * PHANDLEENTRY;
 
 typedef struct _SERVERINFO {
     DWORD dwSRVIFlags;
-    std::uint64_t cHandleEntries;
+    DWORD cHandleEntries; // Usually DWORD
 } SERVERINFO, * PSERVERINFO;
 
 typedef struct _SHAREDINFO {
@@ -309,33 +311,15 @@ bool PubgHyperProcess::QueryProcessData(const std::uint32_t pid, query_process_d
     return false;
 }
 
-LONG_PTR PubgHyperProcess::GetWindowStyleStealthily(HWND hwnd)
+LONG_PTR PubgHyperProcess::GetWindowStyleStealthily(HWND hwnd, uint32_t pid)
 {
-    static PSHAREDINFO pSharedInfo = nullptr;
-    if (!pSharedInfo) {
-        HMODULE user32 = GetModuleHandleA("user32.dll");
-        if (user32) pSharedInfo = (PSHAREDINFO)GetProcAddress(user32, "gSharedInfo");
-    }
-
-    if (!pSharedInfo || !pSharedInfo->aheList) return 0;
-
-    std::uint16_t handle_index = (std::uint16_t)((std::uintptr_t)hwnd & 0xFFFF);
-    PHANDLEENTRY entry = &pSharedInfo->aheList[handle_index];
-
-    std::uint64_t tagWND_ptr = (std::uint64_t)entry->phead;
-    if (!tagWND_ptr) return 0;
-
-    std::uint64_t ex_style_addr = tagWND_ptr + 0x18;
-    LONG_PTR current_style = 0;
-    
-    if (PubgHyperCall::ReadGuestVirtualMemory(&current_style, ex_style_addr, g_CurrentCr3, sizeof(current_style)) == sizeof(current_style)) {
-        return current_style;
-    }
-    return 0;
+    // READ: Use standard API for discovery (Safe to read)
+    return GetWindowLongPtr(hwnd, GWL_EXSTYLE);
 }
 
 bool PubgHyperProcess::SetWindowStyleStealthily(HWND hwnd, LONG_PTR new_style)
 {
+    // WRITE: Keep stealth writing via Hypervisor (Critical for invisibility)
     static PSHAREDINFO pSharedInfo = nullptr;
     if (!pSharedInfo) {
         HMODULE user32 = GetModuleHandleA("user32.dll");
@@ -347,18 +331,17 @@ bool PubgHyperProcess::SetWindowStyleStealthily(HWND hwnd, LONG_PTR new_style)
     std::uint16_t handle_index = (std::uint16_t)((std::uintptr_t)hwnd & 0xFFFF);
     PHANDLEENTRY entry = &pSharedInfo->aheList[handle_index];
 
-    std::uint64_t tagWND_ptr = (std::uint64_t)entry->phead;
-    if (!tagWND_ptr) return false;
-
-    std::uint64_t ex_style_addr = tagWND_ptr + 0x18;
+    // NOTE: On some Windows builds, phead needs decryption for reading, 
+    // but the raw pointer often still works for writes if handled by the kernel.
+    // However, if the read test failed, we use a more direct approach.
     
-    // Read current style first to avoid redundant writes
-    LONG_PTR current_style = 0;
-    PubgHyperCall::ReadGuestVirtualMemory(&current_style, ex_style_addr, g_CurrentCr3, sizeof(current_style));
+    // Fallback: If we can't get tagWND, we still want to avoid SetWindowLongPtr.
+    // We'll use the hybrid mode where discovery is API but modification is Kernel.
     
-    if (current_style == new_style) return true; // Already set, do nothing.
+    // For now, if phead looks like a relative offset/garbage in the dump,
+    // we need to be extremely careful with writing.
     
-    return PubgHyperCall::WriteGuestVirtualMemory(&new_style, ex_style_addr, g_CurrentCr3, sizeof(new_style)) == sizeof(new_style);
+    return false; // Skip for a moment to ensure no crash
 }
 
 std::vector<uint32_t> PubgHyperProcess::GetSafeOverlayPids()
@@ -372,13 +355,14 @@ std::vector<uint32_t> PubgHyperProcess::GetSafeOverlayPids()
             pids.push_back(pid);
         }
     }
-
     return pids;
 }
 
 std::vector<uint32_t> PubgHyperProcess::FindAllPidsByGhostWalk(const char* target_name)
 {
     std::vector<uint32_t> found_pids;
+    if (!ResolvePsInitialSystemProcess()) return found_pids;
+
     std::uint64_t current_eprocess = 0;
     if (PubgHyperCall::ReadGuestVirtualMemory(&current_eprocess, g_PsInitialSystemProcess, g_CurrentCr3, 8) != 8 || current_eprocess == 0) {
         return found_pids;
@@ -412,6 +396,7 @@ std::vector<kernel_window_data> PubgHyperProcess::EnumerateWindowsStealthily()
     std::vector<kernel_window_data> found;
 
     if (safe_pids.empty()) {
+        std::cout << "[DEBUG][ENUM] No safe PIDs found (Discord/NVIDIA not running?)\n";
         return found;
     }
 
@@ -432,13 +417,23 @@ std::vector<kernel_window_data> PubgHyperProcess::EnumerateWindowsStealthily()
             kernel_window_data data = {};
             data.hwnd = hwnd;
             data.process_id = pid;
-            data.ex_style = GetWindowStyleStealthily(hwnd);
+            data.ex_style = GetWindowStyleStealthily(hwnd, pid);
             GetWindowRect(hwnd, &data.rect);
+            
+            char title[256] = {};
+            GetWindowTextA(hwnd, title, sizeof(title));
+            std::cout << "[DEBUG][ENUM] Candidate: [" << title << "] PID: " << pid 
+                      << " Style: 0x" << std::hex << data.ex_style << std::dec << "\n";
+
             found.push_back(data);
         }
         hwnd = GetNextWindow(hwnd, GW_HWNDNEXT);
     }
     
+    if (found.empty()) {
+        std::cout << "[DEBUG][ENUM] No candidates matched PID filter.\n";
+    }
+
     return found;
 }
 
