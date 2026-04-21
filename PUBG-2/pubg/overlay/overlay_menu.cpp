@@ -808,47 +808,49 @@ void OverlayMenu::RenderFrame() {
                     float finalBoxTop, finalBoxBottom, finalBoxLeft, finalBoxRight;
                     bool useDynamicBox = false;
 
-                    if (player.Skeleton) {
+                    if (true) { // Try to build dynamic box from PlayerData members
                         float minX = 100000.0f, maxX = -100000.0f;
                         float minY = 100000.0f, maxY = -100000.0f;
                         bool foundValidBone = false;
 
-                        // Only scan bones that are actually updated (from SkeletonLists::Bones)
-                        for (int boneIdx : SkeletonLists::Bones) {
-                            if (boneIdx < 0 || boneIdx >= 256) continue;
-                            Vector2 screenPos = player.Skeleton->ScreenBones[boneIdx];
-                            if (screenPos.x == 0 && screenPos.y == 0) continue;
-                            
-                            minX = (std::min)(minX, screenPos.x);
-                            maxX = (std::max)(maxX, screenPos.x);
-                            minY = (std::min)(minY, screenPos.y);
-                            maxY = (std::max)(maxY, screenPos.y);
-                            foundValidBone = true;
+                        // List of all bones available in PlayerData to form the bounding box
+                        Vector3 bones[] = {
+                            player.Bone_Head, player.Bone_Neck, player.Bone_Chest, player.Bone_Pelvis,
+                            player.Bone_LShoulder, player.Bone_LElbow, player.Bone_LHand,
+                            player.Bone_RShoulder, player.Bone_RElbow, player.Bone_RHand,
+                            player.Bone_LThigh, player.Bone_LKnee, player.Bone_LFoot,
+                            player.Bone_RThigh, player.Bone_RKnee, player.Bone_RFoot
+                        };
+
+                        for (const auto& boneWorld : bones) {
+                            if (boneWorld.IsZero()) continue;
+                            Vector2 screen;
+                            if (PubgContext::WorldToScreen(boneWorld + delta, screen)) {
+                                minX = (std::min)(minX, screen.x);
+                                maxX = (std::max)(maxX, screen.x);
+                                minY = (std::min)(minY, screen.y);
+                                maxY = (std::max)(maxY, screen.y);
+                                foundValidBone = true;
+                            }
                         }
 
                         if (foundValidBone) {
                             float boxH = maxY - minY;
                             float boxW = maxX - minX;
                             
-                            // Padding 5% to avoid cutting off limbs
-                            float paddingW = boxW * 0.05f;
-                            float paddingH = boxH * 0.05f;
+                            // Padding for "Breathing Room" (15% Width, 12% Height)
+                            float paddingW = (std::max)(boxW * 0.15f, 4.0f);
+                            float paddingH = (std::max)(boxH * 0.12f, 4.0f);
                             
-                            finalBoxTop = minY - paddingH;
+                            finalBoxTop = minY - (boxH * 0.15f); // 15% Height offset to clear any Helmet/Hat
                             finalBoxBottom = maxY + paddingH;
                             finalBoxLeft = minX - paddingW;
                             finalBoxRight = maxX + paddingW;
 
-                            // Clamp width to a reasonable ratio to avoid extreme stretching
-                            float currentW = finalBoxRight - finalBoxLeft;
-                            float currentH = finalBoxBottom - finalBoxTop;
-                            if (currentW > currentH * 1.2f) { // Max 1.2x height
-                                float center = (finalBoxLeft + finalBoxRight) / 2.0f;
-                                finalBoxLeft = center - (currentH * 0.6f);
-                                finalBoxRight = center + (currentH * 0.6f);
+                            // Sanity check to avoid zero-sized boxes
+                            if (finalBoxBottom - finalBoxTop > 5.0f && finalBoxRight - finalBoxLeft > 2.0f) {
+                                useDynamicBox = true;
                             }
-
-                            useDynamicBox = true;
                         }
                     }
 
