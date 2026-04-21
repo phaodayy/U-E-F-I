@@ -842,20 +842,92 @@ void OverlayMenu::RenderFrame() {
                         draw->AddRect(ImVec2(head_s.x - w/2, boxTop), ImVec2(head_s.x + w/2, boxBottom), boxCol, 3.5f, 0, 1.25f);       // Main Box
                     }
                     
-                    // --- HEALTH BAR (KAKA STYLE) ---
+                    // --- PREMIUM HEALTH BAR (DYNAMIC SCALING) ---
                     if (g_Menu.esp_health && player.Distance < g_Menu.hp_max_dist) {
                         float displayHealth = player.IsGroggy ? player.GroggyHealth : player.Health;
                         float healthPercent = displayHealth / 100.0f;
-                        if (healthPercent > 1.0f) healthPercent = 1.0f;
-                        if (healthPercent < 0.0f) healthPercent = 0.0f;
+                        healthPercent = std::clamp(healthPercent, 0.0f, 1.0f);
                         
-                        ImU32 hpColor = IM_COL32(0, 255, 0, 255);
-                        if (healthPercent < 0.7f) hpColor = IM_COL32(255, 255, 0, 255);
-                        if (healthPercent < 0.3f) hpColor = IM_COL32(255, 0, 0, 255);
+                        // Linear Scaling based on Box Height (PERFECT SCALING)
+                        float boxH = boxBottom - boxTop;
+                        float barThickness = (std::max)(1.0f, boxH * 0.045f); // 4.5% of height, min 1px
+                        float barOffset = (std::max)(2.0f, boxH * 0.075f);    // 7.5% of height, min 2px
+                        
+                        // Disable heavy effects for tiny boxes to avoid "blob" look
+                        bool isTiny = (boxH < 35.0f);
+                        
+                        ImU32 hpColor = IM_COL32(0, 255, 120, 255); // Vibrant Green
+                        if (healthPercent < 0.75f) hpColor = IM_COL32(255, 255, 0, 255);
+                        if (healthPercent < 0.35f) hpColor = IM_COL32(255, 50, 50, 255);
+                        hpColor = ApplyAlpha(hpColor, alphaMult);
+                        ImU32 bgCol = IM_COL32(0, 0, 0, (int)(150 * alphaMult));
 
-                        float barH = (boxBottom - boxTop) * healthPercent;
-                        draw->AddRectFilled(ImVec2(head_s.x - w/2 - 6, boxTop), ImVec2(head_s.x - w/2 - 3, boxBottom), IM_COL32(0,0,0,(int)(150 * alphaMult)));
-                        draw->AddRectFilled(ImVec2(head_s.x - w/2 - 6, boxBottom - barH), ImVec2(head_s.x - w/2 - 3, boxBottom), ApplyAlpha(hpColor, alphaMult));
+                        auto DrawHealthSegmented = [&](ImVec2 pMin, ImVec2 pMax, bool vertical) {
+                            if (!isTiny) {
+                                // 1. Deep Shadow / Outer Border (Only for large boxes)
+                                draw->AddRect(ImVec2(pMin.x - 1, pMin.y - 1), ImVec2(pMax.x + 1, pMax.y + 1), IM_COL32(0, 0, 0, (int)(180 * alphaMult)), 1.5f);
+                            }
+                            
+                            // 2. Glass Background
+                            draw->AddRectFilled(pMin, pMax, bgCol, 1.0f);
+
+                            if (vertical) {
+                                float h = pMax.y - pMin.y;
+                                float barH = h * healthPercent;
+                                ImVec2 hpMax = pMax;
+                                ImVec2 hpMin = ImVec2(pMin.x, pMax.y - barH);
+
+                                // 3. Vibrant Health Fill
+                                draw->AddRectFilled(hpMin, hpMax, hpColor, 1.0f);
+
+                                // 4. Glass Glint (Only if not tiny)
+                                if (!isTiny) {
+                                    float glintW = (pMax.x - pMin.x) * 0.45f;
+                                    draw->AddRectFilled(hpMin, ImVec2(hpMin.x + glintW, hpMax.y), IM_COL32(255, 255, 255, (int)(50 * alphaMult)), 1.0f);
+                                    
+                                    // 5. Segments
+                                    if (boxH > 45.0f) {
+                                        for (int i = 1; i <= 3; i++) {
+                                            float lineY = pMax.y - (h * (i * 0.25f));
+                                            draw->AddLine(ImVec2(pMin.x, lineY), ImVec2(pMax.x, lineY), IM_COL32(0, 0, 0, 100));
+                                        }
+                                    }
+                                }
+                            } else {
+                                float w_bar = pMax.x - pMin.x;
+                                float barW = w_bar * healthPercent;
+                                ImVec2 hpMin = pMin;
+                                ImVec2 hpMax = ImVec2(pMin.x + barW, pMax.y);
+
+                                // 3. Vibrant Health Fill
+                                draw->AddRectFilled(hpMin, hpMax, hpColor, 1.0f);
+
+                                if (!isTiny) {
+                                    float glintH = (pMax.y - pMin.y) * 0.45f;
+                                    draw->AddRectFilled(hpMin, ImVec2(hpMax.x, hpMin.y + glintH), IM_COL32(255, 255, 255, (int)(50 * alphaMult)), 1.0f);
+
+                                    if (boxH > 45.0f) {
+                                        for (int i = 1; i <= 3; i++) {
+                                            float lineX = pMin.x + (w_bar * (i * 0.25f));
+                                            draw->AddLine(ImVec2(lineX, pMin.y), ImVec2(lineX, pMax.y), IM_COL32(0, 0, 0, 100));
+                                        }
+                                    }
+                                }
+                            }
+                        };
+
+                        if (g_Menu.esp_health_pos == 0) { // LEFT
+                            DrawHealthSegmented(ImVec2(head_s.x - w/2 - barOffset - barThickness, boxTop), ImVec2(head_s.x - w/2 - barOffset, boxBottom), true);
+                        } 
+                        else if (g_Menu.esp_health_pos == 1) { // RIGHT
+                            DrawHealthSegmented(ImVec2(head_s.x + w/2 + barOffset, boxTop), ImVec2(head_s.x + w/2 + barOffset + barThickness, boxBottom), true);
+                        }
+                        else if (g_Menu.esp_health_pos == 2) { // BOTTOM
+                            DrawHealthSegmented(ImVec2(head_s.x - w/2, boxBottom + barOffset), ImVec2(head_s.x + w/2, boxBottom + barOffset + barThickness), false);
+                        }
+                        else if (g_Menu.esp_health_pos == 3) { // TOP
+                            DrawHealthSegmented(ImVec2(head_s.x - w/2, boxTop - barOffset - barThickness), ImVec2(head_s.x + w/2, boxTop - barOffset), false);
+                        }
                     }
 
                     if (g_Menu.esp_skeleton && player.Distance < g_Menu.skeleton_max_dist) {
@@ -1152,6 +1224,11 @@ void OverlayMenu::RenderFrame() {
                     }
                     ImGui::Checkbox(Lang.Name, &g_Menu.esp_name);
                     ImGui::Checkbox(Lang.Distance, &esp_distance);
+                    ImGui::Checkbox(language == 1 ? "Thanh mau (Health)" : "Health Bar", &g_Menu.esp_health);
+                    if (g_Menu.esp_health) {
+                        const char* hpPos[] = { "LEFT", "RIGHT", "BOTTOM", "TOP" };
+                        ImGui::Combo(language == 1 ? "Vi tri Thanh mau" : "Health Bar Pos", &g_Menu.esp_health_pos, hpPos, IM_ARRAYSIZE(hpPos));
+                    }
                     ImGui::Checkbox("Items & Vehicles", &g_Menu.esp_items);
                     ImGui::Separator();
                     
@@ -1491,6 +1568,8 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["esp_skeleton"] = esp_skeleton;
         j["esp_name"] = esp_name;
         j["esp_distance"] = esp_distance;
+        j["esp_health"] = esp_health;
+        j["esp_health_pos"] = esp_health_pos;
         j["esp_items"] = esp_items;
         j["esp_snapline"] = esp_snapline;
         j["esp_weapon"] = esp_weapon;
@@ -1577,6 +1656,8 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("esp_skeleton")) esp_skeleton = j["esp_skeleton"];
             if (j.contains("esp_name")) esp_name = j["esp_name"];
             if (j.contains("esp_distance")) esp_distance = j["esp_distance"];
+            if (j.contains("esp_health")) esp_health = j["esp_health"];
+            if (j.contains("esp_health_pos")) esp_health_pos = j["esp_health_pos"];
             if (j.contains("esp_items")) esp_items = j["esp_items"];
             if (j.contains("esp_snapline")) esp_snapline = j["esp_snapline"];
             if (j.contains("esp_weapon")) esp_weapon = j["esp_weapon"];

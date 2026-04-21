@@ -48,6 +48,7 @@ public:
   bool esp_head_circle = false;
   bool esp_skeleton = true;
   bool esp_health = true;
+  int esp_health_pos = 0;
   bool esp_distance = true;
   bool esp_name = true;
   bool esp_snapline = false;
