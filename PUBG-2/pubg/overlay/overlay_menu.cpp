@@ -1171,13 +1171,13 @@ void OverlayMenu::RenderFrame() {
                         float cam_yaw_rad = G_CameraRotation.y * (3.14159265f / 180.0f);
                         float rel_angle = angle_rad - cam_yaw_rad - (3.14159265f / 2.0f);
                         
-                        float radius = 130.0f; 
+                        float radius = g_Menu.offscreen_radius; 
                         ImVec2 arrowPos = ImVec2(ScreenCenterX + cosf(rel_angle) * radius, (ScreenHeight / 2.0f) + sinf(rel_angle) * radius);
                         
                         ImU32 arrowCol = player.IsVisible ? IM_COL32(0, 255, 150, 180) : IM_COL32(255, 255, 255, 100);
                         if (player.SpectatedCount > 0) arrowCol = IM_COL32(255, 170, 0, 220); 
                         
-                        float sz = 9.0f;
+                        float sz = g_Menu.offscreen_size;
                         ImVec2 p1 = ImVec2(arrowPos.x + cosf(rel_angle) * sz * 1.5f, arrowPos.y + sinf(rel_angle) * sz * 1.5f);
                         ImVec2 p2 = ImVec2(arrowPos.x + cosf(rel_angle + 2.4f) * sz, arrowPos.y + sinf(rel_angle + 2.4f) * sz);
                         ImVec2 p3 = ImVec2(arrowPos.x + cosf(rel_angle - 2.4f) * sz, arrowPos.y + sinf(rel_angle - 2.4f) * sz);
@@ -1363,6 +1363,12 @@ void OverlayMenu::RenderFrame() {
                     ImGui::Checkbox(Lang.Name, &g_Menu.esp_name);
                     ImGui::Checkbox(Lang.ESP_Spectated, &g_Menu.esp_spectated);
                     ImGui::Checkbox(Lang.ESP_Offscreen, &g_Menu.esp_offscreen);
+                    if (g_Menu.esp_offscreen) {
+                        ImGui::Indent(20.0f);
+                        ImGui::SliderFloat(Lang.IndicatorRadius, &g_Menu.offscreen_radius, 50.0f, 600.0f, "%.0f px");
+                        ImGui::SliderFloat(Lang.IndicatorSize, &g_Menu.offscreen_size, 4.0f, 30.0f, "%.0f px");
+                        ImGui::Unindent(20.0f);
+                    }
                     ImGui::Checkbox(Lang.Distance, &esp_distance);
                     ImGui::Checkbox(language == 1 ? "Thanh mau (Health)" : "Health Bar", &g_Menu.esp_health);
                     if (g_Menu.esp_health) {
@@ -1704,6 +1710,9 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["esp_toggle"] = esp_toggle;
         j["esp_show_enemies"] = esp_show_enemies;
         j["esp_show_teammates"] = esp_show_teammates;
+        j["esp_offscreen"] = esp_offscreen;
+        j["offscreen_radius"] = offscreen_radius;
+        j["offscreen_size"] = offscreen_size;
         j["esp_box"] = esp_box;
         j["esp_skeleton"] = esp_skeleton;
         j["esp_name"] = esp_name;
@@ -1803,6 +1812,9 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("esp_weapon")) esp_weapon = j["esp_weapon"];
             if (j.contains("esp_weapon_type")) esp_weapon_type = j["esp_weapon_type"];
             if (j.contains("render_distance")) render_distance = j["render_distance"];
+            if (j.contains("esp_offscreen")) esp_offscreen = j["esp_offscreen"];
+            if (j.contains("offscreen_radius")) offscreen_radius = j["offscreen_radius"];
+            if (j.contains("offscreen_size")) offscreen_size = j["offscreen_size"];
             if (j.contains("language")) language = j["language"];
             if (j.contains("show_macro_overlay")) show_macro_overlay = j["show_macro_overlay"];
             if (j.contains("show_radar_center")) show_radar_center = j["show_radar_center"];

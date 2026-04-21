@@ -57,6 +57,8 @@ public:
   bool esp_shield = true;
   bool esp_spectated = true;
   bool esp_offscreen = true;
+  float offscreen_radius = 130.0f;
+  float offscreen_size = 9.0f;
   bool esp_items = true; // Item ESP Toggle
   bool esp_vehicles = true; 
   bool esp_airdrops = true;
