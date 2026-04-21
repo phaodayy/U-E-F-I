@@ -670,8 +670,9 @@ namespace PubgContext {
                         bool isVeh  = (cname.find("Vehicle") != std::string::npos || cname.find("Uaz") != std::string::npos || cname.find("Dacia") != std::string::npos);
                         bool isAir  = (cname.find("AirDrop") != std::string::npos || cname.find("CarePackage") != std::string::npos);
                         bool isBox  = (cname.find("DeadBox") != std::string::npos || cname.find("ItemPackage") != std::string::npos);
+                        bool isProj = (cname.find("Proj") != std::string::npos || cname.find("Grenade") != std::string::npos || cname.find("Molotov") != std::string::npos);
 
-                        if (isLoot || isVeh || isAir || isBox) {
+                        if (isLoot || isVeh || isAir || isBox || isProj) {
                             uint64_t root = ReadXe(actor + PubgOffsets::RootComponent);
                             if (root) {
                                 Vector3 pos = Read<Vector3>(root + PubgOffsets::ComponentLocation);
@@ -679,8 +680,8 @@ namespace PubgContext {
                                 if (dist < (isLoot ? 100.0f : 1000.0f)) {
                                     ItemData item;
                                     item.Position = pos; item.Distance = dist;
-                                    item.Name = isVeh ? "Vehicle" : (isAir ? "Air Drop" : (isBox ? "Dead Box" : "Loot"));
-                                    item.IsImportant = (isAir || isVeh);
+                                    item.Name = isVeh ? "Vehicle" : (isAir ? "Air Drop" : (isBox ? "Dead Box" : (isProj ? "PROJECTILE" : "Loot")));
+                                    item.IsImportant = (isAir || isVeh || isProj);
                                     tempItems.push_back(item);
                                 }
                             }

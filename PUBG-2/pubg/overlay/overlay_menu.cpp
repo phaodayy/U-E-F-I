@@ -1176,6 +1176,8 @@ void OverlayMenu::RenderFrame() {
                     if (g_Menu.esp_airdrops) { should_draw = true; col = IM_COL32(255, 50, 50, 255); }
                 } else if (item.Name == "Dead Box") {
                     if (g_Menu.esp_deadboxes && item.Distance < 200.0f) { should_draw = true; col = IM_COL32(255, 140, 0, 255); }
+                } else if (item.Name == "PROJECTILE") {
+                    should_draw = true; col = IM_COL32(255, 0, 0, 255); // BRIGHT RED FOR DANGER
                 } else { // Generic items
                     if (g_Menu.esp_items && item.Distance < g_Menu.loot_max_dist) should_draw = true;
                 }
