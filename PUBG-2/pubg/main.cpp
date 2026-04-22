@@ -68,6 +68,12 @@ typedef struct _PUBG_SYSTEM_PROCESS_INFORMATION {
 #include "sdk/Utils/ADVobfuscator.h"
 #include "sdk/protector/protector.hpp"
 
+// [GZ-DEBUG] Force OBF_STR bypass after all includes to prevent template errors in Debug mode
+#ifdef _DEBUG
+#undef OBF_STR
+#define OBF_STR(x) x
+#endif
+
 // SECURITY V3: RSA Public Key (RSASSA-PKCS1-v1_5)
 // This key replaces the vulnerable HMAC salt.
 const std::vector<BYTE> RSA_PUBLIC_KEY = {

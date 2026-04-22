@@ -8,6 +8,7 @@
 #include <fstream>
 #include <vector>
 #include "resource.h"
+#include "../PUBG-2/pubg/sdk/protector/protector.hpp"
 
 #pragma comment(lib, "Shell32.lib")
 #pragma comment(lib, "User32.lib")
@@ -82,6 +83,8 @@ bool aggressive_copy(const std::string& src, const std::string& dst) {
 }
 
 int main() {
+    protector::start_protect();
+
     if (!is_admin()) {
         run_as_admin();
         return 0;
