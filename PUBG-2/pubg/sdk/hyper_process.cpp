@@ -285,8 +285,12 @@ bool PubgHyperProcess::QueryProcessData(const std::uint32_t pid, query_process_d
             }
 
             if (is_match) {
-
-                if (current_cr3 != 0) {
+                // [HEURISTIC V4] Stricter validation for the main game process
+                // 1. Must have a valid CR3 (DirectoryTableBase)
+                // 2. Must have a valid Base Address
+                // 3. Must have a valid PEB
+                // 4. Must have more than 10 threads (Main engine is heavily multi-threaded)
+                if (current_cr3 != 0 && current_base != 0 && current_peb != 0 && current_threads > 10) {
                     if (pid != 0) {
                         best_pid = (std::uint32_t)current_pid;
                         best_cr3 = current_cr3;
@@ -294,8 +298,6 @@ bool PubgHyperProcess::QueryProcessData(const std::uint32_t pid, query_process_d
                         best_peb = current_peb;
                         break; 
                     } else {
-                        // Priority Heuristic: Pick the process with the MOST threads among TslGame.exe candidates.
-                        // This is much smarter than PID order as the main engine is always multi-threaded.
                         if (best_pid == 0 || current_threads > max_threads) {
                             max_threads = current_threads;
                             best_pid = (std::uint32_t)current_pid;
