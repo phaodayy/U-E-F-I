@@ -28,6 +28,10 @@ BoneArray:
 Sig: 48 8B 81 E8 0A 00 00
 Logic: Member Offset (Displacement) [3, 7]
 
+WeaponProcessor:
+Sig: 8B EC 48 83 EC 50 48 8B F9 48 8B 91 68 09 00 00
+Logic: Member Offset (Displacement) [12, 16]
+
 PhysxSDK:
 Sig: 48 8D 0D ? ? ? ? E8 ? ? ? ? 48 8B C8 48 8B 05 ? ? ? ? 48 8B D9
 Logic: RIP-Relative [3, 7]
