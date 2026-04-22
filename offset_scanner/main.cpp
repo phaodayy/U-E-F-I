@@ -185,8 +185,8 @@ int main() {
     };
 
     // 1. Core RVAs
-    scanRVA("XenuineDecrypt", "48 89 0D ? ? ? ? 48 8D 05 ? ? ? ? 48 89 05 ? ? ? ? 48 8D 05", 3, 7);
-    scanRVA("UWorld", "48 8B 05 ? ? ? ? 48 3B 05 ? ? ? ? 48 0F 44 C8 48 89 05", 3, 7);
+    scanRVA("XenuineDecrypt", "48 8B 05 ? ? ? ? 49 8B D0 8B CE FF D0 E9", 3, 7);
+    scanRVA("UWorld", "48 8B 05 ? ? ? ? 33 DB 48 39 1D", 3, 7);
     scanRVA("GNames", "48 8D 0D ? ? ? ? 48 83 3D ? ? ? ? 00 75 ? 48 8B D1 B9 ? ? ? ? 48 8B 05 ? ? ? ? FF D0 EB ? 8B C1 35 ? ? ? ? 05", 3, 7);
     scanRVA("GObjects", "4C 8B 1D ? ? ? ? 4C 8B B4 24", 3, 7);
 

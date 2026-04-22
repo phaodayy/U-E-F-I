@@ -197,16 +197,6 @@ void TypewriterPrint(const std::string& text, int delay_ms = 20, int color = 7) 
 #endif
 
 void SelectLanguage() {
-#ifdef _DEBUG
-    SetConsoleColor(10);
-    std::cout << 
-"   ____            _____ \n"
-"  / ___| ___ _ __ |__  / \n"
-" | |  _ / _ \\ '_ \\  / /  \n"
-" | |_| |  __/ | | |/ /_  \n"
-"  \\____|\\___|_| |_/____| \n\n";
-    std::cout << skCrypt("    >> System Ready (Vietnamese Default) <<\n\n");
-#endif
     g_is_vietnamese = true;
 }
 
