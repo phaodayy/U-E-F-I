@@ -89,6 +89,30 @@ int main() {
             uint64_t rva = Scanner::GetRelative(addr, off, inst) - base;
             results[name] = rva;
             std::cout << "[SCAN] " << name << ": 0x" << std::hex << rva << "\n";
+        } else {
+            std::cout << "[FAIL] Could not find " << name << " pattern.\n";
+        }
+    };
+
+    auto scanDisp = [&](std::string name, const char* pat, int off) {
+        uint64_t addr = Scanner::FindPattern(pat, base, size);
+        if (addr) {
+            uint32_t disp = PubgMemory::Read<uint32_t>(addr + off);
+            results[name] = disp;
+            std::cout << "[DISP] " << name << ": 0x" << std::hex << disp << "\n";
+        } else {
+            std::cout << "[FAIL] Could not find " << name << " pattern.\n";
+        }
+    };
+
+    auto scanByte = [&](std::string name, const char* pat, int off) {
+        uint64_t addr = Scanner::FindPattern(pat, base, size);
+        if (addr) {
+            uint8_t val = PubgMemory::Read<uint8_t>(addr + off);
+            results[name] = val;
+            std::cout << "[BYTE] " << name << ": 0x" << std::hex << (int)val << "\n";
+        } else {
+            std::cout << "[FAIL] Could not find " << name << " pattern.\n";
         }
     };
 
@@ -96,12 +120,24 @@ int main() {
     scan("UWorld", "48 8B 05 ? ? ? ? 33 DB 48 39 1D", 3, 7);
     scan("GNames", "48 8D 0D ? ? ? ? 48 83 3D ? ? ? ? 00 75 ? 48 8B D1 B9 ? ? ? ? 48 8B 05 ? ? ? ? FF D0 EB ? 8B C1 35 ? ? ? ? 05", 3, 7);
     scan("GObjects", "4C 8B 1D ? ? ? ? 4C 8B B4 24", 3, 7);
+    scan("PhysxSDK", "48 8B 05 ?? ?? ?? ?? C3 CC CC CC CC CC CC CC CC 48 89", 3, 7);
 
-    // --- 2. DECRYPTION KEYs (Verified Offsets) ---
-    uint64_t addr1 = Scanner::FindPattern("24 88 00 00 00 E8 ? ? ? ? 90 BF", base, size);
-    if (addr1) {
-        results["DecryptNameIndexXorKey1"] = PubgMemory::Read<uint32_t>(addr1 + 12);
+    // --- 2. MEMBER OFFSETS ---
+    scanDisp("TeamNumber", "8B 81 ?? ?? ?? ?? 8D 98 ?? ?? ?? ?? 3D ?? ?? ?? ?? 0F 4C", 2); 
+    scanDisp("BoneArray", "48 8B 81 ?? ?? ?? ?? 48 85 C0 74 04 8B 40 ?? C3 C3 CC CC CC 48 8B C4 48 89 58 08", 3);
+    scanDisp("WeaponProcessor", "8B EC 48 83 EC 50 48 8B F9 48 8B 91 ?? ?? ?? ??", 12);
+    scanDisp("BoneCount", "48 83 EC 28 48 8B 81 ?? ?? ?? ?? 49 39", 7);
+    scanDisp("Eyes", "F3 0F 10 8E ?? ?? ?? ?? 41 83 FD 06 7C 0B 45 8A F3", 4);
+    scanByte("GNamesPtr", "49 8B ?? ?? B8 ?? ?? ?? ?? 41 F7 ?? 45 8B ?? 45 8D", 3);
+    scanDisp("ChunkSize", "41 69 ?? ?? ?? ?? ?? 44 2B E8 4D 85 C0", 3);
+
+    // --- 3. DECRYPTION KEYs (Verified Offsets) ---
+    uint64_t addrNameDec = Scanner::FindPattern("41 8B ?? ?? BB ?? ?? ?? ?? 33 ?? 8B ?? C1 ?? 17", base, size);
+    if (addrNameDec) {
+        results["DecryptNameIndexXorKey1"] = PubgMemory::Read<uint32_t>(addrNameDec + 5);
+        results["DecryptNameIndexRval"] = PubgMemory::Read<uint8_t>(addrNameDec + 14);
         std::cout << "[KEY]  DecryptNameIndexXorKey1: 0x" << std::hex << results["DecryptNameIndexXorKey1"] << "\n";
+        std::cout << "[KEY]  DecryptNameIndexRval: 0x" << std::hex << (int)results["DecryptNameIndexRval"] << "\n";
     }
 
     uint64_t addr23 = Scanner::FindPattern("BE ? ? ? ? 41 23 C6 C1 E1 19 0B C1 33 D0 41 BF", base, size);
@@ -110,6 +146,14 @@ int main() {
         results["DecryptNameIndexXorKey2"] = PubgMemory::Read<uint32_t>(addr23 + 17);
         std::cout << "[KEY]  DecryptNameIndexXorKey3: 0x" << std::hex << results["DecryptNameIndexXorKey3"] << "\n";
         std::cout << "[KEY]  DecryptNameIndexXorKey2: 0x" << std::hex << results["DecryptNameIndexXorKey2"] << "\n";
+    }
+
+    uint64_t addrH12 = Scanner::FindPattern("C7 45 B0 ?? ?? ?? ?? 33 D2 C7 45 B4 ?? ?? ?? ?? C7 45 B8 ?? ?? ?? ??", base, size);
+    if (addrH12) {
+        results["HealthKey1"] = PubgMemory::Read<uint32_t>(addrH12 + 12);
+        results["HealthKey2"] = PubgMemory::Read<uint32_t>(addrH12 + 19);
+        std::cout << "[KEY]  HealthKey1: 0x" << std::hex << results["HealthKey1"] << "\n";
+        std::cout << "[KEY]  HealthKey2: 0x" << std::hex << results["HealthKey2"] << "\n";
     }
 
     // --- 3. AUTO-UPDATE pubg_config.hpp ---

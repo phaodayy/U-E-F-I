@@ -813,8 +813,17 @@ int CommandExtractOffset(const CliArgs& args) {
         if (opcode >= 0xB8 && opcode <= 0xBF) {
             uint32_t imm;
             std::memcpy(&imm, &text[offset_in_text + 1], 4);
-            std::cout << "  TYPE: Immediate Constant (Key)\n";
+            std::cout << "  TYPE: Immediate Constant (32-bit)\n";
             std::cout << "  VAL : 0x" << std::hex << imm << "\n";
+            continue;
+        }
+
+        // Case 4: Small Immediate (imm8)
+        // Many opcodes have imm8 versions. This is a heuristic.
+        if (opcode == 0xC1 || opcode == 0x83 || opcode == 0x6A) {
+            uint8_t imm = text[offset_in_text + 2]; // Usually follows ModRM
+            std::cout << "  TYPE: Immediate Constant (8-bit)\n";
+            std::cout << "  VAL : 0x" << std::hex << (int)imm << "\n";
             continue;
         }
 

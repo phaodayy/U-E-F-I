@@ -20,13 +20,29 @@ GObjects:
 Sig: 4C 8B 1D ? ? ? ? 4C 8B B4 24
 Logic: RIP-Relative [3, 7]
 
+GNamesPtr:
+Sig: 49 8B ?? ?? B8 ?? ?? ?? ?? 41 F7 ?? 45 8B ?? 45 8D
+Logic: Member Offset (Byte) [3, 4] -> Verified: 0x10
+
+ChunkSize:
+Sig: 41 69 ?? ?? ?? ?? ?? 44 2B E8 4D 85 C0
+Logic: Immediate Constant (32-bit) [3, 7] -> Verified: 0x3E4C
+
 TeamNumber:
 Sig: 8B 81 C4 07 00 00
 Logic: Member Offset (Displacement) [2, 6]
 
 BoneArray:
-Sig: 48 8B 81 E8 0A 00 00
-Logic: Member Offset (Displacement) [3, 7]
+Sig: 48 8B 81 ?? ?? ?? ?? 48 85 C0 74 04 8B 40 ?? C3 C3 CC CC CC 48 8B C4 48 89 58 08
+Logic: Member Offset (Displacement) [3, 7] -> Verified: 0xAE8
+
+BoneCount:
+Sig: 48 83 EC 28 48 8B 81 ?? ?? ?? ?? 49 39
+Logic: Member Offset (Displacement) [7, 11] -> Verified: 0xAF0
+
+Eyes:
+Sig: F3 0F 10 8E ?? ?? ?? ?? 41 83 FD 06 7C 0B 45 8A F3
+Logic: Member Offset (Displacement) [4, 8] -> Verified: 0x75C
 
 WeaponProcessor:
 Sig: 8B EC 48 83 EC 50 48 8B F9 48 8B 91 68 09 00 00
@@ -48,6 +64,10 @@ DecryptNameIndexXorKey2 & Key3 (Composite Pattern):
 Sig: BE ?? ?? ?? ?? 41 23 C6 C1 E1 19 0B C1 33 D0 41 BF ?? ?? ?? ??
 Key3 Offset: +1  (after BE) -> Verified: 0x1FF0000
 Key2 Offset: +17 (after BF) -> Verified: 0xB621EC05
+
+DecryptNameIndexRval:
+Sig: 8B D1 C1 CA 17
+Logic: Immediate Constant (8-bit) [2, 3] -> Verified: 0x17
 
 
 [3] HEALTH DECRYPTION KEYS (Immediate Value Extraction)
