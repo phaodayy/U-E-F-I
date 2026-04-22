@@ -1,7 +1,10 @@
 #include "ProcessDumper.hpp"
 #include <fstream>
 #include <filesystem>
+#include <iostream>
 #include "../Sdk/memory.hpp"
+
+#define logging(fmt, ...) printf("[ProcessDumper] " fmt "\n", __VA_ARGS__)
 
 ProcessDumper::ProcessDumper()
 	: ImageBase(0), ImageSize(0), Attached(false), DecryptionThreshold(1.0f) {}

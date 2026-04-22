@@ -2,7 +2,7 @@
 #include "../Sdk/memory.hpp"
 #include <Windows.h>
 
-#define logging(fmt, ...) printf("[ImportResolver] " fmt "\n", ##__VA__ARGS__)
+#define logging(fmt, ...) printf("[ImportResolver] " fmt "\n", __VA_ARGS__)
 
 bool ImportResolver::Resolve(std::vector<uint8_t>& Buffer, uint64_t ImageBase) {
 	CollectExports();

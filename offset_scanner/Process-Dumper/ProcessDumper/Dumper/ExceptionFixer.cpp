@@ -1,6 +1,9 @@
 #include "ExceptionFixer.hpp"
-#include "../Api/proc/process.hpp"
+#include "../Sdk/memory.hpp"
 #include <Windows.h>
+#include <iostream>
+
+#define logging(fmt, ...) printf("[ExceptionFixer] " fmt "\n", __VA_ARGS__)
 
 
 uint32_t ExceptionFixer::Fix(uint8_t* Buffer, uint64_t BufferSize) {

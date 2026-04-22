@@ -50,13 +50,19 @@ int main(int argc, char** argv) {
 	ProcessDumper Dumper;
 	Dumper.SetDecryptionThreshold(Threshold);
 
-	printf("\n[*] Targeting: %s (Threshold: %.1f%%)\n", TargetProcess.c_str(), Threshold * 100.0f);
-
-	if (!Dumper.Attach(TargetProcess)) {
-		printf("[!] Failed to attach to %s. Check if game is running.\n", TargetProcess.c_str());
-		system("pause");
-		return 1;
+	printf("\n[*] Waiting for %s to start and stabilize...\n", TargetProcess.c_str());
+	
+	while (true) {
+		if (Dumper.Attach(TargetProcess)) {
+			if (Dumper.GetImageBase() != 0 && Dumper.GetImageBase() < 0xFFFF000000000000) {
+				break;
+			}
+		}
+		printf(".");
+		Sleep(1000);
 	}
+
+	printf("\n[+] Attached: %s (PID: %lu). Base: 0x%llX\n", TargetProcess.c_str(), DumperMemory::g_ProcessId, Dumper.GetImageBase());
 
 	printf("[*] Starting memory monitoring...\n");
 	if (!Dumper.StartMonitoring()) {
@@ -71,10 +77,15 @@ int main(int argc, char** argv) {
 		if (GetAsyncKeyState('Q') & 0x8000) break;
 
 		float progress = Dumper.GetDecryptionProgress();
-		printf("\r[*] Progress: %.1f%% (%llu/%llu pages)", 
-			progress * 100.0f, 
-			Dumper.GetDecryptedCount(), 
-			Dumper.GetTotalPages());
+		uint64_t readable = Dumper.GetDecryptedCount();
+		uint64_t total = Dumper.GetTotalPages();
+		uint64_t locked = total - readable;
+
+		printf("\r[*] Memory: %llu/%llu (Locked: %llu) | Progress: %.1f%%  ", 
+			readable, 
+			total,
+			locked,
+			progress * 100.0f);
 
 		if (progress >= Dumper.GetDecryptionThreshold()) {
 			printf("\n[+] Target threshold reached (%.1f%%)\n", Dumper.GetDecryptionThreshold() * 100.0f);

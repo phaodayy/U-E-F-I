@@ -169,37 +169,55 @@ namespace
             return false;
         }
 
-        HMODULE local_ntoskrnl = LoadLibraryExA(image_path.c_str(), nullptr, DONT_RESOLVE_DLL_REFERENCES);
-        if (local_ntoskrnl == nullptr)
-        {
-            return false;
-        }
+        // STEALTH: Resolve Export RVA directly from kernel memory via Hypervisor
+        // No LoadLibraryExA (BIG IOC) and no disk touching.
+        auto ResolveExportStealthily = [&](std::uint64_t base, const std::string& name) -> std::uint64_t {
+            auto read_str = [&](uint64_t addr) -> std::string {
+                char buf[128] = {};
+                PubgHyperCall::ReadGuestVirtualMemory(buf, addr, g_CurrentCr3, sizeof(buf) - 1);
+                return std::string(buf);
+            };
 
-        // STEALTH: Manual export resolution without GetProcAddress for sensitive kernel variables
-        auto GetExportRVA = [](HMODULE module, const std::string& name) -> std::uintptr_t {
-            auto* base = reinterpret_cast<std::uint8_t*>(module);
-            auto* dos = reinterpret_cast<PIMAGE_DOS_HEADER>(base);
-            auto* nt = reinterpret_cast<PIMAGE_NT_HEADERS>(base + dos->e_lfanew);
-            auto* export_dir = reinterpret_cast<PIMAGE_EXPORT_DIRECTORY>(base + nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress);
-            auto* names = reinterpret_cast<std::uint32_t*>(base + export_dir->AddressOfNames);
-            auto* ordinals = reinterpret_cast<std::uint16_t*>(base + export_dir->AddressOfNameOrdinals);
-            auto* functions = reinterpret_cast<std::uint32_t*>(base + export_dir->AddressOfFunctions);
+            IMAGE_DOS_HEADER dos_header = {};
+            PubgHyperCall::ReadGuestVirtualMemory(&dos_header, base, g_CurrentCr3, sizeof(dos_header));
+            if (dos_header.e_magic != IMAGE_DOS_SIGNATURE) return 0;
 
-            for (std::uint32_t i = 0; i < export_dir->NumberOfNames; i++) {
-                if (name == reinterpret_cast<const char*>(base + names[i])) {
-                    return functions[ordinals[i]];
+            IMAGE_NT_HEADERS64 nt_headers = {};
+            PubgHyperCall::ReadGuestVirtualMemory(&nt_headers, base + dos_header.e_lfanew, g_CurrentCr3, sizeof(nt_headers));
+            if (nt_headers.Signature != IMAGE_NT_SIGNATURE) return 0;
+
+            const auto export_dir_rva = nt_headers.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
+            const auto export_dir_size = nt_headers.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].Size;
+            if (export_dir_rva == 0) return 0;
+
+            IMAGE_EXPORT_DIRECTORY export_dir = {};
+            PubgHyperCall::ReadGuestVirtualMemory(&export_dir, base + export_dir_rva, g_CurrentCr3, sizeof(export_dir));
+
+            const auto names_addr = base + export_dir.AddressOfNames;
+            const auto ordinals_addr = base + export_dir.AddressOfNameOrdinals;
+            const auto functions_addr = base + export_dir.AddressOfFunctions;
+
+            for (std::uint32_t i = 0; i < export_dir.NumberOfNames; i++) {
+                std::uint32_t name_rva = 0;
+                PubgHyperCall::ReadGuestVirtualMemory(&name_rva, names_addr + (i * 4), g_CurrentCr3, 4);
+                
+                if (read_str(base + name_rva) == name) {
+                    std::uint16_t ordinal = 0;
+                    PubgHyperCall::ReadGuestVirtualMemory(&ordinal, ordinals_addr + (i * 2), g_CurrentCr3, 2);
+                    
+                    std::uint32_t function_rva = 0;
+                    PubgHyperCall::ReadGuestVirtualMemory(&function_rva, functions_addr + (ordinal * 4), g_CurrentCr3, 4);
+                    return function_rva;
                 }
             }
             return 0;
         };
 
-        const std::uintptr_t export_rva = GetExportRVA(local_ntoskrnl, skCrypt("PsInitialSystemProcess"));
+        const std::uintptr_t export_rva = (uintptr_t)ResolveExportStealthily(kernel_base, skCrypt("PsInitialSystemProcess"));
         if (export_rva == 0)
         {
-            FreeLibrary(local_ntoskrnl);
             return false;
         }
-        FreeLibrary(local_ntoskrnl);
 
         g_PsInitialSystemProcess = kernel_base + export_rva;
  
@@ -212,6 +230,7 @@ namespace
                 if (PubgHyperCall::ReadGuestVirtualMemory(buf, system_eprocess + offset, g_CurrentCr3, 6) == 6) {
                     if (strcmp(buf, "System") == 0) {
                         g_ImageFileNameOffset = offset;
+                        printf("[DEBUG] g_ImageFileNameOffset calibrated to 0x%llX\n", offset);
                         break;
                     }
                 }
@@ -236,6 +255,7 @@ bool PubgHyperProcess::QueryProcessData(const std::uint32_t pid, query_process_d
 
     if (!ResolvePsInitialSystemProcess())
     {
+        printf("[DEBUG] ResolvePsInitialSystemProcess failed\n");
         return false;
     }
 
@@ -244,6 +264,7 @@ bool PubgHyperProcess::QueryProcessData(const std::uint32_t pid, query_process_d
 
     if (PubgHyperCall::ReadGuestVirtualMemory(&current_eprocess, g_PsInitialSystemProcess, walk_cr3, 8) != 8 || current_eprocess == 0)
     {
+        printf("[DEBUG] Failed to read PsInitialSystemProcess at 0x%llX (CR3: 0x%llX)\n", g_PsInitialSystemProcess, walk_cr3);
         return false;
     }
 
@@ -275,12 +296,15 @@ bool PubgHyperProcess::QueryProcessData(const std::uint32_t pid, query_process_d
 
         char name[16] = {};
         if (PubgHyperCall::ReadGuestVirtualMemory(name, current_eprocess + g_ImageFileNameOffset, walk_cr3, 15) > 0) {
+            // if (pid == 0) printf("[DEBUG][SCAN] Found: %s (PID: %llu)\n", name, current_pid);
+
             bool is_match = false;
             if (pid != 0) {
                 is_match = (current_pid == pid);
             } else {
                 if (_stricmp(name, skCrypt("TslGame.exe")) == 0) {
                     is_match = true;
+                    printf("[DEBUG][MATCH] Candidate: PID %llu Threads: %llu\n", current_pid, current_threads);
                 }
             }
 
@@ -306,6 +330,8 @@ bool PubgHyperProcess::QueryProcessData(const std::uint32_t pid, query_process_d
                             best_peb = current_peb;
                         }
                     }
+                } else {
+                    if (pid != 0) printf("[DEBUG] Heuristics failed for PID %llu: CR3=0x%llX, Base=0x%llX, PEB=0x%llX, Threads=%llu\n", current_pid, current_cr3, current_base, current_peb, current_threads);
                 }
             }
         }

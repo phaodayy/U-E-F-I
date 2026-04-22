@@ -1,5 +1,8 @@
 #include "PageMonitor.hpp"
 #include "../Sdk/memory.hpp"
+#include <iostream>
+
+#define logging(fmt, ...) printf("[PageMonitor] " fmt "\n", __VA_ARGS__)
 
 PageMonitor::PageMonitor()
 	: ImageBase(0), ImageSize(0), Running(false), DecryptedCount(0), TotalPages(0), OnDecrypted(nullptr) {}
@@ -63,6 +66,7 @@ void PageMonitor::MonitorThread() {
 	constexpr uint64_t PageSize = 0x1000;
 	std::vector<uint8_t> LocalBuffer(PageSize);
 	bool BaselineCaptured = false;
+	uint64_t CurrentReadableCount = 0;
 
 	while (Running) {
 		for (uint64_t i = 0; i < TotalPages && Running; i++) {
@@ -110,14 +114,20 @@ void PageMonitor::MonitorThread() {
 				if (OnDecrypted) {
 					OnDecrypted(Region);
 				}
-				DecryptedCount++;
+			}
+
+			// Update atomic count for UI (Count all non-empty readable pages)
+			if (Page.State != PageState::Empty && Page.LastReadSuccessful) {
+				CurrentReadableCount++;
 			}
 		}
+		DecryptedCount = CurrentReadableCount;
+		CurrentReadableCount = 0;
 
 		if (!BaselineCaptured)
 			BaselineCaptured = true;
 
-		Sleep(1);
+		Sleep(1); // Sleep only AFTER a full cycle of all pages
 	}
 }
 

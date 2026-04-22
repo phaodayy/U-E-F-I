@@ -64,10 +64,27 @@ namespace DumperMemory {
     }
 
     inline bool Attach(const std::string& process_name) {
-        uint32_t pid = PubgHyperProcess::FindProcessIdByName(std::wstring(process_name.begin(), process_name.end()).c_str());
-        if (!pid) return false;
+        query_process_data_packet input = {};
+        // If we target PUBG specifically, use the Smart Mode (PID=0)
+        // Otherwise, find PID first.
+        uint32_t pid = 0;
+        if (_stricmp(process_name.c_str(), "TslGame.exe") != 0) {
+            pid = PubgHyperProcess::FindProcessIdByName(std::wstring(process_name.begin(), process_name.end()).c_str());
+            if (!pid) return false;
+        }
 
-        g_ProcessId = pid;
-        return RefreshProcessContext();
+        if (!QueryProcessData(pid, &input)) {
+            // Fallback for non-PUBG processes that might not pass heuristics
+            if (pid != 0) {
+                // If QueryProcessData fails heuristics for a specific PID, we might want to still try 
+                // but let's stick to the SDK's safe behavior for now.
+            }
+            return false;
+        }
+
+        g_ProcessId = input.process_id;
+        g_ProcessCr3 = input.cr3;
+        g_BaseAddress = reinterpret_cast<uint64_t>(input.base_address);
+        return g_ProcessCr3 != 0;
     }
 }

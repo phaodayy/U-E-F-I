@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-#include <structures/memory_operation.h>
+#include "structures/memory_operation.h"
 
 enum class hypercall_type_t : std::uint64_t
 {

@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <vector>
 
-#include <.shared/shared.hpp>
+#include "shared.hpp"
 
 struct kernel_window_data {
     HWND hwnd;

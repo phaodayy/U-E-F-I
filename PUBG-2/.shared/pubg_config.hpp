@@ -14,10 +14,10 @@ namespace pubg_config {
     inline const char* version = "2603.1.2.7";
     namespace offsets {
         // --- 1. CORE ANTI-CHEAT ---
-        inline uint64_t XenuineDecrypt = 0x1079AC28;
-        inline uint64_t UWorld = 0x1225E938;
-        inline uint64_t GNames = 0x124EE760;
-        inline uint64_t GObjects = 0x1221D570;
+        inline uint64_t XenuineDecrypt = 0x1079C028;
+        inline uint64_t UWorld = 0x1225F938;
+        inline uint64_t GNames = 0x124EF760;
+        inline uint64_t GObjects = 0x1221F570;
         inline uint64_t GNamesPtr = 0x10;
         inline uint64_t ChunkSize = 0x3E4C;
         inline uint64_t ObjID = 0x20;
@@ -35,7 +35,7 @@ namespace pubg_config {
         inline uint64_t MyHUD = 0x4C8;
         inline uint64_t PlayerState = 0x418;
         inline uint64_t RootComponent = 0x308;
-        inline uint64_t ControlRotation = 0x40C;
+        inline uint64_t ControlRotation = 0x40C; // Placeholder if needed
         inline uint64_t Character = 0x438;
         inline uint64_t Pawn = 0x448;
 
@@ -61,9 +61,9 @@ namespace pubg_config {
         inline uint64_t Visibility = 0xA9;
         inline uint64_t Minimap = 0x480;
         inline uint64_t CurrentMinimapViewScale = 0x4A4;
-        inline uint64_t ScreenPosX = 0x4B8; // LastMinimapPos
+        inline uint64_t ScreenPosX = 0x4B8;
         inline uint64_t ScreenPosY = 0x4BC;
-        inline uint64_t ScreenSize = 0x4A8; // MapGrid size
+        inline uint64_t ScreenSize = 0x4A8;
         inline uint64_t SelectMinimapSizeIndex = 0x5C8;
         inline uint64_t Slot = 0x38;
         inline uint64_t LayoutData = 0x40;
@@ -101,7 +101,6 @@ namespace pubg_config {
 
         // --- 7. HEALTH SYSTEM ---
         inline uint64_t HeaFlag = 0x3B9;
-        inline uint64_t Health = 0xA80;
         inline uint64_t Health1 = 0xA3C;
         inline uint64_t Health2 = 0xA38;
         inline uint64_t Health3 = 0xA24;
@@ -110,7 +109,6 @@ namespace pubg_config {
         inline uint64_t Health6 = 0xA20;
         inline uint64_t GroggyHealth = 0x14B0;
 
-        // Health Keys (Unified as HealthKey0-15)
         inline uint32_t HealthKey0 = 0xCEC7A593;
         inline uint32_t HealthKey1 = 0x9B63B2A7;
         inline uint32_t HealthKey2 = 0xCAD3C3A5;
@@ -119,7 +117,7 @@ namespace pubg_config {
         inline uint32_t HealthKey5 = 0x23DDA185;
         inline uint32_t HealthKey6 = 0x09454BC8;
         inline uint32_t HealthKey7 = 0xA521BA21;
-        inline uint32_t HealthKey8 = 0x0BA17A58;
+        inline uint32_t HealthKey8 = 0x0BA17A58; 
         inline uint32_t HealthKey9 = 0xB0EFA787;
         inline uint32_t HealthKey10 = 0xE275B2BA;
         inline uint32_t HealthKey11 = 0x878ADBD0;
@@ -143,7 +141,7 @@ namespace pubg_config {
         inline uint64_t PlayerStatusType = 0x468;
         inline uint64_t SquadMemberIndex = 0xA1C;
         inline uint64_t PlayerStatistics = 0xA10;
-        inline uint64_t DamageDealtOnEnemy = 0x420;
+        inline uint64_t DamageDealtOnEnemy = 0x804;
         inline uint64_t ping = 0x3F8;
         inline uint64_t MatchId = 0x510;
         inline uint64_t PartnerLevel = 0x716;
@@ -157,18 +155,21 @@ namespace pubg_config {
         inline uint64_t WeaponProcessor = 0x968;
         inline uint64_t CurrentWeaponIndex = 0x319;
         inline uint64_t WeaponTrajectoryData = 0x11A8;
-        inline uint64_t TrajectoryGravityZ = 0x1030;
+        inline uint64_t TrajectoryGravityZ = 0x106C;
         inline uint64_t FiringAttachPoint = 0x8C0;
         inline uint64_t ScopingAttachPoint = 0xB20;
         inline uint64_t TrajectoryConfig = 0x108;
         inline uint64_t BallisticCurve = 0x28;
         inline uint64_t FloatCurves = 0x38;
+
         inline uint64_t WeaponConfig_WeaponClass = 0x798;
         inline uint64_t CurrentAmmoData = 0xE68;
         inline uint64_t ElapsedCookingTime = 0xB50;
         inline uint64_t AimOffsets = 0x1AB8;
         inline uint64_t RecoilValueVector = 0x1198;
         inline uint64_t VerticalRecovery = 0x10D8;
+        inline uint64_t AttachedItems = 0x858;
+        inline uint64_t WeaponAttachmentData = 0x128;
 
         // --- 10. INPUT & AIM ---
         inline uint64_t PlayerInput = 0x548;
@@ -195,8 +196,6 @@ namespace pubg_config {
         inline uint64_t ItemPackageItems = 0x578;
         inline uint64_t DroppedItemGroupUItem = 0x870;
         inline uint64_t DroppedItem = 0x458;
-        inline uint64_t AttachedItems = 0x858;
-        inline uint64_t WeaponAttachmentData = 0x128;
         inline uint64_t Durability = 0x1E4;
         inline uint64_t Durabilitymax = 0x1E0;
 
@@ -214,23 +213,18 @@ namespace pubg_config {
         inline uint64_t FloatingVehicleCommonComponent = 0x4D8;
         inline uint64_t VehicleFuel = 0x2E0;
         inline uint64_t VehicleFuelMax = 0x2E4;
-        inline uint64_t VehicleHealth = 0x300;
+        inline uint64_t VehicleHealth = 0x2D8;
         inline uint64_t VehicleHealthMax = 0x2DC;
 
         // --- 13. ANIMATION & ENGINE ---
         inline uint64_t AnimScriptInstance = 0xE30;
         inline uint64_t PreEvalPawnState = 0x630;
         inline uint64_t AntiCheatCharacterSyncManager = 0xD28;
-        inline uint64_t PhysxSDK = 0x11B8F808;
-        inline uint64_t PhysicsScene = 0x3A0;
-        inline uint64_t mPhysXScene = 0xD0;
-        inline uint64_t rigid_dynamics = 0x3B98;
-        inline uint64_t Unreal_Engine = 0x12258C50;
+        inline uint64_t PhysxSDK = 0x11B90808;
         inline uint64_t TimeSeconds = 0x810;
         inline uint64_t TimeTillExplosion = 0x824;
         inline uint64_t ExplodeState = 0x628;
         inline uint64_t TrainingMapGrid = 0x5B0;
-        inline uint64_t RecentlyRendered = 0xBD8;
         inline uint64_t MortarRotation = 0x520;
         inline uint64_t MortarEntity = 0x108;
         inline uint64_t MapGrid_Map = 0x4A8;
@@ -254,8 +248,9 @@ namespace pubg_config {
         inline uint64_t HOOK_TWO = 0xCFEDBAB;
     }
 
-    // --- DEC DATA ---
     __forceinline uint32_t decrypt_cindex(uint32_t v) {
-        return (((v ^ 0x7360F24) << 25) | ((v ^ 0x7360F24u) >> 7) & 0x1FF0000) ^ _rotr(v ^ 0x7360F24, 23) ^ 0xB621EC05;
+        using namespace offsets;
+        uint32_t x = v ^ (uint32_t)DecryptNameIndexXorKey1;
+        return (((x << (int)DecryptNameIndexDval) | (x >> (int)DecryptNameIndexSval) & (uint32_t)DecryptNameIndexXorKey3) ^ _rotr(x, (int)DecryptNameIndexRval) ^ (uint32_t)DecryptNameIndexXorKey2);
     }
 }

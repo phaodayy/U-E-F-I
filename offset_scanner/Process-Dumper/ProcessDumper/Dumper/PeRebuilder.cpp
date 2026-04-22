@@ -1,6 +1,8 @@
 #include "PeRebuilder.hpp"
-#include "../Api/driver/driver_includes.hpp"
 #include <fstream>
+#include <Windows.h>
+
+#define logging(fmt, ...) printf("[PeRebuilder] " fmt "\n", __VA_ARGS__)
 
 PeRebuilder::PeRebuilder()
 	: RawBuffer(nullptr), BufferSize(0), OriginalImageBase(0),
