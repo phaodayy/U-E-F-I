@@ -205,33 +205,9 @@ void SelectLanguage() {
 " | |  _ / _ \\ '_ \\  / /  \n"
 " | |_| |  __/ | | |/ /_  \n"
 "  \\____|\\___|_| |_/____| \n\n";
-    std::cout << skCrypt("    >> System Ready <<\n\n");
-
-    SetConsoleColor(11);
-    std::cout << skCrypt("Select Language / Chon Ngon Ngu:\n");
-    std::cout << skCrypt("[1] Tieng Viet\n");
-    std::cout << skCrypt("[2] English\n");
-    
-    while (true) {
-        SetConsoleColor(15);
-        std::cout << skCrypt("\n> ");
-        std::string choice;
-        std::getline(std::cin, choice);
-        
-        if (choice == "1") {
-            g_is_vietnamese = true;
-            break;
-        } else if (choice == "2") {
-            g_is_vietnamese = false;
-            break;
-        } else {
-            SetConsoleColor(12);
-            std::cout << skCrypt("Invalid selection / Lua chon khong hop le. Try again.\n");
-        }
-    }
-#else
-    g_is_vietnamese = true;
+    std::cout << skCrypt("    >> System Ready (Vietnamese Default) <<\n\n");
 #endif
+    g_is_vietnamese = true;
 }
 
 bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) {
