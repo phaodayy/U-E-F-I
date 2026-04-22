@@ -1,9 +1,0 @@
-{
-  "name": "example_uworld_rule",
-  "module_name": "TslGame.exe",
-  "anchor_rva": "0x12345678",
-  "window_start_rva": "0x12345648",
-  "pattern": "48 8B 05 ?? ?? ?? ?? 48 85 C0 74 ??",
-  "expected_min": 1,
-  "expected_max": 1
-}

@@ -1,0 +1,10 @@
+{
+  "anchor_rva": "0xF62790",
+  "expected_max": 1,
+  "expected_min": 1,
+  "generator": "siglab_cpp bulk-generate",
+  "module_name": "TslGame.exe",
+  "name": "PhysxSDK",
+  "pattern": "E9 ?? ?? ?? ?? CC CC CC CC CC CC CC CC CC CC CC 48 8B 05 ?? ?? ?? ?? C3 CC CC CC CC CC CC CC CC 48",
+  "window_start_rva": "0xF62780"
+}

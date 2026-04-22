@@ -1,0 +1,10 @@
+{
+  "anchor_rva": "0x3A3C84",
+  "expected_max": 1,
+  "expected_min": 1,
+  "generator": "siglab_cpp bulk-generate",
+  "module_name": "TslGame.exe",
+  "name": "DecryptNameIndexXorKey1",
+  "pattern": "24 88 00 00 00 E8 ?? ?? ?? ?? 90 BF ?? ?? ?? ?? BE ?? ?? ?? ?? 41 BE ?? ?? ?? ?? 8B 8C 24 98 00 00",
+  "window_start_rva": "0x3A3C74"
+}

@@ -1,0 +1,10 @@
+{
+  "anchor_rva": "0xC134F4D",
+  "expected_max": 1,
+  "expected_min": 1,
+  "generator": "siglab_cpp bulk-generate",
+  "module_name": "TslGame.exe",
+  "name": "GNames",
+  "pattern": "7E FD 63 C7 44 24 34 EE 32 6E 33 48 8B 44 24 30 48 89 05 ?? ?? ?? ?? 48 8D 0D ?? ?? ?? ?? E8 0C B9",
+  "window_start_rva": "0xC134F3D"
+}

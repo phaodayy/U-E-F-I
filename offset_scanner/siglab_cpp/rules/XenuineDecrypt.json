@@ -1,0 +1,10 @@
+{
+  "anchor_rva": "0x243EB4",
+  "expected_max": 1,
+  "expected_min": 1,
+  "generator": "siglab_cpp bulk-generate",
+  "module_name": "TslGame.exe",
+  "name": "XenuineDecrypt",
+  "pattern": "8B 15 ?? ?? ?? ?? 4D 85 C0 75 1A B9 ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? FF D0 48 8B D0 4C 8B 05 39 81",
+  "window_start_rva": "0x243EA4"
+}
