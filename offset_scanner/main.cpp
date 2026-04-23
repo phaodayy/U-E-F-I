@@ -308,9 +308,9 @@ int main() {
         results["DecryptNameIndexSval"] = 32 - (uint32_t)results["DecryptNameIndexDval"];
         
         // Find XorKey2 (follows the block)
-        uint64_t addrKey2 = Scanner::FindPattern("35 ?? ?? ?? ?? 89 44 24 ?? 89 4C 24", addr23, 64);
+        uint64_t addrKey2 = Scanner::FindPattern("41 BF ?? ?? ?? ?? 41 33 D7", addr23, 128);
         if (addrKey2) {
-            results["DecryptNameIndexXorKey2"] = PubgMemory::Read<uint32_t>(addrKey2 + 1);
+            results["DecryptNameIndexXorKey2"] = PubgMemory::Read<uint32_t>(addrKey2 + 2);
         }
         
         std::cout << "[KEY]  DecryptNameIndexXorKey3: 0x" << std::hex << results["DecryptNameIndexXorKey3"] << "\n";
