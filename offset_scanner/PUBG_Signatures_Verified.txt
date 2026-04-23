@@ -59,6 +59,22 @@ CameraCacheLocation:
 Sig: 48 8B 8E ?? ?? ?? ?? 48 89 4D D8 48 8B 8E ?? ?? ?? ?? 48 89 4D E0
 Logic: Member Offset (Displacement) [3, 7] -> Verified: 0xA30
 
+CharacterName:
+Sig: 48 8B 85 ?? ?? ?? ?? 8B ?? ?? ?? 48 85 C0 74 1C 48 8B 08
+Logic: Member Offset (Displacement) [3, 7] -> Verified: 0x1D70
+
+CharacterMovement:
+Sig: C6 87 ?? ?? ?? ?? 00 48 8B 8F ?? ?? ?? ?? 48 83 3D ?? ?? ?? ?? 00
+Logic: Member Offset (Displacement) [10, 14] -> Verified: 0x490
+
+EquippedWeapons:
+Sig: 48 8B 8D ?? ?? ?? ?? 48 33 CC E8 ?? ?? ?? ?? 4C 8D 9C 24
+Logic: Member Offset (Displacement) [3, 7] -> Verified: 0x208
+
+CharacterState:
+Sig: 44 88 BF ?? ?? ?? ?? 8B 8F ?? ?? ?? ?? 41 B8 FE FF FF FF
+Logic: Member Offset (Displacement) [9, 13] -> Verified: 0x1020
+
 
 [2] MEMBER OFFSETS (Displacement Extraction)
 --------------------------------------------
