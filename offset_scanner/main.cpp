@@ -11,7 +11,57 @@
 // [HYPERVISOR INTEGRATION] Include project headers
 #include "../PUBG-2/pubg/sdk/memory.hpp"
 
-#pragma comment(lib, "psapi.lib")
+namespace MemoryManager {
+    enum class ScanMode {
+        Live,
+        Dump
+    };
+
+    ScanMode currentMode = ScanMode::Live;
+    std::vector<uint8_t> dumpBuffer;
+    uint64_t dumpBase = 0;
+
+    bool Initialize(ScanMode mode, const std::string& dumpPath = "", uint64_t base = 0) {
+        currentMode = mode;
+        if (mode == ScanMode::Live) {
+            if (!PubgMemory::InitializeHyperInterface()) return false;
+            return true;
+        } else {
+            std::ifstream file(dumpPath, std::ios::binary | std::ios::ate);
+            if (!file.is_open()) {
+                std::cout << "[-] Failed to open dump file: " << dumpPath << "\n";
+                return false;
+            }
+            std::streamsize size = file.tellg();
+            file.seekg(0, std::ios::beg);
+            dumpBuffer.resize(size);
+            if (!file.read((char*)dumpBuffer.data(), size)) {
+                std::cout << "[-] Failed to read dump file.\n";
+                return false;
+            }
+            dumpBase = base;
+            std::cout << "[+] Loaded dump: " << size << " bytes at base 0x" << std::hex << base << "\n";
+            return true;
+        }
+    }
+
+    bool Read(uint64_t address, void* buffer, size_t size) {
+        if (currentMode == ScanMode::Live) {
+            return PubgMemory::ReadMemory(address, buffer, size);
+        } else {
+            if (address < dumpBase || address + size > dumpBase + dumpBuffer.size()) return false;
+            memcpy(buffer, dumpBuffer.data() + (address - dumpBase), size);
+            return true;
+        }
+    }
+
+    template <typename T>
+    T ReadType(uint64_t address) {
+        T buffer = {};
+        Read(address, &buffer, sizeof(T));
+        return buffer;
+    }
+}
 
 class Scanner {
 public:
@@ -37,7 +87,7 @@ public:
         size_t pSize = patternBytes.size();
 
         for (uint64_t offset = 0; offset < size - pSize; offset += (0x1000 - pSize)) {
-            if (!PubgMemory::ReadMemory(start + offset, buffer.data(), 0x1000)) continue;
+            if (!MemoryManager::Read(start + offset, buffer.data(), 0x1000)) continue;
 
             for (size_t i = 0; i < 0x1000 - pSize; ++i) {
                 bool found = true;
@@ -55,34 +105,51 @@ public:
 
     static uint64_t GetRelative(uint64_t addr, int offset, int size) {
         if (!addr) return 0;
-        int32_t rel = PubgMemory::Read<int32_t>(addr + offset);
+        int32_t rel = MemoryManager::ReadType<int32_t>(addr + offset);
         return addr + size + rel;
     }
 };
 
 int main() {
-    std::cout << "[*] Master Scanner v2.4 (Production Sync)\n";
-    
-    if (!PubgMemory::InitializeHyperInterface()) {
-        std::cout << "[-] Hypervisor Bridge FAILED!\n";
-        system("pause"); return 1;
-    }
+    std::cout << "================================================\n";
+    std::cout << "      Master Scanner v3.0 (Dual-Mode Edition)\n";
+    std::cout << "================================================\n\n";
 
-    std::cout << "[*] Waiting for game...\n";
-    while (true) {
-        if (PubgMemory::AttachToGameStealthily()) {
-            if (PubgMemory::g_BaseAddress != 0 && PubgMemory::g_BaseAddress < 0xFFFF000000000000) break;
+    std::cout << "[1] Live Game Scan (Hyper-V)\n";
+    std::cout << "[2] File Dump Scan\n";
+    std::cout << "\nChoose mode: ";
+    
+    int choice = 2;
+    uint64_t base = 0x140000000;
+    
+    if (choice == 1) {
+        if (!MemoryManager::Initialize(MemoryManager::ScanMode::Live)) {
+            std::cout << "[-] Hypervisor Bridge FAILED!\n";
+            system("pause"); return 1;
         }
-        std::cout << "."; Sleep(1000);
+
+        std::cout << "[*] Waiting for game...\n";
+        while (true) {
+            if (PubgMemory::AttachToGameStealthily()) {
+                if (PubgMemory::g_BaseAddress != 0 && PubgMemory::g_BaseAddress < 0xFFFF000000000000) break;
+            }
+            std::cout << "."; Sleep(1000);
+        }
+        base = PubgMemory::g_BaseAddress;
+        std::cout << "\n[+] Hyper-Link Established. Base: 0x" << std::hex << base << "\n\n";
+    } else {
+        std::string dumpPath = "Process-Dumper/bin/dump_TslGame.exe";
+        std::cout << "[*] Auto-loading Dump: " << dumpPath << "\n";
+        
+        if (!MemoryManager::Initialize(MemoryManager::ScanMode::Dump, dumpPath, base)) {
+            return 1;
+        }
     }
     
-    uint64_t base = PubgMemory::g_BaseAddress;
     uint64_t size = 0x10000000;
     std::map<std::string, uint64_t> results;
 
-    std::cout << "\n[+] Hyper-Link Established. Base: 0x" << std::hex << base << "\n\n";
-
-    // --- 1. CORE RVAs (User Verified) ---
+    // --- 1. CORE RVAs ---
     auto scan = [&](std::string name, const char* pat, int off, int inst) {
         uint64_t addr = Scanner::FindPattern(pat, base, size);
         if (addr) {
@@ -98,7 +165,7 @@ int main() {
     auto scanDisp = [&](std::string name, const char* pat, int off) {
         uint64_t addr = Scanner::FindPattern(pat, base, size);
         if (addr) {
-            uint32_t disp = PubgMemory::Read<uint32_t>(addr + off);
+            uint32_t disp = MemoryManager::ReadType<uint32_t>(addr + off);
             results[name] = disp;
             std::cout << "[DISP] " << name << ": 0x" << std::hex << disp << "\n";
         } else {
@@ -110,7 +177,7 @@ int main() {
     auto scanByte = [&](std::string name, const char* pat, int off) {
         uint64_t addr = Scanner::FindPattern(pat, base, size);
         if (addr) {
-            uint8_t val = PubgMemory::Read<uint8_t>(addr + off);
+            uint8_t val = MemoryManager::ReadType<uint8_t>(addr + off);
             results[name] = val;
             std::cout << "[BYTE] " << name << ": 0x" << std::hex << (int)val << "\n";
         } else {
@@ -239,9 +306,9 @@ int main() {
     scanDisp("TimeSeconds", "F3 0F 10 81 ?? ?? ?? ?? F3 0F 5C 81 ?? ?? ?? ?? 0F 28 C8 0F 5A C1", 4);
  
     // --- 10. PLAYER METRICS & SOCIAL ---
-    scanDisp("AccountId", "8B 83 10 08 00 00 48 83 C4 20 5B C3", 2);
+    scanDisp("AccountId", "F3 0F 11 87 10 08 00 00", 4);
     scanDisp("SquadMemberIndex", "F7 43 08 00 00 00 20 75 0B 8B 87 ?? ?? ?? ??", 11);
-    scanDisp("PlayerStatistics", "48 8B 8F ?? ?? ?? ?? 48 85 C9 0F 85 ?? ?? ?? ?? 48 8B", 3);
+    scanDisp("PlayerStatistics", "48 8B 8F 10 0A 00 00 48 85 C9", 3);
     scanDisp("DamageDealtOnEnemy", "4C 89 81 ?? ?? ?? ?? 48 89 B1 ?? ?? ?? ?? 44 89 81 0C 08", 10);
     scanDisp("SurvivaLlevel", "F3 0F 11 B6 CC 0C 00 00 F3 0F 5C F7 48", 4);
  
@@ -252,8 +319,8 @@ int main() {
  
     // --- 12. COMBAT ADVANCED ---
     scanDisp("ElapsedCookingTime", "45 3B CF 0F 84 ?? ?? ?? ?? F3 0F 10 87 ?? ?? ?? ??", 12);
-    scanDisp("LeanLeftAlpha_CP", "F3 0F 10 B3 ?? ?? ?? ?? F3 0F 10 A3 ?? ?? ?? ??", 4);
-    scanDisp("LeanRightAlpha_CP", "F3 0F 10 A3 ?? ?? ?? ?? F3 0F 10 9B", 4);
+    scanDisp("LeanLeftAlpha_CP", "F3 0F 11 87 ?? ?? ?? ?? F3 0F 11 97 ?? ?? ?? ?? 44 88 A7", 12);
+    scanDisp("LeanRightAlpha_CP", "F3 0F 11 97 ?? ?? ?? ?? 44 88 A7", 4);
  
     // --- 13. REPLICATION & ANIMATION ---
     scanDisp("VehicleRiderComponent", "E8 ?? ?? ?? ?? 48 8B 9D 20 19 00 00 48 8D 4D E8 48 8B BD ?? ?? ?? ??", 17);
@@ -294,8 +361,8 @@ int main() {
     // --- 16. DECRYPTION KEYs (Verified Offsets) ---
     uint64_t addrNameDec = Scanner::FindPattern("41 8B ?? ?? BB ?? ?? ?? ?? 33 ?? 8B ?? C1 ?? 01", base, size);
     if (addrNameDec) {
-        results["DecryptNameIndexXorKey1"] = PubgMemory::Read<uint32_t>(addrNameDec + 5);
-        results["DecryptNameIndexRval"] = PubgMemory::Read<uint8_t>(addrNameDec + 15);
+        results["DecryptNameIndexXorKey1"] = MemoryManager::ReadType<uint32_t>(addrNameDec + 5);
+        results["DecryptNameIndexRval"] = MemoryManager::ReadType<uint8_t>(addrNameDec + 15);
         results["DecryptNameIndexRor"] = results["DecryptNameIndexRval"]; // Logic uses ROR with Rval
         std::cout << "[KEY]  DecryptNameIndexXorKey1: 0x" << std::hex << results["DecryptNameIndexXorKey1"] << "\n";
         std::cout << "[KEY]  DecryptNameIndexRval: 0x" << std::hex << (int)results["DecryptNameIndexRval"] << "\n";
@@ -303,14 +370,14 @@ int main() {
  
     uint64_t addr23 = Scanner::FindPattern("BE ?? ?? ?? ?? 41 23 C6 C1 E1 ?? 0B C1 33 D0 41 BF", base, size);
     if (addr23) {
-        results["DecryptNameIndexXorKey3"] = PubgMemory::Read<uint32_t>(addr23 + 1);
-        results["DecryptNameIndexDval"] = PubgMemory::Read<uint8_t>(addr23 + 10);
+        results["DecryptNameIndexXorKey3"] = MemoryManager::ReadType<uint32_t>(addr23 + 1);
+        results["DecryptNameIndexDval"] = MemoryManager::ReadType<uint8_t>(addr23 + 10);
         results["DecryptNameIndexSval"] = 32 - (uint32_t)results["DecryptNameIndexDval"];
         
         // Find XorKey2 (follows the block)
         uint64_t addrKey2 = Scanner::FindPattern("41 BF ?? ?? ?? ?? 41 33 D7", addr23, 128);
         if (addrKey2) {
-            results["DecryptNameIndexXorKey2"] = PubgMemory::Read<uint32_t>(addrKey2 + 2);
+            results["DecryptNameIndexXorKey2"] = MemoryManager::ReadType<uint32_t>(addrKey2 + 2);
         }
         
         std::cout << "[KEY]  DecryptNameIndexXorKey3: 0x" << std::hex << results["DecryptNameIndexXorKey3"] << "\n";
@@ -320,8 +387,8 @@ int main() {
  
     uint64_t addrH12 = Scanner::FindPattern("C7 45 B0 ?? ?? ?? ?? 33 D2 C7 45 B4 ?? ?? ?? ?? C7 45 B8 ?? ?? ?? ??", base, size);
     if (addrH12) {
-        results["HealthKey1"] = PubgMemory::Read<uint32_t>(addrH12 + 12);
-        results["HealthKey2"] = PubgMemory::Read<uint32_t>(addrH12 + 19);
+        results["HealthKey1"] = MemoryManager::ReadType<uint32_t>(addrH12 + 12);
+        results["HealthKey2"] = MemoryManager::ReadType<uint32_t>(addrH12 + 19);
         std::cout << "[KEY]  HealthKey1: 0x" << std::hex << results["HealthKey1"] << "\n";
         std::cout << "[KEY]  HealthKey2: 0x" << std::hex << results["HealthKey2"] << "\n";
     }

@@ -29,7 +29,6 @@ cl /EHsc /O2 /MT /std:c++17 ^
 
 if %errorlevel% neq 0 (
     echo [!] Build FAILED!
-    pause
     exit /b %errorlevel%
 )
 
@@ -41,5 +40,4 @@ if exist "main.obj" del "main.obj"
 if exist "hypercall_bridge.obj" del "hypercall_bridge.obj"
 if exist "hypercall_entry.obj" del "hypercall_entry.obj"
 
-pause
 exit /b 0

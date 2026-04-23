@@ -1,25 +1,27 @@
 # �️ Scanner Signature Fix Plan
+# 🛡️ Scanner Signature Fix Plan
 
 Danh sách các biến trong `main.cpp` đang có Signature chưa chuẩn (trả về giá trị rác, Opcode hoặc sai lệch hoàn toàn). Cần tìm mỏ neo mới cho từng biến này.
 
 ## 1. 🔑 Hệ Thống Giải Mã (Decryption)
 - [o] **DecryptNameIndexRor**: Hiện tại bắt nhầm `0x17` (Ror gốc thường là `0x1`).
 
-## 2. 👤 Thông Tin Người Chơi (Player Info) - Đang dính Opcode
-- [o] **PlayerName**: Hiện `0x48000004` (Sai).
-- [o] **SurvivalLevel**: Hiện `0x8B480032` (Sai).
-- [o] **SquadMemberIndex**: Hiện `0x3C8858B` (Sai).
-- [x] **PlayerStatistics**: Hiện `0x3F0988B` (Sai).
-- [x] **AccountId**: Hiện `0x32886` (Cần Verify).
-- [x] **MatchId**: Hiện `0x49897` (Sai).
-- [ ] **ping**: Hiện `0x238` (Sai lệch so với Master 0x3F8).
-- [o] **DamageDealtOnEnemy**: Hiện `0x3F0988B` (Sai).
+## 2. 👤 Thông Tin Người Chơi (Player Info)
+- [o] **PlayerName**: Hiện `0x420` (Chuẩn).
+- [o] **SurvivalLevel**: Hiện `0xCCC` (Chuẩn).
+- [o] **SquadMemberIndex**: Hiện `0xA1C` (Chuẩn).
+- [o] **DamageDealtOnEnemy**: Hiện `0x804` (Chuẩn).
+- [x] **AccountId**: Hiện `NULL` (Mỏ neo không khớp).
+- [x] **PlayerStatistics**: Hiện `0x7E8` (Cần Verify so với 0xA10).
+- [ ] **ping**: Hiện `0x238` (Cần Verify so với 0x3F8).
 
 ## 3. ⚔️ Combat & Trạng Thái (Combat/CP)
-- [ ] **ElapsedCookingTime**: Hiện `0x8F887` (Sai).
-- [ ] **bIsScoping_CP**: Hiện `0x75000008` (Bắt nhầm hằng số).
-- [ ] **bIsReloading_CP**: Hiện `0x75000007` (Bắt nhầm hằng số).
-- [ ] **LeanLeftAlpha_CP**: Hiện `0xBC0` (Master 0x694).
+- [o] **VerticalRecovery**: Hiện `0x10D8` (Chuẩn).
+- [x] **LeanLeftAlpha_CP**: Hiện `0xBC0` (Sai - Master 0x694).
+- [x] **LeanRightAlpha_CP**: Hiện `0x404` (Sai - Master 0x698).
+- [x] **ElapsedCookingTime**: Hiện `0x8F887` (Sai).
+- [x] **bIsScoping_CP**: Hiện `0x75000008` (Sai).
+- [x] **bIsReloading_CP**: Hiện `0x75000007` (Sai).
 - [ ] **LeanRightAlpha_CP**: Hiện `0x404` (Master 0x698).
 - [ ] **ControlRotation_CP**: Hiện `0xBC8` (Master 0x64C).
 
@@ -32,4 +34,5 @@ Danh sách các biến trong `main.cpp` đang có Signature chưa chuẩn (trả
 - [ ] **TimeSeconds**: Hiện `0x9C` (Master 0x810).
 
 - [ ] **SurvivalTier**
+- [ ] **BallisticCurve**
 
