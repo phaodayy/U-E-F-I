@@ -256,17 +256,20 @@ int main() {
     scanDisp("ReplicatedMovement", "48 8B 4D 58 E8 ?? ?? ?? ?? 48 83 C4 20 5D C3 48 8B 8A ?? ?? ?? ??", 17);
     scanDisp("MatchId", "BE 00 00 00 20 85 70 08 0F 85 ?? ?? ?? ?? 48 8B 97 ?? ?? ?? ??", 16);
  
+    // --- 14. CORE ENGINE OVERRIDES ---
+    scanDisp("PlayerName", "44 39 BB 28 04 00 00 0F 8E ?? ?? ?? ?? 33 F6 48 8B 15 ?? ?? ?? ?? 48 8B 83 ?? ?? ?? ??", 26);
+    scanDisp("LocalPlayers", "5D C3 CC 48 8B 8A ?? ?? ?? ?? E9", 6);
+ 
     // Static verified weapon sub-offsets
     results["BallisticCurve"] = 0x28;
     results["FloatCurves"] = 0x38;
     results["ObjID"] = 0x10;
     results["SurvivalTier"] = 0x440;
-    results["PlayerName"] = 0x340;
     results["DurabilityMax"] = 0x314;
     results["WeaponConfig_WeaponClass"] = 0x878;
     results["ControlRotation_CP"] = 0xBC8;
  
-    // --- 14. DECRYPTION KEYs (Verified Offsets) ---
+    // --- 15. DECRYPTION KEYs (Verified Offsets) ---
     uint64_t addrNameDec = Scanner::FindPattern("41 8B ?? ?? BB ?? ?? ?? ?? 33 ?? 8B ?? C1 ?? 17", base, size);
     if (addrNameDec) {
         results["DecryptNameIndexXorKey1"] = PubgMemory::Read<uint32_t>(addrNameDec + 5);
