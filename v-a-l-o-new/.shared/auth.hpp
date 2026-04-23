@@ -1,0 +1,206 @@
+#pragma once
+#include <windows.h>
+#include <wininet.h>
+#include <bcrypt.h>
+#include <string>
+#include <vector>
+#include <iostream>
+#include <algorithm>
+
+#pragma comment(lib, "wininet.lib")
+#pragma comment(lib, "bcrypt.lib")
+
+#include <winioctl.h>
+#include <ntddstor.h>
+#include <intrin.h>
+#include "WinSha256.h"
+#include "skCrypt.h"
+
+namespace GZAuth {
+
+const std::vector<BYTE> RSA_PUBLIC_KEY = {
+    0x52, 0x53, 0x41, 0x31, 0x00, 0x04, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0xbf, 0x40, 0xea, 0xde, 0xa9, 
+    0xf4, 0x7d, 0xfa, 0x39, 0x68, 0xee, 0x48, 0x34, 0x19, 0x34, 0x9b, 0x3e, 0xf0, 0xea, 0xcf, 0xf9, 
+    0x55, 0x67, 0x1b, 0xf2, 0xb7, 0x8a, 0x81, 0xfc, 0x0b, 0xf3, 0x7c, 0x5b, 0xa6, 0x5a, 0xdf, 0xeb, 
+    0x2a, 0x1d, 0x62, 0x66, 0x4b, 0x23, 0xaf, 0x92, 0x88, 0xb6, 0x15, 0xe3, 0xd6, 0xb0, 0x5f, 0x18, 
+    0xad, 0xc5, 0x0b, 0x42, 0x15, 0xbf, 0x1c, 0x8b, 0xa9, 0xf0, 0x24, 0xd2, 0xed, 0x0b, 0x3d, 0xaf, 
+    0x29, 0xb4, 0xca, 0x45, 0x8c, 0x95, 0x22, 0x4d, 0x5e, 0xc4, 0x9b, 0x0b, 0xd7, 0x88, 0x0f, 0x8a, 
+    0xa8, 0x41, 0x9e, 0x11, 0x8b, 0x52, 0x78, 0x15, 0x33, 0x4e, 0xe7, 0x1b, 0x1a, 0x51, 0x9e, 0xbd, 
+    0x49, 0x5b, 0xa1, 0xf0, 0x72, 0xab, 0x21, 0xe5, 0x39, 0x10, 0x20, 0x83, 0x98, 0x3a, 0x0a, 0x26, 
+    0xe5, 0x85, 0x0d, 0x79, 0x1c, 0x9f, 0x24, 0xb5, 0x6c, 0x59, 0x69, 0x00, 0x00, 0x00, 0x00, 
+};
+
+inline std::vector<BYTE> decode64(const std::string &val) {
+    const std::string b64chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::vector<BYTE> out;
+    std::vector<int> T(256, -1);
+    for (int i=0; i<64; i++) T[b64chars[i]] = i;
+    int valb = 0, valb_c = -8;
+    for (unsigned char c : val) {
+        if (T[c] == -1) break;
+        valb = (valb << 6) + T[c];
+        valb_c += 6;
+        if (valb_c >= 0) {
+            out.push_back(char((valb >> valb_c) & 0xFF));
+            valb_c -= 8;
+        }
+    }
+    return out;
+}
+
+inline std::string get_hwid() {
+    std::string hwid_raw = "";
+
+    // 1. Get Volume Serial Number (Ổ đĩa C)
+    DWORD vol_serial = 0;
+    if (GetVolumeInformationA(skCrypt("C:\\"), NULL, 0, &vol_serial, NULL, NULL, NULL, 0)) {
+        char vol_str[32];
+        sprintf_s(vol_str, "%08X", vol_serial);
+        hwid_raw += vol_str;
+    }
+
+    // 2. Get Disk Physical Serial Number (SSD/HDD thật - Khó spoof)
+    HANDLE hDrive = CreateFileA(skCrypt("\\\\.\\PhysicalDrive0"), 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+    if (hDrive != INVALID_HANDLE_VALUE) {
+        STORAGE_PROPERTY_QUERY query = { StorageDeviceProperty, PropertyStandardQuery };
+        DWORD bytesReturned = 0;
+        STORAGE_DESCRIPTOR_HEADER header = { 0 };
+        if (DeviceIoControl(hDrive, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), &header, sizeof(header), &bytesReturned, NULL)) {
+            std::vector<BYTE> buffer(header.Size);
+            if (DeviceIoControl(hDrive, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), buffer.data(), (DWORD)buffer.size(), &bytesReturned, NULL)) {
+                PSTORAGE_DEVICE_DESCRIPTOR pDesc = (PSTORAGE_DEVICE_DESCRIPTOR)buffer.data();
+                if (pDesc->SerialNumberOffset != 0) {
+                    hwid_raw += (char*)(buffer.data() + pDesc->SerialNumberOffset);
+                }
+            }
+        }
+        CloseHandle(hDrive);
+    }
+
+    // 3. Get CPU ID (Chipset)
+    int cpuinfo[4];
+    __cpuid(cpuinfo, 1);
+    char cpu_str[64];
+    sprintf_s(cpu_str, "%08X%08X", cpuinfo[0], cpuinfo[3]);
+    hwid_raw += cpu_str;
+
+    // 4. Get BIOS/Mainboard Serial (Registry fallback)
+    HKEY hKey;
+    char szBiosSerial[256] = { 0 };
+    DWORD dwBufLen = 256;
+    if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, skCrypt("HARDWARE\\DESCRIPTION\\System\\BIOS"), 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+        if (RegQueryValueExA(hKey, skCrypt("BaseBoardSerialNumber"), NULL, NULL, (LPBYTE)szBiosSerial, &dwBufLen) == ERROR_SUCCESS) {
+            hwid_raw += szBiosSerial;
+        }
+        RegCloseKey(hKey);
+    }
+
+    // Hash toàn bộ thông tin phần cứng để tạo mã duy nhất (vẫn giữ format HWID- cho app)
+    std::string hashed_raw = Sha::hmac_sha256(skCrypt("GZ_HARD_HWID_FINAL_V1"), hwid_raw);
+    return "HWID-" + hashed_raw.substr(0, 8); // Lấy 8 ký tự hash cho gọn
+}
+
+inline std::string ParseJsonField(const std::string& json, const std::string& key) {
+    std::string target = "\"" + key + "\":";
+    size_t pos = json.find(target);
+    if (pos == std::string::npos) return "";
+    pos += target.length();
+    while(pos < json.length() && (json[pos] == ' ' || json[pos] == '\"')) pos++;
+    size_t end = pos;
+    while(end < json.length() && json[end] != '\"' && json[end] != ',' && json[end] != '}') end++;
+    return json.substr(pos, end - pos);
+}
+
+inline bool Authenticate(std::string key) {
+    if (key.empty()) return false;
+    
+    // Trim whitespace and \r\n from string generated by echo or bad copy/paste
+    size_t endpos = key.find_last_not_of(" \n\r\t");
+    if (std::string::npos != endpos) key = key.substr(0, endpos + 1);
+    size_t startpos = key.find_first_not_of(" \n\r\t");
+    if (std::string::npos != startpos) key = key.substr(startpos);
+    std::string hwid = get_hwid();
+    std::string response = "";
+    
+    HINTERNET hInternet = InternetOpenA("GZ-Cheat-Loader", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+    if (!hInternet) return false;
+    
+    HINTERNET hConnect = InternetConnectA(hInternet, "licensing-backend.donghiem114.workers.dev", INTERNET_DEFAULT_HTTPS_PORT, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 0);
+    if (hConnect) {
+        HINTERNET hRequest = HttpOpenRequestA(hConnect, "POST", "/public/activate", NULL, NULL, NULL, INTERNET_FLAG_SECURE, 0);
+        if (hRequest) {
+            std::string body = "{\"key\":\"" + key + "\",\"hwid\":\"" + hwid + "\",\"nonce\":\"0\"}";
+            std::string header = "Content-Type: application/json\r\nJWT_SECRET_KEY: MIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHCuqB3nW1bZHqKr8oY74k44pxwhs3xObnHCYxNks2QDqqbxSSR0NFiXH3aqce0ithBBNeT7hE+RHwMSLbLpIgFsv3yfEZLXs4x3k5XKh5q7U+p7dLt3kzf9jwn9Y+NAXCjnV9kO2IT6JnhvsH5OahTDzVflm9EGJdmN6YBaF4b9AgMBAAE=\r\n";
+            if (HttpSendRequestA(hRequest, header.c_str(), (DWORD)header.length(), (LPVOID)body.c_str(), (DWORD)body.length())) {
+                char buf[1024];
+                DWORD bytesRead = 0;
+                while (InternetReadFile(hRequest, buf, sizeof(buf) - 1, &bytesRead) && bytesRead > 0) {
+                    buf[bytesRead] = 0;
+                    response += buf;
+                }
+            }
+            InternetCloseHandle(hRequest);
+        }
+        InternetCloseHandle(hConnect);
+    }
+    InternetCloseHandle(hInternet);
+    
+    std::string status = ParseJsonField(response, "status");
+    if (status != "ACTIVATED") {
+        std::cout << "[-] Auth failed. Status: " << status << std::endl;
+        return false;
+    }
+    
+    std::string timestamp = ParseJsonField(response, "timestamp");
+    std::string signatureB64 = ParseJsonField(response, "signature");
+    if (timestamp.empty() || signatureB64.empty()) {
+        std::cout << "[-] Invalid response." << std::endl;
+        return false;
+    }
+    
+    std::string payload_str = key + ":" + hwid + ":" + timestamp + ":0";
+    std::vector<BYTE> sigData = decode64(signatureB64);
+    std::vector<BYTE> safeBlob = RSA_PUBLIC_KEY;
+    safeBlob.resize(155);
+
+    BCRYPT_ALG_HANDLE hAlg = NULL;
+    BCRYPT_KEY_HANDLE hKey = NULL;
+    BCRYPT_ALG_HANDLE hHashAlg = NULL;
+    BCRYPT_HASH_HANDLE hHash = NULL;
+    
+    bool verified = false;
+    
+    if (BCryptOpenAlgorithmProvider(&hAlg, BCRYPT_RSA_ALGORITHM, NULL, 0) == 0) {
+        if (BCryptImportKeyPair(hAlg, NULL, BCRYPT_RSAPUBLIC_BLOB, &hKey, safeBlob.data(), (ULONG)safeBlob.size(), 0) == 0) {
+            if (BCryptOpenAlgorithmProvider(&hHashAlg, BCRYPT_SHA256_ALGORITHM, NULL, 0) == 0) {
+                if (BCryptCreateHash(hHashAlg, &hHash, NULL, 0, NULL, 0, 0) == 0) {
+                    if (BCryptHashData(hHash, (PUCHAR)payload_str.c_str(), (ULONG)payload_str.length(), 0) == 0) {
+                        BYTE hash[32];
+                        if (BCryptFinishHash(hHash, hash, 32, 0) == 0) {
+                            BCRYPT_PKCS1_PADDING_INFO padInfo = {};
+                            padInfo.pszAlgId = BCRYPT_SHA256_ALGORITHM;
+                            
+                            NTSTATUS status = BCryptVerifySignature(hKey, &padInfo, hash, 32, sigData.data(), (ULONG)sigData.size(), BCRYPT_PAD_PKCS1);
+                            if (status == 0) {
+                                verified = true;
+                            } else {
+                                std::cout << "[-] Integrity check failed (Status: 0x" << std::hex << status << std::dec << ")! FAKE SERVER DETECTED." << std::endl;
+                            }
+                        }
+                    }
+                    BCryptDestroyHash(hHash);
+                }
+                BCryptCloseAlgorithmProvider(hHashAlg, 0);
+            }
+            BCryptDestroyKey(hKey);
+        } else {
+           std::cout << "[-] Failed to import RSA key!" << std::endl;
+        }
+        BCryptCloseAlgorithmProvider(hAlg, 0);
+    }
+    
+    return verified;
+}
+
+} // namespace

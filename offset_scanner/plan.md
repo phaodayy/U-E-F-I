@@ -7,12 +7,13 @@ Danh sách các biến trong `main.cpp` đang có Signature chưa chuẩn (trả
 
 ## 2. 👤 Thông Tin Người Chơi (Player Info) - Đang dính Opcode
 - [o] **PlayerName**: Hiện `0x48000004` (Sai).
-- [x] **SurvivalLevel**: Hiện `0x8B480032` (Sai).
-- [x] **SquadMemberIndex**: Hiện `0x3C8858B` (Sai).
+- [o] **SurvivalLevel**: Hiện `0x8B480032` (Sai).
+- [o] **SquadMemberIndex**: Hiện `0x3C8858B` (Sai).
 - [x] **PlayerStatistics**: Hiện `0x3F0988B` (Sai).
 - [x] **AccountId**: Hiện `0x32886` (Cần Verify).
 - [x] **MatchId**: Hiện `0x49897` (Sai).
 - [ ] **ping**: Hiện `0x238` (Sai lệch so với Master 0x3F8).
+- [o] **DamageDealtOnEnemy**: Hiện `0x3F0988B` (Sai).
 
 ## 3. ⚔️ Combat & Trạng Thái (Combat/CP)
 - [ ] **ElapsedCookingTime**: Hiện `0x8F887` (Sai).
@@ -29,3 +30,6 @@ Danh sách các biến trong `main.cpp` đang có Signature chưa chuẩn (trả
 - [ ] **ReplicatedMovement**: Hiện `0x588A` (Master 0xD0).
 - [ ] **Durability**: Hiện `0x8108010` (Sai).
 - [ ] **TimeSeconds**: Hiện `0x9C` (Master 0x810).
+
+- [ ] **SurvivalTier**
+

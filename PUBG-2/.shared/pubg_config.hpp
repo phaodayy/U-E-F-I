@@ -35,7 +35,7 @@ namespace pubg_config {
         inline uint64_t MyHUD = 0x4C8;
         inline uint64_t PlayerState = 0x418;
         inline uint64_t RootComponent = 0x308;
-        inline uint64_t ControlRotation = 0x40C; // Placeholder if needed
+        inline uint64_t ControlRotation = 0x40C; // Kd
         inline uint64_t Character = 0x438;
         inline uint64_t Pawn = 0x448;
 
@@ -134,7 +134,7 @@ namespace pubg_config {
         };
 
         // --- 8. INVENTORY & STATS ---
-        inline uint64_t LocalPlayers = 0x124172D0; // Note: Original was high, user says 0xF0 but usually 0xF0 is LocalPlayer. I will keep original high address or check context. User provided PlayerArray = 0x410 which is consistent.
+        inline uint64_t LocalPlayers = 0x124172D0; // kd
         inline uint64_t PlayerArray = 0x410;
         inline uint64_t AccountId = 0x810;
         inline uint64_t PlayerName = 0x420;
