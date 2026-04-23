@@ -278,7 +278,7 @@ int main() {
     scanDisp("BlueZoneRadius", "F3 0F 10 ?? 18 01 00 00", 4); 
     scanDisp("TimeSeconds", "F3 0F 10 83 ?? ?? 00 00 F3 0F 58 83 ?? ?? 00 00", 4);
 
-    scanDisp("VerticalRecovery", "8B 83 ?? ?? ?? ?? 66 89 8B ?? ?? ?? ?? 88 8B", 9);
+    scanDisp("VerticalRecovery", "44 89 A7 D0 10 00 00 4C 89 A7 D8 10 00 00 44 89 A7 E0 10", 10);
  
     uint64_t addrSpoof = Scanner::FindPattern("48 85 C0 74 09 83 38 00 C6 45 77 01 77 04 C6 45 77", base, size);
     if (addrSpoof) results["SPOOFCALL_GADGET"] = addrSpoof - base;
