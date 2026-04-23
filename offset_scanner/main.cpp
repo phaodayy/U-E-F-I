@@ -269,7 +269,13 @@ int main() {
     results["WeaponConfig_WeaponClass"] = 0x878;
     results["ControlRotation_CP"] = 0xBC8;
  
-    // --- 15. DECRYPTION KEYs (Verified Offsets) ---
+    // --- 15. HOOKS & GADGETS (Static Addresses) ---
+    results["SPOOFCALL_GADGET"] = 0x2423775;
+    results["LineTraceSingle"] = 0x83153C;
+    results["HOOK"] = 0x11AE68E8;
+    results["HOOK_TWO"] = 0xCFEDBAB;
+ 
+    // --- 16. DECRYPTION KEYs (Verified Offsets) ---
     uint64_t addrNameDec = Scanner::FindPattern("41 8B ?? ?? BB ?? ?? ?? ?? 33 ?? 8B ?? C1 ?? 17", base, size);
     if (addrNameDec) {
         results["DecryptNameIndexXorKey1"] = PubgMemory::Read<uint32_t>(addrNameDec + 5);
