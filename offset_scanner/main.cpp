@@ -178,7 +178,46 @@ int main() {
     scanByte("GNamesPtr", "49 8B ?? ?? B8 ?? ?? ?? ?? 41 F7 ?? 45 8B ?? 45 8D", 3);
     scanDisp("ChunkSize", "41 69 ?? ?? ?? ?? ?? 44 2B E8 4D 85 C0", 3);
  
-    // --- 3. DECRYPTION KEYs (Verified Offsets) ---
+    // --- 3. RADAR & MINIMAP ---
+    scanDisp("Minimap", "8B B1 ?? ?? ?? ?? 48 8B 81 ?? ?? ?? ?? 33 FF 48 85 C0", 9);
+    scanDisp("CurrentMinimapViewScale", "4C 89 9B 9C 04 00 00 89 B3 A4 04 00 00 89 B3 A8 04 00 00", 9);
+    scanDisp("ScreenSize", "4C 89 9B 9C 04 00 00 89 B3 A4 04 00 00 89 B3 A8 04 00 00", 15);
+    scanDisp("ScreenPosX", "41 8B 87 B8 04 00 00 41 89 86 B8 04 00 00 41 8B 87 BC 04 00 00", 3);
+    scanDisp("ScreenPosY", "41 8B 87 B8 04 00 00 41 89 86 B8 04 00 00 41 8B 87 BC 04 00 00", 17);
+    scanDisp("SelectMinimapSizeIndex", "8B 83 C4 05 00 00 89 87 C4 05 00 00 48 8B 83 C8 05 00 00", 15);
+ 
+    // --- 4. CHARACTER & VISUALS ---
+    scanDisp("Mesh3P", "E8 ?? ?? ?? ?? 83 F8 01 0F 84 ?? ?? ?? ?? 49 8B 8F ?? ?? ?? ??", 17);
+    scanDisp("ComponentLocation", "40 80 FD 03 0F 84 ?? ?? ?? ?? F3 0F 10 98 ?? ?? ?? ??", 14);
+    scanDisp("StaticMesh", "41 0F B7 40 53 48 83 EC 20 4C 8B 81 ?? ?? ?? ??", 12);
+    scanDisp("WorldToMap", "F3 0F 10 A7 ?? ?? ?? ?? F3 0F 11 A4 24 90 00 00 00 F3 0F 10 AF ?? ?? ?? ??", 21);
+    scanDisp("LastRenderTimeOnScreen", "F3 0F 10 97 ?? ?? ?? ?? F3 0F 10 8F ?? ?? ?? ?? F3 0F 5C CA", 12);
+    scanDisp("LastTeamNum", "F7 47 08 00 00 00 20 75 30 8B 83 ?? ?? ?? ?? 41 39", 12);
+    scanDisp("SpectatedCount", "4C 8D 4C 24 30 45 33 C0 41 8B 97 ?? ?? ?? ?? 48 8D 4C 24 40", 11);
+ 
+    // --- 5. WEAPONS & BALLISTICS ---
+    scanDisp("CurrentWeaponIndex", "E8 ?? ?? ?? ?? 83 64 24 28 00 48 8D 54 24 40 44 8A 8F ?? ?? ?? ??", 17);
+    scanDisp("WeaponTrajectoryData", "48 8B 91 00 14 00 00 45 33 C0 48 8B D9 48 85 D2 ?? ?? ?? ?? ?? ?? 48 8B 83 ?? ?? ?? ??", 23);
+    scanDisp("TrajectoryGravityZ", "48 89 85 D8 00 00 00 48 8D 95 ?? ?? ?? ?? 48 8B 8D ?? ?? ?? ??", 18);
+    scanDisp("FiringAttachPoint", "88 87 55 08 00 00 8B 86 ?? ?? ?? ?? 89 87", 8);
+    scanDisp("ScopingAttachPoint", "0F 28 D6 41 8B D5 E8 ?? ?? ?? ?? 48 8B 8F ?? ?? ?? ??", 14);
+    scanDisp("RecoilValueVector", "8B 9D ?? ?? ?? ?? 44 8B 85 ?? ?? ?? ?? 48 8D 8D", 9);
+    scanDisp("VerticalRecovery", "44 89 A7 D0 10 00 00 44 89 A7 D8 10 00 00 44 89 A7 E0 10", 10);
+    scanDisp("AttachedItems", "88 87 55 08 00 00 8B 86 ?? ?? ?? ?? 89 87", 8);
+ 
+    // --- 6. ITEMS & INVENTORY ---
+    scanDisp("Inventory", "F7 40 08 00 00 00 20 75 12 48 8B 83 ?? ?? ?? ??", 12);
+    scanDisp("InventoryItemCount", "48 8B BB ?? ?? ?? ?? 8B B3 ?? ?? ?? ?? 85 F6 0F 85", 9);
+    scanDisp("Equipment", "F7 40 08 00 00 00 20 75 12 48 8B 83 ?? ?? ?? ??", 12); // Note: Multi-match possible, Scanner picks first valid
+    scanDisp("ItemsArray", "48 8B 91 ?? ?? ?? ?? 48 8B D9 E8 ?? ?? ?? ?? 48 8B 93 ?? ?? ?? ??", 19);
+    scanDisp("ItemID", "F2 0F 10 87 ?? ?? ?? ?? F2 0F 11 03 8B 87 ?? ?? ?? ??", 14);
+    scanDisp("ItemTable", "4C 8B 8D C0 00 00 00 88 44 24 40 48 8B 85 ?? ?? ?? ??", 14);
+ 
+    // Static verified weapon sub-offsets
+    results["BallisticCurve"] = 0x28;
+    results["FloatCurves"] = 0x38;
+ 
+    // --- 7. DECRYPTION KEYs (Verified Offsets) ---
     uint64_t addrNameDec = Scanner::FindPattern("41 8B ?? ?? BB ?? ?? ?? ?? 33 ?? 8B ?? C1 ?? 17", base, size);
     if (addrNameDec) {
         results["DecryptNameIndexXorKey1"] = PubgMemory::Read<uint32_t>(addrNameDec + 5);

@@ -1,0 +1,10 @@
+{
+  "anchor_rva": "0xB56525",
+  "bytes": "98 28 03 00 00 0F 57 C9 F3 0F 10 87 08 0B 00 00 41 0F 28 D0 E8 F6 94 BF FF 0F 2F F0 0F 87 FF E2 94 0B F3 0F 5D C7 48 8B CF F3 0F 11 87 08 0B 00 00 E8 65 E0 A1 FF 40 80 FD 03 0F 84 E9 E2 94 0B F3 0F 10 98 30 03 00 00 0F 57 C9 F3 0F 10 87 38 0B 00 00 41 0F 28 D0 E8 B3 94 BF FF 0F 2F F0 0F 87 D4 E2 94 0B F3 0F 5D C7 48 8B CF F3 0F 11 87 38 0B 00 00 E8 22 E0 A1 FF 45 84 F6 0F 85 F7 00 00",
+  "module_name": "dump_TslGame.exe",
+  "module_path": "Process-Dumper\\bin\\dump_TslGame.exe",
+  "radius": 64,
+  "version": 1,
+  "window_size": 129,
+  "window_start_rva": "0xB564E5"
+}
