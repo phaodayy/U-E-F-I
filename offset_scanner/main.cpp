@@ -260,20 +260,27 @@ int main() {
     scanDisp("PlayerName", "44 39 BB 28 04 00 00 0F 8E ?? ?? ?? ?? 33 F6 48 8B 15 ?? ?? ?? ?? 48 8B 83 ?? ?? ?? ??", 26);
     scanDisp("LocalPlayers", "5D C3 CC 48 8B 8A ?? ?? ?? ?? E9", 6);
  
-    // Static verified weapon sub-offsets
-    results["BallisticCurve"] = 0x28;
-    results["FloatCurves"] = 0x38;
-    results["ObjID"] = 0x10;
-    results["SurvivalTier"] = 0x440;
-    results["DurabilityMax"] = 0x314;
-    results["WeaponConfig_WeaponClass"] = 0x878;
-    results["ControlRotation_CP"] = 0xBC8;
+    // --- 15. DYNAMIC METADATA & GADGETS ---
+    scanDisp("ObjID", "48 8B 8A 10 00 00 00 E9 ?? ?? ?? ?? 48 8B 8A 18 00 00 00", 3);
+    scanDisp("SurvivalTier", "8B 86 40 04 00 00 89 87 40 04 00 00 8B 86 44 04 00 00", 2);
+    scanDisp("DurabilityMax", "8B 82 14 03 00 00 89 81 14 03 00 00 8B 82 18 03 00 00", 2);
+    scanDisp("BallisticCurve", "48 8B B8 28 00 00 00 E8 ?? ?? ?? ?? 48 2B E0 33 C9", 3);
+    scanDisp("FloatCurves", "5D C3 CC 48 8B 8A 38 00 00 00 E9", 6);
+    scanDisp("WeaponConfig_WeaponClass", "48 8B 83 78 08 00 00 48 85 C0 74 ?? 48 8B 00 FF 50 18", 3);
+    scanDisp("ControlRotation_CP", "F2 0F 11 83 C8 0B 00 00 48 8B 4B 20 48 85 C9 74 0C", 4);
+    scanDisp("VerticalRecovery", "8B 83 ?? ?? ?? ?? 66 89 8B ?? ?? ?? ?? 88 8B", 9);
  
-    // --- 15. HOOKS & GADGETS (Static Addresses) ---
-    results["SPOOFCALL_GADGET"] = 0x2423775;
-    results["LineTraceSingle"] = 0x83153C;
-    results["HOOK"] = 0x11AE68E8;
-    results["HOOK_TWO"] = 0xCFEDBAB;
+    uint64_t addrSpoof = Scanner::FindPattern("48 85 C0 74 09 83 38 00 C6 45 77 01 77 04 C6 45 77", base, size);
+    if (addrSpoof) results["SPOOFCALL_GADGET"] = addrSpoof - base;
+ 
+    uint64_t addrLineTrace = Scanner::FindPattern("E8 ?? ?? ?? ?? 48 8B ?? ?? ?? ?? ?? 48 85 ?? 74 ?? 48 8B ?? ?? ?? ?? 44 8A ?? ?? 00 00 00", base, size);
+    if (addrLineTrace) results["LineTraceSingle"] = (Scanner::GetRelative(addrLineTrace, 1, 5)) - base;
+ 
+    uint64_t addrHook = Scanner::FindPattern("48 8D 0D ?? ?? ?? ?? 48 85 C9 74 ?? 48 8B 01 FF 50", base, size);
+    if (addrHook) results["HOOK"] = (Scanner::GetRelative(addrHook, 3, 7)) - base;
+ 
+    uint64_t addrHook2 = Scanner::FindPattern("41 3B D8 7D 7C 48 89 54 24 20 4D 85 C9 75 13 B9", base, size);
+    if (addrHook2) results["HOOK_TWO"] = (addrHook2 + 15) - base;
  
     // --- 16. DECRYPTION KEYs (Verified Offsets) ---
     uint64_t addrNameDec = Scanner::FindPattern("41 8B ?? ?? BB ?? ?? ?? ?? 33 ?? 8B ?? C1 ?? 17", base, size);

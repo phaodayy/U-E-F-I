@@ -1,0 +1,10 @@
+{
+  "anchor_rva": "0x169F40E",
+  "bytes": "CC CC B8 28 00 00 00 E8 C6 1D C2 00 48 2B E0 48 83 C1 68 48 83 C4 28 E9 E6 14 00 00 FF FF FF FF 48 8B B8 28 00 00 00 E8 A6 1D C2 00 48 2B E0 33 C9 48 83 C4 28 E9 08 00 00 00 00 6A 48 8B D9 48 8D",
+  "module_name": "dump_TslGame.exe",
+  "module_path": "Process-Dumper\\bin\\dump_TslGame.exe",
+  "radius": 32,
+  "version": 1,
+  "window_size": 65,
+  "window_start_rva": "0x169F3EE"
+}
