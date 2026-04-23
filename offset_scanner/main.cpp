@@ -261,7 +261,7 @@ int main() {
  
     // --- 14. CORE ENGINE OVERRIDES ---
     scanDisp("PlayerName", "44 39 BB 28 04 00 00 0F 8E ?? ?? ?? ?? 33 F6 48 8B 15 ?? ?? ?? ?? 48 8B 83 ?? ?? ?? ??", 26);
-    scanDisp("LocalPlayers", "5D C3 CC 48 8B 8A ?? ?? ?? ?? E9", 6);
+    scan("LocalPlayers", "48 83 3D ?? ?? ?? ?? 00 74 ?? 48 8B 0D ?? ?? ?? ?? 48 8B 01 FF 50", 13, 17);
  
     // --- 15. DYNAMIC METADATA & GADGETS ---
     scanByte("ObjID", "41 8B ?? ?? BB ?? ?? ?? ?? 33 ?? 8B ?? C1 ?? 17", 3);
@@ -292,7 +292,7 @@ int main() {
     if (addrHook2) results["HOOK_TWO"] = (addrHook2 + 15) - base;
  
     // --- 16. DECRYPTION KEYs (Verified Offsets) ---
-    uint64_t addrNameDec = Scanner::FindPattern("41 8B ?? ?? BB ?? ?? ?? ?? 33 ?? 8B ?? C1 ?? 17", base, size);
+    uint64_t addrNameDec = Scanner::FindPattern("41 8B ?? ?? BB ?? ?? ?? ?? 33 ?? 8B ?? C1 ?? ??", base, size);
     if (addrNameDec) {
         results["DecryptNameIndexXorKey1"] = PubgMemory::Read<uint32_t>(addrNameDec + 5);
         results["DecryptNameIndexRval"] = PubgMemory::Read<uint8_t>(addrNameDec + 15);
