@@ -163,7 +163,7 @@ int main() {
     scanDisp("BlueZonePosition", "F3 0F 10 85 ?? ?? ?? ?? 48 63 C8 48 8D 44 24 50", 4);
     scanDisp("SafetyZonePosition", "F3 0F 11 44 24 30 F3 0F 10 85 ?? ?? ?? ?? 49 03 0E 48 89 44 24 28", 10);
     scanDisp("Health1", "8A 83 3C 0A 00 00 0A C2 88 83 3C 0A 00 00 48 89 9B 80 0A", 2);
-    scanDisp("Health2", "48 8B 80 D0 04 00 00 48 85 C0 ?? ?? ?? ?? ?? F2 0F 10 80 ?? ?? ?? ?? F2 0F 11 44 24 20 8B 80", 32);
+    scanDisp("Health2", "48 8B 80 ?? ?? ?? ?? 48 85 C0 0F 84 ?? ?? ?? ?? F2 0F 10 80 ?? ?? ?? ?? F2 0F 11 44 24 20 8B 80", 32);
     scanDisp("Health3", "8A 88 92 05 00 00 80 E1 01 48 8B 44 24 30 88 48 28 48 8B 07 8B 88", 22);
     scanDisp("Health4", "FF 90 80 01 00 00 84 C0 74 10 48 8B 8F ?? ?? ?? ?? 48 85 C9", 13);
  
