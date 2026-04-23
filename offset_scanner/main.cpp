@@ -90,7 +90,8 @@ int main() {
             results[name] = rva;
             std::cout << "[SCAN] " << name << ": 0x" << std::hex << rva << "\n";
         } else {
-            std::cout << "[FAIL] Could not find " << name << " pattern.\n";
+            results[name] = 0;
+            std::cout << name << ": NULL\n";
         }
     };
 
@@ -101,7 +102,8 @@ int main() {
             results[name] = disp;
             std::cout << "[DISP] " << name << ": 0x" << std::hex << disp << "\n";
         } else {
-            std::cout << "[FAIL] Could not find " << name << " pattern.\n";
+            results[name] = 0;
+            std::cout << name << ": NULL\n";
         }
     };
 
@@ -112,7 +114,8 @@ int main() {
             results[name] = val;
             std::cout << "[BYTE] " << name << ": 0x" << std::hex << (int)val << "\n";
         } else {
-            std::cout << "[FAIL] Could not find " << name << " pattern.\n";
+            results[name] = 0;
+            std::cout << name << ": NULL\n";
         }
     };
 
@@ -266,8 +269,14 @@ int main() {
     scanDisp("DurabilityMax", "8B 82 14 03 00 00 89 81 14 03 00 00 8B 82 18 03 00 00", 2);
     scanDisp("BallisticCurve", "48 8B B8 28 00 00 00 E8 ?? ?? ?? ?? 48 2B E0 33 C9", 3);
     scanDisp("FloatCurves", "5D C3 CC 48 8B 8A 38 00 00 00 E9", 6);
-    scanDisp("WeaponConfig_WeaponClass", "48 8B 83 78 08 00 00 48 85 C0 74 ?? 48 8B 00 FF 50 18", 3);
-    scanDisp("ControlRotation_CP", "F2 0F 11 83 C8 0B 00 00 48 8B 4B 20 48 85 C9 74 0C", 4);
+    scanDisp("WeaponConfig_WeaponClass", "90 49 8B 06 4C 8B 90 78 08 00 00", 12);
+    scanDisp("ControlRotation_CP", "80 3B 00 0F 85 ?? ?? ?? ?? 48 8B 8F C8 0B 00 00", 12);
+    scanDisp("LeanLeftAlpha_CP", "F3 0F 10 B3 ?? ?? ?? ?? F3 0F 10 A3 ?? ?? ?? ??", 4);
+    scanDisp("LeanRightAlpha_CP", "F3 0F 10 A3 C4 0B 00 00 F3 0F 10 9B C0 0B 00 00", 4);
+    scanDisp("SafetyZoneRadius", "F3 0F 10 ?? 14 01 00 00", 4);
+    scanDisp("BlueZoneRadius", "F3 0F 10 ?? 18 01 00 00", 4); 
+    scanDisp("TimeSeconds", "F3 0F 10 83 ?? ?? 00 00 F3 0F 58 83 ?? ?? 00 00", 4);
+    scanDisp("bShowMouseCursor", "88 83 ?? ?? 00 00 48 83 C4 ?? 5B C3", 2);
     scanDisp("VerticalRecovery", "8B 83 ?? ?? ?? ?? 66 89 8B ?? ?? ?? ?? 88 8B", 9);
  
     uint64_t addrSpoof = Scanner::FindPattern("48 85 C0 74 09 83 38 00 C6 45 77 01 77 04 C6 45 77", base, size);
@@ -319,9 +328,15 @@ int main() {
 
     // --- 3. AUTO-UPDATE pubg_config.hpp ---
     std::string configPath = "../PUBG-2/.shared/pubg_config.hpp";
+    std::vector<std::string> lines;
     std::ifstream inFile(configPath);
+    if (!inFile.is_open()) {
+        // Try alternate path if running from bin/
+        configPath = "../../PUBG-2/.shared/pubg_config.hpp";
+        inFile.open(configPath);
+    }
+ 
     if (inFile.is_open()) {
-        std::vector<std::string> lines;
         std::string line;
         int updates = 0;
         while (std::getline(inFile, line)) {
@@ -344,24 +359,37 @@ int main() {
             if (!matched) lines.push_back(line);
         }
         inFile.close();
-        if (updates > 0) {
-            std::ofstream outFile(configPath);
-            for (const auto& l : lines) outFile << l << "\n";
-            outFile.close();
-            std::cout << "\n[+] Synchronized " << updates << " values to pubg_config.hpp\n";
-        }
+        // Removed: Auto-update of pubg_config.hpp is disabled as per user request.
+        // The 'lines' vector is still maintained for use as a template for PUBG_Offsets.h.
+    } else {
+        std::cout << "\n[!] WARNING: Could not find pubg_config.hpp for mirroring.\n";
     }
-
-    // --- 4. EXPORT TO PUBG_Offsets.h ---
+ 
+    // --- 4. EXPORT TO PUBG_Offsets.h (Mirrored from config or raw fallback) ---
     std::ofstream hFile("PUBG_Offsets.h");
     if (hFile.is_open()) {
-        hFile << "#pragma once\n#include <cstdint>\n\nnamespace offsets {\n";
-        for (auto const& [name, val] : results) {
-            hFile << "    inline uint64_t " << name << " = 0x" << std::hex << val << ";\n";
+        hFile << "#pragma once\n#include <cstdint>\n\n// Standalone offsets mirroring pubg_config.hpp order\nnamespace offsets {\n";
+        
+        if (!lines.empty()) {
+            for (const auto& line : lines) {
+                size_t pos = line.find("inline uint");
+                if (pos != std::string::npos) {
+                    std::string clean = line;
+                    size_t first = clean.find_first_not_of(" ");
+                    if (first != std::string::npos) clean = clean.substr(first);
+                    hFile << "    " << clean << "\n";
+                }
+            }
+        } else {
+            // FALLBACK: If template failed, export raw results directly
+            for (auto const& [name, val] : results) {
+                hFile << "    inline uint64_t " << name << " = 0x" << std::hex << val << ";\n";
+            }
         }
+        
         hFile << "}\n";
         hFile.close();
-        std::cout << "[+] Exported results to bin/PUBG_Offsets.h\n";
+        std::cout << "[+] Exported synchronized results to bin/PUBG_Offsets.h\n";
     }
  
     std::cout << "\n[*] Offset scanning complete. System ready.\n";
