@@ -202,7 +202,7 @@ int main() {
     // --- 5. WEAPONS & BALLISTICS ---
     scanDisp("CurrentWeaponIndex", "48 83 EC 20 33 FF 4C 8B FA 80 B9 ?? ?? ?? ?? FF", 11);
     scanDisp("WeaponTrajectoryData", "48 8D 8F A8 11 00 00 E8 ?? ?? ?? ??", 3);
-    scanDisp("TrajectoryGravityZ", "48 89 85 D8 00 00 00 48 8D 95 ?? ?? ?? ?? 48 8B 8D ?? ?? ?? ??", 18);
+    scanDisp("TrajectoryGravityZ", "44 89 8C 24 6C 10 00 00 48 8B 84 24 68 10 00 00", 4);
     scanDisp("FiringAttachPoint", "88 87 55 08 00 00 8B 86 ?? ?? ?? ?? 89 87", 8);
     scanDisp("ScopingAttachPoint", "0F 28 D6 41 8B D5 E8 ?? ?? ?? ?? 48 8B 8F ?? ?? ?? ??", 14);
     scanDisp("RecoilValueVector", "8B 9D ?? ?? ?? ?? 44 8B 85 ?? ?? ?? ?? 48 8D 8D", 9);
@@ -394,6 +394,12 @@ int main() {
     }
  
     std::cout << "\n[*] Offset scanning complete. System ready.\n";
-    system("pause");
+    
+    std::cout << "[!] This window will close automatically in 10 seconds...\n";
+    for (int i = 10; i > 0; --i) {
+        std::cout << "\rClosing in: " << i << " seconds...   " << std::flush;
+        Sleep(1000);
+    }
     return 0;
 }
+
