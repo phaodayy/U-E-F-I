@@ -264,7 +264,7 @@ int main() {
     scanDisp("LocalPlayers", "5D C3 CC 48 8B 8A ?? ?? ?? ?? E9", 6);
  
     // --- 15. DYNAMIC METADATA & GADGETS ---
-    scanDisp("ObjID", "48 8B 8A 10 00 00 00 E9 ?? ?? ?? ?? 48 8B 8A 18 00 00 00", 3);
+    scanByte("ObjID", "41 8B ?? ?? BB ?? ?? ?? ?? 33 ?? 8B ?? C1 ?? 17", 3);
     scanDisp("SurvivalTier", "8B 86 40 04 00 00 89 87 40 04 00 00 8B 86 44 04 00 00", 2);
     scanDisp("DurabilityMax", "8B 82 14 03 00 00 89 81 14 03 00 00 8B 82 18 03 00 00", 2);
     scanDisp("BallisticCurve", "48 8B B8 28 00 00 00 E8 ?? ?? ?? ?? 48 2B E0 33 C9", 3);
