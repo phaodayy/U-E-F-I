@@ -166,11 +166,13 @@ int main() {
     scanDisp("Health2", "48 8B 80 ?? ?? ?? ?? 48 85 C0 0F 84 ?? ?? ?? ?? F2 0F 10 80 ?? ?? ?? ?? F2 0F 11 44 24 20 8B 80", 32);
     scanDisp("Health3", "8A 88 92 05 00 00 80 E1 01 48 8B 44 24 30 88 48 28 48 8B 07 8B 88", 22);
     scanDisp("Health4", "FF 90 80 01 00 00 84 C0 74 10 48 8B 8F ?? ?? ?? ?? 48 85 C9", 13);
+    scanDisp("Health5", "44 38 B7 25 0A 00 00 0F 85", 3);
+    scanDisp("Health6", "48 8B B1 20 0A 00 00 45 33 F6", 3);
+    scanDisp("GroggyHealth", "48 8D 8F B0 14 00 00 E8 ?? ?? ?? ?? B0 01", 3);
  
     // --- 2. MEMBER OFFSETS ---
     scanDisp("TeamNumber", "8B 81 ?? ?? ?? ?? 8D 98 ?? ?? ?? ?? 3D ?? ?? ?? ?? 0F 4C", 2); 
     scanDisp("BoneArray", "48 8B 81 ?? ?? ?? ?? 48 85 C0 74 04 8B 40 ?? C3 C3 CC CC CC 48 8B C4 48 89 58 08", 3);
-    scanDisp("WeaponProcessor", "8B EC 48 83 EC 50 48 8B F9 48 8B 91 ?? ?? ?? ??", 12);
     scanDisp("BoneCount", "48 83 EC 28 48 8B 81 ?? ?? ?? ?? 49 39", 7);
     scanDisp("Eyes", "F3 0F 10 8E ?? ?? ?? ?? 41 83 FD 06 7C 0B 45 8A F3", 4);
     scanByte("GNamesPtr", "49 8B ?? ?? B8 ?? ?? ?? ?? 41 F7 ?? 45 8B ?? 45 8D", 3);
@@ -181,18 +183,28 @@ int main() {
     if (addrNameDec) {
         results["DecryptNameIndexXorKey1"] = PubgMemory::Read<uint32_t>(addrNameDec + 5);
         results["DecryptNameIndexRval"] = PubgMemory::Read<uint8_t>(addrNameDec + 15);
+        results["DecryptNameIndexRor"] = results["DecryptNameIndexRval"]; // Logic uses ROR with Rval
         std::cout << "[KEY]  DecryptNameIndexXorKey1: 0x" << std::hex << results["DecryptNameIndexXorKey1"] << "\n";
         std::cout << "[KEY]  DecryptNameIndexRval: 0x" << std::hex << (int)results["DecryptNameIndexRval"] << "\n";
     }
-
-    uint64_t addr23 = Scanner::FindPattern("BE ? ? ? ? 41 23 C6 C1 E1 19 0B C1 33 D0 41 BF", base, size);
+ 
+    uint64_t addr23 = Scanner::FindPattern("BE ?? ?? ?? ?? 41 23 C6 C1 E1 ?? 0B C1 33 D0 41 BF", base, size);
     if (addr23) {
         results["DecryptNameIndexXorKey3"] = PubgMemory::Read<uint32_t>(addr23 + 1);
-        results["DecryptNameIndexXorKey2"] = PubgMemory::Read<uint32_t>(addr23 + 17);
+        results["DecryptNameIndexDval"] = PubgMemory::Read<uint8_t>(addr23 + 10);
+        results["DecryptNameIndexSval"] = 32 - (uint32_t)results["DecryptNameIndexDval"];
+        
+        // Find XorKey2 (follows the block)
+        uint64_t addrKey2 = Scanner::FindPattern("35 ?? ?? ?? ?? 89 44 24 ?? 89 4C 24", addr23, 64);
+        if (addrKey2) {
+            results["DecryptNameIndexXorKey2"] = PubgMemory::Read<uint32_t>(addrKey2 + 1);
+        }
+        
         std::cout << "[KEY]  DecryptNameIndexXorKey3: 0x" << std::hex << results["DecryptNameIndexXorKey3"] << "\n";
+        std::cout << "[KEY]  DecryptNameIndexDval: 0x" << std::hex << (int)results["DecryptNameIndexDval"] << "\n";
         std::cout << "[KEY]  DecryptNameIndexXorKey2: 0x" << std::hex << results["DecryptNameIndexXorKey2"] << "\n";
     }
-
+ 
     uint64_t addrH12 = Scanner::FindPattern("C7 45 B0 ?? ?? ?? ?? 33 D2 C7 45 B4 ?? ?? ?? ?? C7 45 B8 ?? ?? ?? ??", base, size);
     if (addrH12) {
         results["HealthKey1"] = PubgMemory::Read<uint32_t>(addrH12 + 12);
