@@ -25,6 +25,25 @@ Sig: 48 8B 05 ?? ?? ?? ?? C3 CC CC CC CC CC CC CC CC 48 89
 Logic: RIP-Relative [3, 7]
 
 
+[1.5] UNREAL CORE ENUMERATION
+-----------------------------
+CurrentLevel:
+Sig: 48 8B 8F ?? ?? ?? ?? BE ?? ?? ?? ?? BB ?? ?? ?? ?? 41 BF
+Logic: Member Offset (Displacement) [3, 7] -> Verified: 0x800
+
+Actors:
+Sig: 49 8B 06 48 8B 50 ?? 48 8B 58 ?? 48 85 DB 74 03 FF 43 08
+Logic: Member Offset (Byte) [6, 7] -> Verified: 0x38
+
+GameInstance:
+Sig: 4C 8B 05 ?? ?? ?? ?? 48 8B 8F ?? ?? ?? ?? 4D 85 C0 75 1A
+Logic: Member Offset (Displacement) [10, 14] -> Verified: 0x3B0
+
+AcknowledgedPawn:
+Sig: 48 8B 8F ?? ?? ?? ?? 48 85 C9 75 34 48 8B 9F ?? ?? ?? ?? 48 85 DB
+Logic: Member Offset (Displacement) [14, 18] -> Verified: 0x4A8
+
+
 [2] MEMBER OFFSETS (Displacement Extraction)
 --------------------------------------------
 TeamNumber:
