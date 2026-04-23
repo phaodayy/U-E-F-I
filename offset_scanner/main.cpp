@@ -168,7 +168,7 @@ int main() {
     scanDisp("Health4", "FF 90 80 01 00 00 84 C0 74 10 48 8B 8F ?? ?? ?? ?? 48 85 C9", 13);
     scanDisp("Health5", "44 38 B7 25 0A 00 00 0F 85", 3);
     scanDisp("Health6", "48 8B B1 20 0A 00 00 45 33 F6", 3);
-    scanDisp("GroggyHealth", "48 8D 8F B0 14 00 00 E8 ?? ?? ?? ?? B0 01", 3);
+    scanDisp("GroggyHealth", "4C 89 BF A0 14 00 00 48 8D 8F ?? ?? ?? ?? E8", 10);
  
     // --- 2. MEMBER OFFSETS ---
     scanDisp("TeamNumber", "8B 81 ?? ?? ?? ?? 8D 98 ?? ?? ?? ?? 3D ?? ?? ?? ?? 0F 4C", 2); 
@@ -248,6 +248,18 @@ int main() {
         }
     }
 
+    // --- 4. EXPORT TO PUBG_Offsets.h ---
+    std::ofstream hFile("PUBG_Offsets.h");
+    if (hFile.is_open()) {
+        hFile << "#pragma once\n#include <cstdint>\n\nnamespace offsets {\n";
+        for (auto const& [name, val] : results) {
+            hFile << "    inline uint64_t " << name << " = 0x" << std::hex << val << ";\n";
+        }
+        hFile << "}\n";
+        hFile.close();
+        std::cout << "[+] Exported results to bin/PUBG_Offsets.h\n";
+    }
+ 
     std::cout << "\n[*] Offset scanning complete. System ready.\n";
     system("pause");
     return 0;
