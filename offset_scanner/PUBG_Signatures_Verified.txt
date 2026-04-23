@@ -75,6 +75,30 @@ CharacterState:
 Sig: 44 88 BF ?? ?? ?? ?? 8B 8F ?? ?? ?? ?? 41 B8 FE FF FF FF
 Logic: Member Offset (Displacement) [9, 13] -> Verified: 0x1020
 
+Pawn:
+Sig: 8B 86 40 04 00 00 89 87 40 04 00 00 8B 86 44 04 00 00 89 87 44 04 00 00 8B 86 48 04 00 00
+Logic: Member Offset (Displacement) [26, 30] -> Verified: 0x448
+
+Mesh:
+Sig: F7 40 08 00 00 00 20 0F 85 ?? ?? ?? ?? 4C 8B B7 ?? ?? ?? ??
+Logic: Member Offset (Displacement) [16, 20] -> Verified: 0x4A0
+
+PlayerArray:
+Sig: F7 40 08 00 00 00 20 0F 85 ?? ?? ?? ?? 49 8B 8F ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 85 C0
+Logic: Member Offset (Displacement) [16, 20] -> Verified: 0x410
+
+ComponentToWorld:
+Sig: 4C 8D 3C C3 49 3B DF 74 5D 48 8B 33 4C 8B 96 ?? ?? ?? ??
+Logic: Member Offset (Displacement) [14, 18] -> Verified: 0x320
+
+VehicleMovement:
+Sig: F7 40 08 00 00 00 20 0F 85 ?? ?? ?? ?? 48 8B 9F ?? ?? ?? ?? 48 85 DB 0F 84
+Logic: Member Offset (Displacement) [16, 20] -> Verified: 0x468
+
+LastSubmitTime:
+Sig: C6 44 24 30 01 48 8B 07 4C 8B 88 ?? ?? ?? ?? 4C 63 87
+Logic: Member Offset (Displacement) [11, 15] -> Verified: 0x758
+
 
 [2] MEMBER OFFSETS (Displacement Extraction)
 --------------------------------------------
