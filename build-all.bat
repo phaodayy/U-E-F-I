@@ -40,15 +40,15 @@ echo [*] Step 2: Building Core Components...
 "!MSBUILD_PATH!" "hyperv-attachment\hyperv-attachment.vcxproj" /t:Rebuild /p:Configuration=Release /p:Platform=x64 /m /verbosity:minimal
 
 if not exist bin mkdir bin
-copy /Y "uefi-boot\build\x64\Release\uefi-boot.efi" bin\ >nul 2>&1
-copy /Y "hyperv-attachment\build\x64\Release\hyperv-attachment.dll" bin\ >nul 2>&1
+copy /Y "uefi-boot\bin\uefi-boot.efi" bin\ >nul 2>&1
+copy /Y "hyperv-attachment\bin\hyperv-attachment.dll" bin\ >nul 2>&1
 
 :: 4. Build Launcher/Loader (Embeds files from bin)
 echo [*] Step 3: Building Loader and Usermode...
 "!MSBUILD_PATH!" "usermode\usermode.vcxproj" /t:Rebuild /p:Configuration=Release /p:Platform=x64 /m /verbosity:minimal
 "!MSBUILD_PATH!" "loader\loader.vcxproj" /t:Rebuild /p:Configuration=Release /p:Platform=x64 /m /verbosity:minimal
 
-copy /Y "usermode\x64\Release\usermode.exe" bin\ >nul 2>&1
+copy /Y "usermode\bin\usermode.exe" bin\ >nul 2>&1
 copy /Y "loader\x64\Release\loader.exe" bin\ >nul 2>&1
 
 echo.
