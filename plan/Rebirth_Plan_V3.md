@@ -6,12 +6,6 @@ Dự án này tập trung vào việc loại bỏ các dấu hiệu nhận diệ
 
 ## 🛠️ Phân nhiệm vụ và Tiến độ
 
-### 1. 👻 Giao tiếp ẩn danh (Stealth Hypercall)
-*   [x] **Loại bỏ CPUID/VMCALL:** Chuyển sang dùng cơ chế `CALL` Gateway.
-*   [x] **EPT Hook Gateway:** Đã triển khai bẫy `INT3` trên Shadow Page của `NtUserGetForegroundWindow`.
-*   [x] **Manual EAT Parser:** Tìm địa chỉ hàm mà không dùng Windows API.
-*   [x] **Tự động Fallback:** Đã có cơ chế tự động chuyển từ CPUID (Handshake) sang Stealth Mode.
-
 ### 2. 🔐 Mã hóa & Bảo mật Dữ liệu
 *   [ ] **String Encryption:** Mã hóa toàn bộ chuỗi hệ thống (TslGame, Driver names, v.v.) bằng `skCrypt`.
 *   [ ] **Offset Obfuscation:** Mã hóa các giá trị offset tĩnh trong `pubg_config.hpp` (XOR động khi khởi chạy).
