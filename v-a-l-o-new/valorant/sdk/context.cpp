@@ -1,15 +1,17 @@
 #include "context.hpp"
-#include "../../.shared/shared.hpp"
+#include <hypercall/hypercall_bridge.hpp>
+#include <hypercall/hyper_process.hpp>
 #include "../gui/menu.h"
 #include "../overlay/overlay_menu.hpp"
 #include "fname.hpp"
 #include "offsets.hpp"
-#include "memory.hpp"
+#include "driver.hpp"
 #include <Windows.h>
 #include <iostream>
 #include <mutex>
 #include <unordered_map>
 #include <winternl.h>
+#include <intrin.h>
 
 uint64_t G_UWorld = 0;
 uint64_t G_GameInstance = 0;
@@ -28,7 +30,7 @@ static uint32_t g_ProcessId = 0;
 static uint64_t g_BaseAddress = 0;
 
 static bool InternalReadMemory(uint64_t src, void *dest, uint64_t size) {
-  return ValorantMemory::ReadMemory(src, dest, size);
+  return Driver::ReadMemory(g_ProcessId, src, dest, size);
 }
 
 struct DVector3 {
@@ -104,74 +106,231 @@ Vector3 GetBoneWorldPos(int boneIndex, uint64_t boneArray, uint64_t meshPtr) {
 }
 
 bool MoveMouse(long x, long y, unsigned short flags) {
-  return ValorantMemory::MoveMouse(x, y, flags);
+  return Driver::MoveMouse(x, y, flags);
+}
+
+// Community-Verified 12.07 Decryption (Full 7-State)
+static uint64_t DecryptXorKey1207(const uint32_t key, const uint64_t* state)
+{
+    const uint64_t hash = 0x2545F4914F6CDD1DULL * (key ^ ((key ^ (key >> 15)) >> 12) ^ (key << 25));
+    const uint64_t idx = hash % 7;
+    uint64_t val = state[idx];
+    const uint32_t hi = (uint32_t)(hash >> 32);
+    const uint32_t m7 = (uint32_t)idx % 7;
+    
+    auto lfsr1 = [](uint64_t x) -> uint64_t {
+        return (x >> 1) ^ ((x >> 1) ^ (2 * x)) & 0xAAAAAAAAAAAAAAAAULL;
+    };
+    
+    auto bitrev_ror32 = [=](uint64_t x) -> uint64_t {
+        uint64_t a = lfsr1(x);
+        uint64_t b = (a >> 2) ^ ((a >> 2) ^ (4 * a)) & 0xCCCCCCCCCCCCCCCCULL;
+        uint64_t c = (b >> 4) ^ ((b >> 4) ^ (16 * b)) & 0xF0F0F0F0F0F0F0F0ULL;
+        uint64_t d = (c >> 8) ^ ((c >> 8) ^ (c << 8)) & 0xFF00FF00FF00FF00ULL;
+        return _rotr64(d, 32);
+    };
+    
+    auto rotr63 = [](uint64_t x, uint32_t r) -> uint64_t {
+        uint8_t s = (uint8_t)(r % 0x3F) + 1;
+        return (x >> s) | (x << (64 - s));
+    };
+    
+    if (m7 == 0) {
+        val = bitrev_ror32(lfsr1(bitrev_ror32(val)));
+    }
+    else if (m7 == 1) {
+        val = rotr63(~val, hi + (uint32_t)idx);
+    }
+    else if (m7 == 2) {
+        val = ~(uint64_t)(uint32_t)(hi + (uint32_t)idx) ^ (val - (uint32_t)(hi + 2 * (uint32_t)idx));
+    }
+    else if (m7 == 3) {
+        val = ~rotr63(val, hi + 2 * (uint32_t)idx);
+    }
+    else if (m7 == 4) {
+        val = ~bitrev_ror32(val);
+    }
+    else if (m7 == 5) {
+        val = lfsr1(~val);
+    }
+    else {
+        val = (uint32_t)(hi + (uint32_t)idx) + bitrev_ror32(val);
+    }
+    
+    return val ^ key;
+}
+
+// Agent Name Mapping Logic
+std::wstring CharacterName(const std::wstring& in) {
+    if (in.find(L"Training") != std::wstring::npos) return L"Bot Lobby";
+    if (in.find(L"BountyHunter_PC_C") != std::wstring::npos) return L"Fade";
+    if (in.find(L"Stealth_PC_C") != std::wstring::npos) return L"Yoru";
+    if (in.find(L"Pandemic_PC_C") != std::wstring::npos) return L"Viper";
+    if (in.find(L"Hunter_PC_C") != std::wstring::npos) return L"Sova";
+    if (in.find(L"Guide_PC_C") != std::wstring::npos) return L"Skye";
+    if (in.find(L"Thorne_PC_C") != std::wstring::npos) return L"Sage";
+    if (in.find(L"Vampire_PC_C") != std::wstring::npos) return L"Reyna";
+    if (in.find(L"Clay_PC_C") != std::wstring::npos) return L"Raze";
+    if (in.find(L"Phoenix_PC_C") != std::wstring::npos) return L"Phoenix";
+    if (in.find(L"Wraith_PC_C") != std::wstring::npos) return L"Omen";
+    if (in.find(L"Sprinter_PC_C") != std::wstring::npos) return L"Neon";
+    if (in.find(L"Killjoy_PC_C") != std::wstring::npos) return L"Killjoy";
+    if (in.find(L"Grenadier_PC_C") != std::wstring::npos) return L"Kayo";
+    if (in.find(L"Terra_PC_C") != std::wstring::npos) return L"Waylay";
+    if (in.find(L"Cashew_PC_C") != std::wstring::npos) return L"Tejo";
+    if (in.find(L"Wushu_PC_C") != std::wstring::npos) return L"Jett";
+    if (in.find(L"Gumshoe_PC_C") != std::wstring::npos) return L"Cypher";
+    if (in.find(L"Deadeye_PC_C") != std::wstring::npos) return L"Chamber";
+    if (in.find(L"Sarge_PC_C") != std::wstring::npos) return L"Brimstone";
+    if (in.find(L"Breach_PC_C") != std::wstring::npos) return L"Breach";
+    if (in.find(L"Rift_TargetingForm_PC_C") != std::wstring::npos) return L"Astra";
+    if (in.find(L"Rift_PC_C") != std::wstring::npos) return L"Astra";
+    if (in.find(L"Mage_PC_C") != std::wstring::npos) return L"Harbor";
+    if (in.find(L"AggroBot_PC_C") != std::wstring::npos) return L"Gekko";
+    if (in.find(L"Cable_PC_C") != std::wstring::npos) return L"DeadLock";
+    if (in.find(L"Sequoia_PC_C") != std::wstring::npos) return L"Iso";
+    if (in.find(L"Smonk_PC_C") != std::wstring::npos) return L"Clove";
+    if (in.find(L"Nox_PC_C") != std::wstring::npos) return L"Vyse";
+    return L"";
 }
 
 bool Initialize(uint32_t process_id, uint64_t base_address) {
   g_ProcessId = process_id;
   g_BaseAddress = base_address;
 
-  ValorantMemory::g_ProcessId = process_id;
-  if (!ValorantMemory::RefreshProcessContext()) return false;
+  uint64_t state[7];
+  if (!Driver::ReadMemory(g_ProcessId, g_BaseAddress + ValorantOffsets::FNameState(), state, sizeof(state))) return false;
+  
+  uint32_t key = Read<uint32_t>(g_BaseAddress + ValorantOffsets::FNameKey());
+  if (key == 0) key = Read<uint32_t>(g_BaseAddress + ValorantOffsets::FNameState() + 0x38);
+  
+  std::cout << "[*] Synchronizing Engine (Patch 12.07)..." << std::endl;
 
-  uint64_t uworldPtr1 =
-      Read<uint64_t>(g_BaseAddress + ValorantOffsets::GWorld());
-  G_UWorld = Read<uint64_t>(uworldPtr1);
+  G_UWorld = 0;
+  // Unlock encrypted scan: allows large raw values (XORed) to be processed
+  for (uint64_t offset = 0xC180000; offset < 0xC200000; offset += 8) {
+      uint64_t rawWorld = Read<uint64_t>(g_BaseAddress + offset);
+      if (rawWorld < 0x1000000ULL) continue; // Only skip zero/null
 
-  if (G_UWorld && G_UWorld > 0x10000) {
-    G_GameInstance = Read<uint64_t>(G_UWorld + ValorantOffsets::GameInstance());
-    G_PersistentLevel =
-        Read<uint64_t>(G_UWorld + ValorantOffsets::PersistentLevel());
-    if (G_PersistentLevel && G_PersistentLevel > 0x10000) {
-      return true;
-    }
+      for (int i = -1; i < 7; i++) {
+          uint64_t testWorld = 0;
+          if (i == -1) testWorld = rawWorld;
+          else {
+              const uint64_t hash = 0x2545F4914F6CDD1DULL * (key ^ ((key ^ (key >> 15)) >> 12) ^ (key << 25));
+              uint64_t val = state[i];
+              const uint32_t hi = (uint32_t)(hash >> 32);
+              auto lfsr1 = [](uint64_t x) -> uint64_t { return (x >> 1) ^ ((x >> 1) ^ (2 * x)) & 0xAAAAAAAAAAAAAAAAULL; };
+              auto bitrev_ror32 = [&](uint64_t x) -> uint64_t {
+                  uint64_t a = lfsr1(x);
+                  uint64_t b = (a >> 2) ^ ((a >> 2) ^ (4 * a)) & 0xCCCCCCCCCCCCCCCCULL;
+                  uint64_t c = (b >> 4) ^ ((b >> 4) ^ (16 * b)) & 0xF0F0F0F0F0F0F0F0ULL;
+                  uint64_t d = (c >> 8) ^ ((c >> 8) ^ (c << 8)) & 0xFF00FF00FF00FF00ULL;
+                  return _rotr64(d, 32);
+              };
+              auto rotr63 = [](uint64_t x, uint32_t r) -> uint64_t {
+                  uint8_t s = (uint8_t)(r % 0x3F) + 1;
+                  return (x >> s) | (x << (64 - s));
+              };
+              if (i == 0) val = bitrev_ror32(lfsr1(bitrev_ror32(val)));
+              else if (i == 1) val = rotr63(~val, hi + (uint32_t)i);
+              else if (i == 2) val = ~(uint64_t)(uint32_t)(hi + (uint32_t)i) ^ (val - (uint32_t)(hi + 2 * (uint32_t)i));
+              else if (i == 3) val = ~rotr63(val, hi + 2 * (uint32_t)i);
+              else if (i == 4) val = ~bitrev_ror32(val);
+              else if (i == 5) val = lfsr1(~val);
+              else val = (uint32_t)(hi + (uint32_t)i) + bitrev_ror32(val);
+              testWorld = rawWorld ^ (val ^ key);
+          }
+
+          if (testWorld > 0x1000000000ULL && testWorld < 0x00007FFFFFFFFFFFULL) {
+              uint64_t vTable = Read<uint64_t>(testWorld);
+              if ((vTable >> 40) == 0x7F) {
+                  // DYNAMIC Level Search (v16): scan World members for a heap pointer
+                  for (uint32_t pl_off = 0x20; pl_off < 0xC0; pl_off += 8) {
+                      uint64_t testPL = Read<uint64_t>(testWorld + pl_off);
+                      if (testPL > 0x1000000000ULL && (testPL >> 40) != 0x7F) {
+                          G_UWorld = testWorld;
+                          G_PersistentLevel = testPL;
+                          std::cout << "[+] Dynamic Engine Sync OK! Offset: 0x" << std::hex << offset << " | PL-Offset: 0x" << pl_off << std::dec << std::endl;
+                          break;
+                      }
+                  }
+              }
+          }
+      }
+      if (G_UWorld) break;
   }
+
+  if (G_UWorld) {
+    // Also hunt for GameInstance near known areas
+    for (uint32_t gi_off = 0x100; gi_off < 0x200; gi_off += 8) {
+        uint64_t testGI = Read<uint64_t>(G_UWorld + gi_off);
+        if (testGI > 0x1000000000ULL && (testGI >> 40) != 0x7F) {
+            G_GameInstance = testGI; break;
+        }
+    }
+    return true;
+  }
+  
   return false;
 }
 
-
 void UpdateGameData() {
-  static int logCounter = 0;
-  bool shouldLog = (logCounter++ % 100 == 0);
+  static uint64_t lastRawWorld = 0;
+  uint64_t currentRawWorld = Read<uint64_t>(g_BaseAddress + ValorantOffsets::GWorld());
+  
+  if (!currentRawWorld) return;
 
-  uint64_t uworldPtr1 = Read<uint64_t>(g_BaseAddress + ValorantOffsets::GWorld());
-  uint64_t currentUWorld = Read<uint64_t>(uworldPtr1);
-
-  /*
-  if (shouldLog) {
-    std::cout << "[DEBUG] GWorld Ptr: " << std::hex << uworldPtr1 << " -> " << currentUWorld << std::dec << std::endl;
-  }
-  */
-
-  if (!currentUWorld || currentUWorld < 0x10000) {
-    // if (shouldLog) std::cout << "[DEBUG] Invalid GWorld" << std::endl;
-    G_UWorld = 0;
-    G_PersistentLevel = 0;
-    G_LocalPlayer = 0;
-    G_PlayerController = 0;
-    G_LocalPawn = 0;
-    return;
+  // Re-run decryption only if raw pointer changed (Map change)
+  if (currentRawWorld != lastRawWorld) {
+      if (Initialize(g_ProcessId, g_BaseAddress)) {
+          lastRawWorld = currentRawWorld;
+          std::cout << "[+] World Updated & Re-Decrypted" << std::endl;
+      } else {
+          return;
+      }
   }
 
-  if (currentUWorld != G_UWorld) {
-    G_UWorld = currentUWorld;
-    G_GameInstance = Read<uint64_t>(G_UWorld + ValorantOffsets::GameInstance());
-    G_PersistentLevel =
-        Read<uint64_t>(G_UWorld + ValorantOffsets::PersistentLevel());
-    /*
-    if (shouldLog) {
-        std::cout << "[DEBUG] World Changed! GameInstance: " << std::hex << G_GameInstance 
-                  << " PersistentLevel: " << G_PersistentLevel << std::dec << std::endl;
-    }
-    */
-    G_LocalPlayer = 0;
-    G_PlayerController = 0;
-    G_LocalPawn = 0;
+  if (!G_UWorld || !G_PersistentLevel) return;
+
+  // --- Universal Decryptor (v12) ---
+  uint64_t pl = G_PersistentLevel;
+  uint64_t actorArray = 0;
+  int actorCount = Read<int>(pl + 0xA8); 
+  
+  uint64_t enc = Read<uint64_t>(pl + 0xA0); // The candidate at +A0
+  
+  // Strategy 1: Simple Mask (0x3FFFFFFFF is in the dump)
+  uint64_t s1 = enc & 0xFFFFFFFFFULL; 
+  
+  // Strategy 2: XOR with PL
+  uint64_t s2 = enc ^ pl;
+  
+  // Strategy 3: Dynamic Search for ANY pointer in PL that points to Actors
+  for (uint64_t i = 0x90; i < 0x200; i += 8) {
+      uint64_t val = Read<uint64_t>(pl + i);
+      if (val > 0x100000ULL) {
+          // Try XOR with the recurring pattern we saw: 0x23129000628bc
+          uint64_t cand = val ^ 0x23129000628bcULL;
+          if (cand > 0x1000000000ULL && cand < 0x00007FFFFFFFFFFFULL) {
+              uint64_t obj = Read<uint64_t>(cand);
+              if (obj > 0x1000000000ULL && (obj >> 40) == 0) {
+                  actorArray = cand; break;
+              }
+          }
+      }
   }
 
-  if (!G_PersistentLevel) {
-    // if (shouldLog) std::cout << "[DEBUG] No PersistentLevel" << std::endl;
-    return;
+  // If still zero, try the specific 0x120 value from dump but XORed with 0x3FFFFFFFF
+  if (actorArray == 0) {
+      uint64_t raw_120 = Read<uint64_t>(pl + 0x120);
+      actorArray = raw_120 ^ 0x3FFFFFFFFULL;
+  }
+
+  uint64_t firstActor = (actorArray > 0x10000) ? Read<uint64_t>(actorArray) : 0;
+
+  static int logDeb = 0;
+  if (logDeb++ % 20 == 0) {
+      std::cout << "[DEBUG] v12 Sync - PL: 0x" << std::hex << pl << " Count: " << std::dec << actorCount << " | Array: 0x" << std::hex << actorArray << " | Obj: 0x" << firstActor << std::endl;
   }
 
   std::vector<CachedPlayerData> tempPlayers;
@@ -250,18 +409,7 @@ void UpdateGameData() {
       std::cout << "[DEBUG] Local Mesh null" << std::endl;
   } */
 
-  uint64_t actorArray =
-      Read<uint64_t>(G_PersistentLevel + ValorantOffsets::ActorArray());
-  int actorCount = Read<int>(G_PersistentLevel + ValorantOffsets::ActorCount());
-
-  /*
-  if (shouldLog) {
-      std::cout << "[DEBUG] ActorArray: " << std::hex << actorArray << std::dec << " Count: " << actorCount << std::endl;
-  }
-  */
-
-  if (!actorArray || actorCount <= 0 || actorCount > 10000) {
-    // if (shouldLog) std::cout << "[DEBUG] Invalid ActorArray or count" << std::endl;
+  if (!actorArray || actorCount <= 0 || actorCount > 15000) {
     return;
   }
 
@@ -339,16 +487,20 @@ void UpdateGameData() {
     player.DistanceToMe = dist / 100.0f;
 
     static const std::unordered_map<std::string, std::string> agentMap = {
-        {"Rift_PC_C", "Astra"},        {"Breach_PC_C", "Breach"},
-        {"Sarge_PC_C", "Brimstone"},   {"Deadeye_PC_C", "Chamber"},
-        {"Gumshoe_PC_C", "Cypher"},    {"Wushu_PC_C", "Jett"},
-        {"Grenadier_PC_C", "Kay/o"},   {"Killjoy_PC_C", "Killjoy"},
-        {"Sprinter_PC_C", "Neon"},     {"Wraith_PC_C", "Omen"},
-        {"Phoenix_PC_C", "Phoenix"},   {"Clay_PC_C", "Raze"},
-        {"Vampire_PC_C", "Reyna"},     {"Thorne_PC_C", "Sage"},
-        {"Guide_PC_C", "Skye"},        {"Hunter_PC_C", "Sova"},
-        {"Pandemic_PC_C", "Viper"},    {"Stealth_PC_C", "Yoru"},
-        {"BountyHunter_PC_C", "Fade"}, {"Mage_PC_C", "Harbor"},
+        {"Rift_PC_C", "Astra"},        {"Rift_TargetingForm_PC_C", "Astra"},
+        {"Breach_PC_C", "Breach"},     {"Sarge_PC_C", "Brimstone"},
+        {"Deadeye_PC_C", "Chamber"},   {"Gumshoe_PC_C", "Cypher"}, 
+        {"Wushu_PC_C", "Jett"},        {"Grenadier_PC_C", "Kay/o"},
+        {"Killjoy_PC_C", "Killjoy"},   {"Sprinter_PC_C", "Neon"},
+        {"Wraith_PC_C", "Omen"},       {"Phoenix_PC_C", "Phoenix"},
+        {"Clay_PC_C", "Raze"},         {"Vampire_PC_C", "Reyna"},
+        {"Thorne_PC_C", "Sage"},       {"Guide_PC_C", "Skye"},
+        {"Hunter_PC_C", "Sova"},       {"Pandemic_PC_C", "Viper"},
+        {"Stealth_PC_C", "Yoru"},      {"BountyHunter_PC_C", "Fade"},
+        {"Mage_PC_C", "Harbor"},       {"AggroBot_PC_C", "Gekko"},
+        {"Cable_PC_C", "DeadLock"},    {"Sequoia_PC_C", "Iso"},
+        {"Smonk_PC_C", "Clove"},       {"Nox_PC_C", "Vyse"},
+        {"Terra_PC_C", "Waylay"},      {"Cashew_PC_C", "Tejo"},
         {"TrainingBot_PC_C", "Bot"}};
 
     {

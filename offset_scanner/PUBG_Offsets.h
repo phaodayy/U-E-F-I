@@ -110,7 +110,7 @@ namespace offsets {
     inline uint32_t SquadMemberIndex = 0xA1C;
     inline uint32_t PlayerStatistics = 0xA10;
     inline uint32_t DamageDealtOnEnemy = 0x804;
-    inline uint32_t ping = 0x238;
+    inline uint32_t ping = 0x3F8;
     inline uint32_t MatchId = 0x498;
     inline uint64_t PartnerLevel = 0x716;
     inline uint32_t SurvivalTier = 0x440;
@@ -129,7 +129,7 @@ namespace offsets {
     inline uint32_t FloatCurves = 0x38;
     inline uint32_t WeaponConfig_WeaponClass = 0x247C110F;
     inline uint32_t CurrentAmmoData = 0xE68;
-    inline uint32_t ElapsedCookingTime = 0x8F887;
+    inline uint32_t ElapsedCookingTime = 0x89C;
     inline uint64_t AimOffsets = 0x1AB8;
     inline uint32_t RecoilValueVector = 0x1198;
     inline uint32_t VerticalRecovery = 0x10D8;
@@ -138,12 +138,12 @@ namespace offsets {
     inline uint32_t PlayerInput = 0x548;
     inline uint64_t InputAxisProperties = 0x138;
     inline uint32_t InputYawScale = 0x64C;
-    inline uint32_t bIsScoping_CP = 0x75000008;
-    inline uint32_t bIsReloading_CP = 0x75000007;
+    inline uint32_t bIsScoping_CP = 0x85C;
+    inline uint32_t bIsReloading_CP = 0x85D;
     inline uint64_t RecoilADSRotation_CP = 0x824;
     inline uint32_t ControlRotation_CP = 0xBC8;
     inline uint32_t LeanLeftAlpha_CP = 0x694;
-    inline uint32_t LeanRightAlpha_CP = 0x694;
+    inline uint32_t LeanRightAlpha_CP = 0x698;
     inline uint32_t InventoryFacade = 0x1728;
     inline uint32_t Inventory = 0x408;
     inline uint32_t InventoryItems = 0x620;
@@ -160,7 +160,7 @@ namespace offsets {
     inline uint32_t Durability = 0x8108010;
     inline uint64_t Durabilitymax = 0x1E0;
     inline uint32_t VehicleMovement = 0x468;
-    inline uint32_t VehicleRiderComponent = 0x1928BD8B;
+    inline uint32_t VehicleRiderComponent = 0x1920;
     inline uint32_t ReplicatedMovement = 0x588A;
     inline uint64_t LastVehiclePawn = 0x270;
     inline uint32_t SeatIndex = 0x230;
@@ -173,7 +173,7 @@ namespace offsets {
     inline uint32_t VehicleFuel = 0x81100FF3;
     inline uint32_t VehicleFuelMax = 0x2E4;
     inline uint32_t VehicleHealth = 0x2D8;
-    inline uint32_t VehicleHealthMax = 0x48000002;
+    inline uint32_t VehicleHealthMax = 0x2DC;
     inline uint64_t AnimScriptInstance = 0xE30;
     inline uint64_t PreEvalPawnState = 0x630;
     inline uint64_t AntiCheatCharacterSyncManager = 0xD28;

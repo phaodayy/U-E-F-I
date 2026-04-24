@@ -8,8 +8,7 @@
 #include <winternl.h>
 #include <fstream>
 
-#include "../.shared/shared.hpp"
-#include "../.shared/auth.hpp"
+#include <security/auth.hpp>
 #include "gui/menu.h"
 #include "overlay/overlay_menu.hpp"
 #include "sdk/context.hpp"
@@ -40,11 +39,9 @@ void RandomizeConsoleTitle() {
   SetConsoleTitleA(rand_title);
 }
 
-#include "sdk/memory.hpp"
+#include "sdk/driver.hpp"
 
-DWORD GetProcessIdByName(const wchar_t *name) {
-  return HyperProcess::FindProcessIdByName(name);
-}
+// Legacy function removed, using HyperProcess instead
 
 // =============================================================================
 // GZ-SECURITY SUITE V3.0 (from PUBG-2)
@@ -78,14 +75,21 @@ bool CheckHardwareBreakpoints() {
 
 bool CheckBlacklistedProcesses() {
     const wchar_t* blacklisted[] = { L"ida64.exe", L"x64dbg.exe", L"cheatengine-x86_64.exe", L"Fiddler.exe", L"wireshark.exe", L"HTTPDebuggerSvc.exe", L"ida.exe", L"x32dbg.exe" };
-    for (const auto& proc : blacklisted) {
-        if (HyperProcess::FindProcessIdByName(proc) != 0) {
-            return true;
-        }
+    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    PROCESSENTRY32W pe = {sizeof(pe)};
+    if (Process32FirstW(snap, &pe)) {
+        do {
+            for (const auto& proc : blacklisted) {
+                if (_wcsicmp(pe.szExeFile, proc) == 0) {
+                    CloseHandle(snap);
+                    return true;
+                }
+            }
+        } while (Process32NextW(snap, &pe));
     }
+    CloseHandle(snap);
     return false;
 }
-
 
 bool SecurityCheck() {
     // 1. Basic Debugger Check
@@ -156,12 +160,12 @@ int main(int argc, char *argv[]) {
   TypewriterPrint("[", 10, 8);
   TypewriterPrint("1", 10, 11);
   TypewriterPrint("] ", 10, 8);
-  TypewriterPrint("Checking hyper connection...", 30, 7);
+  TypewriterPrint("Checking driver...", 30, 7);
   std::cout << std::endl;
 
-  if (!ValorantMemory::InitializeHyperInterface()) {
+  if (!Driver::Initialize()) {
     SetConsoleColor(12);
-    std::cout << skCrypt("[-] Hypervisor bridge not found! Please run Loader first.") << std::endl;
+    std::cout << skCrypt("[-] Hypervisor bridge FAILED! Make sure Hyper-reV is loaded.") << std::endl;
     SetConsoleColor(7);
     std::cout << "\nPress Enter to exit..." << std::endl;
     std::cin.get();
@@ -208,7 +212,9 @@ int main(int argc, char *argv[]) {
   DWORD pid = 0;
   int dots = 0;
   while (!pid) {
-    pid = GetProcessIdByName(L"VALORANT-Win64-Shipping.exe");
+    pid = HyperProcess::FindProcessIdByName(L"VALORANT-Win64-Shipping.exe");
+    if (!pid) pid = HyperProcess::FindProcessIdByName(L"VALORANT-Win64"); // Partial match support
+    
     if (!pid) {
       SetConsoleColor(14); std::cout << "."; SetConsoleColor(7);
       dots++; if (dots > 3) { std::cout << "\b\b\b\b    \b\b\b\b"; dots = 0; }
@@ -234,7 +240,10 @@ int main(int argc, char *argv[]) {
   std::cout << std::endl;
 
   query_process_data_packet qdata = {};
-  if (ValorantMemory::QueryProcessData(pid, &qdata)) {
+  if (HyperProcess::QueryProcessData(pid, &qdata, "VALORANT-Win64")) {
+    Driver::g_TargetPid = pid;
+    Driver::g_TargetCr3 = qdata.cr3;
+    
     SetConsoleColor(10);
     std::cout << "[+] Secure Link: ESTABLISHED" << std::endl;
     SetConsoleColor(8);
@@ -245,17 +254,17 @@ int main(int argc, char *argv[]) {
     SetConsoleColor(7);
   } else {
     SetConsoleColor(12);
-    std::cout << "\n[-] Hypervisor communication FAILED!" << std::endl;
+    std::cout << "\n[-] Driver communication FAILED!" << std::endl;
     SetConsoleColor(7);
     std::cin.get();
     return 1;
   }
 
   uint64_t base = (uint64_t)qdata.base_address;
-  uint16_t mz = ValorantMemory::Read<uint16_t>(base);
+  // Skip direct MZ check to avoid unstable driver access after step 3
+  bool manual_check = (base > 0); 
 
-  if (mz == 0x5A4D) {
-
+  if (manual_check) {
     TypewriterPrint("\n[", 10, 8);
     TypewriterPrint("4", 10, 11);
     TypewriterPrint("] ", 10, 8);

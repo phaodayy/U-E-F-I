@@ -23,7 +23,6 @@ echo.
 echo [+] ========================================
 echo [+] Build successful!
 echo [+] Output folder: bin\
-echo [+]   - driver.sys       (Kernel Driver)
 echo [+]   - GZ-Cheat.exe     (Cheat Overlay)
 echo [+] ========================================
 timeout /t 2 /nobreak >nul

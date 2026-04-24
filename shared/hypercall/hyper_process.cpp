@@ -134,10 +134,9 @@ namespace
 
         const auto nt_query_system_information = reinterpret_cast<NtQuerySystemInformation_t>(
             GetProcAddress(ntdll, "NtQuerySystemInformation"));
-        if (nt_query_system_information == nullptr)
-        {
-            return false;
-        }
+#ifdef _CONSOLE
+            std::cout << "[DEBUG] FAILED: NtQuerySystemInformation resolution" << std::endl;
+#endif
 
         ULONG bytes_needed = 0;
         NTSTATUS status = nt_query_system_information(kSystemModuleInformationClass, nullptr, 0, &bytes_needed);
@@ -202,19 +201,35 @@ namespace
         FreeLibrary(local_ntoskrnl);
 
         g_PsInitialSystemProcess = kernel_base + export_rva;
+        
+#ifdef _CONSOLE
+        std::cout << "[DEBUG] System Resolution:" << std::endl;
+        std::cout << "    CR3: 0x" << std::hex << g_CurrentCr3 << std::dec << std::endl;
+        std::cout << "    PsInitialSystemProcess: 0x" << std::hex << g_PsInitialSystemProcess << std::dec << std::endl;
+#endif
  
         // --- DYNAMIC OFFSET CALIBRATION ---
         std::uint64_t system_eprocess = 0;
         if (HyperCall::ReadGuestVirtualMemory(&system_eprocess, g_PsInitialSystemProcess, g_CurrentCr3, 8) == 8) {
+#ifdef _CONSOLE
+            std::cout << "    InitialSystemProcess: 0x" << std::hex << system_eprocess << std::dec << std::endl;
+#endif
             for (std::uint64_t offset = 0x400; offset < 0x800; offset++) {
                 char buf[8] = {};
                 if (HyperCall::ReadGuestVirtualMemory(buf, system_eprocess + offset, g_CurrentCr3, 6) == 6) {
                     if (strcmp(buf, "System") == 0) {
                         g_ImageFileNameOffset = offset;
+#ifdef _CONSOLE
+                        std::cout << "    Offset Calibrated: 0x" << std::hex << offset << std::dec << std::endl;
+#endif
                         break;
                     }
                 }
             }
+        } else {
+#ifdef _CONSOLE
+            std::cout << "[DEBUG] FAILED: Read system_eprocess at 0x" << std::hex << g_PsInitialSystemProcess << std::dec << std::endl;
+#endif
         }
 
         return g_PsInitialSystemProcess != 0;
@@ -433,12 +448,24 @@ DWORD HyperProcess::FindProcessIdByName(const wchar_t* const process_name)
 
         char name[16] = {};
         if (HyperCall::ReadGuestVirtualMemory(name, current_eprocess + g_ImageFileNameOffset, walk_cr3, 15) > 0) {
+            name[15] = '\0'; // Ensure termination for string functions
+
+#ifdef _CONSOLE
+            // Debug: Print any process related to Valorant to see what's being read
+            if (_strnicmp(name, "VAL", 3) == 0) {
+                std::cout << "[DEBUG] Potential Match: " << name << " (PID: " << current_pid << ")" << std::endl;
+            }
+#endif
+
             char target_name[16] = {};
-            for (int i = 0; i < 15 && process_name[i] != L'\0'; ++i) {
+            for (int i = 0; i < 14 && process_name[i] != L'\0'; ++i) {
                 target_name[i] = (char)process_name[i];
             }
 
-            if (_strnicmp(name, target_name, 15) == 0) {
+            if (_strnicmp(name, target_name, 14) == 0) {
+#ifdef _CONSOLE
+                std::cout << "[DEBUG] PID Match Found: " << name << " -> " << current_pid << std::endl;
+#endif
                 return (DWORD)current_pid;
             }
         }
@@ -446,6 +473,9 @@ DWORD HyperProcess::FindProcessIdByName(const wchar_t* const process_name)
         std::uint64_t next_link = 0;
         if (HyperCall::ReadGuestVirtualMemory(&next_link, current_eprocess + eprocess::ActiveProcessLinks, walk_cr3, 8) != 8 || next_link == 0)
         {
+#ifdef _CONSOLE
+            std::cout << "[DEBUG] List Broken at PID: " << current_pid << std::endl;
+#endif
             break;
         }
 
