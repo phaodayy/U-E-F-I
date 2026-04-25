@@ -34,6 +34,7 @@ namespace
 #ifdef _INTELMACHINE
     volatile long is_cr4_shadowing_enabled = 0;
     volatile long is_cpuid_spoofing_enabled = 0;
+    volatile long is_feature_control_shadowing_enabled = 0;
 #endif
 }
 
@@ -212,6 +213,7 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
 #ifdef _INTELMACHINE
                 _InterlockedExchange(&is_cr4_shadowing_enabled, 1);
                 _InterlockedExchange(&is_cpuid_spoofing_enabled, 1);
+                _InterlockedExchange(&is_feature_control_shadowing_enabled, 1);
                 arch::enable_cr4_shadowing();
 #endif
 
@@ -266,6 +268,17 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
         trap_frame_t* const trap_frame = *reinterpret_cast<trap_frame_t**>(a1);
 
         if (arch::handle_cr4_mov_exit(trap_frame) == 1)
+        {
+            return do_vmexit_premature_return();
+        }
+    }
+#endif
+#ifdef _INTELMACHINE
+    else if (is_feature_control_shadowing_enabled == 1 && arch::is_rdmsr(exit_reason) == 1)
+    {
+        trap_frame_t* const trap_frame = *reinterpret_cast<trap_frame_t**>(a1);
+
+        if (arch::handle_feature_control_rdmsr(trap_frame) == 1)
         {
             return do_vmexit_premature_return();
         }

@@ -14,6 +14,9 @@ namespace
 	constexpr std::uint32_t cpuid_leaf_hypervisor_base = 0x40000000;
 	constexpr std::uint32_t cpuid_leaf_hypervisor_end = 0x400000FF;
 	constexpr std::uint32_t cpuid_ecx_hypervisor_present = 1U << 31;
+	constexpr std::uint32_t ia32_feature_control_msr = 0x0000003A;
+	constexpr std::uint64_t ia32_feature_control_vmx_bits = 0x7;
+	constexpr std::uint64_t ia32_feature_control_locked = 0x1;
 
 	std::uint64_t* get_trap_frame_register(trap_frame_t* const trap_frame, const std::uint64_t register_index)
 	{
@@ -138,6 +141,13 @@ std::uint8_t arch::is_mov_cr(const std::uint64_t vmexit_reason)
 	return basic_exit_reason == VMX_EXIT_REASON_MOV_CR;
 }
 
+std::uint8_t arch::is_rdmsr(const std::uint64_t vmexit_reason)
+{
+	const std::uint64_t basic_exit_reason = vmexit_reason & VMX_VMEXIT_REASON_BASIC_EXIT_REASON_FLAG;
+
+	return basic_exit_reason == VMX_EXIT_REASON_EXECUTE_RDMSR;
+}
+
 void arch::enable_cr4_shadowing()
 {
 	const std::uint64_t cr4_mask = vmread(VMCS_CTRL_CR4_GUEST_HOST_MASK);
@@ -212,6 +222,30 @@ std::uint8_t arch::handle_cr4_mov_exit(trap_frame_t* const trap_frame)
 	}
 
 	return 0;
+}
+
+std::uint8_t arch::handle_feature_control_rdmsr(trap_frame_t* const trap_frame)
+{
+	if (trap_frame == nullptr)
+	{
+		return 0;
+	}
+
+	const std::uint32_t msr_index = static_cast<std::uint32_t>(trap_frame->rcx);
+	if (msr_index != ia32_feature_control_msr)
+	{
+		return 0;
+	}
+
+	const std::uint64_t actual_feature_control = __readmsr(ia32_feature_control_msr);
+	const std::uint64_t shadowed_feature_control =
+		(actual_feature_control & ~ia32_feature_control_vmx_bits) | ia32_feature_control_locked;
+
+	trap_frame->rax = static_cast<std::uint32_t>(shadowed_feature_control);
+	trap_frame->rdx = static_cast<std::uint32_t>(shadowed_feature_control >> 32);
+
+	advance_guest_rip();
+	return 1;
 }
 
 std::uint8_t arch::handle_cpuid_spoof(trap_frame_t* const trap_frame)
