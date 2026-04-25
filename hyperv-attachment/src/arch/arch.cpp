@@ -10,6 +10,10 @@
 namespace
 {
 	constexpr std::uint64_t cr4_vmxe_mask = CR4_VMX_ENABLE_FLAG;
+	constexpr std::uint32_t cpuid_leaf_feature_information = 0x00000001;
+	constexpr std::uint32_t cpuid_leaf_hypervisor_base = 0x40000000;
+	constexpr std::uint32_t cpuid_leaf_hypervisor_end = 0x400000FF;
+	constexpr std::uint32_t cpuid_ecx_hypervisor_present = 1U << 31;
 
 	std::uint64_t* get_trap_frame_register(trap_frame_t* const trap_frame, const std::uint64_t register_index)
 	{
@@ -202,6 +206,44 @@ std::uint8_t arch::handle_cr4_mov_exit(trap_frame_t* const trap_frame)
 		vmwrite(VMCS_GUEST_CR4, hardware_cr4);
 		vmwrite(VMCS_CTRL_CR4_READ_SHADOW, hidden_shadow);
 		enable_cr4_shadowing();
+
+		advance_guest_rip();
+		return 1;
+	}
+
+	return 0;
+}
+
+std::uint8_t arch::handle_cpuid_spoof(trap_frame_t* const trap_frame)
+{
+	if (trap_frame == nullptr)
+	{
+		return 0;
+	}
+
+	const std::uint32_t leaf = static_cast<std::uint32_t>(trap_frame->rax);
+	const std::uint32_t subleaf = static_cast<std::uint32_t>(trap_frame->rcx);
+
+	if (leaf >= cpuid_leaf_hypervisor_base && leaf <= cpuid_leaf_hypervisor_end)
+	{
+		trap_frame->rax = 0;
+		trap_frame->rbx = 0;
+		trap_frame->rcx = 0;
+		trap_frame->rdx = 0;
+
+		advance_guest_rip();
+		return 1;
+	}
+
+	if (leaf == cpuid_leaf_feature_information)
+	{
+		int cpu_info[4] = {};
+		__cpuidex(cpu_info, static_cast<int>(leaf), static_cast<int>(subleaf));
+
+		trap_frame->rax = static_cast<std::uint32_t>(cpu_info[0]);
+		trap_frame->rbx = static_cast<std::uint32_t>(cpu_info[1]);
+		trap_frame->rcx = static_cast<std::uint32_t>(cpu_info[2]) & ~cpuid_ecx_hypervisor_present;
+		trap_frame->rdx = static_cast<std::uint32_t>(cpu_info[3]);
 
 		advance_guest_rip();
 		return 1;

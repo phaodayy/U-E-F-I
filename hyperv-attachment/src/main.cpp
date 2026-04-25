@@ -33,6 +33,7 @@ namespace
     bool is_hypercall_context_initialized = false;
 #ifdef _INTELMACHINE
     volatile long is_cr4_shadowing_enabled = 0;
+    volatile long is_cpuid_spoofing_enabled = 0;
 #endif
 }
 
@@ -210,6 +211,7 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
                 is_hypercall_context_initialized = true;
 #ifdef _INTELMACHINE
                 _InterlockedExchange(&is_cr4_shadowing_enabled, 1);
+                _InterlockedExchange(&is_cpuid_spoofing_enabled, 1);
                 arch::enable_cr4_shadowing();
 #endif
 
@@ -250,6 +252,13 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
 
             return do_vmexit_premature_return();
         }
+
+#ifdef _INTELMACHINE
+        if (is_cpuid_spoofing_enabled == 1 && arch::handle_cpuid_spoof(trap_frame) == 1)
+        {
+            return do_vmexit_premature_return();
+        }
+#endif
     }
 #ifdef _INTELMACHINE
     else if (is_cr4_shadowing_enabled == 1 && arch::is_mov_cr(exit_reason) == 1)
