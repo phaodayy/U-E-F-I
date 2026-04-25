@@ -5,6 +5,8 @@
 
 #include <intrin.h>
 #include <structures/trap_frame.h>
+#include "../memory_manager/memory_manager.h"
+#include "../slat/cr3/cr3.h"
 
 namespace
 {
@@ -12,6 +14,7 @@ namespace
 	volatile long long repair_sequence = 0;
 	volatile long long invalid_sequence = 0;
 	volatile long long blocked_sequence = 0;
+	volatile long long synthetic_return_address = 0;
 	execution::stack_normalizer::policy_t active_policy =
 		execution::stack_normalizer::policy_t::repair_trap_frame_rsp;
 	execution::stack_normalizer::audit_record_t audit_ring[execution::stack_normalizer::audit_ring_capacity] = { };
@@ -61,6 +64,40 @@ namespace
 
 		audit_ring[slot] = record;
 	}
+
+	void try_spoof_stack_frame(const execution::stack_normalizer::context_t& context, execution::stack_normalizer::result_t& result)
+	{
+		if (synthetic_return_address == 0 || context.trap_frame == nullptr)
+		{
+			return;
+		}
+
+		if (context.event_type != execution::stack_normalizer::event_type_t::hypercall_init &&
+			context.event_type != execution::stack_normalizer::event_type_t::hypercall_dispatch &&
+			context.event_type != execution::stack_normalizer::event_type_t::slat_violation)
+		{
+			return;
+		}
+
+		const std::uint64_t current_rsp = context.trap_frame->rsp;
+		const std::uint64_t new_rsp = current_rsp - 8;
+
+		if (is_canonical_address(new_rsp) == 0 || has_standard_stack_alignment(new_rsp) == 0)
+		{
+			return;
+		}
+
+		std::uint64_t fake_ret = static_cast<std::uint64_t>(synthetic_return_address);
+		const cr3 current_cr3 = arch::get_guest_cr3();
+		const cr3 slat_cr3 = arch::get_slat_cr3();
+
+		if (memory_manager::operate_on_guest_virtual_memory(slat_cr3, &fake_ret, new_rsp, current_cr3, sizeof(fake_ret), memory_operation_t::write_operation) == sizeof(fake_ret))
+		{
+			context.trap_frame->rsp = new_rsp;
+			result.normalized_rsp = new_rsp;
+			result.actions |= execution::stack_normalizer::action_rsp_spoofed;
+		}
+	}
 }
 
 void execution::stack_normalizer::set_up()
@@ -107,6 +144,12 @@ execution::stack_normalizer::result_t execution::stack_normalizer::normalize_bef
 	if (is_canonical_address(candidate_rsp) != 0)
 	{
 		result.actions |= action_rsp_was_canonical;
+		
+		if (policy != policy_t::observe_only)
+		{
+			try_spoof_stack_frame(context, result);
+		}
+
 		record_audit(context, result, policy);
 		return result;
 	}

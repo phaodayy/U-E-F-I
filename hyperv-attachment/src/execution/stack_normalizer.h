@@ -30,6 +30,7 @@ namespace execution::stack_normalizer
 		action_rsp_alignment_noted = 1ull << 4,
 		action_repair_disabled_by_policy = 1ull << 5,
 		action_resume_blocked_by_policy = 1ull << 6,
+		action_rsp_spoofed = 1ull << 7,
 	};
 
 	enum class policy_t : std::uint8_t
