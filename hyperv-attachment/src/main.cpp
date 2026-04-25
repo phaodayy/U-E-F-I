@@ -5,6 +5,7 @@
 #include "memory_manager/heap_manager.h"
 #include "execution/state_persistence_manager.h"
 #include "execution/stack_normalizer.h"
+#include "timing/tsc_drift_compensator.h"
 #include "logs/logs.h"
 #include "structures/trap_frame.h"
 #include <ia32-doc/ia32.hpp>
@@ -142,6 +143,8 @@ void process_first_vmexit()
 
 std::uint64_t do_vmexit_premature_return()
 {
+    timing::tsc_drift_compensator::finish_vmexit(arch::get_vmexit_reason());
+
 #ifdef _INTELMACHINE
     return 0;
 #else
@@ -176,6 +179,7 @@ void normalize_guest_resume(const execution::stack_normalizer::event_type_t even
 std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t a2, const std::uint64_t a3, const std::uint64_t a4)
 {
     process_first_vmexit();
+    timing::tsc_drift_compensator::begin_vmexit();
 
     const std::uint64_t exit_reason = arch::get_vmexit_reason();
     execution::state_persistence_manager::enforce_on_vmexit(exit_reason);
@@ -230,6 +234,7 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
                 _InterlockedExchange(&is_cpuid_spoofing_enabled, 1);
                 _InterlockedExchange(&is_feature_control_shadowing_enabled, 1);
                 _InterlockedExchange(&is_tsc_offsetting_enabled, 1);
+                timing::tsc_drift_compensator::set_enabled(1);
                 execution::state_persistence_manager::set_invariant_enabled(
                     execution::state_persistence_manager::invariant_t::cr4_vmxe_hidden, 1);
                 execution::state_persistence_manager::set_invariant_enabled(
@@ -394,5 +399,6 @@ const std::uint8_t* const get_vmcb_gadget)
     logs::set_up();
     execution::state_persistence_manager::set_up();
     execution::stack_normalizer::set_up();
+    timing::tsc_drift_compensator::set_up();
     slat::set_up();
 }

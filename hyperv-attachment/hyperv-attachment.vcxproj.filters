@@ -78,6 +78,9 @@
     <ClCompile Include="src\slat\signal\signal.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\timing\tsc_drift_compensator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ext\ia32-doc\ia32.hpp">
@@ -159,6 +162,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\slat\signal\signal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\timing\tsc_drift_compensator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

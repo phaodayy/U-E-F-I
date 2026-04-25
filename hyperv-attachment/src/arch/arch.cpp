@@ -1,6 +1,7 @@
 #include "arch.h"
 #include "../crt/crt.h"
 #include "../memory_manager/memory_manager.h"
+#include "../timing/tsc_drift_compensator.h"
 
 #include <intrin.h>
 #include <structures/trap_frame.h>
@@ -287,7 +288,8 @@ std::uint8_t arch::handle_tsc_exit(const std::uint64_t vmexit_reason, trap_frame
 		return 0;
 	}
 
-	const std::uint64_t virtual_tsc = __rdtsc() + vmread(VMCS_CTRL_TSC_OFFSET) + tsc_software_offset;
+	const std::uint64_t raw_virtual_tsc = __rdtsc() + vmread(VMCS_CTRL_TSC_OFFSET) + tsc_software_offset;
+	const std::uint64_t virtual_tsc = timing::tsc_drift_compensator::compensate_tsc(raw_virtual_tsc);
 
 	trap_frame->rax = static_cast<std::uint32_t>(virtual_tsc);
 	trap_frame->rdx = static_cast<std::uint32_t>(virtual_tsc >> 32);
@@ -716,7 +718,8 @@ std::uint8_t arch::handle_tsc_exit(const std::uint64_t vmexit_reason, trap_frame
 	}
 
 	vmcb_t* const vmcb = get_vmcb();
-	const std::uint64_t virtual_tsc = __rdtsc() + vmcb->control.tsc_offset;
+	const std::uint64_t raw_virtual_tsc = __rdtsc() + vmcb->control.tsc_offset;
+	const std::uint64_t virtual_tsc = timing::tsc_drift_compensator::compensate_tsc(raw_virtual_tsc);
 
 	vmcb->save_state.rax = static_cast<std::uint32_t>(virtual_tsc);
 	trap_frame->rax = static_cast<std::uint32_t>(virtual_tsc);
