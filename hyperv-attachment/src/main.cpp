@@ -3,6 +3,7 @@
 #include "hypercall/hypercall_def.h"
 #include "memory_manager/memory_manager.h"
 #include "memory_manager/heap_manager.h"
+#include "execution/state_persistence_manager.h"
 #include "execution/stack_normalizer.h"
 #include "logs/logs.h"
 #include "structures/trap_frame.h"
@@ -176,22 +177,8 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
 {
     process_first_vmexit();
 
-    if (is_cr4_shadowing_enabled == 1)
-    {
-        arch::enable_cr4_shadowing();
-    }
-
-    if (is_feature_control_shadowing_enabled == 1)
-    {
-        arch::enable_feature_control_shadowing();
-    }
-
-    if (is_tsc_offsetting_enabled == 1)
-    {
-        arch::enable_tsc_exiting();
-    }
-
     const std::uint64_t exit_reason = arch::get_vmexit_reason();
+    execution::state_persistence_manager::enforce_on_vmexit(exit_reason);
 
     if (arch::is_cpuid(exit_reason) == 1)
     {
@@ -243,9 +230,15 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
                 _InterlockedExchange(&is_cpuid_spoofing_enabled, 1);
                 _InterlockedExchange(&is_feature_control_shadowing_enabled, 1);
                 _InterlockedExchange(&is_tsc_offsetting_enabled, 1);
-                arch::enable_cr4_shadowing();
-                arch::enable_feature_control_shadowing();
-                arch::enable_tsc_exiting();
+                execution::state_persistence_manager::set_invariant_enabled(
+                    execution::state_persistence_manager::invariant_t::cr4_vmxe_hidden, 1);
+                execution::state_persistence_manager::set_invariant_enabled(
+                    execution::state_persistence_manager::invariant_t::cpuid_hypervisor_hidden, 1);
+                execution::state_persistence_manager::set_invariant_enabled(
+                    execution::state_persistence_manager::invariant_t::feature_control_locked, 1);
+                execution::state_persistence_manager::set_invariant_enabled(
+                    execution::state_persistence_manager::invariant_t::tsc_exiting_base, 1);
+                execution::state_persistence_manager::enforce_on_vmexit(exit_reason);
 
                 current_primary_key = (guest_cr3 ^ __rdtsc()) & 0xFFFF;
                 if (current_primary_key == 0) current_primary_key = 0xD3AD;
@@ -399,6 +392,7 @@ const std::uint8_t* const get_vmcb_gadget)
     heap_manager::set_up(mapped_heap_usable_base, heap_usable_size);
 
     logs::set_up();
+    execution::state_persistence_manager::set_up();
     execution::stack_normalizer::set_up();
     slat::set_up();
 }
