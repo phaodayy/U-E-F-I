@@ -31,12 +31,10 @@ namespace
     std::uint64_t current_primary_key = hypercall_default_primary_key;
     std::uint64_t current_secondary_key = hypercall_default_secondary_key;
     bool is_hypercall_context_initialized = false;
-#ifdef _INTELMACHINE
     volatile long is_cr4_shadowing_enabled = 0;
     volatile long is_cpuid_spoofing_enabled = 0;
     volatile long is_feature_control_shadowing_enabled = 0;
     volatile long is_tsc_offsetting_enabled = 0;
-#endif
 }
 
 // Phải ở file scope (không trong anonymous namespace) để hypercall.cpp có thể extern-link
@@ -149,31 +147,41 @@ std::uint64_t do_vmexit_premature_return()
 #endif
 }
 
+trap_frame_t* get_vmexit_trap_frame(const std::uint64_t a1, const std::uint64_t a2)
+{
+#ifdef _INTELMACHINE
+    (void)a2;
+    return *reinterpret_cast<trap_frame_t**>(a1);
+#else
+    (void)a1;
+    return *reinterpret_cast<trap_frame_t**>(a2);
+#endif
+}
+
 std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t a2, const std::uint64_t a3, const std::uint64_t a4)
 {
     process_first_vmexit();
 
-#ifdef _INTELMACHINE
     if (is_cr4_shadowing_enabled == 1)
     {
         arch::enable_cr4_shadowing();
+    }
+
+    if (is_feature_control_shadowing_enabled == 1)
+    {
+        arch::enable_feature_control_shadowing();
     }
 
     if (is_tsc_offsetting_enabled == 1)
     {
         arch::enable_tsc_exiting();
     }
-#endif
 
     const std::uint64_t exit_reason = arch::get_vmexit_reason();
 
     if (arch::is_cpuid(exit_reason) == 1)
     {
-#ifdef _INTELMACHINE
-        trap_frame_t* const trap_frame = *reinterpret_cast<trap_frame_t**>(a1);
-#else
-        trap_frame_t* const trap_frame = *reinterpret_cast<trap_frame_t**>(a2);
-#endif
+        trap_frame_t* const trap_frame = get_vmexit_trap_frame(a1, a2);
 
         const hypercall_info_t hypercall_info = { .value = trap_frame->rcx };
 
@@ -216,14 +224,13 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
                 // Magic seed chính là chìa khóa định danh an toàn.
                 authorized_caller_cr3 = guest_cr3;
                 is_hypercall_context_initialized = true;
-#ifdef _INTELMACHINE
                 _InterlockedExchange(&is_cr4_shadowing_enabled, 1);
                 _InterlockedExchange(&is_cpuid_spoofing_enabled, 1);
                 _InterlockedExchange(&is_feature_control_shadowing_enabled, 1);
                 _InterlockedExchange(&is_tsc_offsetting_enabled, 1);
                 arch::enable_cr4_shadowing();
+                arch::enable_feature_control_shadowing();
                 arch::enable_tsc_exiting();
-#endif
 
                 current_primary_key = (guest_cr3 ^ __rdtsc()) & 0xFFFF;
                 if (current_primary_key == 0) current_primary_key = 0xD3AD;
@@ -263,46 +270,38 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
             return do_vmexit_premature_return();
         }
 
-#ifdef _INTELMACHINE
         if (is_cpuid_spoofing_enabled == 1 && arch::handle_cpuid_spoof(trap_frame) == 1)
         {
             return do_vmexit_premature_return();
         }
-#endif
     }
-#ifdef _INTELMACHINE
     else if (is_cr4_shadowing_enabled == 1 && arch::is_mov_cr(exit_reason) == 1)
     {
-        trap_frame_t* const trap_frame = *reinterpret_cast<trap_frame_t**>(a1);
+        trap_frame_t* const trap_frame = get_vmexit_trap_frame(a1, a2);
 
         if (arch::handle_cr4_mov_exit(trap_frame) == 1)
         {
             return do_vmexit_premature_return();
         }
     }
-#endif
-#ifdef _INTELMACHINE
     else if (is_tsc_offsetting_enabled == 1 && arch::is_tsc_exit(exit_reason) == 1)
     {
-        trap_frame_t* const trap_frame = *reinterpret_cast<trap_frame_t**>(a1);
+        trap_frame_t* const trap_frame = get_vmexit_trap_frame(a1, a2);
 
         if (arch::handle_tsc_exit(exit_reason, trap_frame) == 1)
         {
             return do_vmexit_premature_return();
         }
     }
-#endif
-#ifdef _INTELMACHINE
     else if (is_feature_control_shadowing_enabled == 1 && arch::is_rdmsr(exit_reason) == 1)
     {
-        trap_frame_t* const trap_frame = *reinterpret_cast<trap_frame_t**>(a1);
+        trap_frame_t* const trap_frame = get_vmexit_trap_frame(a1, a2);
 
         if (arch::handle_feature_control_rdmsr(trap_frame) == 1)
         {
             return do_vmexit_premature_return();
         }
     }
-#endif
     else if (arch::is_slat_violation(exit_reason) == 1 && slat::violation::process() == 1)
     {
         return do_vmexit_premature_return();

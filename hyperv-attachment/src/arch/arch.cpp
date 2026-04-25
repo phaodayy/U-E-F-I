@@ -1,5 +1,6 @@
 #include "arch.h"
 #include "../crt/crt.h"
+#include "../memory_manager/memory_manager.h"
 
 #include <intrin.h>
 #include <structures/trap_frame.h>
@@ -147,6 +148,10 @@ std::uint8_t arch::is_rdmsr(const std::uint64_t vmexit_reason)
 	const std::uint64_t basic_exit_reason = vmexit_reason & VMX_VMEXIT_REASON_BASIC_EXIT_REASON_FLAG;
 
 	return basic_exit_reason == VMX_EXIT_REASON_EXECUTE_RDMSR;
+}
+
+void arch::enable_feature_control_shadowing()
+{
 }
 
 std::uint8_t arch::is_tsc_exit(const std::uint64_t vmexit_reason)
@@ -335,6 +340,193 @@ std::uint8_t arch::handle_cpuid_spoof(trap_frame_t* const trap_frame)
 }
 
 #else
+namespace
+{
+	constexpr std::uint64_t cr4_vmxe_mask = CR4_VMX_ENABLE_FLAG;
+	constexpr std::uint32_t cpuid_leaf_feature_information = 0x00000001;
+	constexpr std::uint32_t cpuid_leaf_hypervisor_base = 0x40000000;
+	constexpr std::uint32_t cpuid_leaf_hypervisor_end = 0x400000FF;
+	constexpr std::uint32_t cpuid_ecx_hypervisor_present = 1U << 31;
+	constexpr std::uint32_t ia32_feature_control_msr = 0x0000003A;
+	constexpr std::uint64_t ia32_feature_control_locked = 0x1;
+
+	std::uint64_t* get_amd_trap_frame_register(trap_frame_t* const trap_frame, const std::uint64_t register_index)
+	{
+		if (trap_frame == nullptr)
+		{
+			return nullptr;
+		}
+
+		switch (register_index)
+		{
+		case VMX_EXIT_QUALIFICATION_GENREG_RCX:
+			return &trap_frame->rcx;
+		case VMX_EXIT_QUALIFICATION_GENREG_RDX:
+			return &trap_frame->rdx;
+		case VMX_EXIT_QUALIFICATION_GENREG_RBX:
+			return &trap_frame->rbx;
+		case VMX_EXIT_QUALIFICATION_GENREG_RBP:
+			return &trap_frame->rbp;
+		case VMX_EXIT_QUALIFICATION_GENREG_RSI:
+			return &trap_frame->rsi;
+		case VMX_EXIT_QUALIFICATION_GENREG_RDI:
+			return &trap_frame->rdi;
+		case VMX_EXIT_QUALIFICATION_GENREG_R8:
+			return &trap_frame->r8;
+		case VMX_EXIT_QUALIFICATION_GENREG_R9:
+			return &trap_frame->r9;
+		case VMX_EXIT_QUALIFICATION_GENREG_R10:
+			return &trap_frame->r10;
+		case VMX_EXIT_QUALIFICATION_GENREG_R11:
+			return &trap_frame->r11;
+		case VMX_EXIT_QUALIFICATION_GENREG_R12:
+			return &trap_frame->r12;
+		case VMX_EXIT_QUALIFICATION_GENREG_R13:
+			return &trap_frame->r13;
+		case VMX_EXIT_QUALIFICATION_GENREG_R14:
+			return &trap_frame->r14;
+		case VMX_EXIT_QUALIFICATION_GENREG_R15:
+			return &trap_frame->r15;
+		default:
+			return nullptr;
+		}
+	}
+
+	std::uint8_t read_amd_gpr(trap_frame_t* const trap_frame, const std::uint64_t register_index, std::uint64_t* const value)
+	{
+		if (value == nullptr)
+		{
+			return 0;
+		}
+
+		vmcb_t* const vmcb = arch::get_vmcb();
+
+		if (register_index == VMX_EXIT_QUALIFICATION_GENREG_RAX)
+		{
+			*value = vmcb->save_state.rax;
+			return 1;
+		}
+
+		if (register_index == VMX_EXIT_QUALIFICATION_GENREG_RSP)
+		{
+			*value = vmcb->save_state.rsp;
+			return 1;
+		}
+
+		const std::uint64_t* const register_value = get_amd_trap_frame_register(trap_frame, register_index);
+		if (register_value == nullptr)
+		{
+			return 0;
+		}
+
+		*value = *register_value;
+		return 1;
+	}
+
+	std::uint8_t write_amd_gpr(trap_frame_t* const trap_frame, const std::uint64_t register_index, const std::uint64_t value)
+	{
+		vmcb_t* const vmcb = arch::get_vmcb();
+
+		if (register_index == VMX_EXIT_QUALIFICATION_GENREG_RAX)
+		{
+			vmcb->save_state.rax = value;
+			if (trap_frame != nullptr)
+			{
+				trap_frame->rax = value;
+			}
+			return 1;
+		}
+
+		if (register_index == VMX_EXIT_QUALIFICATION_GENREG_RSP)
+		{
+			vmcb->save_state.rsp = value;
+			if (trap_frame != nullptr)
+			{
+				trap_frame->rsp = value;
+			}
+			return 1;
+		}
+
+		std::uint64_t* const register_value = get_amd_trap_frame_register(trap_frame, register_index);
+		if (register_value == nullptr)
+		{
+			return 0;
+		}
+
+		*register_value = value;
+		return 1;
+	}
+
+	std::uint8_t decode_amd_cr_mov_register(const vmcb_t* const vmcb, std::uint64_t* const register_index)
+	{
+		if (vmcb == nullptr || register_index == nullptr || vmcb->control.number_of_bytes_fetched < 3)
+		{
+			return 0;
+		}
+
+		const std::uint8_t* const bytes = &vmcb->control.guest_instruction_bytes[0];
+		std::uint8_t rex = 0;
+		std::uint8_t offset = 0;
+
+		while (offset < vmcb->control.number_of_bytes_fetched)
+		{
+			const std::uint8_t byte = bytes[offset];
+			if (byte == 0x66 || byte == 0x67 || byte == 0xF2 || byte == 0xF3)
+			{
+				++offset;
+				continue;
+			}
+
+			if (byte >= 0x40 && byte <= 0x4F)
+			{
+				rex = byte;
+				++offset;
+				continue;
+			}
+
+			break;
+		}
+
+		if (offset + 2 >= vmcb->control.number_of_bytes_fetched)
+		{
+			return 0;
+		}
+
+		const std::uint8_t opcode_escape = bytes[offset];
+		const std::uint8_t opcode = bytes[offset + 1];
+		const std::uint8_t modrm = bytes[offset + 2];
+
+		if (opcode_escape != 0x0F || (opcode != 0x20 && opcode != 0x22) || (modrm & 0xC0) != 0xC0)
+		{
+			return 0;
+		}
+
+		const std::uint8_t control_register = ((modrm >> 3) & 0x7) | ((rex & 0x4) != 0 ? 8 : 0);
+		if (control_register != 4)
+		{
+			return 0;
+		}
+
+		*register_index = (modrm & 0x7) | ((rex & 0x1) != 0 ? 8 : 0);
+		return 1;
+	}
+
+	void set_amd_msrpm_read_intercept(const std::uint32_t msr)
+	{
+		vmcb_t* const vmcb = arch::get_vmcb();
+		if (vmcb->control.msrpm_base_pa == 0 || msr > 0x1FFF)
+		{
+			return;
+		}
+
+		auto* const msrpm = static_cast<std::uint8_t*>(memory_manager::map_host_physical(vmcb->control.msrpm_base_pa));
+		const std::uint32_t byte_index = msr / 4;
+		const std::uint32_t bit_index = (msr & 0x3) * 2;
+
+		msrpm[byte_index] |= static_cast<std::uint8_t>(1U << bit_index);
+	}
+}
+
 std::uint8_t get_vmcb_routine_bytes[27];
 
 typedef vmcb_t*(*get_vmcb_routine_t)();
@@ -365,6 +557,178 @@ void arch::parse_vmcb_gadget(const std::uint8_t* const get_vmcb_gadget)
 	{
 		get_vmcb_routine_bytes[final_needed_opcode_offset] = 0xC3;
 	}
+}
+
+std::uint8_t arch::is_mov_cr(const std::uint64_t vmexit_reason)
+{
+	return vmexit_reason == SVM_EXIT_REASON_READ_CR4 ||
+		vmexit_reason == SVM_EXIT_REASON_WRITE_CR4;
+}
+
+void arch::enable_cr4_shadowing()
+{
+	vmcb_t* const vmcb = get_vmcb();
+	vmcb->control.intercept_cr_read |= SVM_INTERCEPT_CR4;
+	vmcb->control.intercept_cr_write |= SVM_INTERCEPT_CR4;
+	vmcb->control.clean.i = 0;
+}
+
+std::uint8_t arch::handle_cr4_mov_exit(trap_frame_t* const trap_frame)
+{
+	vmcb_t* const vmcb = get_vmcb();
+	std::uint64_t register_index = 0;
+
+	if (decode_amd_cr_mov_register(vmcb, &register_index) == 0)
+	{
+		return 0;
+	}
+
+	if (vmcb->control.vmexit_reason == SVM_EXIT_REASON_READ_CR4)
+	{
+		const std::uint64_t visible_cr4 = vmcb->save_state.cr4 & ~cr4_vmxe_mask;
+
+		if (write_amd_gpr(trap_frame, register_index, visible_cr4) == 0)
+		{
+			return 0;
+		}
+
+		advance_guest_rip();
+		return 1;
+	}
+
+	if (vmcb->control.vmexit_reason == SVM_EXIT_REASON_WRITE_CR4)
+	{
+		std::uint64_t requested_cr4 = 0;
+		if (read_amd_gpr(trap_frame, register_index, &requested_cr4) == 0)
+		{
+			return 0;
+		}
+
+		vmcb->save_state.cr4 = requested_cr4 & ~cr4_vmxe_mask;
+		vmcb->control.clean.cr = 0;
+
+		advance_guest_rip();
+		return 1;
+	}
+
+	return 0;
+}
+
+std::uint8_t arch::handle_cpuid_spoof(trap_frame_t* const trap_frame)
+{
+	if (trap_frame == nullptr)
+	{
+		return 0;
+	}
+
+	vmcb_t* const vmcb = get_vmcb();
+	const std::uint32_t leaf = static_cast<std::uint32_t>(vmcb->save_state.rax);
+	const std::uint32_t subleaf = static_cast<std::uint32_t>(trap_frame->rcx);
+
+	if (leaf >= cpuid_leaf_hypervisor_base && leaf <= cpuid_leaf_hypervisor_end)
+	{
+		vmcb->save_state.rax = 0;
+		trap_frame->rax = 0;
+		trap_frame->rbx = 0;
+		trap_frame->rcx = 0;
+		trap_frame->rdx = 0;
+
+		advance_guest_rip();
+		return 1;
+	}
+
+	if (leaf == cpuid_leaf_feature_information)
+	{
+		int cpu_info[4] = {};
+		__cpuidex(cpu_info, static_cast<int>(leaf), static_cast<int>(subleaf));
+
+		const std::uint64_t rax = static_cast<std::uint32_t>(cpu_info[0]);
+		vmcb->save_state.rax = rax;
+		trap_frame->rax = rax;
+		trap_frame->rbx = static_cast<std::uint32_t>(cpu_info[1]);
+		trap_frame->rcx = static_cast<std::uint32_t>(cpu_info[2]) & ~cpuid_ecx_hypervisor_present;
+		trap_frame->rdx = static_cast<std::uint32_t>(cpu_info[3]);
+
+		advance_guest_rip();
+		return 1;
+	}
+
+	return 0;
+}
+
+std::uint8_t arch::is_rdmsr(const std::uint64_t vmexit_reason)
+{
+	return vmexit_reason == SVM_EXIT_REASON_MSR;
+}
+
+void arch::enable_feature_control_shadowing()
+{
+	vmcb_t* const vmcb = get_vmcb();
+	vmcb->control.intercept_misc_vector_3 |= SVM_INTERCEPT_VECTOR3_MSR_PROT;
+	vmcb->control.clean.i = 0;
+
+	set_amd_msrpm_read_intercept(ia32_feature_control_msr);
+}
+
+std::uint8_t arch::handle_feature_control_rdmsr(trap_frame_t* const trap_frame)
+{
+	if (trap_frame == nullptr)
+	{
+		return 0;
+	}
+
+	const vmcb_t* const vmcb = get_vmcb();
+	if (vmcb->control.first_exit_info != SVM_EXIT_INFO_MSR_READ ||
+		static_cast<std::uint32_t>(trap_frame->rcx) != ia32_feature_control_msr)
+	{
+		return 0;
+	}
+
+	const std::uint64_t shadowed_feature_control = ia32_feature_control_locked;
+
+	get_vmcb()->save_state.rax = static_cast<std::uint32_t>(shadowed_feature_control);
+	trap_frame->rax = static_cast<std::uint32_t>(shadowed_feature_control);
+	trap_frame->rdx = static_cast<std::uint32_t>(shadowed_feature_control >> 32);
+
+	advance_guest_rip();
+	return 1;
+}
+
+std::uint8_t arch::is_tsc_exit(const std::uint64_t vmexit_reason)
+{
+	return vmexit_reason == SVM_EXIT_REASON_RDTSC ||
+		vmexit_reason == SVM_EXIT_REASON_RDTSCP;
+}
+
+void arch::enable_tsc_exiting()
+{
+	vmcb_t* const vmcb = get_vmcb();
+	vmcb->control.intercept_misc_vector_3 |= SVM_INTERCEPT_VECTOR3_RDTSC;
+	vmcb->control.intercept_misc_vector_4 |= SVM_INTERCEPT_VECTOR4_RDTSCP;
+	vmcb->control.clean.i = 0;
+}
+
+std::uint8_t arch::handle_tsc_exit(const std::uint64_t vmexit_reason, trap_frame_t* const trap_frame)
+{
+	if (trap_frame == nullptr || is_tsc_exit(vmexit_reason) == 0)
+	{
+		return 0;
+	}
+
+	vmcb_t* const vmcb = get_vmcb();
+	const std::uint64_t virtual_tsc = __rdtsc() + vmcb->control.tsc_offset;
+
+	vmcb->save_state.rax = static_cast<std::uint32_t>(virtual_tsc);
+	trap_frame->rax = static_cast<std::uint32_t>(virtual_tsc);
+	trap_frame->rdx = static_cast<std::uint32_t>(virtual_tsc >> 32);
+
+	if (vmexit_reason == SVM_EXIT_REASON_RDTSCP)
+	{
+		trap_frame->rcx = static_cast<std::uint32_t>(__readmsr(IA32_TSC_AUX));
+	}
+
+	advance_guest_rip();
+	return 1;
 }
 #endif
 
@@ -446,9 +810,9 @@ void arch::enable_breakpoint_intercept()
 	vmwrite(VMCS_CTRL_EXCEPTION_BITMAP, current_bitmap | (1ULL << 3));
 #else
 	// AMD: Intercept exception #BP (vector 3) bằng cách bật bit 3 
-	// trong intercept_misc_vector_3 (VMCB offset 0x0C = intercept exceptions)
+	// exception-intercept bitmap is at VMCB offset 0x08.
 	vmcb_t* const vmcb = get_vmcb();
-	vmcb->control.intercept_misc_vector_3 |= (1U << 3);
+	vmcb->control.intercept_exception_vector |= (1U << 3);
 	vmcb->control.clean.i = 0; // Đánh dấu dirty để SVM reload intercepts
 #endif
 }
