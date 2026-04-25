@@ -58,16 +58,67 @@ namespace PubgMemory {
         return static_cast<NTSTATUS>(0xC00000BBL);
     }
 
-    inline bool BulkReadMemory(const std::vector<bulk_read_entry>& entries) {
-        if (!g_ProcessId || entries.empty()) return false;
-
-        for (const auto& entry : entries) {
-            if (!ReadMemory(entry.source, entry.dest, entry.size)) {
-                return false;
-            }
+    class ScatterManager {
+    public:
+        ScatterManager() {
+            requests.reserve(512);
         }
 
-        return true;
+        template <typename T>
+        void Add(uint64_t source, T* dest) {
+            if (!source || !dest) return;
+            requests.push_back({ source, reinterpret_cast<uint64_t>(dest), sizeof(T) });
+        }
+
+        void AddRaw(uint64_t source, void* dest, uint64_t size) {
+            if (!source || !dest || size == 0) return;
+            requests.push_back({ source, reinterpret_cast<uint64_t>(dest), size });
+        }
+
+        bool Execute() {
+            if (requests.empty()) return true;
+            if (g_ProcessCr3 == 0 && !RefreshProcessContext()) return false;
+
+            // Execute in chunks if needed (Hypervisor maps 1 page of requests at a time, max ~170 entries)
+            const size_t max_entries_per_call = 128; 
+            size_t remaining = requests.size();
+            size_t offset = 0;
+
+            while (remaining > 0) {
+                size_t count = (remaining > max_entries_per_call) ? max_entries_per_call : remaining;
+                if (PubgHyperCall::ScatterReadVirtualMemory(&requests[offset], count, g_ProcessCr3) == 0) {
+                    return false;
+                }
+                offset += count;
+                remaining -= count;
+            }
+
+            requests.clear();
+            return true;
+        }
+
+        void Clear() {
+            requests.clear();
+        }
+
+    private:
+        struct scatter_read_entry_t {
+            uint64_t source;
+            uint64_t dest;
+            uint64_t size;
+        };
+        std::vector<scatter_read_entry_t> requests;
+    };
+
+    inline bool BulkReadMemory(const std::vector<bulk_read_entry>& entries) {
+        if (!g_ProcessId || entries.empty()) return false;
+        if (g_ProcessCr3 == 0 && !RefreshProcessContext()) return false;
+
+        ScatterManager sm;
+        for (const auto& entry : entries) {
+            sm.AddRaw(entry.source, entry.dest, entry.size);
+        }
+        return sm.Execute();
     }
 
     inline bool ReadMemory(uint64_t src, void* dest, uint64_t size) {

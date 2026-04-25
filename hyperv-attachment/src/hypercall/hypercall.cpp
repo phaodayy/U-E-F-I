@@ -74,68 +74,87 @@ std::uint64_t operate_on_guest_physical_memory(const trap_frame_t* const trap_fr
     return bytes_copied;
 }
 
+std::uint64_t virtual_memory_copy_raw(const cr3 source_cr3, const std::uint64_t source_va, const cr3 dest_cr3, const std::uint64_t dest_va, std::uint64_t size, const memory_operation_t operation)
+{
+    const cr3 slat_cr3 = slat::hyperv_cr3();
+    std::uint64_t bytes_copied = 0;
+
+    while (size != 0)
+    {
+        std::uint64_t size_left_of_dest_vpage = UINT64_MAX;
+        std::uint64_t size_left_of_dest_slat_page = UINT64_MAX;
+        std::uint64_t size_left_of_src_vpage = UINT64_MAX;
+        std::uint64_t size_left_of_src_slat_page = UINT64_MAX;
+
+        const std::uint64_t src_pa = memory_manager::translate_guest_virtual_address(source_cr3, slat_cr3, { .address = source_va + bytes_copied }, &size_left_of_src_vpage);
+        const std::uint64_t dest_pa = memory_manager::translate_guest_virtual_address(dest_cr3, slat_cr3, { .address = dest_va + bytes_copied }, &size_left_of_dest_vpage);
+
+        if (size_left_of_dest_vpage == UINT64_MAX || size_left_of_src_vpage == UINT64_MAX) break;
+
+        void* host_dest = memory_manager::map_guest_physical(slat_cr3, dest_pa, &size_left_of_dest_slat_page);
+        void* host_src = memory_manager::map_guest_physical(slat_cr3, src_pa, &size_left_of_src_slat_page);
+
+        if (size_left_of_dest_slat_page == UINT64_MAX || size_left_of_src_slat_page == UINT64_MAX) break;
+
+        if (operation == memory_operation_t::write_operation) crt::swap(host_src, host_dest);
+
+        const std::uint64_t size_left_of_slat_pages = crt::min(size_left_of_src_slat_page, size_left_of_dest_slat_page);
+        const std::uint64_t size_left_of_vpages = crt::min(size_left_of_src_vpage, size_left_of_dest_vpage);
+        const std::uint64_t copy_size = crt::min(size, crt::min(size_left_of_slat_pages, size_left_of_vpages));
+
+        if (copy_size == 0) break;
+        crt::copy_memory(host_dest, host_src, copy_size);
+
+        size -= copy_size;
+        bytes_copied += copy_size;
+    }
+    return bytes_copied;
+}
+
 std::uint64_t operate_on_guest_virtual_memory(const trap_frame_t* const trap_frame, const memory_operation_t operation, const std::uint64_t address_of_page_directory)
 {
     const cr3 guest_source_cr3 = { .address_of_page_directory = address_of_page_directory };
-
     const cr3 guest_destination_cr3 = arch::get_guest_cr3();
+
+    return virtual_memory_copy_raw(guest_source_cr3, trap_frame->r8, guest_destination_cr3, trap_frame->rdx, trap_frame->r9, operation);
+}
+
+std::uint64_t operate_on_guest_virtual_memory_scatter(const trap_frame_t* const trap_frame, const std::uint64_t address_of_page_directory)
+{
+    const cr3 source_cr3 = { .address_of_page_directory = address_of_page_directory };
+    const cr3 dest_cr3 = arch::get_guest_cr3();
     const cr3 slat_cr3 = slat::hyperv_cr3();
 
-    const std::uint64_t guest_destination_virtual_address = trap_frame->rdx;
-    const  std::uint64_t guest_source_virtual_address = trap_frame->r8;
+    const std::uint64_t descriptors_va = trap_frame->rdx;
+    const std::uint64_t count = trap_frame->r8;
 
-    std::uint64_t size_left_to_read = trap_frame->r9;
+    if (count == 0 || descriptors_va == 0) return 0;
 
-    std::uint64_t bytes_copied = 0;
+    // Map descriptors array from guest to host
+    std::uint64_t size_left_of_slat_page = 0;
+    const std::uint64_t descriptors_pa = memory_manager::translate_guest_virtual_address(dest_cr3, slat_cr3, { .address = descriptors_va });
+    if (descriptors_pa == 0) return 0;
 
-    while (size_left_to_read != 0)
+    const auto descriptors = static_cast<const scatter_read_entry_t*>(memory_manager::map_guest_physical(slat_cr3, descriptors_pa, &size_left_of_slat_page));
+    if (descriptors == nullptr) return 0;
+
+    // Safety check: ensure the array doesn't cross page boundary for now to keep it simple
+    // A better implementation would iterate through multiple pages if needed
+    const std::uint64_t total_descriptors_size = count * sizeof(scatter_read_entry_t);
+    if (total_descriptors_size > size_left_of_slat_page) return 0;
+
+    std::uint64_t successful_ops = 0;
+    for (std::uint64_t i = 0; i < count; ++i)
     {
-        std::uint64_t size_left_of_destination_virtual_page = UINT64_MAX;
-        std::uint64_t size_left_of_destination_slat_page = UINT64_MAX;
-
-        std::uint64_t size_left_of_source_virtual_page = UINT64_MAX;
-        std::uint64_t size_left_of_source_slat_page = UINT64_MAX;
-
-        const std::uint64_t guest_source_physical_address = memory_manager::translate_guest_virtual_address(guest_source_cr3, slat_cr3, { .address = guest_source_virtual_address + bytes_copied }, &size_left_of_source_virtual_page);
-        const std::uint64_t guest_destination_physical_address = memory_manager::translate_guest_virtual_address(guest_destination_cr3, slat_cr3, { .address = guest_destination_virtual_address + bytes_copied }, &size_left_of_destination_virtual_page);
-
-        if (size_left_of_destination_virtual_page == UINT64_MAX || size_left_of_source_virtual_page == UINT64_MAX)
+        if (virtual_memory_copy_raw(source_cr3, descriptors[i].guest_source_virtual_address,
+                                   dest_cr3, descriptors[i].guest_destination_virtual_address,
+                                   descriptors[i].size, memory_operation_t::read_operation) == descriptors[i].size)
         {
-            break;
+            successful_ops++;
         }
-
-        void* host_destination = memory_manager::map_guest_physical(slat_cr3, guest_destination_physical_address, &size_left_of_destination_slat_page);
-        void* host_source = memory_manager::map_guest_physical(slat_cr3, guest_source_physical_address, &size_left_of_source_slat_page);
-
-    	if (size_left_of_destination_slat_page == UINT64_MAX || size_left_of_source_slat_page == UINT64_MAX)
-        {
-            break;
-        }
-
-        if (operation == memory_operation_t::write_operation)
-        {
-            crt::swap(host_source, host_destination);
-        }
-
-        const std::uint64_t size_left_of_slat_pages = crt::min(size_left_of_source_slat_page, size_left_of_destination_slat_page);
-        const std::uint64_t size_left_of_virtual_pages = crt::min(size_left_of_source_virtual_page, size_left_of_destination_virtual_page);
-
-        const std::uint64_t size_left_of_pages = crt::min(size_left_of_slat_pages, size_left_of_virtual_pages);
-
-        const std::uint64_t copy_size = crt::min(size_left_to_read, size_left_of_pages);
-
-        if (copy_size == 0)
-        {
-            break;
-        }
-
-        crt::copy_memory(host_destination, host_source, copy_size);
-
-        size_left_to_read -= copy_size;
-        bytes_copied += copy_size;
     }
 
-    return bytes_copied;
+    return successful_ops;
 }
 
 std::uint8_t copy_stack_data_from_log_exit(std::uint64_t* const stack_data, const std::uint64_t stack_data_count, const cr3 guest_cr3, const std::uint64_t rsp)
@@ -247,6 +266,15 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
         const std::uint64_t address_of_page_directory = virt_memory_op_info.address_of_page_directory;
 
         trap_frame->rax = operate_on_guest_virtual_memory(trap_frame, memory_operation, address_of_page_directory);
+
+        break;
+    }
+    case hypercall_type_t::_hc_0x121:
+    {
+        const virt_memory_op_hypercall_info_t virt_memory_op_info = { .value = hypercall_info.value };
+        const std::uint64_t address_of_page_directory = virt_memory_op_info.address_of_page_directory;
+
+        trap_frame->rax = operate_on_guest_virtual_memory_scatter(trap_frame, address_of_page_directory);
 
         break;
     }

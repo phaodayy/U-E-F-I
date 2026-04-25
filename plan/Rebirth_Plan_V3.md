@@ -18,7 +18,7 @@ Dự án này tập trung vào việc loại bỏ các dấu hiệu nhận diệ
 *   [x] **Process Identity:** Ngụy trang `GameOverlay.exe` thành các tiến trình hệ thống vô hại (`SecurityHealthService.exe`).
 
 ### 4. ⚡ Tối ưu hóa Hiệu năng (Timing Evasion)
-*   [ ] **Bulk Reading:** Xây dựng cấu trúc dữ liệu lớn để đọc toàn bộ Actor trong 1 lần gọi Hypercall.
+*   [x] **Bulk Reading:** Xây dựng hệ thống Scatter Read (Hypercall _hc_0x121) để đọc toàn bộ Actor/Bones trong 1 lần gọi. 
 *   [ ] **Cache System:** Giảm tần suất truy cập memory bằng cách cache CR3 và BaseAddress.
 *   [ ] **Latency Jitter:** Thêm độ trễ ngẫu nhiên siêu nhỏ giữa các lần quét để làm giả hành vi của người dùng thật.
 

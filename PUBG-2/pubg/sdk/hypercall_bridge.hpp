@@ -11,6 +11,10 @@ namespace PubgHyperCall
                                          std::uint64_t source_cr3,
                                          std::uint64_t size);
 
+    std::uint64_t ScatterReadVirtualMemory(void* descriptors_array,
+                                          std::uint64_t count,
+                                          std::uint64_t source_cr3);
+
     std::uint64_t WriteGuestVirtualMemory(const void* guest_source_buffer,
                                           std::uint64_t guest_destination_virtual_address,
                                           std::uint64_t destination_cr3,

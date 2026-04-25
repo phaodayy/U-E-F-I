@@ -13,10 +13,18 @@ enum class hypercall_type_t : std::uint64_t
     _hc_0x150, // add_slat_code_hook
     _hc_0x170, // hide_guest_physical_page
     _hc_0x220, // inject_mouse_movement
+    _hc_0x121, // scatter_read_virtual_memory
     _hc_0x160, // remove_slat_code_hook
     _hc_0x180, // log_current_state
     _hc_0x190, // flush_logs
     _hc_0x200  // get_heap_free_page_count
+};
+
+struct scatter_read_entry_t
+{
+    std::uint64_t guest_source_virtual_address;
+    std::uint64_t guest_destination_virtual_address;
+    std::uint64_t size;
 };
 
 #pragma warning(push)

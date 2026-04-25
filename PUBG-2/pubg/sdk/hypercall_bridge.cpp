@@ -72,6 +72,25 @@ std::uint64_t PubgHyperCall::ReadGuestVirtualMemory(void* const guest_destinatio
                          size);
 }
 
+std::uint64_t PubgHyperCall::ScatterReadVirtualMemory(void* descriptors_array,
+                                                     std::uint64_t count,
+                                                     std::uint64_t source_cr3)
+{
+    virt_memory_op_hypercall_info_t memory_op_call = {};
+    memory_op_call.call_type = hypercall_type_t::_hc_0x121;
+    memory_op_call.address_of_page_directory = source_cr3 >> 12;
+
+    hypercall_info_t hypercall_info = {};
+    hypercall_info.value = memory_op_call.value;
+    const auto descriptors_va = reinterpret_cast<std::uint64_t>(descriptors_array);
+
+    return MakeHypercall(hypercall_info.call_type,
+                         hypercall_info.call_reserved_data,
+                         descriptors_va,
+                         count,
+                         0);
+}
+
 std::uint64_t PubgHyperCall::WriteGuestVirtualMemory(const void* const guest_source_buffer,
                                                      const std::uint64_t guest_destination_virtual_address,
                                                      const std::uint64_t destination_cr3,
