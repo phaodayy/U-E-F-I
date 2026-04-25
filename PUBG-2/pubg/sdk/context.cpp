@@ -35,10 +35,10 @@ namespace {
         int neck = 5;
         int chest = 4;
         int pelvis = 1;
-        int leftShoulder = 87; // Raised from 88
+        int leftShoulder = 88; 
         int leftElbow = 89;
         int leftHand = 90;
-        int rightShoulder = 114; // Raised from 115
+        int rightShoulder = 115; 
         int rightElbow = 116;
         int rightHand = 117;
         int leftThigh = 172;
@@ -59,10 +59,10 @@ namespace {
             return idx;
         }
 
-        idx.leftShoulder = 94; // Raised from 95
+        idx.leftShoulder = 95; 
         idx.leftElbow = 96;
         idx.leftHand = 97;
-        idx.rightShoulder = 121; // Raised from 122
+        idx.rightShoulder = 122; 
         idx.rightElbow = 123;
         idx.rightHand = 124;
         idx.leftThigh = 180;

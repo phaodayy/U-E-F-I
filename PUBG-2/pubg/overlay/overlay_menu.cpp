@@ -1045,10 +1045,10 @@ void OverlayMenu::RenderFrame() {
                         DrawLine(player.Bone_Head, player.Bone_Neck);
                         DrawLine(player.Bone_Neck, player.Bone_Chest);
                         DrawLine(player.Bone_Chest, player.Bone_Pelvis);
-                        DrawLine(player.Bone_Chest, player.Bone_LShoulder);
+                        DrawLine(player.Bone_Neck, player.Bone_LShoulder); // Changed from Chest to Neck
                         DrawLine(player.Bone_LShoulder, player.Bone_LElbow);
                         DrawLine(player.Bone_LElbow, player.Bone_LHand);
-                        DrawLine(player.Bone_Chest, player.Bone_RShoulder);
+                        DrawLine(player.Bone_Neck, player.Bone_RShoulder); // Changed from Chest to Neck
                         DrawLine(player.Bone_RShoulder, player.Bone_RElbow);
                         DrawLine(player.Bone_RElbow, player.Bone_RHand);
                         DrawLine(player.Bone_Pelvis, player.Bone_LThigh);
