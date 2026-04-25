@@ -101,36 +101,193 @@ namespace Translation {
     };
 
     inline Strings Get() {
+        Strings s;
         if (CurrentLanguage == 1) { // Vietnamese
-            return {
-                skCrypt("PHAN MEM GZ-CHEAT EXTERNAL"), skCrypt("Hien thi"), skCrypt("Tu ngam"), skCrypt("Macro"), skCrypt("Cai dat"), skCrypt("Radar"), skCrypt("Vat pham & Xe"),
-                skCrypt("HIEU NANG HIEN THI"), skCrypt("Bat tat ESP"), skCrypt("ESP Ke dich"), skCrypt("ESP Dong doi"), skCrypt("ESP Nguoi choi"), skCrypt("Thong tin"), skCrypt("Khung"), skCrypt("Xuong"), skCrypt("Noi diem (Muot)"), skCrypt("Vong dau"), skCrypt("Cach vat can"),
-                skCrypt("Thanh mau"), skCrypt("Vi tri thanh mau"), skCrypt("Khoang cach"), skCrypt("Ten"), skCrypt("Hien thi nguoi xem"), skCrypt("Canh bao ngoai man hinh"), skCrypt("Khoang cach mui ten"), skCrypt("Kich thuoc mui ten"), skCrypt("Kieu mui ten"), skCrypt("Che do mau"), skCrypt("Mau o gan"), skCrypt("Mau o xa"), skCrypt("Vu khi"), skCrypt("Kieu ve vu khi"), skCrypt("Vat pham & Xe"), skCrypt("Gioi han khoang cach (Smart LOD)"), skCrypt("Mau sac rieng biet"), skCrypt("Khoang cach render"),
-                skCrypt("Le ngang Radar (X)"), skCrypt("Le doc Radar (Y)"), skCrypt("Hien tam Radar"), skCrypt("Ti le Zoom Radar"), skCrypt("Goc xoay Radar"), skCrypt("Bat tat Radar"), skCrypt("Kich co cham"), skCrypt("Vat pham"),
-                skCrypt("Aimbot dang phat trien"), skCrypt("Macro dang phat trien"),
-                skCrypt("Bat tu dong ngam"), skCrypt("Vung ngam (FOV)"), skCrypt("Do muot (Smooth)"), skCrypt("Phim bam"), skCrypt("Vi tri ngam"), skCrypt("Chi ngam khi thay"), skCrypt("Du doan quy dao"),
-                skCrypt("Bat Ghi tam (No-Recoil)"), skCrypt("Suc manh Ghi tam"), skCrypt("Nhan ban (Humanize)"), skCrypt("Hien thi OSD"), skCrypt("Quet lai phu kien"), 
-                skCrypt("Vu khi: "), skCrypt("Phu kien: "), skCrypt("Khong cam sung"),
-                skCrypt("Ngon ngu"), skCrypt("Reset mau"), skCrypt("Luu cau hinh"), skCrypt("Tai cau hinh"), skCrypt("Phien ban"),
-                skCrypt("Stream Proof"), skCrypt("Hien thi OSD"), skCrypt("Ti le X"), skCrypt("Ti le Y"),
-                skCrypt("Smart LOD"), skCrypt("Max Khung"), skCrypt("Max Mau"), skCrypt("Max Xuong"), skCrypt("Max Ten"), skCrypt("Max Khoang cach"), skCrypt("Max Vu khi"),
-                skCrypt("Mau Khung (Thay)"), skCrypt("Mau Khung (An)"), skCrypt("Mau Xuong (Thay)"), skCrypt("Mau Xuong (An)"), skCrypt("Mau Ten"), skCrypt("Mau Khoang cach"), skCrypt("Mau Vu khi")
-            };
+            s.MainTitle = skCrypt("PHAN MEM GZ-CHEAT EXTERNAL");
+            s.TabVisuals = skCrypt("Hien thi");
+            s.TabAimbot = skCrypt("Tu ngam");
+            s.TabMacro = skCrypt("Macro");
+            s.TabSettings = skCrypt("Cai dat");
+            s.TabRadar = skCrypt("Radar");
+            s.TabLoot = skCrypt("Vat pham & Xe");
+            
+            s.VisualPerformance = skCrypt("HIEU NANG HIEN THI");
+            s.MasterToggle = skCrypt("Bat tat ESP");
+            s.EnemyESP = skCrypt("ESP Ke dich");
+            s.TeammateESP = skCrypt("ESP Dong doi");
+            s.PlayerESP = skCrypt("ESP Nguoi choi");
+            s.InfoESP = skCrypt("Thong tin");
+            s.Box = skCrypt("Khung");
+            s.Skeleton = skCrypt("Xuong");
+            s.Interpolate = skCrypt("Noi diem (Muot)");
+            s.HeadCircle = skCrypt("Vong dau");
+            s.VisCheck = skCrypt("Cach vat can");
+            s.HealthBar = skCrypt("Thanh mau");
+            s.HealthPos = skCrypt("Vi tri thanh mau");
+            s.Distance = skCrypt("Khoang cach");
+            s.Name = skCrypt("Ten");
+            s.ESP_Spectated = skCrypt("Hien thi nguoi xem");
+            s.ESP_Offscreen = skCrypt("Canh bao ngoai man hinh");
+            s.IndicatorRadius = skCrypt("Khoang cach mui ten");
+            s.IndicatorSize = skCrypt("Kich thuoc mui ten");
+            s.IndicatorStyle = skCrypt("Kieu mui ten");
+            s.ColorMode = skCrypt("Che do mau");
+            s.ColorNear = skCrypt("Mau o gan");
+            s.ColorFar = skCrypt("Mau o xa");
+            s.Weapon = skCrypt("Vu khi");
+            s.WeaponType = skCrypt("Kieu ve vu khi");
+            s.ItemsVehicles = skCrypt("Vat pham & Xe");
+            s.DistThresholds = skCrypt("Gioi han khoang cach (Smart LOD)");
+            s.ColorsTitle = skCrypt("Mau sac rieng biet");
+            s.RenderDist = skCrypt("Khoang cach render");
+            s.RadarOffsetX = skCrypt("Le ngang Radar (X)");
+            s.RadarOffsetY = skCrypt("Le doc Radar (Y)");
+            s.ShowCrosshair = skCrypt("Hien tam Radar");
+            s.RadarZoom = skCrypt("Ti le Zoom Radar");
+            s.RadarRotation = skCrypt("Goc xoay Radar");
+            s.RadarEnable = skCrypt("Bat tat Radar");
+            s.RadarDotSize = skCrypt("Kich co cham");
+            s.TabDebug = skCrypt("Vat pham");
+            
+            s.AimbotSoon = skCrypt("Aimbot dang phat trien");
+            s.MacroSoon = skCrypt("Macro dang phat trien");
+            
+            s.AimEnabled = skCrypt("Bat tu dong ngam");
+            s.AimFOV = skCrypt("Vung ngam (FOV)");
+            s.AimSmooth = skCrypt("Do muot (Smooth)");
+            s.AimKey = skCrypt("Phim bam");
+            s.AimBone = skCrypt("Vi tri ngam");
+            s.AimVisible = skCrypt("Chi ngam khi thay");
+            s.AimPrediction = skCrypt("Du doan quy dao");
+            
+            s.MacroEnabled = skCrypt("Bat Ghi tam (No-Recoil)");
+            s.MacroStrength = skCrypt("Suc manh Ghi tam");
+            s.MacroHumanize = skCrypt("Nhan ban (Humanize)");
+            s.MacroOSD = skCrypt("Hien thi OSD");
+            s.RescanAttach = skCrypt("Quet lai phu kien");
+            s.CurrentWeapon = skCrypt("Vu khi: ");
+            s.DetectedAttach = skCrypt("Phu kien: ");
+            s.NoWeapon = skCrypt("Khong cam sung");
+            
+            s.Language = skCrypt("Ngon ngu");
+            s.ResetColors = skCrypt("Reset mau");
+            s.SaveConfig = skCrypt("Luu cau hinh");
+            s.LoadConfig = skCrypt("Tai cau hinh");
+            s.Version = skCrypt("Phien ban");
+            s.AntiScreenshot = skCrypt("Stream Proof");
+            s.ShowMacroOSD = skCrypt("Hien thi OSD");
+            s.RescaleX = skCrypt("Ti le X");
+            s.RescaleY = skCrypt("Ti le Y");
+
+            s.SmartLOD = skCrypt("Smart LOD");
+            s.BoxMax = skCrypt("Max Khung");
+            s.HealthMax = skCrypt("Max Mau");
+            s.SkeletonMax = skCrypt("Max Xuong");
+            s.NameMax = skCrypt("Max Ten");
+            s.DistMax = skCrypt("Max Khoang cach");
+            s.WeaponMax = skCrypt("Max Vu khi");
+            
+            s.VisBox = skCrypt("Mau Khung (Thay)");
+            s.InvBox = skCrypt("Mau Khung (An)");
+            s.VisSkel = skCrypt("Mau Xuong (Thay)");
+            s.InvSkel = skCrypt("Mau Xuong (An)");
+            s.ColorNames = skCrypt("Mau Ten");
+            s.ColorDist = skCrypt("Mau Khoang cach");
+            s.ColorWeapon = skCrypt("Mau Vu khi");
+        } else { // English
+            s.MainTitle = skCrypt("GZ-CHEAT EXTERNAL");
+            s.TabVisuals = skCrypt("Visuals");
+            s.TabAimbot = skCrypt("Aimbot");
+            s.TabMacro = skCrypt("Macro");
+            s.TabSettings = skCrypt("Settings");
+            s.TabRadar = skCrypt("Radar");
+            s.TabLoot = skCrypt("Items & Vehicles");
+            
+            s.VisualPerformance = skCrypt("VISUAL PERFORMANCE");
+            s.MasterToggle = skCrypt("Master ESP Toggle");
+            s.EnemyESP = skCrypt("Enemy ESP");
+            s.TeammateESP = skCrypt("Teammate ESP");
+            s.PlayerESP = skCrypt("Player ESP");
+            s.InfoESP = skCrypt("Information");
+            s.Box = skCrypt("Box");
+            s.Skeleton = skCrypt("Skeleton");
+            s.Interpolate = skCrypt("Interpolate Joints");
+            s.HeadCircle = skCrypt("Head Circle");
+            s.VisCheck = skCrypt("Visibility Check");
+            s.HealthBar = skCrypt("Health Bar");
+            s.HealthPos = skCrypt("Health Bar Position");
+            s.Distance = skCrypt("Distance");
+            s.Name = skCrypt("Player Name");
+            s.ESP_Spectated = skCrypt("Spectated Count");
+            s.ESP_Offscreen = skCrypt("Off-screen Indicators");
+            s.IndicatorRadius = skCrypt("Indicator Radius");
+            s.IndicatorSize = skCrypt("Indicator Size");
+            s.IndicatorStyle = skCrypt("Indicator Style");
+            s.ColorMode = skCrypt("Color Mode");
+            s.ColorNear = skCrypt("Color (Near)");
+            s.ColorFar = skCrypt("Color (Far)");
+            s.Weapon = skCrypt("Weapon Info");
+            s.WeaponType = skCrypt("Weapon Draw Mode");
+            s.ItemsVehicles = skCrypt("Items & Vehicles");
+            s.DistThresholds = skCrypt("Distance Thresholds (Culling)");
+            s.ColorsTitle = skCrypt("Individual Colors");
+            s.RenderDist = skCrypt("Render Distance");
+            s.RadarOffsetX = skCrypt("Radar X Offset");
+            s.RadarOffsetY = skCrypt("Radar Y Offset");
+            s.ShowCrosshair = skCrypt("Show Radar Center");
+            s.RadarZoom = skCrypt("Radar Zoom Scale");
+            s.RadarRotation = skCrypt("Radar Rotation Offset");
+            s.RadarEnable = skCrypt("Enable Radar");
+            s.RadarDotSize = skCrypt("Dot Size");
+            s.TabDebug = skCrypt("Debug");
+            
+            s.AimbotSoon = skCrypt("Aimbot Soon");
+            s.MacroSoon = skCrypt("Macro Soon");
+            
+            s.AimEnabled = skCrypt("Enable Aimbot");
+            s.AimFOV = skCrypt("Aimbot FOV");
+            s.AimSmooth = skCrypt("Smoothness");
+            s.AimKey = skCrypt("Aim Key");
+            s.AimBone = skCrypt("Target Bone");
+            s.AimVisible = skCrypt("Visible Only");
+            s.AimPrediction = skCrypt("Enable Prediction");
+            
+            s.MacroEnabled = skCrypt("Enable No-Recoil");
+            s.MacroStrength = skCrypt("Recoil Strength");
+            s.MacroHumanize = skCrypt("Humanize");
+            s.MacroOSD = skCrypt("Show OSD");
+            s.RescanAttach = skCrypt("Rescan Attachments");
+            s.CurrentWeapon = skCrypt("Weapon: ");
+            s.DetectedAttach = skCrypt("Attachments: ");
+            s.NoWeapon = skCrypt("Holstered");
+            
+            s.Language = skCrypt("Language");
+            s.ResetColors = skCrypt("Reset Colors");
+            s.SaveConfig = skCrypt("Save Config");
+            s.LoadConfig = skCrypt("Load Config");
+            s.Version = skCrypt("Version");
+            s.AntiScreenshot = skCrypt("Stream Proof");
+            s.ShowMacroOSD = skCrypt("Show OSD");
+            s.RescaleX = skCrypt("Rescale X");
+            s.RescaleY = skCrypt("Rescale Y");
+
+            s.SmartLOD = skCrypt("Smart LOD");
+            s.BoxMax = skCrypt("Box Max");
+            s.HealthMax = skCrypt("Health Max");
+            s.SkeletonMax = skCrypt("Skeleton Max");
+            s.NameMax = skCrypt("Name Max");
+            s.DistMax = skCrypt("Dist Max");
+            s.WeaponMax = skCrypt("Weapon Max");
+            
+            s.VisBox = skCrypt("Visible Box Color");
+            s.InvBox = skCrypt("Invisible Box Color");
+            s.VisSkel = skCrypt("Visible Skeleton Color");
+            s.InvSkel = skCrypt("Invisible Skeleton Color");
+            s.ColorNames = skCrypt("Names Color");
+            s.ColorDist = skCrypt("Distance Color");
+            s.ColorWeapon = skCrypt("Weapon Color");
         }
-        return {
-            skCrypt("GZ-CHEAT EXTERNAL"), skCrypt("Visuals"), skCrypt("Aimbot"), skCrypt("Macro"), skCrypt("Settings"), skCrypt("Radar"), skCrypt("Items & Vehicles"),
-            skCrypt("VISUAL PERFORMANCE"), skCrypt("Master ESP Toggle"), skCrypt("Enemy ESP"), skCrypt("Teammate ESP"), skCrypt("Player ESP"), skCrypt("Information"), skCrypt("Box"), skCrypt("Skeleton"), skCrypt("Interpolate Joints"), skCrypt("Head Circle"), skCrypt("Visibility Check"),
-            skCrypt("Health Bar"), skCrypt("Health Bar Position"), skCrypt("Distance"), skCrypt("Player Name"), skCrypt("Spectated Count"), skCrypt("Off-screen Indicators"), skCrypt("Indicator Radius"), skCrypt("Indicator Size"), skCrypt("Indicator Style"), skCrypt("Color Mode"), skCrypt("Color (Near)"), skCrypt("Color (Far)"), skCrypt("Weapon Info"), skCrypt("Weapon Draw Mode"), skCrypt("Items & Vehicles"), skCrypt("Distance Thresholds (Culling)"), skCrypt("Individual Colors"), skCrypt("Render Distance"),
-            skCrypt("Radar X Offset"), skCrypt("Radar Y Offset"), skCrypt("Show Radar Center"), skCrypt("Radar Zoom Scale"), skCrypt("Radar Rotation Offset"), skCrypt("Enable Radar"), skCrypt("Dot Size"), skCrypt("Debug"),
-            skCrypt("Aimbot Soon"), skCrypt("Macro Soon"), 
-            skCrypt("Enable Aimbot"), skCrypt("Aimbot FOV"), skCrypt("Smoothness"), skCrypt("Aim Key"), skCrypt("Target Bone"), skCrypt("Visible Only"), skCrypt("Enable Prediction"),
-            skCrypt("Enable No-Recoil"), skCrypt("Recoil Strength"), skCrypt("Humanize"), skCrypt("Show OSD"), skCrypt("Rescan Attachments"),
-            skCrypt("Weapon: "), skCrypt("Attachments: "), skCrypt("Holstered"),
-            skCrypt("Language"), skCrypt("Reset Colors"), skCrypt("Save Config"), skCrypt("Load Config"), skCrypt("Version"),
-            skCrypt("Stream Proof"), skCrypt("Show OSD"), skCrypt("Rescale X"), skCrypt("Rescale Y"),
-            skCrypt("Smart LOD"), skCrypt("Box Max"), skCrypt("Health Max"), skCrypt("Skeleton Max"), skCrypt("Name Max"), skCrypt("Dist Max"), skCrypt("Weapon Max"),
-            skCrypt("Visible Box Color"), skCrypt("Invisible Box Color"), skCrypt("Visible Skeleton Color"), skCrypt("Invisible Skeleton Color"), skCrypt("Names Color"), skCrypt("Distance Color"), skCrypt("Weapon Color")
-        };
+        return s;
     }
 
     inline const char* GetAttachmentName(int type, int id) {

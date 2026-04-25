@@ -17,10 +17,14 @@ namespace skc
 
 		__forceinline T* decrypt()
 		{
+			if (_decrypted) return _storage;
+
 			for (int i = 0; i < _size; i++)
 			{
 				_storage[i] = _storage[i] ^ (_key1 + i % (1 + _key2));
 			}
+
+			_decrypted = true;
 			return _storage;
 		}
 
@@ -30,11 +34,12 @@ namespace skc
 		}
 
 	private:
-		T _storage[_size]{};
+		mutable T _storage[_size]{};
+		mutable bool _decrypted = false;
 	};
 }
 
 #define skCrypt(str) []() { \
-			constexpr static auto crypted = skc::skCrypter \
+			static auto crypted = skc::skCrypter \
 				<sizeof(str) / sizeof(str[0]), __TIME__[4], __TIME__[7], std::remove_const_t<std::remove_reference_t<decltype(str[0])>>>((std::remove_const_t<std::remove_reference_t<decltype(str[0])>>*)str); \
-					return crypted; }().decrypt()
+					return crypted.decrypt(); }()
