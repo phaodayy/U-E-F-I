@@ -878,7 +878,7 @@ int main() {
 
     g_Menu.Initialize(nullptr);
 
-    // [ANTI-DUMP] Wiping PE headers now that EVERYTHING (DirectX, ImGui, Settings) is ready
+    // [ANTI-DUMP] Safe Erasing DOS headers (Now compatible with DirectX)
     protec::erase_pe_header();
     
 #ifdef _DEBUG

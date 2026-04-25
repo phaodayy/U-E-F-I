@@ -121,14 +121,78 @@ namespace protec {
     // LAYER 2: Anti-Dump & Mitigation
     // =========================================================================
 
-    static void erase_pe_header() {
-        HMODULE hModule = GetModuleHandleW(NULL);
-        if (!hModule) return;
-        DWORD old;
-        if (VirtualProtect(hModule, 4096, PAGE_READWRITE, &old)) {
-            SecureZeroMemory(hModule, 4096);
-            VirtualProtect(hModule, 4096, old, &old);
+    typedef struct _UNICODE_STRING {
+        USHORT Length;
+        USHORT MaximumLength;
+        PWSTR  Buffer;
+    } UNICODE_STRING, *PUNICODE_STRING;
+
+    typedef struct _LDR_DATA_TABLE_ENTRY {
+        LIST_ENTRY InLoadOrderLinks;
+        LIST_ENTRY InMemoryOrderLinks;
+        LIST_ENTRY InInitializationOrderLinks;
+        PVOID DllBase;
+        PVOID EntryPoint;
+        ULONG SizeOfImage;
+        UNICODE_STRING FullDllName;
+        UNICODE_STRING BaseDllName;
+    } LDR_DATA_TABLE_ENTRY, *PLDR_DATA_TABLE_ENTRY;
+
+    typedef struct _PEB_LDR_DATA {
+        ULONG Length;
+        BOOLEAN Initialized;
+        HANDLE SsHandle;
+        LIST_ENTRY InLoadOrderModuleList;
+        LIST_ENTRY InMemoryOrderModuleList;
+        LIST_ENTRY InInitializationOrderModuleList;
+    } PEB_LDR_DATA, *PPEB_LDR_DATA;
+
+    typedef struct _PEB {
+        BOOLEAN InheritedAddressSpace;
+        BOOLEAN ReadImageFileExecOptions;
+        BOOLEAN BeingDebugged;
+        BOOLEAN SpareBool;
+        HANDLE Mutant;
+        PVOID ImageBaseAddress;
+        PPEB_LDR_DATA Ldr;
+    } PEB, *PPEB;
+
+    static void hide_module_from_peb() {
+        PPEB peb = (PPEB)__readgsqword(0x60);
+        if (!peb || !peb->Ldr) return;
+
+        PPEB_LDR_DATA ldr = peb->Ldr;
+        PLIST_ENTRY list = &ldr->InLoadOrderModuleList;
+
+        for (PLIST_ENTRY entry = list->Flink; entry != list; entry = entry->Flink) {
+            PLDR_DATA_TABLE_ENTRY module = (PLDR_DATA_TABLE_ENTRY)entry;
+            if (module->DllBase == peb->ImageBaseAddress) {
+                // Double link unlinking - InLoadOrder
+                entry->Blink->Flink = entry->Flink;
+                entry->Flink->Blink = entry->Blink;
+
+                // Unlink from InMemoryOrderModuleList
+                PLIST_ENTRY mem_entry = &module->InMemoryOrderLinks;
+                if (mem_entry->Flink && mem_entry->Blink) {
+                    mem_entry->Blink->Flink = mem_entry->Flink;
+                    mem_entry->Flink->Blink = mem_entry->Blink;
+                }
+
+                // Unlink from InInitializationOrderModuleList
+                PLIST_ENTRY init_entry = &module->InInitializationOrderLinks;
+                if (init_entry->Flink && init_entry->Blink) {
+                    init_entry->Blink->Flink = init_entry->Flink;
+                    init_entry->Flink->Blink = init_entry->Blink;
+                }
+
+                break;
+            }
         }
+    }
+
+    static void erase_pe_header() {
+        // [ANTI-DUMP v2] Replaced with PEB Hiding to solve DirectX compatibility issues
+        hide_module_from_peb();
     }
 
     struct hardening_result_t
