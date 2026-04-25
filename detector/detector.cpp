@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <TlHelp32.h>
 #include <winver.h>
+#include "../protec/win_runtime_hardening.h"
 
 #include <algorithm>
 #include <array>
@@ -58,10 +59,12 @@ namespace
     struct system_report_t
     {
         bool is_admin = false;
+        bool debugger_present = false;
         bool efi_scan_attempted = false;
         bool efi_scan_succeeded = false;
         bool b_drive_scan_attempted = false;
         bool b_drive_scan_succeeded = false;
+        protec::hardening_result_t hardening = {};
         int total_score = 0;
         std::vector<finding_t> efi_findings;
         std::vector<finding_t> b_drive_findings;
@@ -1084,6 +1087,15 @@ namespace
         output << "b_drive_scan: " << (report.b_drive_scan_succeeded ? "ok" : (report.b_drive_scan_attempted ? "not_found_or_failed" : "not_attempted")) << "\n";
         output << "process_hits: " << report.process_reports.size() << "\n\n";
 
+        output << "runtime_hardening:\n";
+        output << "  heap_termination: " << (report.hardening.heap_termination_enabled ? "ok" : "failed_or_skipped") << "\n";
+        output << "  dll_search_order: " << (report.hardening.dll_search_order_hardened ? "ok" : "failed_or_skipped") << "\n";
+        output << "  extension_points: " << (report.hardening.extension_points_disabled ? "ok" : "failed_or_skipped") << "\n";
+        output << "  image_load_policy: " << (report.hardening.image_load_policy_applied ? "ok" : "failed_or_skipped") << "\n";
+        output << "  dynamic_code_policy: " << (report.hardening.dynamic_code_policy_applied ? "ok" : "failed_or_skipped") << "\n";
+        output << "  debugger_present: " << (report.debugger_present ? "yes" : "no") << "\n";
+        output << "  last_error: " << report.hardening.last_error << "\n\n";
+
         if (!report.efi_findings.empty())
         {
             output << "efi_findings:\n";
@@ -1139,6 +1151,8 @@ namespace
 int wmain()
 {
     system_report_t report = {};
+    report.hardening = protec::apply_baseline_hardening();
+    report.debugger_present = protec::is_debugger_likely_present();
     report.is_admin = is_running_as_admin();
 
     scan_efi(report);
