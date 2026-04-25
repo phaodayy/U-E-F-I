@@ -4,6 +4,8 @@
 
 #include "amd_def.h"
 
+struct trap_frame_t;
+
 namespace arch
 {
 	std::uint64_t get_vmexit_reason();
@@ -33,6 +35,9 @@ namespace arch
 	vmx_exit_qualification_ept_violation get_exit_qualification();
 
 	std::uint64_t get_guest_physical_address();
+	std::uint8_t is_mov_cr(std::uint64_t vmexit_reason);
+	void enable_cr4_shadowing();
+	std::uint8_t handle_cr4_mov_exit(trap_frame_t* trap_frame);
 #else
 	vmcb_t* get_vmcb();
 	void parse_vmcb_gadget(const std::uint8_t* get_vmcb_gadget);

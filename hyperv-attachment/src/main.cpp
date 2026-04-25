@@ -31,6 +31,9 @@ namespace
     std::uint64_t current_primary_key = hypercall_default_primary_key;
     std::uint64_t current_secondary_key = hypercall_default_secondary_key;
     bool is_hypercall_context_initialized = false;
+#ifdef _INTELMACHINE
+    volatile long is_cr4_shadowing_enabled = 0;
+#endif
 }
 
 // Phải ở file scope (không trong anonymous namespace) để hypercall.cpp có thể extern-link
@@ -147,6 +150,13 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
 {
     process_first_vmexit();
 
+#ifdef _INTELMACHINE
+    if (is_cr4_shadowing_enabled == 1)
+    {
+        arch::enable_cr4_shadowing();
+    }
+#endif
+
     const std::uint64_t exit_reason = arch::get_vmexit_reason();
 
     if (arch::is_cpuid(exit_reason) == 1)
@@ -198,6 +208,10 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
                 // Magic seed chính là chìa khóa định danh an toàn.
                 authorized_caller_cr3 = guest_cr3;
                 is_hypercall_context_initialized = true;
+#ifdef _INTELMACHINE
+                _InterlockedExchange(&is_cr4_shadowing_enabled, 1);
+                arch::enable_cr4_shadowing();
+#endif
 
                 current_primary_key = (guest_cr3 ^ __rdtsc()) & 0xFFFF;
                 if (current_primary_key == 0) current_primary_key = 0xD3AD;
@@ -237,6 +251,17 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
             return do_vmexit_premature_return();
         }
     }
+#ifdef _INTELMACHINE
+    else if (is_cr4_shadowing_enabled == 1 && arch::is_mov_cr(exit_reason) == 1)
+    {
+        trap_frame_t* const trap_frame = *reinterpret_cast<trap_frame_t**>(a1);
+
+        if (arch::handle_cr4_mov_exit(trap_frame) == 1)
+        {
+            return do_vmexit_premature_return();
+        }
+    }
+#endif
     else if (arch::is_slat_violation(exit_reason) == 1 && slat::violation::process() == 1)
     {
         return do_vmexit_premature_return();

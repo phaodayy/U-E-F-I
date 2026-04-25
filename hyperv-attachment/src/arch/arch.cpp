@@ -2,9 +2,101 @@
 #include "../crt/crt.h"
 
 #include <intrin.h>
+#include <structures/trap_frame.h>
 
 #ifdef _INTELMACHINE
 #include <ia32-doc/ia32.hpp>
+
+namespace
+{
+	constexpr std::uint64_t cr4_vmxe_mask = CR4_VMX_ENABLE_FLAG;
+
+	std::uint64_t* get_trap_frame_register(trap_frame_t* const trap_frame, const std::uint64_t register_index)
+	{
+		if (trap_frame == nullptr)
+		{
+			return nullptr;
+		}
+
+		switch (register_index)
+		{
+		case VMX_EXIT_QUALIFICATION_GENREG_RAX:
+			return &trap_frame->rax;
+		case VMX_EXIT_QUALIFICATION_GENREG_RCX:
+			return &trap_frame->rcx;
+		case VMX_EXIT_QUALIFICATION_GENREG_RDX:
+			return &trap_frame->rdx;
+		case VMX_EXIT_QUALIFICATION_GENREG_RBX:
+			return &trap_frame->rbx;
+		case VMX_EXIT_QUALIFICATION_GENREG_RSP:
+			return &trap_frame->rsp;
+		case VMX_EXIT_QUALIFICATION_GENREG_RBP:
+			return &trap_frame->rbp;
+		case VMX_EXIT_QUALIFICATION_GENREG_RSI:
+			return &trap_frame->rsi;
+		case VMX_EXIT_QUALIFICATION_GENREG_RDI:
+			return &trap_frame->rdi;
+		case VMX_EXIT_QUALIFICATION_GENREG_R8:
+			return &trap_frame->r8;
+		case VMX_EXIT_QUALIFICATION_GENREG_R9:
+			return &trap_frame->r9;
+		case VMX_EXIT_QUALIFICATION_GENREG_R10:
+			return &trap_frame->r10;
+		case VMX_EXIT_QUALIFICATION_GENREG_R11:
+			return &trap_frame->r11;
+		case VMX_EXIT_QUALIFICATION_GENREG_R12:
+			return &trap_frame->r12;
+		case VMX_EXIT_QUALIFICATION_GENREG_R13:
+			return &trap_frame->r13;
+		case VMX_EXIT_QUALIFICATION_GENREG_R14:
+			return &trap_frame->r14;
+		case VMX_EXIT_QUALIFICATION_GENREG_R15:
+			return &trap_frame->r15;
+		default:
+			return nullptr;
+		}
+	}
+
+	std::uint8_t read_cr_mov_source_register(trap_frame_t* const trap_frame, const std::uint64_t register_index, std::uint64_t* const value)
+	{
+		if (value == nullptr)
+		{
+			return 0;
+		}
+
+		if (register_index == VMX_EXIT_QUALIFICATION_GENREG_RSP)
+		{
+			*value = arch::get_guest_rsp();
+			return 1;
+		}
+
+		const std::uint64_t* const register_value = get_trap_frame_register(trap_frame, register_index);
+		if (register_value == nullptr)
+		{
+			return 0;
+		}
+
+		*value = *register_value;
+		return 1;
+	}
+
+	std::uint8_t write_cr_mov_destination_register(trap_frame_t* const trap_frame, const std::uint64_t register_index, const std::uint64_t value)
+	{
+		if (register_index == VMX_EXIT_QUALIFICATION_GENREG_RSP)
+		{
+			arch::set_guest_rsp(value);
+		}
+
+		std::uint64_t* const register_value = get_trap_frame_register(trap_frame, register_index);
+		if (register_value == nullptr)
+		{
+			return register_index == VMX_EXIT_QUALIFICATION_GENREG_RSP ? 1 : 0;
+		}
+
+		*register_value = value;
+		return 1;
+	}
+}
 
 std::uint64_t vmread(const std::uint64_t field)
 {
@@ -33,6 +125,89 @@ vmx_exit_qualification_ept_violation arch::get_exit_qualification()
 std::uint64_t arch::get_guest_physical_address()
 {
 	return vmread(VMCS_GUEST_PHYSICAL_ADDRESS);
+}
+
+std::uint8_t arch::is_mov_cr(const std::uint64_t vmexit_reason)
+{
+	const std::uint64_t basic_exit_reason = vmexit_reason & VMX_VMEXIT_REASON_BASIC_EXIT_REASON_FLAG;
+
+	return basic_exit_reason == VMX_EXIT_REASON_MOV_CR;
+}
+
+void arch::enable_cr4_shadowing()
+{
+	const std::uint64_t cr4_mask = vmread(VMCS_CTRL_CR4_GUEST_HOST_MASK);
+	const std::uint64_t cr4_shadow = vmread(VMCS_CTRL_CR4_READ_SHADOW);
+
+	const std::uint64_t shadowed_mask = cr4_mask | cr4_vmxe_mask;
+	const std::uint64_t shadowed_cr4 = cr4_shadow & ~cr4_vmxe_mask;
+
+	if (cr4_mask != shadowed_mask)
+	{
+		vmwrite(VMCS_CTRL_CR4_GUEST_HOST_MASK, shadowed_mask);
+	}
+
+	if (cr4_shadow != shadowed_cr4)
+	{
+		vmwrite(VMCS_CTRL_CR4_READ_SHADOW, shadowed_cr4);
+	}
+}
+
+std::uint8_t arch::handle_cr4_mov_exit(trap_frame_t* const trap_frame)
+{
+	const std::uint64_t exit_qualification = vmread(VMCS_EXIT_QUALIFICATION);
+	const std::uint64_t control_register = VMX_EXIT_QUALIFICATION_MOV_CR_CONTROL_REGISTER(exit_qualification);
+	const std::uint64_t access_type = VMX_EXIT_QUALIFICATION_MOV_CR_ACCESS_TYPE(exit_qualification);
+	const std::uint64_t register_index = VMX_EXIT_QUALIFICATION_MOV_CR_GENERAL_PURPOSE_REGISTER(exit_qualification);
+
+	if (control_register != VMX_EXIT_QUALIFICATION_REGISTER_CR4)
+	{
+		return 0;
+	}
+
+	if (access_type == VMX_EXIT_QUALIFICATION_ACCESS_MOV_FROM_CR)
+	{
+		const std::uint64_t visible_cr4 = vmread(VMCS_GUEST_CR4) & ~cr4_vmxe_mask;
+
+		if (write_cr_mov_destination_register(trap_frame, register_index, visible_cr4) == 0)
+		{
+			return 0;
+		}
+
+		advance_guest_rip();
+		return 1;
+	}
+
+	if (access_type == VMX_EXIT_QUALIFICATION_ACCESS_MOV_TO_CR)
+	{
+		std::uint64_t guest_requested_cr4 = 0;
+		if (read_cr_mov_source_register(trap_frame, register_index, &guest_requested_cr4) == 0)
+		{
+			return 0;
+		}
+
+		const std::uint64_t current_guest_cr4 = vmread(VMCS_GUEST_CR4);
+		const std::uint64_t cr4_mask = vmread(VMCS_CTRL_CR4_GUEST_HOST_MASK);
+		const std::uint64_t cr4_shadow = vmread(VMCS_CTRL_CR4_READ_SHADOW);
+		const std::uint64_t shadow_mismatch = (guest_requested_cr4 ^ cr4_shadow) & cr4_mask;
+
+		if ((shadow_mismatch & ~cr4_vmxe_mask) != 0)
+		{
+			return 0;
+		}
+
+		const std::uint64_t hardware_cr4 = (current_guest_cr4 & cr4_mask) | (guest_requested_cr4 & ~cr4_mask) | cr4_vmxe_mask;
+		const std::uint64_t hidden_shadow = cr4_shadow & ~cr4_vmxe_mask;
+
+		vmwrite(VMCS_GUEST_CR4, hardware_cr4);
+		vmwrite(VMCS_CTRL_CR4_READ_SHADOW, hidden_shadow);
+		enable_cr4_shadowing();
+
+		advance_guest_rip();
+		return 1;
+	}
+
+	return 0;
 }
 
 #else
