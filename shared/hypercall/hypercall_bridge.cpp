@@ -108,3 +108,29 @@ bool HyperCall::SetMouseHookAddress(std::uint64_t ept_hook_address)
 {
     return MakeHypercall(hypercall_type_t::_hc_0x230, 0, ept_hook_address, 0, 0) == 1;
 }
+
+std::uint64_t HyperCall::RegisterSignalPage(const std::uint64_t signal_page_virtual_address)
+{
+    return MakeHypercall(hypercall_type_t::_hc_0x240,
+                         static_cast<std::uint64_t>(signal_hypercall_op_t::register_page),
+                         signal_page_virtual_address, 0, 0);
+}
+
+bool HyperCall::QuerySignalPage(const std::uint64_t signal_id, signal_page_state_t* const state)
+{
+    if (state == nullptr)
+    {
+        return false;
+    }
+
+    return MakeHypercall(hypercall_type_t::_hc_0x240,
+                         static_cast<std::uint64_t>(signal_hypercall_op_t::query_page),
+                         signal_id, reinterpret_cast<std::uint64_t>(state), 0) == 1;
+}
+
+bool HyperCall::UnregisterSignalPage(const std::uint64_t signal_id)
+{
+    return MakeHypercall(hypercall_type_t::_hc_0x240,
+                         static_cast<std::uint64_t>(signal_hypercall_op_t::unregister_page),
+                         signal_id, 0, 0) == 1;
+}

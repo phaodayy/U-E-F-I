@@ -17,7 +17,8 @@ enum class hypercall_type_t : std::uint64_t
     _hc_0x160, // remove_slat_code_hook
     _hc_0x180, // log_current_state
     _hc_0x190, // flush_logs
-    _hc_0x200  // get_heap_free_page_count
+    _hc_0x200, // get_heap_free_page_count
+    _hc_0x240  // slat_signal_page_operation
 };
 
 struct scatter_read_entry_t
@@ -25,6 +26,24 @@ struct scatter_read_entry_t
     std::uint64_t guest_source_virtual_address;
     std::uint64_t guest_destination_virtual_address;
     std::uint64_t size;
+};
+
+enum class signal_hypercall_op_t : std::uint64_t
+{
+    register_page,
+    query_page,
+    unregister_page
+};
+
+struct signal_page_state_t
+{
+    std::uint64_t id;
+    std::uint64_t guest_physical_address;
+    std::uint64_t sequence;
+    std::uint64_t trigger_count;
+    std::uint64_t last_guest_rip;
+    std::uint64_t last_access_flags;
+    std::uint64_t last_tsc;
 };
 
 #pragma warning(push)

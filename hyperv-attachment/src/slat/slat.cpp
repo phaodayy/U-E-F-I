@@ -7,6 +7,7 @@
 #include "cr3/cr3.h"
 #include "cr3/pte.h"
 #include "hook/hook.h"
+#include "signal/signal.h"
 #include "slat_def.h"
 
 namespace
@@ -28,6 +29,7 @@ void set_up_dummy_page()
 void slat::set_up()
 {
 	hook::set_up_entries();
+	signal::set_up();
 	set_up_dummy_page();
 }
 

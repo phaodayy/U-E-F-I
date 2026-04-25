@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include "hypercall_def.h"
 
 namespace HyperCall
 {
@@ -21,4 +22,8 @@ namespace HyperCall
     std::uint64_t InjectMouseMovement(long x, long y);
 
     bool SetMouseHookAddress(std::uint64_t ept_hook_address);
+
+    std::uint64_t RegisterSignalPage(std::uint64_t signal_page_virtual_address);
+    bool QuerySignalPage(std::uint64_t signal_id, signal_page_state_t* state);
+    bool UnregisterSignalPage(std::uint64_t signal_id);
 }

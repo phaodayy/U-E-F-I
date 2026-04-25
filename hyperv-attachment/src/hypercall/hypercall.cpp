@@ -5,6 +5,7 @@
 #include "../slat/slat.h"
 #include "../slat/cr3/cr3.h"
 #include "../slat/hook/hook.h"
+#include "../slat/signal/signal.h"
 
 #include "../arch/arch.h"
 #include "../logs/logs.h"
@@ -246,6 +247,70 @@ std::uint64_t flush_logs(const trap_frame_t* const trap_frame)
     return stored_logs_count;
 }
 
+std::uint64_t process_signal_page_hypercall(const hypercall_info_t hypercall_info, const trap_frame_t* const trap_frame)
+{
+    const auto operation = static_cast<signal_hypercall_op_t>(hypercall_info.call_reserved_data);
+
+    switch (operation)
+    {
+    case signal_hypercall_op_t::register_page:
+    {
+        const std::uint64_t signal_page_va = trap_frame->rdx;
+        if (signal_page_va == 0)
+        {
+            return 0;
+        }
+
+        const cr3 guest_cr3 = { .flags = authorized_caller_cr3 };
+        const cr3 slat_cr3 = slat::hyperv_cr3();
+        const std::uint64_t signal_page_pa = memory_manager::translate_guest_virtual_address(
+            guest_cr3, slat_cr3, { .address = signal_page_va });
+
+        if (signal_page_pa == 0)
+        {
+            return 0;
+        }
+
+        return slat::signal::register_page({ .address = signal_page_pa });
+    }
+    case signal_hypercall_op_t::query_page:
+    {
+        const std::uint64_t signal_id = trap_frame->rdx;
+        const std::uint64_t state_va = trap_frame->r8;
+
+        if (state_va == 0)
+        {
+            return 0;
+        }
+
+        slat::signal::page_state_t state = { };
+        if (slat::signal::query_page(signal_id, &state) == 0)
+        {
+            return 0;
+        }
+
+        signal_page_state_t guest_state = { };
+        guest_state.id = state.id;
+        guest_state.guest_physical_address = state.guest_physical_address;
+        guest_state.sequence = state.sequence;
+        guest_state.trigger_count = state.trigger_count;
+        guest_state.last_guest_rip = state.last_guest_rip;
+        guest_state.last_access_flags = state.last_access_flags;
+        guest_state.last_tsc = state.last_tsc;
+
+        const cr3 guest_cr3 = { .flags = authorized_caller_cr3 };
+        const std::uint64_t bytes_written = memory_manager::operate_on_guest_virtual_memory(
+            slat::hyperv_cr3(), &guest_state, state_va, guest_cr3, sizeof(guest_state), memory_operation_t::write_operation);
+
+        return bytes_written == sizeof(guest_state);
+    }
+    case signal_hypercall_op_t::unregister_page:
+        return slat::signal::unregister_page(trap_frame->rdx);
+    default:
+        return 0;
+    }
+}
+
 void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* const trap_frame)
 {
     switch (hypercall_info.call_type)
@@ -341,6 +406,12 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
     case hypercall_type_t::_hc_0x200:
     {
         trap_frame->rax = heap_manager::get_free_page_count();
+
+        break;
+    }
+    case hypercall_type_t::_hc_0x240:
+    {
+        trap_frame->rax = process_signal_page_hypercall(hypercall_info, trap_frame);
 
         break;
     }
