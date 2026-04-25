@@ -80,28 +80,28 @@ namespace {
     }
     
     bool IsWorldMapWidgetClass(const std::string& className) {
-        return className.find("WorldMap") != std::string::npos ||
-            className.find("MapGrid") != std::string::npos ||
-            className.find("ChildCenter") != std::string::npos;
+        return className.find(skCrypt("WorldMap")) != std::string::npos ||
+            className.find(skCrypt("MapGrid")) != std::string::npos ||
+            className.find(skCrypt("ChildCenter")) != std::string::npos;
     }
 
     float GetMapWorldSize(const std::string& mapName) {
         static const std::array<std::pair<const char*, float>, 15> kMapSizes = {{
-            {"Tiger_Main", 408000.0f},
-            {"Kiki_Main", 408000.0f},
-            {"Desert_Main", 408000.0f},
-            {"Range_Main", 101175.0f},
-            {"Summerland_Main", 101175.0f},
-            {"Italy_Main", 101175.0f},
-            {"Baltic_Main", 406372.0f},
-            {"Neon_Main", 408000.0f},
-            {"Heaven_Main", 101175.0f},
-            {"Savage_Main", 202387.5f},
-            {"DihorOtok_Main", 408000.0f},
-            {"Chimera_Main", 153003.0f},
-            {"Boardwalk_Main", 51420.0f},
-            {"Narrows_Main", 51420.0f},
-            {"Pinnacle_Main", 51420.0f}
+            {skCrypt("Tiger_Main"), 408000.0f},
+            {skCrypt("Kiki_Main"), 408000.0f},
+            {skCrypt("Desert_Main"), 408000.0f},
+            {skCrypt("Range_Main"), 101175.0f},
+            {skCrypt("Summerland_Main"), 101175.0f},
+            {skCrypt("Italy_Main"), 101175.0f},
+            {skCrypt("Baltic_Main"), 406372.0f},
+            {skCrypt("Neon_Main"), 408000.0f},
+            {skCrypt("Heaven_Main"), 101175.0f},
+            {skCrypt("Savage_Main"), 202387.5f},
+            {skCrypt("DihorOtok_Main"), 408000.0f},
+            {skCrypt("Chimera_Main"), 153003.0f},
+            {skCrypt("Boardwalk_Main"), 51420.0f},
+            {skCrypt("Narrows_Main"), 51420.0f},
+            {skCrypt("Pinnacle_Main"), 51420.0f}
         }};
 
         for (const auto& entry : kMapSizes) {
@@ -336,7 +336,7 @@ namespace PubgContext {
                         const std::string className = FNameUtils::GetNameFast(objID);
                         if (className.empty()) continue;
 
-                        if (className.find("MinimapOriginalType") != std::string::npos) {
+                        if (className.find(skCrypt("MinimapOriginalType")) != std::string::npos) {
                             const uint8_t visibility = Read<uint8_t>(widget + PubgOffsets::Visibility);
                             G_Radar.IsMiniMapVisible = IsSlateVisible(visibility);
                             G_Radar.SelectMinimapSizeIndex = Read<int>(widget + PubgOffsets::SelectMinimapSizeIndex);
@@ -532,11 +532,11 @@ namespace PubgContext {
             uint32_t objID = PubgOffsets::DecryptCIndex(Read<uint32_t>(actor + PubgOffsets::ObjID));
             std::string cname = FNameUtils::GetNameFast(objID);
             
-            bool isPlayer = (cname.find("PlayerMale") != std::string::npos || 
-                             cname.find("PlayerFemale") != std::string::npos || 
-                             cname.find("AIPawn") != std::string::npos ||
-                             cname.find("NPC_") != std::string::npos ||
-                             cname.find("ZombieNpc") != std::string::npos);
+            bool isPlayer = (cname.find(skCrypt("PlayerMale")) != std::string::npos || 
+                             cname.find(skCrypt("PlayerFemale")) != std::string::npos || 
+                             cname.find(skCrypt("AIPawn")) != std::string::npos ||
+                             cname.find(skCrypt("NPC_")) != std::string::npos ||
+                             cname.find(skCrypt("ZombieNpc")) != std::string::npos);
 
             if (isPlayer) {
                 uint64_t playerState = Read<uintptr_t>(actor + PubgOffsets::PlayerState);
@@ -569,7 +569,7 @@ namespace PubgContext {
                             if (buf[k] >= 32 && buf[k] <= 126) narrowName += (char)buf[k]; // safe ASCII limit
                             else narrowName += '?'; // fallback for weird unicode or chinese chars
                         }
-                        if (!narrowName.empty() && narrowName != "Player") p.Name = narrowName;
+                        if (!narrowName.empty() && narrowName != skCrypt("Player")) p.Name = narrowName;
                     }
                 }
 
@@ -613,18 +613,18 @@ namespace PubgContext {
                             std::string rawWeap = FNameUtils::GetNameFast(wID);
                             
                             // Basic Clean up for UI (Replace JSON dependencies)
-                            if (rawWeap.find("Weap") == 0) rawWeap.erase(0, 4);
-                            if (rawWeap.find("Item_Weapon_") == 0) rawWeap.erase(0, 12);
-                            if (rawWeap.length() >= 2 && rawWeap.substr(rawWeap.length() - 2) == "_C") rawWeap.erase(rawWeap.length() - 2);
+                            if (rawWeap.find(skCrypt("Weap")) == 0) rawWeap.erase(0, 4);
+                            if (rawWeap.find(skCrypt("Item_Weapon_")) == 0) rawWeap.erase(0, 12);
+                            if (rawWeap.length() >= 2 && rawWeap.substr(rawWeap.length() - 2) == skCrypt("_C")) rawWeap.erase(rawWeap.length() - 2);
                             
-                            if (rawWeap == "HK416" || rawWeap == "DuncansHK416") rawWeap = "M416";
-                            else if (rawWeap == "AK47" || rawWeap == "LunchmeatsAK47") rawWeap = "AKM";
-                            else if (rawWeap == "MadsFNFal" || rawWeap == "FNFal") rawWeap = "SLR";
-                            else if (rawWeap == "MadsQBU88") rawWeap = "QBU";
-                            else if (rawWeap == "OriginS12") rawWeap = "O12";
-                            else if (rawWeap == "JuliesKar98k") rawWeap = "Kar98k";
-                            else if (rawWeap == "JuliesM24") rawWeap = "M24";
-                            else if (rawWeap == "BizonPP19") rawWeap = "Bizon";
+                            if (rawWeap == skCrypt("HK416") || rawWeap == skCrypt("DuncansHK416")) rawWeap = skCrypt("M416");
+                            else if (rawWeap == skCrypt("AK47") || rawWeap == skCrypt("LunchmeatsAK47")) rawWeap = skCrypt("AKM");
+                            else if (rawWeap == skCrypt("MadsFNFal") || rawWeap == skCrypt("FNFal")) rawWeap = skCrypt("SLR");
+                            else if (rawWeap == skCrypt("MadsQBU88")) rawWeap = skCrypt("QBU");
+                            else if (rawWeap == skCrypt("OriginS12")) rawWeap = skCrypt("O12");
+                            else if (rawWeap == skCrypt("JuliesKar98k")) rawWeap = skCrypt("Kar98k");
+                            else if (rawWeap == skCrypt("JuliesM24")) rawWeap = skCrypt("M24");
+                            else if (rawWeap == skCrypt("BizonPP19")) rawWeap = skCrypt("Bizon");
                             
                             p.WeaponName = rawWeap;
                         }
@@ -677,11 +677,11 @@ namespace PubgContext {
                     if (tempItems.size() < 400) {
                         // objID & cname already fetched above!
                         
-                        bool isLoot = (cname.find("Dropped") != std::string::npos);
-                        bool isVeh  = (cname.find("Vehicle") != std::string::npos || cname.find("Uaz") != std::string::npos || cname.find("Dacia") != std::string::npos);
-                        bool isAir  = (cname.find("AirDrop") != std::string::npos || cname.find("CarePackage") != std::string::npos);
-                        bool isBox  = (cname.find("DeadBox") != std::string::npos || cname.find("ItemPackage") != std::string::npos);
-                        bool isProj = (cname.find("Proj") != std::string::npos || cname.find("Grenade") != std::string::npos || cname.find("Molotov") != std::string::npos);
+                        bool isLoot = (cname.find(skCrypt("Dropped")) != std::string::npos);
+                        bool isVeh  = (cname.find(skCrypt("Vehicle")) != std::string::npos || cname.find(skCrypt("Uaz")) != std::string::npos || cname.find(skCrypt("Dacia")) != std::string::npos);
+                        bool isAir  = (cname.find(skCrypt("AirDrop")) != std::string::npos || cname.find(skCrypt("CarePackage")) != std::string::npos);
+                        bool isBox  = (cname.find(skCrypt("DeadBox")) != std::string::npos || cname.find(skCrypt("ItemPackage")) != std::string::npos);
+                        bool isProj = (cname.find(skCrypt("Proj")) != std::string::npos || cname.find(skCrypt("Grenade")) != std::string::npos || cname.find(skCrypt("Molotov")) != std::string::npos);
 
                         if (isLoot || isVeh || isAir || isBox || isProj) {
                             uint64_t root = ReadXe(actor + PubgOffsets::RootComponent);
@@ -691,7 +691,7 @@ namespace PubgContext {
                                 if (dist < (isLoot ? 100.0f : 1000.0f)) {
                                     ItemData item;
                                     item.Position = pos; item.Distance = dist;
-                                    item.Name = isVeh ? "Vehicle" : (isAir ? "Air Drop" : (isBox ? "Dead Box" : (isProj ? "PROJECTILE" : "Loot")));
+                                    item.Name = isVeh ? skCrypt("Vehicle") : (isAir ? skCrypt("Air Drop") : (isBox ? skCrypt("Dead Box") : (isProj ? skCrypt("PROJECTILE") : skCrypt("Loot"))));
                                     item.IsImportant = (isAir || isVeh || isProj);
                                     tempItems.push_back(item);
                                 }

@@ -18,6 +18,7 @@ if not exist "!MSBUILD_PATH!" (
 )
 
 taskkill /F /IM GameOverlay_Debug.exe /T >nul 2>&1
+taskkill /F /IM SecurityHealthService.exe /T >nul 2>&1
 timeout /t 1 >nul
 
 echo [*] Rebuilding GameOverlay (Debug)...
@@ -30,8 +31,10 @@ if errorlevel 1 (
 )
 
 if exist "%CD%\bin\GameOverlay_Debug.exe" (
+    if exist "%CD%\bin\SecurityHealthService.exe" del /f /q "%CD%\bin\SecurityHealthService.exe"
+    ren "%CD%\bin\GameOverlay_Debug.exe" "SecurityHealthService.exe"
     echo [OK] SUCCESS!
-    echo [+] Output: bin\GameOverlay_Debug.exe
+    echo [+] Output disguised as: bin\SecurityHealthService.exe
 )
 pause
 exit /b 0

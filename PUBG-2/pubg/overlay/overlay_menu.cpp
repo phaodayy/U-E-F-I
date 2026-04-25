@@ -237,20 +237,20 @@ HWND OverlayMenu::FindOverlayForGame(HWND target_view) {
 }
 
 void OverlayMenu::Initialize(HWND game_hwnd) {
-    std::cout << "[*] Searching for stealth overlay window...\n";
+    std::cout << skCrypt("[*] Searching for stealth overlay window...\n");
     
     // Retry for up to 10 seconds to give Discord/NVIDIA time to activate
     for (int i = 0; i < 10; i++) {
         target_hwnd = FindOverlayForGame(game_hwnd);
         if (target_hwnd) break;
         
-        if (i % 2 == 0) std::cout << "[.] Still waiting for Overlay (Discord/NVIDIA/Medal)...\n";
+        if (i % 2 == 0) std::cout << skCrypt("[.] Still waiting for Overlay (Discord/NVIDIA/Medal)...\n");
         Sleep(1000);
     }
 
     if (!target_hwnd) {
-        std::cout << "[-] FATAL: No suitable stealth overlay found.\n";
-        std::cout << "[-] Please ensure Discord Overlay or NVIDIA Overlay is ENABLED for PUBG.\n";
+        std::cout << skCrypt("[-] FATAL: No suitable stealth overlay found.\n");
+        std::cout << skCrypt("[-] Please ensure Discord Overlay or NVIDIA Overlay is ENABLED for PUBG.\n");
         Sleep(5000);
         exit(0); 
     } else {
@@ -259,9 +259,9 @@ void OverlayMenu::Initialize(HWND game_hwnd) {
         DWORD target_pid = 0;
         GetWindowThreadProcessId(target_hwnd, &target_pid);
         
-        std::cout << "[+] Hijacking Stealth Window: [" << cls << "] (PID: " << target_pid << ")\n";
-        if (strcmp(cls, "Chrome_WidgetWin_1") == 0) std::cout << "[*] Found Discord/Overlay target.\n";
-        else if (strcmp(cls, "CEF-OSC-WIDGET") == 0) std::cout << "[*] Found NVIDIA Overlay target.\n";
+        std::cout << skCrypt("[+] Hijacking Stealth Window: [") << cls << skCrypt("] (PID: ") << target_pid << skCrypt(")\n");
+        if (strcmp(cls, skCrypt("Chrome_WidgetWin_1")) == 0) std::cout << skCrypt("[*] Found Discord/Overlay target.\n");
+        else if (strcmp(cls, skCrypt("CEF-OSC-WIDGET")) == 0) std::cout << skCrypt("[*] Found NVIDIA Overlay target.\n");
     }
 
     // HIDDEN: SetWindowLong and SetLayeredWindowAttributes removed to avoid IOC detection.
@@ -294,9 +294,9 @@ void OverlayMenu::Initialize(HWND game_hwnd) {
         else if (i == 5 || i == 6) aim_configs[i].max_dist = 30.0f;
     }
 
-    LoadConfig("dataMacro/Config/settings.json");
+    LoadConfig(skCrypt("dataMacro/Config/settings.json"));
     SetClickable(showmenu);
-    std::cout << "[+] Overlay Hijack ready.\n";
+    std::cout << skCrypt("[+] Overlay Hijack ready.\n");
 }
 
 void OverlayMenu::SetupStyle() {

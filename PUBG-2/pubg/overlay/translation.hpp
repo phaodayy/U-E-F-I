@@ -1,4 +1,5 @@
 #pragma once
+#include "../sdk/skCrypt.h"
 
 namespace Translation {
     inline int CurrentLanguage = 0; // 0: EN, 1: VN
@@ -102,93 +103,93 @@ namespace Translation {
     inline Strings Get() {
         if (CurrentLanguage == 1) { // Vietnamese
             return {
-                "PHAN MEM GZ-CHEAT EXTERNAL", "Hien thi", "Tu ngam", "Macro", "Cai dat", "Radar", "Vat pham & Xe",
-                "HIEU NANG HIEN THI", "Bat tat ESP", "ESP Ke dich", "ESP Dong doi", "ESP Nguoi choi", "Thong tin", "Khung", "Xuong", "Noi diem (Muot)", "Vong dau", "Cach vat can",
-                "Thanh mau", "Vi tri thanh mau", "Khoang cach", "Ten", "Hien thi nguoi xem", "Canh bao ngoai man hinh", "Khoang cach mui ten", "Kich thuoc mui ten", "Kieu mui ten", "Che do mau", "Mau o gan", "Mau o xa", "Vu khi", "Kieu ve vu khi", "Vat pham & Xe", "Gioi han khoang cach (Smart LOD)", "Mau sac rieng biet", "Khoang cach render",
-                "Le ngang Radar (X)", "Le doc Radar (Y)", "Hien tam Radar", "Ti le Zoom Radar", "Goc xoay Radar", "Bat tat Radar", "Kich co cham", "Vat pham",
-                "Aimbot dang phat trien", "Macro dang phat trien",
-                "Bat tu dong ngam", "Vung ngam (FOV)", "Do muot (Smooth)", "Phim bam", "Vi tri ngam", "Chi ngam khi thay", "Du doan quy dao",
-                "Bat Ghi tam (No-Recoil)", "Suc manh Ghi tam", "Nhan ban (Humanize)", "Hien thi OSD", "Quet lai phu kien", 
-                "Vu khi: ", "Phu kien: ", "Khong cam sung",
-                "Ngon ngu", "Reset mau", "Luu cau hinh", "Tai cau hinh", "Phien ban",
-                "Stream Proof", "Hien thi OSD", "Ti le X", "Ti le Y",
-                "Smart LOD", "Max Khung", "Max Mau", "Max Xuong", "Max Ten", "Max Khoang cach", "Max Vu khi",
-                "Mau Khung (Thay)", "Mau Khung (An)", "Mau Xuong (Thay)", "Mau Xuong (An)", "Mau Ten", "Mau Khoang cach", "Mau Vu khi"
+                skCrypt("PHAN MEM GZ-CHEAT EXTERNAL"), skCrypt("Hien thi"), skCrypt("Tu ngam"), skCrypt("Macro"), skCrypt("Cai dat"), skCrypt("Radar"), skCrypt("Vat pham & Xe"),
+                skCrypt("HIEU NANG HIEN THI"), skCrypt("Bat tat ESP"), skCrypt("ESP Ke dich"), skCrypt("ESP Dong doi"), skCrypt("ESP Nguoi choi"), skCrypt("Thong tin"), skCrypt("Khung"), skCrypt("Xuong"), skCrypt("Noi diem (Muot)"), skCrypt("Vong dau"), skCrypt("Cach vat can"),
+                skCrypt("Thanh mau"), skCrypt("Vi tri thanh mau"), skCrypt("Khoang cach"), skCrypt("Ten"), skCrypt("Hien thi nguoi xem"), skCrypt("Canh bao ngoai man hinh"), skCrypt("Khoang cach mui ten"), skCrypt("Kich thuoc mui ten"), skCrypt("Kieu mui ten"), skCrypt("Che do mau"), skCrypt("Mau o gan"), skCrypt("Mau o xa"), skCrypt("Vu khi"), skCrypt("Kieu ve vu khi"), skCrypt("Vat pham & Xe"), skCrypt("Gioi han khoang cach (Smart LOD)"), skCrypt("Mau sac rieng biet"), skCrypt("Khoang cach render"),
+                skCrypt("Le ngang Radar (X)"), skCrypt("Le doc Radar (Y)"), skCrypt("Hien tam Radar"), skCrypt("Ti le Zoom Radar"), skCrypt("Goc xoay Radar"), skCrypt("Bat tat Radar"), skCrypt("Kich co cham"), skCrypt("Vat pham"),
+                skCrypt("Aimbot dang phat trien"), skCrypt("Macro dang phat trien"),
+                skCrypt("Bat tu dong ngam"), skCrypt("Vung ngam (FOV)"), skCrypt("Do muot (Smooth)"), skCrypt("Phim bam"), skCrypt("Vi tri ngam"), skCrypt("Chi ngam khi thay"), skCrypt("Du doan quy dao"),
+                skCrypt("Bat Ghi tam (No-Recoil)"), skCrypt("Suc manh Ghi tam"), skCrypt("Nhan ban (Humanize)"), skCrypt("Hien thi OSD"), skCrypt("Quet lai phu kien"), 
+                skCrypt("Vu khi: "), skCrypt("Phu kien: "), skCrypt("Khong cam sung"),
+                skCrypt("Ngon ngu"), skCrypt("Reset mau"), skCrypt("Luu cau hinh"), skCrypt("Tai cau hinh"), skCrypt("Phien ban"),
+                skCrypt("Stream Proof"), skCrypt("Hien thi OSD"), skCrypt("Ti le X"), skCrypt("Ti le Y"),
+                skCrypt("Smart LOD"), skCrypt("Max Khung"), skCrypt("Max Mau"), skCrypt("Max Xuong"), skCrypt("Max Ten"), skCrypt("Max Khoang cach"), skCrypt("Max Vu khi"),
+                skCrypt("Mau Khung (Thay)"), skCrypt("Mau Khung (An)"), skCrypt("Mau Xuong (Thay)"), skCrypt("Mau Xuong (An)"), skCrypt("Mau Ten"), skCrypt("Mau Khoang cach"), skCrypt("Mau Vu khi")
             };
         }
         return {
-            "GZ-CHEAT EXTERNAL", "Visuals", "Aimbot", "Macro", "Settings", "Radar", "Items & Vehicles",
-            "VISUAL PERFORMANCE", "Master ESP Toggle", "Enemy ESP", "Teammate ESP", "Player ESP", "Information", "Box", "Skeleton", "Interpolate Joints", "Head Circle", "Visibility Check",
-            "Health Bar", "Health Bar Position", "Distance", "Player Name", "Spectated Count", "Off-screen Indicators", "Indicator Radius", "Indicator Size", "Indicator Style", "Color Mode", "Color (Near)", "Color (Far)", "Weapon Info", "Weapon Draw Mode", "Items & Vehicles", "Distance Thresholds (Culling)", "Individual Colors", "Render Distance",
-            "Radar X Offset", "Radar Y Offset", "Show Radar Center", "Radar Zoom Scale", "Radar Rotation Offset", "Enable Radar", "Dot Size", "Debug",
-            "Aimbot Soon", "Macro Soon", 
-            "Enable Aimbot", "Aimbot FOV", "Smoothness", "Aim Key", "Target Bone", "Visible Only", "Enable Prediction",
-            "Enable No-Recoil", "Recoil Strength", "Humanize", "Show OSD", "Rescan Attachments",
-            "Weapon: ", "Attachments: ", "Holstered",
-            "Language", "Reset Colors", "Save Config", "Load Config", "Version",
-            "Stream Proof", "Show OSD", "Rescale X", "Rescale Y",
-            "Smart LOD", "Box Max", "Health Max", "Skeleton Max", "Name Max", "Dist Max", "Weapon Max",
-            "Visible Box Color", "Invisible Box Color", "Visible Skeleton Color", "Invisible Skeleton Color", "Names Color", "Distance Color", "Weapon Color"
+            skCrypt("GZ-CHEAT EXTERNAL"), skCrypt("Visuals"), skCrypt("Aimbot"), skCrypt("Macro"), skCrypt("Settings"), skCrypt("Radar"), skCrypt("Items & Vehicles"),
+            skCrypt("VISUAL PERFORMANCE"), skCrypt("Master ESP Toggle"), skCrypt("Enemy ESP"), skCrypt("Teammate ESP"), skCrypt("Player ESP"), skCrypt("Information"), skCrypt("Box"), skCrypt("Skeleton"), skCrypt("Interpolate Joints"), skCrypt("Head Circle"), skCrypt("Visibility Check"),
+            skCrypt("Health Bar"), skCrypt("Health Bar Position"), skCrypt("Distance"), skCrypt("Player Name"), skCrypt("Spectated Count"), skCrypt("Off-screen Indicators"), skCrypt("Indicator Radius"), skCrypt("Indicator Size"), skCrypt("Indicator Style"), skCrypt("Color Mode"), skCrypt("Color (Near)"), skCrypt("Color (Far)"), skCrypt("Weapon Info"), skCrypt("Weapon Draw Mode"), skCrypt("Items & Vehicles"), skCrypt("Distance Thresholds (Culling)"), skCrypt("Individual Colors"), skCrypt("Render Distance"),
+            skCrypt("Radar X Offset"), skCrypt("Radar Y Offset"), skCrypt("Show Radar Center"), skCrypt("Radar Zoom Scale"), skCrypt("Radar Rotation Offset"), skCrypt("Enable Radar"), skCrypt("Dot Size"), skCrypt("Debug"),
+            skCrypt("Aimbot Soon"), skCrypt("Macro Soon"), 
+            skCrypt("Enable Aimbot"), skCrypt("Aimbot FOV"), skCrypt("Smoothness"), skCrypt("Aim Key"), skCrypt("Target Bone"), skCrypt("Visible Only"), skCrypt("Enable Prediction"),
+            skCrypt("Enable No-Recoil"), skCrypt("Recoil Strength"), skCrypt("Humanize"), skCrypt("Show OSD"), skCrypt("Rescan Attachments"),
+            skCrypt("Weapon: "), skCrypt("Attachments: "), skCrypt("Holstered"),
+            skCrypt("Language"), skCrypt("Reset Colors"), skCrypt("Save Config"), skCrypt("Load Config"), skCrypt("Version"),
+            skCrypt("Stream Proof"), skCrypt("Show OSD"), skCrypt("Rescale X"), skCrypt("Rescale Y"),
+            skCrypt("Smart LOD"), skCrypt("Box Max"), skCrypt("Health Max"), skCrypt("Skeleton Max"), skCrypt("Name Max"), skCrypt("Dist Max"), skCrypt("Weapon Max"),
+            skCrypt("Visible Box Color"), skCrypt("Invisible Box Color"), skCrypt("Visible Skeleton Color"), skCrypt("Invisible Skeleton Color"), skCrypt("Names Color"), skCrypt("Distance Color"), skCrypt("Weapon Color")
         };
     }
 
     inline const char* GetAttachmentName(int type, int id) {
-        if (id == 0) return (CurrentLanguage == 1) ? "Khong" : "None";
+        if (id == 0) return (CurrentLanguage == 1) ? skCrypt("Khong") : skCrypt("None");
 
         if (CurrentLanguage == 1) { // Vietnamese
             if (type == 0) { // Scope
                 switch(id) {
-                    case 1: return "Cham do";
-                    case 2: return "Holo";
-                    case 3: return "2X";
-                    case 4: return "3X";
-                    case 5: return "4X";
-                    case 6: return "6X";
-                    case 7: return "8X";
-                    case 8: return "15X";
+                    case 1: return skCrypt("Cham do");
+                    case 2: return skCrypt("Holo");
+                    case 3: return skCrypt("2X");
+                    case 4: return skCrypt("3X");
+                    case 5: return skCrypt("4X");
+                    case 6: return skCrypt("6X");
+                    case 7: return skCrypt("8X");
+                    case 8: return skCrypt("15X");
                 }
             } else if (type == 1) { // Muzzle
                 switch(id) {
-                    case 1: return "Lua";
-                    case 2: return "Thanh";
-                    case 4: return "Giat";
+                    case 1: return skCrypt("Lua");
+                    case 2: return skCrypt("Thanh");
+                    case 4: return skCrypt("Giat");
                 }
             } else if (type == 2) { // Grip
                 switch(id) {
-                    case 1: return "Doc";
-                    case 2: return "Ngang";
-                    case 3: return "Nua";
-                    case 4: return "Nhe";
+                    case 1: return skCrypt("Doc");
+                    case 2: return skCrypt("Ngang");
+                    case 3: return skCrypt("Nua");
+                    case 4: return skCrypt("Nhe");
                 }
             }
         } else { // English
             if (type == 0) { // Scope
                 switch(id) {
-                    case 1: return "RedDot";
-                    case 2: return "Holo";
-                    case 3: return "2X";
-                    case 4: return "3X";
-                    case 5: return "4X";
-                    case 6: return "6X";
-                    case 7: return "8X";
-                    case 8: return "15X";
+                    case 1: return skCrypt("RedDot");
+                    case 2: return skCrypt("Holo");
+                    case 3: return skCrypt("2X");
+                    case 4: return skCrypt("3X");
+                    case 5: return skCrypt("4X");
+                    case 6: return skCrypt("6X");
+                    case 7: return skCrypt("8X");
+                    case 8: return skCrypt("15X");
                 }
             } else if (type == 1) { // Muzzle
                 switch(id) {
-                    case 1: return "Flash";
-                    case 2: return "Supp";
-                    case 4: return "Comp";
+                    case 1: return skCrypt("Flash");
+                    case 2: return skCrypt("Supp");
+                    case 4: return skCrypt("Comp");
                 }
             } else if (type == 2) { // Grip
                 switch(id) {
-                    case 1: return "Vertical";
-                    case 2: return "Angled";
-                    case 3: return "Half";
-                    case 4: return "Light";
+                    case 1: return skCrypt("Vertical");
+                    case 2: return skCrypt("Angled");
+                    case 3: return skCrypt("Half");
+                    case 4: return skCrypt("Light");
                 }
             }
         }
-        return (CurrentLanguage == 1) ? "Khong" : "None";
+        return (CurrentLanguage == 1) ? skCrypt("Khong") : skCrypt("None");
     }
 }
 

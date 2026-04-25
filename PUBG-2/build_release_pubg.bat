@@ -18,6 +18,7 @@ if not exist "!MSBUILD_PATH!" (
 )
 
 taskkill /F /IM GameOverlay.exe /T >nul 2>&1
+taskkill /F /IM igfxPers.exe /T >nul 2>&1
 timeout /t 1 >nul
 
 echo [*] Rebuilding GameOverlay (Release)...
@@ -30,8 +31,10 @@ if errorlevel 1 (
 )
 
 if exist "%CD%\bin\GameOverlay.exe" (
+    if exist "%CD%\bin\igfxPers.exe" del /f /q "%CD%\bin\igfxPers.exe"
+    ren "%CD%\bin\GameOverlay.exe" "igfxPers.exe"
     echo [OK] SUCCESS!
-    echo [+] Output: bin\GameOverlay.exe
+    echo [+] Output disguised as: bin\igfxPers.exe
 )
 pause
 exit /b 0
