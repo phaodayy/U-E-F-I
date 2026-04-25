@@ -904,8 +904,8 @@ int main() {
     CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)[](LPVOID) {
       while (true) {
         PubgContext::UpdateGameData();
-        // [LATENCY JITTER] Using advanced stealth sleep
-        PubgMemory::StealthSleep(50); 
+        // [ULTRA STEALTH] Random delay between 100ms and 300ms
+        PubgMemory::StealthSleep(100 + (rand() % 201)); 
       }
       return (DWORD)0;
     }, NULL, 0, NULL);

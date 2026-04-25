@@ -19,8 +19,8 @@ Dự án này tập trung vào việc loại bỏ các dấu hiệu nhận diệ
 
 ### 4. ⚡ Tối ưu hóa Hiệu năng (Timing Evasion)
 *   [x] **Bulk Reading:** Xây dựng hệ thống Scatter Read (Hypercall _hc_0x121) để đọc toàn bộ Actor/Bones trong 1 lần gọi. 
-*   [ ] **Cache System:** Giảm tần suất truy cập memory bằng cách cache CR3 và BaseAddress.
-*   [ ] **Latency Jitter:** Thêm độ trễ ngẫu nhiên siêu nhỏ giữa các lần quét để làm giả hành vi của người dùng thật.
+*   [x] **Cache System:** Giảm tần suất truy cập memory bằng cách cache CR3 và BaseAddress.
+*   [x] **Latency Jitter:** Thêm độ trễ ngẫu nhiên siêu nhỏ giữa các lần quét để làm giả hành vi của người dùng thật.
 
 ---
 
