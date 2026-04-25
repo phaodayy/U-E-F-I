@@ -36,6 +36,9 @@
     <ClCompile Include="src\memory_manager\heap_manager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\memory_manager\host_memory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\logs\logs.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -90,6 +93,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\memory_manager\heap_manager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\memory_manager\host_memory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\logs\logs.h">

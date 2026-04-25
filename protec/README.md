@@ -11,6 +11,7 @@ Files:
 - `01-crash-hardening.md`: crash-resilience checklist and design guidance
 - `02-bypass-hardening.md`: how to make bypasses more expensive and easier to detect
 - `03-dump-hardening.md`: how to reduce dump value and string leakage
+- `04-hypervisor-self-protection.md`: reference architecture for host-owned PFN registry and hypervisor memory isolation
 - `win_runtime_hardening.h`: reusable Windows hardening declarations
 - `win_runtime_hardening.cpp`: reusable Windows hardening implementation
 

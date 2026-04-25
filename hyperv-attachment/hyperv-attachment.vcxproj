@@ -176,6 +176,7 @@
     <ClCompile Include="src\logs\logs.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\memory_manager\heap_manager.cpp" />
+    <ClCompile Include="src\memory_manager\host_memory.cpp" />
     <ClCompile Include="src\memory_manager\memory_manager.cpp" />
     <ClCompile Include="src\slat\hook\amd_page_split.cpp" />
     <ClCompile Include="src\slat\hook\hook.cpp" />
@@ -199,6 +200,7 @@
     <ClInclude Include="src\interrupts\interrupts.h" />
     <ClInclude Include="src\logs\logs.h" />
     <ClInclude Include="src\memory_manager\heap_manager.h" />
+    <ClInclude Include="src\memory_manager\host_memory.h" />
     <ClInclude Include="src\memory_manager\memory_manager.h" />
     <ClInclude Include="src\slat\hook\amd_page_split.h" />
     <ClInclude Include="src\slat\hook\hook_entry.h" />
