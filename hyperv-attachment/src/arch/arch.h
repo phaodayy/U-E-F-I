@@ -41,6 +41,9 @@ namespace arch
 	std::uint8_t handle_cpuid_spoof(trap_frame_t* trap_frame);
 	std::uint8_t is_rdmsr(std::uint64_t vmexit_reason);
 	std::uint8_t handle_feature_control_rdmsr(trap_frame_t* trap_frame);
+	std::uint8_t is_tsc_exit(std::uint64_t vmexit_reason);
+	void enable_tsc_exiting();
+	std::uint8_t handle_tsc_exit(std::uint64_t vmexit_reason, trap_frame_t* trap_frame);
 #else
 	vmcb_t* get_vmcb();
 	void parse_vmcb_gadget(const std::uint8_t* get_vmcb_gadget);

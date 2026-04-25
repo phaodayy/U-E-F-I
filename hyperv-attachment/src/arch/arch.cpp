@@ -17,6 +17,7 @@ namespace
 	constexpr std::uint32_t ia32_feature_control_msr = 0x0000003A;
 	constexpr std::uint64_t ia32_feature_control_vmx_bits = 0x7;
 	constexpr std::uint64_t ia32_feature_control_locked = 0x1;
+	constexpr std::uint64_t tsc_software_offset = 0;
 
 	std::uint64_t* get_trap_frame_register(trap_frame_t* const trap_frame, const std::uint64_t register_index)
 	{
@@ -148,6 +149,25 @@ std::uint8_t arch::is_rdmsr(const std::uint64_t vmexit_reason)
 	return basic_exit_reason == VMX_EXIT_REASON_EXECUTE_RDMSR;
 }
 
+std::uint8_t arch::is_tsc_exit(const std::uint64_t vmexit_reason)
+{
+	const std::uint64_t basic_exit_reason = vmexit_reason & VMX_VMEXIT_REASON_BASIC_EXIT_REASON_FLAG;
+
+	return basic_exit_reason == VMX_EXIT_REASON_EXECUTE_RDTSC ||
+		basic_exit_reason == VMX_EXIT_REASON_EXECUTE_RDTSCP;
+}
+
+void arch::enable_tsc_exiting()
+{
+	const std::uint64_t controls = vmread(VMCS_CTRL_PROCESSOR_BASED_VM_EXECUTION_CONTROLS);
+	const std::uint64_t tsc_exiting_controls = controls | IA32_VMX_PROCBASED_CTLS_RDTSC_EXITING_FLAG;
+
+	if (controls != tsc_exiting_controls)
+	{
+		vmwrite(VMCS_CTRL_PROCESSOR_BASED_VM_EXECUTION_CONTROLS, tsc_exiting_controls);
+	}
+}
+
 void arch::enable_cr4_shadowing()
 {
 	const std::uint64_t cr4_mask = vmread(VMCS_CTRL_CR4_GUEST_HOST_MASK);
@@ -243,6 +263,34 @@ std::uint8_t arch::handle_feature_control_rdmsr(trap_frame_t* const trap_frame)
 
 	trap_frame->rax = static_cast<std::uint32_t>(shadowed_feature_control);
 	trap_frame->rdx = static_cast<std::uint32_t>(shadowed_feature_control >> 32);
+
+	advance_guest_rip();
+	return 1;
+}
+
+std::uint8_t arch::handle_tsc_exit(const std::uint64_t vmexit_reason, trap_frame_t* const trap_frame)
+{
+	if (trap_frame == nullptr)
+	{
+		return 0;
+	}
+
+	const std::uint64_t basic_exit_reason = vmexit_reason & VMX_VMEXIT_REASON_BASIC_EXIT_REASON_FLAG;
+	if (basic_exit_reason != VMX_EXIT_REASON_EXECUTE_RDTSC &&
+		basic_exit_reason != VMX_EXIT_REASON_EXECUTE_RDTSCP)
+	{
+		return 0;
+	}
+
+	const std::uint64_t virtual_tsc = __rdtsc() + vmread(VMCS_CTRL_TSC_OFFSET) + tsc_software_offset;
+
+	trap_frame->rax = static_cast<std::uint32_t>(virtual_tsc);
+	trap_frame->rdx = static_cast<std::uint32_t>(virtual_tsc >> 32);
+
+	if (basic_exit_reason == VMX_EXIT_REASON_EXECUTE_RDTSCP)
+	{
+		trap_frame->rcx = static_cast<std::uint32_t>(__readmsr(IA32_TSC_AUX));
+	}
 
 	advance_guest_rip();
 	return 1;
