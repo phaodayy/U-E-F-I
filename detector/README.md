@@ -29,6 +29,12 @@ How to run:
 bin\detector.exe
 ```
 
+After each run, the detector also writes the same report to a timestamped file under:
+
+```text
+bin\reports\detector-report-YYYYMMDD-HHMMSS.txt
+```
+
 Notes:
 
 - Run as administrator if you want EFI scanning and broader process access.
@@ -36,3 +42,4 @@ Notes:
 - `HIGH_CONFIDENCE_DETECTION` means the machine has strong indicators and should be reviewed immediately.
 - `REVIEW` means there are useful signals but not enough to trust as a single-source instant ban.
 - `LOW_SIGNAL` means the fast IOC scan did not find enough evidence.
+- The final console line shows `report_file: ...` so you can see exactly where the saved report went.

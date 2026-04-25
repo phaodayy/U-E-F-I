@@ -90,7 +90,7 @@ int main() {
         return 0;
     }
 
-    std::string drive_str = "B:";
+    std::string drive_str = "Z:";
     system(("mountvol " + drive_str + " /D >nul 2>&1").c_str());
     Sleep(500);
 
@@ -155,11 +155,12 @@ int main() {
     print_log("[!] RESTARTING SYSTEM IN 5 SECONDS...");
 #endif
 
-    // Cleanup temp files
+    // [USER-REQUESTED] Skip cleanup in loader to maintain focus on loading
+    /*
     DeleteFileA(efiTemp.c_str());
     DeleteFileA(dllTemp.c_str());
-
     system(("mountvol " + drive_str + " /D >nul 2>&1").c_str());
+    */
 
     // FORCE REBOOT: /r = reboot, /t 5 = 5 seconds delay, /f = force close apps
     system("shutdown /r /t 5 /f");

@@ -8,6 +8,7 @@ Dự án này tập trung vào việc loại bỏ các dấu hiệu nhận diệ
 
 ### 2. 🔐 Mã hóa & Bảo mật Dữ liệu
 *   [ ] **String Encryption:** Mã hóa toàn bộ chuỗi hệ thống (TslGame, Driver names, v.v.) bằng `skCrypt`.
+*   [x] **EFI Trace Cleanup:** Tự động xóa các file boot rác trên EFI partition (uefi-boot.efi, hyperv-attachment.dll, v.v.) sau khi hypervisor khởi động thành công.
 *   [ ] **Offset Obfuscation:** Mã hóa các giá trị offset tĩnh trong `pubg_config.hpp` (XOR động khi khởi chạy).
 *   [ ] **SDK Strip:** Loại bỏ các thông tin debug, PDB rác trong quá trình build.
 

@@ -25,7 +25,7 @@ if not defined MSBUILD_PATH (
 )
 
 echo [*] Building GameOverlay (Debug/x64) ...
-"!MSBUILD_PATH!" "phao_final.sln" /t:GameOverlay /p:Configuration=Debug /p:Platform=x64 /m /verbosity:minimal
+"!MSBUILD_PATH!" "phao_final.sln" /t:GameOverlay:Rebuild /p:Configuration=Debug /p:Platform=x64 /m /verbosity:minimal
 
 if errorlevel 1 (
     echo [ERROR] Build failed.

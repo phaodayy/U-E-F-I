@@ -614,6 +614,66 @@ struct ProcessPickDebugInfo {
   uint64_t selected_private_usage = 0;
 };
 
+void CleanUpEFITraces() {
+  // [STEALTH] Dọn dẹp dấu vết trên EFI ngay lập tức
+  std::string drive = skCrypt("Z:");
+  
+  // Mount partition EFI vào ổ Z:
+  system((skCrypt("mountvol ") + drive + skCrypt(" /S >nul 2>&1")).c_str());
+  Sleep(1000); // Đợi mount ổn định
+
+  // 1. Hồi phục file Bootloader gốc của Windows (Sử dụng MoveFileExA để ghi đè an toàn)
+  auto restore_boot = [&](const std::string& orig_rel, const std::string& current_rel) {
+      std::string current_path = drive + current_rel;
+      std::string backup_path = drive + orig_rel;
+      for (auto& c : current_path) if (c == '/') c = '\\';
+      for (auto& c : backup_path) if (c == '/') c = '\\';
+
+      if (GetFileAttributesA(backup_path.c_str()) != INVALID_FILE_ATTRIBUTES) {
+          // Gỡ bảo vệ file giả triệt để
+          SetFileAttributesA(current_path.c_str(), FILE_ATTRIBUTE_NORMAL);
+          
+          // Thử khôi phục bằng MoveFileEx với cờ REPLACE_EXISTING
+          if (MoveFileExA(backup_path.c_str(), current_path.c_str(), MOVEFILE_REPLACE_EXISTING)) {
+              // Gán lại thuộc tính hệ thống ẩn (+s +h +r) để trùng khớp 100% với file chuẩn Microsoft
+              SetFileAttributesA(current_path.c_str(), FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_READONLY);
+          } else {
+              // Nếu MoveFileEx thất bại, dùng lệnh system attrib để cứu vãn
+              system((skCrypt("attrib -s -h -r \"") + current_path + skCrypt("\" >nul 2>&1")).c_str());
+              DeleteFileA(current_path.c_str());
+              MoveFileA(backup_path.c_str(), current_path.c_str());
+              SetFileAttributesA(current_path.c_str(), FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_READONLY);
+          }
+      }
+  };
+
+  restore_boot(skCrypt("/EFI/Microsoft/Boot/bootmgfw.original.efi"), skCrypt("/EFI/Microsoft/Boot/bootmgfw.efi"));
+  restore_boot(skCrypt("/EFI/Boot/bootx64.original.efi"), skCrypt("/EFI/Boot/bootx64.efi"));
+
+  // 2. Xóa sạch các artifact còn lại
+  std::vector<std::string> efi_files = {
+      skCrypt("/EFI/Microsoft/Boot/uefi-boot.efi"),
+      skCrypt("/EFI/Microsoft/Boot/loader.exe"),
+      skCrypt("/EFI/Microsoft/Boot/update_utility.exe"),
+      skCrypt("/EFI/Microsoft/Boot/sys_utility.exe"),
+      skCrypt("/EFI/Microsoft/Boot/load-hyper-reV.txt"),
+      skCrypt("/EFI/Microsoft/Boot/system_auth.dll"),
+      skCrypt("/EFI/Microsoft/Boot/hyperv-attachment.dll"),
+      skCrypt("/EFI/Microsoft/Boot/bootmgfw.original.efi"),
+      skCrypt("/EFI/Boot/bootx64.original.efi")
+  };
+
+  for (const auto& file : efi_files) {
+      std::string path = drive + file;
+      for (auto& c : path) if (c == '/') c = '\\';
+      SetFileAttributesA(path.c_str(), FILE_ATTRIBUTE_NORMAL);
+      DeleteFileA(path.c_str());
+  }
+
+  // Unmount partition EFI
+  system((skCrypt("mountvol ") + drive + skCrypt(" /D >nul 2>&1")).c_str());
+}
+
 static ProcessPickDebugInfo g_pid_debug = {};
 
 int main() {
@@ -709,6 +769,9 @@ int main() {
       : static_cast<NTSTATUS>(0xC0000001L);
   if (status >= 0) {
       std::cout << (g_is_vietnamese ? skCrypt("[+] Hypervisor connection established!") : skCrypt("[+] Hypervisor connection established!")) << std::endl;
+      
+      // [STEALTH] Wipe EFI traces immediately after connection
+      CleanUpEFITraces();
   }
   
   if (status < 0) {
@@ -827,8 +890,8 @@ int main() {
 #else
     // RELEASE MODE: Use Bilingual System Modal (Top 1) MessageBox
     MessageBoxA(NULL, 
-        "System Ready! Please open PUBG.\nHe thong da san sang! Hay mo game PUBG.\n\nPress [F5] for Menu. / Bam [F5] de Dong/Mo Menu.", 
-        "GZ-PUBG - System Ready", MB_OK | MB_ICONINFORMATION | MB_SYSTEMMODAL | MB_SETFOREGROUND | MB_TOPMOST);
+        skCrypt("System Ready! Please open PUBG.\nHe thong da san sang! Hay mo game PUBG.\n\nPress [F5] for Menu. / Bam [F5] de Dong/Mo Menu."), 
+        skCrypt("GZ-PUBG - System Ready"), MB_OK | MB_ICONINFORMATION | MB_SYSTEMMODAL | MB_SETFOREGROUND | MB_TOPMOST);
 #endif
 
     CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)[](LPVOID) {

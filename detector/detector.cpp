@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cwctype>
 #include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -59,8 +60,11 @@ namespace
         bool is_admin = false;
         bool efi_scan_attempted = false;
         bool efi_scan_succeeded = false;
+        bool b_drive_scan_attempted = false;
+        bool b_drive_scan_succeeded = false;
         int total_score = 0;
         std::vector<finding_t> efi_findings;
+        std::vector<finding_t> b_drive_findings;
         std::vector<process_report_t> process_reports;
     };
 
@@ -373,6 +377,26 @@ namespace
         return total;
     }
 
+    int count_boot_capability_hits(const std::vector<const ioc_string_t*>& hits)
+    {
+        int total = 0;
+
+        for (const ioc_string_t* hit : hits)
+        {
+            const std::string_view label(hit->label);
+
+            if (label == "efi_boot_path" ||
+                label == "boot_file_name" ||
+                label == "bcdedit_setting" ||
+                label == "mountvol_usage")
+            {
+                ++total;
+            }
+        }
+
+        return total;
+    }
+
     int count_pe_images_in_buffer(const std::vector<std::uint8_t>& buffer)
     {
         int count = 0;
@@ -639,6 +663,46 @@ namespace
         return buffer;
     }
 
+    std::optional<efi_file_ioc_t> match_b_drive_ioc(const std::filesystem::path& path)
+    {
+        const std::wstring lower_filename = to_lower_copy(path.filename().wstring());
+
+        for (const auto& ioc : kEfiFileIocs)
+        {
+            const std::wstring ioc_filename = to_lower_copy(std::filesystem::path(ioc.relative_path).filename().wstring());
+
+            if (lower_filename == ioc_filename)
+            {
+                return ioc;
+            }
+        }
+
+        return std::nullopt;
+    }
+
+    void scan_b_drive_executable_heuristics(
+        const std::vector<std::uint8_t>& bytes,
+        const std::wstring& target,
+        std::vector<finding_t>& findings,
+        std::set<std::string>& seen_keys)
+    {
+        const std::vector<const ioc_string_t*> capability_hits = collect_ioc_hits(bytes, kCapabilityIocs);
+
+        if (capability_hits.size() >= 3 && count_boot_capability_hits(capability_hits) >= 2)
+        {
+            const int cluster_score = std::min(45, sum_scores(capability_hits) + 8);
+            add_finding(findings, seen_keys, "b_drive_heuristic", target, "capability_cluster", cluster_score, join_labels(capability_hits));
+        }
+
+        const int embedded_pe_count = count_pe_images_in_buffer(bytes);
+
+        if (embedded_pe_count >= 2)
+        {
+            const int score = embedded_pe_count >= 3 ? 35 : 22;
+            add_finding(findings, seen_keys, "b_drive_heuristic", target, "embedded_pe_payloads", score, "multiple PE images in a single executable");
+        }
+    }
+
     void scan_process_memory(HANDLE process, process_report_t& report)
     {
         std::set<std::string> seen_keys;
@@ -853,6 +917,68 @@ namespace
         run_hidden_command(L"mountvol " + mount_root + L" /D");
     }
 
+    void scan_b_drive(system_report_t& report)
+    {
+        report.b_drive_scan_attempted = true;
+
+        const std::filesystem::path root = L"B:\\";
+
+        if (!std::filesystem::exists(root) || !std::filesystem::is_directory(root))
+        {
+            return;
+        }
+
+        report.b_drive_scan_succeeded = true;
+        std::set<std::string> seen_keys;
+
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(root, std::filesystem::directory_options::skip_permission_denied))
+        {
+            if (!entry.is_regular_file())
+            {
+                continue;
+            }
+
+            const std::filesystem::path path = entry.path();
+            const std::optional<efi_file_ioc_t> matched_ioc = match_b_drive_ioc(path);
+            const bool should_scan_file = matched_ioc.has_value() || is_executable_extension(path);
+
+            if (!should_scan_file)
+            {
+                continue;
+            }
+
+            if (matched_ioc)
+            {
+                const int file_score = std::max(20, matched_ioc->score - 20);
+                add_finding(report.b_drive_findings, seen_keys, "b_drive_file", path.wstring(), matched_ioc->label, file_score, "present on B drive");
+                report.total_score += file_score;
+            }
+
+            const std::vector<std::uint8_t> bytes = read_file_prefix(path, 4ull * 1024ull * 1024ull);
+
+            if (bytes.empty())
+            {
+                continue;
+            }
+
+            if (is_executable_extension(path))
+            {
+                scan_b_drive_executable_heuristics(bytes, path.wstring(), report.b_drive_findings, seen_keys);
+            }
+
+            scan_ioc_strings_in_buffer(bytes, path.wstring(), "b_drive_file_content", report.b_drive_findings, seen_keys, kProcessIocs);
+            scan_marker_strings_in_buffer(bytes, path.wstring(), "b_drive_file_content", report.b_drive_findings, seen_keys);
+        }
+
+        for (const finding_t& finding : report.b_drive_findings)
+        {
+            if (finding.category == "b_drive_heuristic" || finding.category == "b_drive_file_content")
+            {
+                report.total_score += finding.score;
+            }
+        }
+    }
+
     std::string verdict_from_report(const system_report_t& report)
     {
         const bool has_strong_efi_finding = std::any_of(report.efi_findings.begin(), report.efi_findings.end(), [](const finding_t& finding)
@@ -878,11 +1004,57 @@ namespace
         return "LOW_SIGNAL";
     }
 
-    void print_findings(const std::vector<finding_t>& findings)
+    std::optional<std::filesystem::path> query_module_directory()
+    {
+        std::wstring buffer(MAX_PATH, L'\0');
+
+        for (;;)
+        {
+            const DWORD copied = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+
+            if (copied == 0)
+            {
+                return std::nullopt;
+            }
+
+            if (copied < buffer.size() - 1)
+            {
+                buffer.resize(copied);
+                return std::filesystem::path(buffer).parent_path();
+            }
+
+            buffer.resize(buffer.size() * 2);
+        }
+    }
+
+    std::filesystem::path build_report_path()
+    {
+        SYSTEMTIME local_time = {};
+        GetLocalTime(&local_time);
+
+        std::ostringstream file_name;
+        file_name
+            << std::setfill('0')
+            << std::setw(4) << local_time.wYear
+            << std::setw(2) << local_time.wMonth
+            << std::setw(2) << local_time.wDay
+            << "-"
+            << std::setw(2) << local_time.wHour
+            << std::setw(2) << local_time.wMinute
+            << std::setw(2) << local_time.wSecond
+            << ".txt";
+
+        const std::filesystem::path base_directory = query_module_directory().value_or(std::filesystem::current_path());
+        const std::filesystem::path report_directory = base_directory / "reports";
+        std::filesystem::create_directories(report_directory);
+        return report_directory / file_name.str();
+    }
+
+    void print_findings(std::ostream& output, const std::vector<finding_t>& findings)
     {
         for (const finding_t& finding : findings)
         {
-            std::cout
+            output
                 << "  [" << finding.category << "] "
                 << narrow_utf8(finding.target)
                 << " -> "
@@ -893,6 +1065,75 @@ namespace
                 << "\n";
         }
     }
+
+    std::string build_report_text(const system_report_t& report)
+    {
+        std::ostringstream output;
+
+        output << "hyper-reV detector\n";
+        output << "mode: fast IOC scan for EFI artifacts, B drive artifacts, and process-memory strings\n\n";
+
+        if (!report.is_admin)
+        {
+            output << "warning: not running as administrator, EFI scan will be skipped and some processes may be unreadable.\n\n";
+        }
+
+        output << "verdict: " << verdict_from_report(report) << "\n";
+        output << "total_score: " << report.total_score << "\n";
+        output << "efi_scan: " << (report.efi_scan_succeeded ? "ok" : (report.efi_scan_attempted ? "skipped_or_failed" : "not_attempted")) << "\n";
+        output << "b_drive_scan: " << (report.b_drive_scan_succeeded ? "ok" : (report.b_drive_scan_attempted ? "not_found_or_failed" : "not_attempted")) << "\n";
+        output << "process_hits: " << report.process_reports.size() << "\n\n";
+
+        if (!report.efi_findings.empty())
+        {
+            output << "efi_findings:\n";
+            print_findings(output, report.efi_findings);
+            output << "\n";
+        }
+        else
+        {
+            output << "efi_findings: none\n\n";
+        }
+
+        if (!report.b_drive_findings.empty())
+        {
+            output << "b_drive_findings:\n";
+            print_findings(output, report.b_drive_findings);
+            output << "\n";
+        }
+        else
+        {
+            output << "b_drive_findings: none\n\n";
+        }
+
+        if (!report.process_reports.empty())
+        {
+            output << "process_findings:\n";
+
+            for (const process_report_t& process : report.process_reports)
+            {
+                output
+                    << " process "
+                    << narrow_utf8(process.name)
+                    << " (pid "
+                    << process.pid
+                    << ")"
+                    << " score="
+                    << process.score
+                    << " scanned_bytes="
+                    << process.scanned_bytes
+                    << "\n";
+
+                print_findings(output, process.findings);
+            }
+        }
+        else
+        {
+            output << "process_findings: none\n";
+        }
+
+        return output.str();
+    }
 }
 
 int wmain()
@@ -900,15 +1141,8 @@ int wmain()
     system_report_t report = {};
     report.is_admin = is_running_as_admin();
 
-    std::cout << "hyper-reV detector\n";
-    std::cout << "mode: fast IOC scan for EFI artifacts and process-memory strings\n\n";
-
-    if (!report.is_admin)
-    {
-        std::cout << "warning: not running as administrator, EFI scan will be skipped and some processes may be unreadable.\n\n";
-    }
-
     scan_efi(report);
+    scan_b_drive(report);
     scan_processes(report);
 
     std::sort(report.process_reports.begin(), report.process_reports.end(), [](const process_report_t& left, const process_report_t& right)
@@ -916,46 +1150,28 @@ int wmain()
         return left.score > right.score;
     });
 
-    std::cout << "verdict: " << verdict_from_report(report) << "\n";
-    std::cout << "total_score: " << report.total_score << "\n";
-    std::cout << "efi_scan: " << (report.efi_scan_succeeded ? "ok" : (report.efi_scan_attempted ? "skipped_or_failed" : "not_attempted")) << "\n";
-    std::cout << "process_hits: " << report.process_reports.size() << "\n\n";
+    const std::string report_text = build_report_text(report);
+    std::cout << report_text;
 
-    if (!report.efi_findings.empty())
+    try
     {
-        std::cout << "efi_findings:\n";
-        print_findings(report.efi_findings);
-        std::cout << "\n";
-    }
-    else
-    {
-        std::cout << "efi_findings: none\n\n";
-    }
+        const std::filesystem::path report_path = build_report_path();
+        std::ofstream report_file(report_path, std::ios::binary);
 
-    if (!report.process_reports.empty())
-    {
-        std::cout << "process_findings:\n";
-
-        for (const process_report_t& process : report.process_reports)
+        if (report_file)
         {
-            std::cout
-                << " process "
-                << narrow_utf8(process.name)
-                << " (pid "
-                << process.pid
-                << ")"
-                << " score="
-                << process.score
-                << " scanned_bytes="
-                << process.scanned_bytes
-                << "\n";
-
-            print_findings(process.findings);
+            report_file << report_text;
+            report_file.close();
+            std::cout << "\nreport_file: " << report_path.string() << "\n";
+        }
+        else
+        {
+            std::cout << "\nreport_file: write_failed\n";
         }
     }
-    else
+    catch (const std::exception&)
     {
-        std::cout << "process_findings: none\n";
+        std::cout << "\nreport_file: write_failed\n";
     }
 
     return 0;
