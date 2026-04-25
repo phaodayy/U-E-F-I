@@ -1,5 +1,5 @@
 #pragma once
-#include "../sdk/skCrypt.h"
+#include "../../protec/skCrypt.h"
 
 namespace Translation {
     inline int CurrentLanguage = 0; // 0: EN, 1: VN

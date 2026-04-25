@@ -2,7 +2,7 @@
 #include <Windows.h>
 #include <TlHelp32.h>
 #include <winver.h>
-#include "../protec/win_runtime_hardening.h"
+#include "../protec/protector.h"
 
 #include <algorithm>
 #include <array>

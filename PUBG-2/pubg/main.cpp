@@ -60,13 +60,13 @@ typedef struct _PUBG_SYSTEM_PROCESS_INFORMATION {
 #include "sdk/pubg_decrypt.hpp"
 #include "sdk/utils/MacroEngine.h"
 #include "overlay/overlay_menu.hpp"
-#include "sdk/skCrypt.h"
+#include "../../protec/skCrypt.h"
 #include "sdk/netease_comm.hpp"
 
 #include "sdk/Utils/WinSha256.h"
 #include "sdk/Utils/WinCrypto.h"
 #include "sdk/Utils/ADVobfuscator.h"
-#include "sdk/protector/protector.hpp"
+#include "../../protec/protector.h"
 
 // [GZ-DEBUG] Force OBF_STR bypass after all includes to prevent template errors in Debug mode
 #ifdef _DEBUG
@@ -692,15 +692,9 @@ int main() {
       return 0;
   }
 
-  // protector::kill_game(); // Tam comment: khong tu dong tat game khi mo tool
-  protector::scan_detection_time = 1000;
-  protector::scan_exe = true;
-  protector::scan_title = true;
-  protector::scan_driver = true;
-  protector::loop_killdbgr = true;
-  protector::protector_bsod = false;
-  protector::debug_log = false;
-  protector::start_protect();
+  protec::scan_detection_time = 1000;
+  srand((unsigned int)GetTickCount64());
+  protec::start_protect(false);
 
   if (!SecurityCheck()) {
       SelfDestruct();
@@ -876,12 +870,16 @@ int main() {
   }
   std::cout << (g_is_vietnamese ? skCrypt("\n[+] Ket noi hyper thanh cong, hay vao game de trai nghiem!") : skCrypt("\n[+] Hyper connection ready!")) << std::endl;
   SetConsoleColor(7);
-  MacroEngine::Initialize();
+  
+    MacroEngine::Initialize();
 
     // Mouse input via kernel driver MouseClassServiceCallback
     std::cout << skCrypt("[+] Mouse: Kernel callback active.") << std::endl;
 
     g_Menu.Initialize(nullptr);
+
+    // [ANTI-DUMP] Wiping PE headers now that EVERYTHING (DirectX, ImGui, Settings) is ready
+    protec::erase_pe_header();
     
 #ifdef _DEBUG
     std::cout << (g_is_vietnamese ? skCrypt("\n[+] He thong da san sang! Hay mo game PUBG.") : skCrypt("\n[+] System Ready! Please open PUBG.")) << std::endl;

@@ -18,7 +18,7 @@
 #include "../sdk/offsets.hpp"
 #include "../sdk/health.hpp"
 #include "../sdk/Utils/MacroEngine.h"
-#include "../sdk/skCrypt.h"
+#include "../../protec/skCrypt.h"
 
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "d3d11.lib")

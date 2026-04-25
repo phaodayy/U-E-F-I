@@ -10,7 +10,7 @@
 #include <intrin.h>
 #endif
 
-#include "../pubg/sdk/skCrypt.h"
+#include "../../protec/skCrypt.h"
 
 namespace pubg_config {
     // Key bí mật dùng để mã hóa toàn bộ Offset trong Project
