@@ -904,8 +904,8 @@ int main() {
     CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)[](LPVOID) {
       while (true) {
         PubgContext::UpdateGameData();
-        // Task 3.3: Randomizing Gates
-        Sleep(45 + (rand() % 15)); 
+        // [LATENCY JITTER] Using advanced stealth sleep
+        PubgMemory::StealthSleep(50); 
       }
       return (DWORD)0;
     }, NULL, 0, NULL);
@@ -914,8 +914,8 @@ int main() {
       if (PubgMemory::IsKeyDown(VK_F11)) break;
 
       g_Menu.RenderFrame();
-      // Task 3.3: Randomizing Gates in render loop
-      Sleep(g_Menu.render_sleep + (rand() % 3));
+      // [LATENCY JITTER] Dynamic render sleep
+      PubgMemory::StealthSleep(g_Menu.render_sleep);
     }
     
     g_Menu.Shutdown();

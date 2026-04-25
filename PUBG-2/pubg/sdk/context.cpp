@@ -219,15 +219,26 @@ namespace PubgContext {
     void UpdateGameData() {
         if (!PubgMemory::g_BaseAddress) return;
         
-        uint64_t rawUWorld = 0;
-        if (!PubgMemory::ReadMemory(PubgMemory::g_BaseAddress + PubgOffsets::UWorld, &rawUWorld, sizeof(uint64_t))) return;
+        static ULONGLONG lastGlobalRefresh = 0;
+        const ULONGLONG now = GetTickCount64();
 
-        G_UWorld = PubgDecrypt::Xe(rawUWorld);
+        // CACHE: Primary pointers only need refresh every 2 seconds
+        if (G_UWorld != 0 && (now - lastGlobalRefresh < 2000)) {
+            // Skip reading UWorld, GameInstance, etc.
+        } else {
+            uint64_t rawUWorld = 0;
+            if (PubgMemory::ReadMemory(PubgMemory::g_BaseAddress + PubgOffsets::UWorld, &rawUWorld, sizeof(uint64_t))) {
+                G_UWorld = PubgDecrypt::Xe(rawUWorld);
+                if (G_UWorld) {
+                    G_GameInstance = ReadXe(G_UWorld + PubgOffsets::GameInstance);
+                    G_PersistentLevel = ReadXe(G_UWorld + PubgOffsets::CurrentLevel);
+                    G_GameState = ReadXe(G_UWorld + PubgOffsets::GameState);
+                    lastGlobalRefresh = now;
+                }
+            }
+        }
+        
         if (!G_UWorld) return;
-
-        G_GameInstance = ReadXe(G_UWorld + PubgOffsets::GameInstance);
-        G_PersistentLevel = ReadXe(G_UWorld + PubgOffsets::CurrentLevel);
-        G_GameState = ReadXe(G_UWorld + PubgOffsets::GameState);
 
         uint64_t localPlayerPtr = ReadXe(Read<uint64_t>(G_GameInstance + PubgOffsets::LocalPlayer));
         bool inGame = false;
@@ -285,7 +296,6 @@ namespace PubgContext {
         // Dynamic radar/widget scan (minimap + world map)
         static ULONGLONG lastRadarScan = 0;
         static ULONGLONG lastMapInfoUpdate = 0;
-        const ULONGLONG now = GetTickCount64();
         if (now - lastRadarScan > 300) {
             lastRadarScan = now;
             const float screenWidth = (float)GetSystemMetrics(SM_CXSCREEN);

@@ -20,6 +20,7 @@ namespace PubgMemory {
     inline uint32_t g_ProcessId = 0;
     inline uint64_t g_ProcessCr3 = 0;
     inline uint64_t g_BaseAddress = 0;
+    inline uint64_t g_LastRefreshTime = 0; 
     inline bool g_UseNetEase = false;
 
     inline bool ReadMemory(uint64_t src, void* dest, uint64_t size);
@@ -36,10 +37,12 @@ namespace PubgMemory {
     }
 
     inline bool RefreshProcessContext() {
-        if (g_ProcessId == 0) {
-            g_ProcessCr3 = 0;
-            g_BaseAddress = 0;
-            return false;
+        if (g_ProcessId == 0) return false;
+
+        uint64_t current_time = GetTickCount64();
+        // CACHE: Only refresh if 5 seconds passed since last refresh
+        if (g_ProcessCr3 != 0 && (current_time - g_LastRefreshTime < 5000)) {
+            return true;
         }
 
         query_process_data_packet input = {};
@@ -51,6 +54,7 @@ namespace PubgMemory {
 
         g_ProcessCr3 = input.cr3;
         g_BaseAddress = reinterpret_cast<uint64_t>(input.base_address);
+        g_LastRefreshTime = current_time;
         return g_ProcessCr3 != 0;
     }
 
@@ -174,10 +178,20 @@ namespace PubgMemory {
         if (ms <= 0) return;
         
         static std::mt19937 rng(std::random_device{}());
-        std::uniform_int_distribution<int> dist(0, 3); // Add 0-3ms jitter
+        static std::uniform_int_distribution<int> jitter_dist(-2, 5); // Micro-jitter between -2ms and +5ms
         
-        int total_ms = ms + dist(rng);
+        int total_ms = ms + jitter_dist(rng);
+        if (total_ms < 1) total_ms = 1;
+
         std::this_thread::sleep_for(std::chrono::milliseconds(total_ms));
+
+        // Random spin-lock jitter (sub-millisecond)
+        if (jitter_dist(rng) > 3) {
+            auto start = std::chrono::high_resolution_clock::now();
+            while (std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count() < 500) {
+                _mm_pause(); // Low power spin
+            }
+        }
     }
 
     inline bool MoveMouse(long x, long y, unsigned short flags = 0) {
