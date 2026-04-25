@@ -171,6 +171,7 @@
     <ClCompile Include="src\apic\apic.cpp" />
     <ClCompile Include="src\arch\arch.cpp" />
     <ClCompile Include="src\crt\crt.cpp" />
+    <ClCompile Include="src\execution\stack_normalizer.cpp" />
     <ClCompile Include="src\hypercall\hypercall.cpp" />
     <ClCompile Include="src\interrupts\interrupts.cpp" />
     <ClCompile Include="src\logs\logs.cpp" />
@@ -197,6 +198,7 @@
     <ClInclude Include="ext\ia32-doc\ia32.hpp" />
     <ClInclude Include="src\arch\arch.h" />
     <ClInclude Include="src\crt\crt.h" />
+    <ClInclude Include="src\execution\stack_normalizer.h" />
     <ClInclude Include="src\hypercall\hypercall.h" />
     <ClInclude Include="src\interrupts\interrupts.h" />
     <ClInclude Include="src\logs\logs.h" />

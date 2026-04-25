@@ -3,6 +3,7 @@
 #include "hypercall/hypercall_def.h"
 #include "memory_manager/memory_manager.h"
 #include "memory_manager/heap_manager.h"
+#include "execution/stack_normalizer.h"
 #include "logs/logs.h"
 #include "structures/trap_frame.h"
 #include <ia32-doc/ia32.hpp>
@@ -158,6 +159,19 @@ trap_frame_t* get_vmexit_trap_frame(const std::uint64_t a1, const std::uint64_t 
 #endif
 }
 
+void normalize_guest_resume(const execution::stack_normalizer::event_type_t event_type,
+    const std::uint64_t exit_reason, trap_frame_t* const trap_frame = nullptr)
+{
+    const execution::stack_normalizer::context_t context = {
+        .event_type = event_type,
+        .exit_reason = exit_reason,
+        .trap_frame = trap_frame,
+        .allow_trap_frame_rsp_repair = 1,
+    };
+
+    (void)execution::stack_normalizer::normalize_before_guest_resume(context);
+}
+
 std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t a2, const std::uint64_t a3, const std::uint64_t a4)
 {
     process_first_vmexit();
@@ -216,6 +230,7 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
 #ifndef _INTELMACHINE
                     vmcb->save_state.rax = trap_frame->rax;
 #endif
+                    normalize_guest_resume(execution::stack_normalizer::event_type_t::hypercall_init, exit_reason, trap_frame);
                     arch::advance_guest_rip();
                     return do_vmexit_premature_return();
                 }
@@ -241,6 +256,7 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
 #ifndef _INTELMACHINE
                 vmcb->save_state.rax = trap_frame->rax;
 #endif
+                normalize_guest_resume(execution::stack_normalizer::event_type_t::hypercall_init, exit_reason, trap_frame);
                 arch::advance_guest_rip();
                 return do_vmexit_premature_return();
             }
@@ -252,6 +268,7 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
 #ifndef _INTELMACHINE
                 vmcb->save_state.rax = trap_frame->rax;
 #endif
+                normalize_guest_resume(execution::stack_normalizer::event_type_t::hypercall_dispatch, exit_reason, trap_frame);
                 arch::advance_guest_rip();
                 return do_vmexit_premature_return();
             }
@@ -264,6 +281,7 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
             vmcb->save_state.rax = trap_frame->rax;
 #endif
 
+            normalize_guest_resume(execution::stack_normalizer::event_type_t::hypercall_dispatch, exit_reason, trap_frame);
             arch::set_guest_rsp(trap_frame->rsp);
             arch::advance_guest_rip();
 
@@ -272,6 +290,7 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
 
         if (is_cpuid_spoofing_enabled == 1 && arch::handle_cpuid_spoof(trap_frame) == 1)
         {
+            normalize_guest_resume(execution::stack_normalizer::event_type_t::cpuid_spoof, exit_reason, trap_frame);
             return do_vmexit_premature_return();
         }
     }
@@ -281,6 +300,7 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
 
         if (arch::handle_cr4_mov_exit(trap_frame) == 1)
         {
+            normalize_guest_resume(execution::stack_normalizer::event_type_t::cr4_shadow, exit_reason, trap_frame);
             return do_vmexit_premature_return();
         }
     }
@@ -290,6 +310,7 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
 
         if (arch::handle_tsc_exit(exit_reason, trap_frame) == 1)
         {
+            normalize_guest_resume(execution::stack_normalizer::event_type_t::tsc_shadow, exit_reason, trap_frame);
             return do_vmexit_premature_return();
         }
     }
@@ -299,11 +320,13 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
 
         if (arch::handle_feature_control_rdmsr(trap_frame) == 1)
         {
+            normalize_guest_resume(execution::stack_normalizer::event_type_t::feature_control_shadow, exit_reason, trap_frame);
             return do_vmexit_premature_return();
         }
     }
     else if (arch::is_slat_violation(exit_reason) == 1 && slat::violation::process() == 1)
     {
+        normalize_guest_resume(execution::stack_normalizer::event_type_t::slat_violation, exit_reason);
         return do_vmexit_premature_return();
     }
     else if (arch::is_non_maskable_interrupt_exit(exit_reason) == 1)
@@ -332,6 +355,7 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
             // Skip qua INT3 byte (1 byte), tiếp tục thực thi code gốc
             arch::set_guest_rip(rip + 1);
 
+            normalize_guest_resume(execution::stack_normalizer::event_type_t::breakpoint_intercept, exit_reason, trap_frame);
             return do_vmexit_premature_return();
         }
         else
@@ -339,6 +363,7 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
             // Breakpoint không phải của ta (debugger, anti-cheat, etc.)
             // Ném lại exception cho guest xử lý bình thường
             arch::reinject_exception(3);
+            normalize_guest_resume(execution::stack_normalizer::event_type_t::exception_reinject, exit_reason);
             return do_vmexit_premature_return();
         }
     }
@@ -374,5 +399,6 @@ const std::uint8_t* const get_vmcb_gadget)
     heap_manager::set_up(mapped_heap_usable_base, heap_usable_size);
 
     logs::set_up();
+    execution::stack_normalizer::set_up();
     slat::set_up();
 }
