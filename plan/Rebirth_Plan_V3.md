@@ -7,15 +7,15 @@ Dự án này tập trung vào việc loại bỏ các dấu hiệu nhận diệ
 ## 🛠️ Phân nhiệm vụ và Tiến độ
 
 ### 2. 🔐 Mã hóa & Bảo mật Dữ liệu
-*   [ ] **String Encryption:** Mã hóa toàn bộ chuỗi hệ thống (TslGame, Driver names, v.v.) bằng `skCrypt`.
+*   [x] **String Encryption:** Mã hóa toàn bộ chuỗi hệ thống (TslGame, Driver names, v.v.) bằng `skCrypt`.
 *   [x] **EFI Trace Cleanup:** Tự động xóa các file boot rác trên EFI partition (uefi-boot.efi, hyperv-attachment.dll, v.v.) sau khi hypervisor khởi động thành công.
 *   [ ] **Offset Obfuscation:** Mã hóa các giá trị offset tĩnh trong `pubg_config.hpp` (XOR động khi khởi chạy).
 *   [ ] **SDK Strip:** Loại bỏ các thông tin debug, PDB rác trong quá trình build.
 
 ### 3. 🛡️ Bảo mật Tiến trình (Process Integrity)
 *   [ ] **Remove ntdll Patching:** Ngừng việc patch trực tiếp vào `ntdll.dll` để tránh bị AC quét Integrity.
-*   [ ] **Anti-Debug Refactor:** Sử dụng Hypervisor để xử lý các bẫy Debug thay vì dùng code Usermode.
-*   [ ] **Process Identity:** Ngụy trang `GameOverlay.exe` thành các tiến trình hệ thống vô hại.
+*   [x] **Anti-Debug Refactor:** Nâng cấp GZ-PROTECTOR v4.0 tích hợp Anti-Debug/VM/Dump dùng chung.
+*   [x] **Process Identity:** Ngụy trang `GameOverlay.exe` thành các tiến trình hệ thống vô hại (`SecurityHealthService.exe`).
 
 ### 4. ⚡ Tối ưu hóa Hiệu năng (Timing Evasion)
 *   [ ] **Bulk Reading:** Xây dựng cấu trúc dữ liệu lớn để đọc toàn bộ Actor trong 1 lần gọi Hypercall.
@@ -29,9 +29,9 @@ Dự án này tập trung vào việc loại bỏ các dấu hiệu nhận diệ
 | Giai đoạn | Nội dung | Trạng thái |
 | :--- | :--- | :--- |
 | **P1: Communication** | Thay thế CPUID bằng EPT Hook | 🔄 Đang triển khai |
-| **P2: Obfuscation** | Mã hóa chuỗi và Offsets | ⏳ Chờ |
-| **P3: Integration** | Cập nhật GameOverlay và Loader | ⏳ Chờ |
-| **P4: Final Test** | Kiểm tra độ trễ và độ an toàn trên game | ⏳ Chờ |
+| **P2: Obfuscation** | Mã hóa chuỗi và Bảo mật v4.0 | ✅ Hoàn thành |
+| **P3: Integration** | Tích hợp Unified Protector | ✅ Hoàn thành |
+| **P4: Final Test** | Kiểm tra độ trễ và độ an toàn trên game | 🔄 Đang triển khai |
 
 ---
 
