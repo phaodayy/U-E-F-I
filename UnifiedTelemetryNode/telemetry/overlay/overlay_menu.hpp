@@ -56,7 +56,8 @@ public:
   bool esp_head_circle = false;
   bool esp_skeleton = true;
   bool esp_health = true;
-  int esp_health_pos = 0;
+  int esp_health_pos = 0; // 0:Left, 1:Right, 2:Top, 3:Bottom
+  int esp_health_color_mode = 0; // 0:Dynamic, 1:Static
   bool esp_distance = true;
   bool esp_name = true;
   bool esp_snapline = false;
@@ -88,6 +89,7 @@ public:
   float name_color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
   float distance_color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
   float weapon_color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+  float health_color[4] = {0.0f, 1.0f, 0.5f, 1.0f}; 
   float box_fill_color[4] = {0.0f, 0.0f, 0.0f, 0.25f};
   float snapline_color[4] = {1.0f, 1.0f, 0.0f, 1.0f};
   float shield_color[4] = {0.25f, 0.6f, 1.0f, 1.0f};

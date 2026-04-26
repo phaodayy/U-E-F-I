@@ -233,7 +233,18 @@ namespace Translation {
         const char* SafeStatus;
 
         const char* PasteLabel;
-
+        
+        // Health & Weapon HUD additions
+        const char* HealthMode;
+        const char* ModeDynamic;
+        const char* ModeStatic;
+        const char* PosLeft;
+        const char* PosRight;
+        const char* PosTop;
+        const char* PosBottom;
+        const char* TypeIcon;
+        const char* TypeText;
+        const char* ColorHealth;
     };
 
 
@@ -462,6 +473,17 @@ namespace Translation {
 
             s.PasteLabel = (const char*)u8"Dán Key";
 
+            s.HealthMode = (const char*)u8"Kiểu màu máu";
+            s.ModeDynamic = (const char*)u8"Động (Máu %)";
+            s.ModeStatic = (const char*)u8"Cố định";
+            s.PosLeft = (const char*)u8"Trái";
+            s.PosRight = (const char*)u8"Phải";
+            s.PosTop = (const char*)u8"Trên";
+            s.PosBottom = (const char*)u8"Dưới";
+            s.TypeIcon = (const char*)u8"Hình ảnh";
+            s.TypeText = (const char*)u8"Chữ";
+            s.ColorHealth = (const char*)u8"Màu máu";
+
         } else { // English
 
             s.MainTitle = skCrypt("GZ-integrity_monitor EXTERNAL");
@@ -681,6 +703,17 @@ namespace Translation {
             s.SafeStatus = skCrypt("SAFE");
 
             s.PasteLabel = skCrypt("Paste Key");
+
+            s.HealthMode = skCrypt("Health Color Mode");
+            s.ModeDynamic = skCrypt("Dynamic (%)");
+            s.ModeStatic = skCrypt("Static Color");
+            s.PosLeft = skCrypt("Left");
+            s.PosRight = skCrypt("Right");
+            s.PosTop = skCrypt("Top");
+            s.PosBottom = skCrypt("Bottom");
+            s.TypeIcon = skCrypt("Icon");
+            s.TypeText = skCrypt("Text");
+            s.ColorHealth = skCrypt("Health Color");
 
         }
 
