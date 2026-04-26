@@ -57,9 +57,12 @@ namespace Translation {
         const char* Distance;
 
         const char* Name;
-
+        const char* ESP_Icons;
+        const char* KillCount;
+        const char* TeamID;
+        const char* Rank;
+        const char* SurvivalLevel;
         const char* ESP_Spectated;
-
         const char* ESP_Offscreen;
 
         const char* IndicatorRadius;
@@ -73,6 +76,33 @@ namespace Translation {
         const char* ColorNear;
 
         const char* ColorFar;
+
+        const char* HeaderTactical;
+        const char* GrenadeLine;
+        const char* Projectiles;
+        const char* ThreatWarning;
+
+        const char* HeaderGearFilter;
+        const char* HelmetLv1;
+        const char* HelmetLv2;
+        const char* HelmetLv3;
+        const char* ArmorLv1;
+        const char* ArmorLv2;
+        const char* ArmorLv3;
+
+        const char* HeaderHealFilter;
+        const char* Boosters;
+        const char* Healing;
+
+        const char* HeaderAmmoScope;
+        const char* AmmoAll;
+        const char* AmmoHigh;
+        const char* ScopeAll;
+        const char* ScopeHigh;
+
+        const char* HeaderShareRadar;
+        const char* RadarShare;
+        const char* RadarIP;
 
         const char* Weapon;
 
@@ -300,7 +330,11 @@ namespace Translation {
             s.Distance = (const char*)u8"Khoảng cách";
 
             s.Name = (const char*)u8"Tên người chơi";
-
+            s.ESP_Icons = (const char*)u8"Sử dụng Icon";
+            s.KillCount = (const char*)u8"Số mạng";
+            s.TeamID = (const char*)u8"ID Đội";
+            s.Rank = (const char*)u8"Bậc hạng";
+            s.SurvivalLevel = (const char*)u8"Cấp độ";
             s.ESP_Spectated = (const char*)u8"Hiện người xem";
 
             s.ESP_Offscreen = (const char*)u8"Cảnh báo mũi tên";
@@ -316,7 +350,28 @@ namespace Translation {
             s.ColorNear = (const char*)u8"Màu gần";
 
             s.ColorFar = (const char*)u8"Màu xa";
-
+            s.HeaderTactical = (const char*)u8"Dữ liệu Chiến thuật";
+            s.GrenadeLine = (const char*)u8"Quỹ đạo lựu đạn";
+            s.Projectiles = (const char*)u8"Quỹ đạo đạn";
+            s.ThreatWarning = (const char*)u8"Cảnh báo đe dọa";
+            s.HeaderGearFilter = (const char*)u8"Lọc Trang bị";
+            s.HelmetLv1 = (const char*)u8"Mũ 1";
+            s.HelmetLv2 = (const char*)u8"Mũ 2";
+            s.HelmetLv3 = (const char*)u8"Mũ 3";
+            s.ArmorLv1 = (const char*)u8"Giáp 1";
+            s.ArmorLv2 = (const char*)u8"Giáp 2";
+            s.ArmorLv3 = (const char*)u8"Giáp 3";
+            s.HeaderHealFilter = (const char*)u8"Lọc Tiêu hao";
+            s.Boosters = (const char*)u8"Nước & Thuốc";
+            s.Healing = (const char*)u8"Máu & Sơ cứu";
+            s.HeaderAmmoScope = (const char*)u8"Đạn & Ống ngắm";
+            s.AmmoAll = (const char*)u8"Tất cả đạn";
+            s.AmmoHigh = (const char*)u8"Đạn hiếm";
+            s.ScopeAll = (const char*)u8"Tất cả ống ngắm";
+            s.ScopeHigh = (const char*)u8"Ống ngắm cao (4x+)";
+            s.HeaderShareRadar = (const char*)u8"Chia sẻ Radar";
+            s.RadarShare = (const char*)u8"Bật chia sẻ";
+            s.RadarIP = (const char*)u8"Địa chỉ IP";
             s.Weapon = (const char*)u8"Vũ khí";
 
             s.WeaponType = (const char*)u8"Kiểu vẽ";
@@ -531,7 +586,11 @@ namespace Translation {
             s.Distance = skCrypt("Distance");
 
             s.Name = skCrypt("Player Name");
-
+            s.ESP_Icons = skCrypt("Vivid Icons");
+            s.KillCount = skCrypt("Kill Count");
+            s.TeamID = skCrypt("Team ID");
+            s.Rank = skCrypt("Rank Tier");
+            s.SurvivalLevel = skCrypt("Survival Level");
             s.ESP_Spectated = skCrypt("Spectated Count");
 
             s.ESP_Offscreen = skCrypt("Off-screen Indicators");
@@ -547,6 +606,28 @@ namespace Translation {
             s.ColorNear = skCrypt("Color (Near)");
 
             s.ColorFar = skCrypt("Color (Far)");
+            s.HeaderTactical = skCrypt("Tactical Intelligence");
+            s.GrenadeLine = skCrypt("Grenade Prediction");
+            s.Projectiles = skCrypt("Bullet Tracers");
+            s.ThreatWarning = skCrypt("Threat Warnings");
+            s.HeaderGearFilter = skCrypt("Armor/Gear Filter");
+            s.HelmetLv1 = skCrypt("Helmet Level 1");
+            s.HelmetLv2 = skCrypt("Helmet Level 2");
+            s.HelmetLv3 = skCrypt("Helmet Level 3");
+            s.ArmorLv1 = skCrypt("Vest Level 1");
+            s.ArmorLv2 = skCrypt("Vest Level 2");
+            s.ArmorLv3 = skCrypt("Vest Level 3");
+            s.HeaderHealFilter = skCrypt("Medical/Boost Filter");
+            s.Boosters = skCrypt("Boosters/Energy");
+            s.Healing = skCrypt("Healing/First Aid");
+            s.HeaderAmmoScope = skCrypt("Ammo & Scope Filter");
+            s.AmmoAll = skCrypt("All Ammo Types");
+            s.AmmoHigh = skCrypt("High-Caliber Only");
+            s.ScopeAll = skCrypt("All Scopes");
+            s.ScopeHigh = skCrypt("Long Range (4x+)");
+            s.HeaderShareRadar = skCrypt("External Radar Share");
+            s.RadarShare = skCrypt("Enable Sharing");
+            s.RadarIP = skCrypt("Target Device IP");
 
             s.Weapon = skCrypt("Weapon Info");
 

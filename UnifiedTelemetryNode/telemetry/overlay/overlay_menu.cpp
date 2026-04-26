@@ -41,6 +41,8 @@ struct TextureInfo {
     int Height = 0;
 };
 static std::map<std::string, TextureInfo> WeaponImages;
+static std::map<std::string, TextureInfo> VehicleIcons;
+static std::map<std::string, TextureInfo> ItemIcons;
 static TextureInfo PreviewInstructor;
 
 static bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height)
@@ -93,6 +95,70 @@ static bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView**
     return true;
 }
 
+static TextureInfo* GetVehicleIcon(std::string name) {
+    if (VehicleIcons.find(name) != VehicleIcons.end()) return &VehicleIcons[name];
+    ID3D11ShaderResourceView* srv = nullptr;
+    int w, h;
+    std::string cleanName = name;
+    // Map generic boat names to actual file
+    if (cleanName.find(skCrypt("Boat")) != std::string::npos) cleanName = skCrypt("Boat_PG117_C");
+    else if (cleanName.find(skCrypt("Uaz")) != std::string::npos) cleanName = skCrypt("Uaz_A_00_C");
+    else if (cleanName.find(skCrypt("Dacia")) != std::string::npos) cleanName = skCrypt("Dacia_A_00_v2_C");
+    else if (cleanName.find(skCrypt("Buggy")) != std::string::npos) cleanName = skCrypt("Buggy_A_01_C");
+
+    std::string path1 = skCrypt("Assets/Vehicle/") + cleanName + skCrypt(".png");
+    std::string path2 = skCrypt("../Assets/Vehicle/") + cleanName + skCrypt(".png");
+    
+    if (LoadTextureFromFile(path1.c_str(), &srv, &w, &h) || LoadTextureFromFile(path2.c_str(), &srv, &w, &h)) {
+        VehicleIcons[name] = {srv, w, h};
+        return &VehicleIcons[name];
+    }
+    VehicleIcons[name] = {nullptr, 0, 0};
+    return &VehicleIcons[name];
+}
+
+static TextureInfo* GetItemIcon(std::string name) {
+    if (ItemIcons.find(name) != ItemIcons.end()) return &ItemIcons[name];
+    ID3D11ShaderResourceView* srv = nullptr;
+    int w, h;
+    std::string fileName = "";
+    
+    // Mapping Logic based on Assets/All filenames
+    if (name.find(skCrypt("Helmet")) != std::string::npos) {
+        if (name.find(skCrypt("Lv3")) != std::string::npos) fileName = skCrypt("Item_Head_G_01_Lv3_C");
+        else if (name.find(skCrypt("Lv2")) != std::string::npos) fileName = skCrypt("Item_Head_F_01_Lv2_C");
+        else fileName = skCrypt("Item_Head_E_01_Lv1_C");
+    }
+    else if (name.find(skCrypt("Vest")) != std::string::npos || name.find(skCrypt("Armor")) != std::string::npos) {
+         if (name.find(skCrypt("Lv3")) != std::string::npos) fileName = skCrypt("Item_Armor_C_01_Lv3_C");
+         else if (name.find(skCrypt("Lv2")) != std::string::npos) fileName = skCrypt("Item_Armor_D_01_Lv2_C");
+         else fileName = skCrypt("Item_Armor_E_01_Lv1_C");
+    }
+    else if (name.find(skCrypt("First Aid")) != std::string::npos) fileName = skCrypt("Item_Heal_FirstAid_C");
+    else if (name.find(skCrypt("Med Kit")) != std::string::npos) fileName = skCrypt("Item_Heal_MedKit_C");
+    else if (name.find(skCrypt("Drink")) != std::string::npos) fileName = skCrypt("Item_Boost_EnergyDrink_C");
+    else if (name.find(skCrypt("Ammo")) != std::string::npos) {
+        if (name.find(skCrypt("5.56")) != std::string::npos) fileName = skCrypt("Item_Ammo_556mm_C");
+        else if (name.find(skCrypt("7.62")) != std::string::npos) fileName = skCrypt("Item_Ammo_762mm_C");
+    }
+    else if (name.find(skCrypt("Scope")) != std::string::npos) {
+        if (name.find(skCrypt("8x")) != std::string::npos) fileName = skCrypt("Item_Attach_Weapon_Upper_PM2_01_C");
+        else if (name.find(skCrypt("6x")) != std::string::npos) fileName = skCrypt("Item_Attach_Weapon_Upper_Scope6x_C");
+        else if (name.find(skCrypt("4x")) != std::string::npos) fileName = skCrypt("Item_Attach_Weapon_Upper_ACOG_01_C");
+    }
+    
+    if (fileName != "") {
+        std::string path = skCrypt("Assets/All/") + fileName + skCrypt(".png");
+        if (LoadTextureFromFile(path.c_str(), &srv, &w, &h)) {
+            ItemIcons[name] = {srv, w, h};
+            return &ItemIcons[name];
+        }
+    }
+    
+    ItemIcons[name] = {nullptr, 0, 0};
+    return &ItemIcons[name];
+}
+
 static TextureInfo* GetWeaponImage(std::string weaponName) {
     if (WeaponImages.find(weaponName) != WeaponImages.end()) {
         return &WeaponImages[weaponName];
@@ -120,6 +186,16 @@ extern std::vector<PlayerData> G_Players;
 extern std::vector<ItemData> CachedItems;
 
 OverlayMenu g_Menu;
+
+static std::string GetRankTierName(int kills) { // Placeholder logic based on kills/level for telemetry
+    if (kills < 1) return skCrypt("Unranked");
+    if (kills < 5) return skCrypt("Bronze");
+    if (kills < 20) return skCrypt("Silver");
+    if (kills < 50) return skCrypt("Gold");
+    if (kills < 100) return skCrypt("Platinum");
+    if (kills < 250) return skCrypt("Diamond");
+    return skCrypt("Master");
+}
 
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
     if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
@@ -1076,8 +1152,16 @@ void OverlayMenu::RenderFrame() {
                     if (player.IsTeammate) infoColor = telemetryColors::Teammate;
                     if (player.IsGroggy) infoColor = telemetryColors::Groggy;
 
-                    std::string infoTag = player.Name;
+                    std::string infoTag = "";
+                    
+                    if (g_Menu.esp_teamid) infoTag += "[" + std::to_string(player.TeamID) + "] ";
+                    
+                    infoTag += player.Name;
                     if (infoTag.empty() || infoTag == "Player") infoTag = "Unknown";
+                    
+                    if (g_Menu.esp_killcount) infoTag += " | K: " + std::to_string(player.Kills);
+                    if (g_Menu.esp_survival_level) infoTag += " | Lv." + std::to_string(player.SurvivalLevel);
+
                     if (player.IsGroggy) infoTag = "[KNOCKED] " + infoTag;
 
                     // 1. KHOẢNG CÁCH DƯỚI CHÂN
@@ -1133,6 +1217,25 @@ void OverlayMenu::RenderFrame() {
                             draw->AddText(ImVec2(head_s.x - ws.x/2, currentTopY), ApplyAlpha(weaponCol, alphaMult), player.WeaponName.c_str());
                             currentTopY -= 2.0f;
                         }
+                    }
+
+                    // 2.5. RANK TIER
+                    if (g_Menu.esp_rank && player.Distance < g_Menu.name_max_dist) {
+                        std::string rankStr = GetRankTierName(player.Kills);
+                        float textScale = 1.0f;
+                        if (player.Distance > 50.0f) {
+                            textScale = 1.0f - ((player.Distance - 50.0f) / 1000.0f);
+                            if (textScale < 0.65f) textScale = 0.65f;
+                        }
+                        float baseFontSize = 12.0f;
+                        ImVec2 rs = ImGui::GetFont()->CalcTextSizeA(baseFontSize * textScale, FLT_MAX, 0.0f, rankStr.c_str());
+                        currentTopY -= (rs.y + 1.0f);
+                        ImU32 rankCol = IM_COL32(200, 200, 200, 255); // Default grey
+                        if (rankStr == "Platinum") rankCol = IM_COL32(0, 255, 255, 255);
+                        else if (rankStr == "Diamond") rankCol = IM_COL32(180, 100, 255, 255);
+                        else if (rankStr == "Master") rankCol = IM_COL32(255, 200, 0, 255);
+
+                        ImGui::GetForegroundDrawList()->AddText(ImGui::GetFont(), baseFontSize * textScale, ImVec2(head_s.x - rs.x / 2, currentTopY), ApplyAlpha(rankCol, alphaMult), rankStr.c_str());
                     }
 
                     // 3. TÊN & TRẠNG THÁI
@@ -1256,16 +1359,75 @@ void OverlayMenu::RenderFrame() {
                 } else if (item.Name == "PROJECTILE") {
                     should_draw = true; col = IM_COL32(255, 0, 0, 255); // BRIGHT RED FOR DANGER
                 } else { // Generic items
-                    if (g_Menu.esp_items && item.Distance < g_Menu.loot_max_dist) should_draw = true;
+                    if (g_Menu.esp_items && item.Distance < g_Menu.loot_max_dist) {
+                        std::string lowerName = item.Name;
+                        for(auto& c : lowerName) c = (char)tolower(c);
+                        
+                        // 1. Armor & Helmets
+                        if (lowerName.find(skCrypt("helmet")) != std::string::npos || lowerName.find(skCrypt("vest")) != std::string::npos || lowerName.find(skCrypt("armor")) != std::string::npos) {
+                            if (lowerName.find(skCrypt("lv3")) != std::string::npos || lowerName.find(skCrypt("level 3")) != std::string::npos) { if(g_Menu.loot_armor_lv3 || g_Menu.loot_helmet_lv3) should_draw = true; col = IM_COL32(255, 0, 255, 255); }
+                            else if (lowerName.find(skCrypt("lv2")) != std::string::npos || lowerName.find(skCrypt("level 2")) != std::string::npos) { if(g_Menu.loot_armor_lv2 || g_Menu.loot_helmet_lv2) should_draw = true; col = IM_COL32(0, 200, 255, 255); }
+                            else if (g_Menu.loot_armor_lv1 || g_Menu.loot_helmet_lv1) { should_draw = true; }
+                        }
+                        // 2. Meds
+                        else if (lowerName.find(skCrypt("first aid")) != std::string::npos || lowerName.find(skCrypt("med kit")) != std::string::npos || lowerName.find(skCrypt("bandage")) != std::string::npos) {
+                            if (g_Menu.loot_meds_healing) { should_draw = true; col = IM_COL32(100, 255, 100, 255); }
+                        }
+                        else if (lowerName.find(skCrypt("drink")) != std::string::npos || lowerName.find(skCrypt("painkiller")) != std::string::npos || lowerName.find(skCrypt("syringe")) != std::string::npos) {
+                            if (g_Menu.loot_meds_boosts) { should_draw = true; col = IM_COL32(255, 255, 0, 255); }
+                        }
+                        // 3. Ammo
+                        else if (lowerName.find(skCrypt("mm")) != std::string::npos || lowerName.find(skCrypt("gauge")) != std::string::npos || lowerName.find(skCrypt("magnum")) != std::string::npos) {
+                            if (g_Menu.loot_ammo_all) should_draw = true;
+                            else if (g_Menu.loot_ammo_high && (lowerName.find(skCrypt("7.62")) != std::string::npos || lowerName.find(skCrypt("300")) != std::string::npos)) should_draw = true;
+                        }
+                        // 4. Scopes
+                        else if (lowerName.find(skCrypt("scope")) != std::string::npos) {
+                            if (g_Menu.loot_scopes_all) should_draw = true;
+                            else if (g_Menu.loot_scopes_high && (lowerName.find(skCrypt("4x")) != std::string::npos || lowerName.find(skCrypt("6x")) != std::string::npos || lowerName.find(skCrypt("8x")) != std::string::npos)) {
+                                should_draw = true; col = IM_COL32(255, 100, 0, 255);
+                            }
+                        }
+                        // 5. Catch-all for basic ESP
+                        else if (g_Menu.loot_weapon_all || item.IsImportant) should_draw = true;
+                    }
                 }
 
                 if (should_draw) {
                     Vector2 itemScreen;
                     if (telemetryContext::WorldToScreen(item.Position, itemScreen)) {
-                        char itemText[128];
-                        sprintf_s(itemText, sizeof(itemText), "%s [%dm]", item.Name.c_str(), (int)item.Distance);
-                        ImVec2 tsize = ImGui::CalcTextSize(itemText);
-                        draw->AddText(ImVec2(itemScreen.x - tsize.x/2, itemScreen.y), col, itemText);
+                        TextureInfo* icon = nullptr;
+                        if (g_Menu.esp_icons) {
+                           if (item.Name == skCrypt("Vehicle")) icon = GetVehicleIcon(skCrypt("Vehicle"));
+                           else icon = GetItemIcon(item.Name);
+                        }
+
+                        if (icon && icon->SRV) {
+                            float iconScale = 0.4f; // Base scale for item icons
+                            if (item.Name == skCrypt("Vehicle")) iconScale = 0.6f;
+                            
+                            // Distance adaptive scaling
+                            if (item.Distance > 100.0f) iconScale *= 0.7f;
+                            
+                            float w = (float)icon->Width * iconScale;
+                            float h = (float)icon->Height * iconScale;
+                            
+                            // Draw icon centered
+                            draw->AddImage(icon->SRV, 
+                                ImVec2(itemScreen.x - w/2, itemScreen.y - h), 
+                                ImVec2(itemScreen.x + w/2, itemScreen.y), 
+                                ImVec2(0,0), ImVec2(1,1), IM_COL32(255,255,255,255));
+                            
+                            // Distance text below icon
+                            char distBuf[32]; sprintf_s(distBuf, skCrypt("[%dm]"), (int)item.Distance);
+                            ImVec2 dsz = ImGui::CalcTextSize(distBuf);
+                            draw->AddText(ImVec2(itemScreen.x - dsz.x/2, itemScreen.y + 2), col, distBuf);
+                        } else {
+                            char itemText[128];
+                            sprintf_s(itemText, sizeof(itemText), skCrypt("%s [%dm]"), item.Name.c_str(), (int)item.Distance);
+                            ImVec2 tsize = ImGui::CalcTextSize(itemText);
+                            draw->AddText(ImVec2(itemScreen.x - tsize.x/2, itemScreen.y), col, itemText);
+                        }
                     }
                 }
             }
@@ -1425,6 +1587,7 @@ void OverlayMenu::RenderFrame() {
                 // Col 1: Lõi Hiển Thị
                 BeginGlassCard(skCrypt("##ESPCol1"), Lang.HeaderVisualCore, ImVec2(totalWidth / 4.0f - 15, 0));
                 ImGui::Checkbox(Lang.MasterToggle, &g_Menu.esp_toggle);
+                ImGui::Checkbox(Lang.ESP_Icons, &g_Menu.esp_icons);
                 ImGui::Checkbox(Lang.ESP_Offscreen, &g_Menu.esp_offscreen);
                 ImGui::Checkbox(Lang.VisCheck, &g_Menu.aim_visible_only);
                 ImGui::Checkbox(Lang.ESP_Spectated, &g_Menu.esp_spectated);
@@ -1438,6 +1601,10 @@ void OverlayMenu::RenderFrame() {
                 ImGui::Checkbox(Lang.HealthBar, &g_Menu.esp_health);
                 ImGui::Checkbox(Lang.Distance, &g_Menu.esp_distance);
                 ImGui::Checkbox(Lang.Name, &g_Menu.esp_name);
+                ImGui::Checkbox(Lang.TeamID, &g_Menu.esp_teamid);
+                ImGui::Checkbox(Lang.KillCount, &g_Menu.esp_killcount);
+                ImGui::Checkbox(Lang.Rank, &g_Menu.esp_rank);
+                ImGui::Checkbox(Lang.SurvivalLevel, &g_Menu.esp_survival_level);
                 ImGui::Checkbox(Lang.HeadCircle, &g_Menu.esp_head_circle);
                 ImGui::Checkbox(skCrypt("Snaplines"), &g_Menu.esp_snapline);
                 ImGui::EndChild();
@@ -1584,12 +1751,27 @@ void OverlayMenu::RenderFrame() {
                         }
                     }
 
+                    // 2.5 Rank Preview
+                    if (g_Menu.esp_rank) {
+                        const char* szRank = skCrypt("Diamond");
+                        ImU32 rsCol = IM_COL32(180, 100, 255, 255);
+                        ImVec2 rsSize = ImGui::CalcTextSize(szRank);
+                        draw->AddText(ImVec2(cursorPos.x + (previewW - rsSize.x) / 2.0f, cursorPos.y - rsSize.y - 22), rsCol, szRank);
+                    }
+
                     // 4. Name & Distance Demo
                     if (g_Menu.esp_name) {
                         float* targetCol = g_Menu.name_color;
                         ImU32 uNameCol = ImColor(ImVec4(targetCol[0], targetCol[1], targetCol[2], targetCol[3]));
-                        ImVec2 textSize = ImGui::CalcTextSize(skCrypt("GZ-Cheat"));
-                        draw->AddText(ImVec2(cursorPos.x + (previewW - textSize.x) / 2.0f, cursorPos.y - textSize.y - 5), uNameCol, skCrypt("GZ-Cheat"));
+                        
+                        std::string pName = "";
+                        if (g_Menu.esp_teamid) pName += "[4] ";
+                        pName += skCrypt("GZ-Cheat");
+                        if (g_Menu.esp_killcount) pName += " | K: 12";
+                        if (g_Menu.esp_survival_level) pName += " | Lv.50";
+
+                        ImVec2 textSize = ImGui::CalcTextSize(pName.c_str());
+                        draw->AddText(ImVec2(cursorPos.x + (previewW - textSize.x) / 2.0f, cursorPos.y - textSize.y - 5), uNameCol, pName.c_str());
                     }
                     
                     if (g_Menu.esp_distance) {
@@ -1719,14 +1901,11 @@ void OverlayMenu::RenderFrame() {
                 }
                 
                 ImGui::Spacing();
-                ImGui::TextColored(ImVec4(0.8f, 0.2f, 1.0f, 1.0f), Lang.AimKey);
-                const char* keys[] = { "MOUSE LEFT", "MOUSE RIGHT", "L-ALT", "L-SHIFT", "X", "V" };
-                int keyVals[] = { VK_LBUTTON, VK_RBUTTON, VK_LMENU, VK_LSHIFT, 'X', 'V' };
-                int currentKeyIdx = 0;
-                for(int i=0; i<6; i++) if(pCfg->key == keyVals[i]) currentKeyIdx = i;
-                if (ImGui::Combo(skCrypt("##AimKeyCombo"), &currentKeyIdx, keys, IM_ARRAYSIZE(keys))) {
-                    pCfg->key = keyVals[currentKeyIdx];
-                }
+                ImGui::Separator();
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), Lang.HeaderTactical);
+                ImGui::Checkbox(Lang.GrenadeLine, &g_Menu.esp_grenade_prediction);
+                ImGui::Checkbox(Lang.Projectiles, &g_Menu.esp_projectile_tracer);
+                ImGui::Checkbox(Lang.ThreatWarning, &g_Menu.esp_threat_warning);
                 
                 ImGui::EndChild();
                 
@@ -1767,33 +1946,55 @@ void OverlayMenu::RenderFrame() {
             // --- VẬT PHẨM (LOOT) TAB ---
             else if (active_tab == 3) {
                 float totalWidth = windowSize.x - 60;
-                ImGui::Columns(3, skCrypt("ItemColumns"), false);
-                ImGui::SetColumnWidth(0, totalWidth / 3.0f);
-                ImGui::SetColumnWidth(1, totalWidth / 3.0f);
-                ImGui::SetColumnWidth(2, totalWidth / 3.0f);
+                ImGui::Columns(4, skCrypt("ItemColumns"), false);
+                ImGui::SetColumnWidth(0, totalWidth / 4.0f);
+                ImGui::SetColumnWidth(1, totalWidth / 4.0f);
+                ImGui::SetColumnWidth(2, totalWidth / 4.0f);
+                ImGui::SetColumnWidth(3, totalWidth / 4.0f);
                 
-                // Col 1: Hệ Thống Loot
-                BeginGlassCard(skCrypt("##ItemCol1"), Lang.HeaderLootEngine, ImVec2(totalWidth / 3.0f - 20, 0));
+                // Col 1: Hệ Thống & Gear
+                BeginGlassCard(skCrypt("##ItemCol1"), Lang.HeaderLootEngine, ImVec2(totalWidth / 4.0f - 15, 0));
                 ImGui::Checkbox(Lang.TabLoot, &g_Menu.esp_items);
                 ImGui::SliderInt(Lang.RenderDist, &g_Menu.loot_max_dist, 10, 300, skCrypt("%d m"));
+                ImGui::Separator();
+                ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), Lang.HeaderGearFilter);
+                ImGui::Checkbox(Lang.HelmetLv1, &g_Menu.loot_helmet_lv1);
+                ImGui::Checkbox(Lang.HelmetLv2, &g_Menu.loot_helmet_lv2);
+                ImGui::Checkbox(Lang.HelmetLv3, &g_Menu.loot_helmet_lv3);
+                ImGui::Checkbox(Lang.ArmorLv1, &g_Menu.loot_armor_lv1);
+                ImGui::Checkbox(Lang.ArmorLv2, &g_Menu.loot_armor_lv2);
+                ImGui::Checkbox(Lang.ArmorLv3, &g_Menu.loot_armor_lv3);
                 ImGui::EndChild();
                 
                 ImGui::NextColumn();
-                // Col 2: Bộ Lọc Vật Phẩm
-                BeginGlassCard(skCrypt("##ItemCol2"), Lang.HeaderPickupFilter, ImVec2(totalWidth / 3.0f - 20, 0));
-                ImGui::Text(skCrypt("AUTO-FILTER ACTIVE"));
-                ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), skCrypt("Priority Tiers:"));
-                ImGui::BulletText(skCrypt("Medical Items"));
-                ImGui::BulletText(skCrypt("Muzzle Attachments"));
-                ImGui::BulletText(skCrypt("Extended Magazines"));
-                ImGui::EndChild();
-                
-                ImGui::NextColumn();
-                // Col 3: Đối Tượng Thế Giới
-                BeginGlassCard(skCrypt("##ItemCol3"), Lang.HeaderWorldEntities, ImVec2(totalWidth / 3.0f - 20, 0));
+                // Col 2: Medicines & Loot
+                BeginGlassCard(skCrypt("##ItemCol2"), Lang.HeaderHealFilter, ImVec2(totalWidth / 4.0f - 15, 0));
+                ImGui::Checkbox(Lang.Boosters, &g_Menu.loot_meds_boosts);
+                ImGui::Checkbox(Lang.Healing, &g_Menu.loot_meds_healing);
+                ImGui::Separator();
                 ImGui::Checkbox(skCrypt("Show Vehicles"), &g_Menu.esp_vehicles);
                 ImGui::Checkbox(skCrypt("Show Airdrops"), &g_Menu.esp_airdrops);
                 ImGui::Checkbox(skCrypt("Show Deathboxes"), &g_Menu.esp_deadboxes);
+                ImGui::EndChild();
+                
+                ImGui::NextColumn();
+                // Col 3: Ammo & Scopes
+                BeginGlassCard(skCrypt("##ItemCol3"), Lang.HeaderAmmoScope, ImVec2(totalWidth / 4.0f - 15, 0));
+                ImGui::Checkbox(Lang.AmmoAll, &g_Menu.loot_ammo_all);
+                ImGui::Checkbox(Lang.AmmoHigh, &g_Menu.loot_ammo_high);
+                ImGui::Separator();
+                ImGui::Checkbox(Lang.ScopeAll, &g_Menu.loot_scopes_all);
+                ImGui::Checkbox(Lang.ScopeHigh, &g_Menu.loot_scopes_high);
+                ImGui::EndChild();
+
+                ImGui::NextColumn();
+                // Col 4: Weapons & Attach
+                BeginGlassCard(skCrypt("##ItemCol4"), skCrypt("WEAPONRY"), ImVec2(totalWidth / 4.0f - 15, 0));
+                ImGui::Checkbox(skCrypt("Special Weapons"), &g_Menu.loot_weapon_special);
+                ImGui::Checkbox(skCrypt("All Weapons"), &g_Menu.loot_weapon_all);
+                ImGui::Separator();
+                ImGui::Checkbox(skCrypt("Muzzle Access"), &g_Menu.loot_attach_muzzle);
+                ImGui::Checkbox(skCrypt("Extended Mags"), &g_Menu.loot_attach_mag);
                 ImGui::EndChild();
                 
                 ImGui::Columns(1);
@@ -1884,10 +2085,12 @@ void OverlayMenu::RenderFrame() {
                 ImGui::EndChild();
                 
                 ImGui::NextColumn();
-                // Col 3: Trạng Thái Radar
-                BeginGlassCard(skCrypt("##MapCol3"), skCrypt("RADAR TELEMETRY"), ImVec2(totalWidth / 3.0f - 20, 0));
-                ImGui::Text(skCrypt("World Map: %s"), G_Radar.IsWorldMapVisible ? (const char*)u8"Sẵn sàng" : (const char*)u8"Đang chờ");
-                ImGui::Text(skCrypt("Mini Map: %s"), G_Radar.IsMiniMapVisible ? (const char*)u8"Sẵn sàng" : (const char*)u8"Đang chờ");
+                // Col 3: Đồng bộ & Chia sẻ
+                BeginGlassCard(skCrypt("##MapCol3"), Lang.HeaderShareRadar, ImVec2(totalWidth / 3.0f - 20, 0));
+                ImGui::Checkbox(Lang.RadarShare, &g_Menu.share_radar);
+                ImGui::SetNextItemWidth(-1);
+                ImGui::InputText(skCrypt("##RadarIP"), g_Menu.share_radar_ip, sizeof(g_Menu.share_radar_ip));
+                ImGui::TextDisabled(skCrypt("Live Sharing: %s"), g_Menu.share_radar ? skCrypt("ONLINE") : skCrypt("OFFLINE"));
                 ImGui::EndChild();
                 
                 ImGui::Columns(1);
@@ -1993,6 +2196,7 @@ void OverlayMenu::SaveConfig(const char* path) {
     try {
         nlohmann::json j;
         j["esp_toggle"] = esp_toggle;
+        j["esp_icons"] = esp_icons;
         j["esp_show_enemies"] = esp_show_enemies;
         j["esp_show_teammates"] = esp_show_teammates;
         j["esp_offscreen"] = esp_offscreen;
@@ -2029,6 +2233,29 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["esp_deadboxes"] = esp_deadboxes;
         j["loot_max_dist"] = loot_max_dist;
         j["vehicle_max_dist"] = vehicle_max_dist;
+
+        j["share_radar"] = share_radar;
+        j["share_radar_ip"] = std::string(share_radar_ip);
+        j["esp_grenade_prediction"] = esp_grenade_prediction;
+        j["esp_projectile_tracer"] = esp_projectile_tracer;
+        j["esp_threat_warning"] = esp_threat_warning;
+
+        j["loot_armor_lv1"] = loot_armor_lv1;
+        j["loot_armor_lv2"] = loot_armor_lv2;
+        j["loot_armor_lv3"] = loot_armor_lv3;
+        j["loot_helmet_lv1"] = loot_helmet_lv1;
+        j["loot_helmet_lv2"] = loot_helmet_lv2;
+        j["loot_helmet_lv3"] = loot_helmet_lv3;
+        j["loot_meds_boosts"] = loot_meds_boosts;
+        j["loot_meds_healing"] = loot_meds_healing;
+        j["loot_ammo_all"] = loot_ammo_all;
+        j["loot_ammo_high"] = loot_ammo_high;
+        j["loot_scopes_all"] = loot_scopes_all;
+        j["loot_scopes_high"] = loot_scopes_high;
+        j["loot_attach_mag"] = loot_attach_mag;
+        j["loot_attach_muzzle"] = loot_attach_muzzle;
+        j["loot_weapon_special"] = loot_weapon_special;
+        j["loot_weapon_all"] = loot_weapon_all;
 
         j["esp_distance_lod"] = esp_distance_lod;
         j["skeleton_max_dist"] = skeleton_max_dist;
@@ -2083,6 +2310,7 @@ void OverlayMenu::LoadConfig(const char* path) {
             file.close();
 
             if (j.contains("esp_toggle")) esp_toggle = j["esp_toggle"];
+            if (j.contains("esp_icons")) esp_icons = j["esp_icons"];
             if (j.contains("esp_show_enemies")) esp_show_enemies = j["esp_show_enemies"];
             if (j.contains("esp_show_teammates")) {
                 esp_show_teammates = j["esp_show_teammates"];
@@ -2161,6 +2389,29 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("esp_deadboxes")) esp_deadboxes = j["esp_deadboxes"];
             if (j.contains("loot_max_dist")) loot_max_dist = j["loot_max_dist"];
             if (j.contains("vehicle_max_dist")) vehicle_max_dist = j["vehicle_max_dist"];
+
+            if (j.contains("share_radar")) share_radar = j["share_radar"];
+            if (j.contains("share_radar_ip")) strcpy_s(share_radar_ip, j["share_radar_ip"].get<std::string>().c_str());
+            if (j.contains("esp_grenade_prediction")) esp_grenade_prediction = j["esp_grenade_prediction"];
+            if (j.contains("esp_projectile_tracer")) esp_projectile_tracer = j["esp_projectile_tracer"];
+            if (j.contains("esp_threat_warning")) esp_threat_warning = j["esp_threat_warning"];
+
+            if (j.contains("loot_armor_lv1")) loot_armor_lv1 = j["loot_armor_lv1"];
+            if (j.contains("loot_armor_lv2")) loot_armor_lv2 = j["loot_armor_lv2"];
+            if (j.contains("loot_armor_lv3")) loot_armor_lv1 = j["loot_armor_lv3"];
+            if (j.contains("loot_helmet_lv1")) loot_helmet_lv1 = j["loot_helmet_lv1"];
+            if (j.contains("loot_helmet_lv2")) loot_helmet_lv2 = j["loot_helmet_lv2"];
+            if (j.contains("loot_helmet_lv3")) loot_helmet_lv3 = j["loot_helmet_lv3"];
+            if (j.contains("loot_meds_boosts")) loot_meds_boosts = j["loot_meds_boosts"];
+            if (j.contains("loot_meds_healing")) loot_meds_healing = j["loot_meds_healing"];
+            if (j.contains("loot_ammo_all")) loot_ammo_all = j["loot_ammo_all"];
+            if (j.contains("loot_ammo_high")) loot_ammo_high = j["loot_ammo_high"];
+            if (j.contains("loot_scopes_all")) loot_scopes_all = j["loot_scopes_all"];
+            if (j.contains("loot_scopes_high")) loot_scopes_high = j["loot_scopes_high"];
+            if (j.contains("loot_attach_mag")) loot_attach_mag = j["loot_attach_mag"];
+            if (j.contains("loot_attach_muzzle")) loot_attach_muzzle = j["loot_attach_muzzle"];
+            if (j.contains("loot_weapon_special")) loot_weapon_special = j["loot_weapon_special"];
+            if (j.contains("loot_weapon_all")) loot_weapon_all = j["loot_weapon_all"];
 
             if (j.contains("esp_distance_lod")) esp_distance_lod = j["esp_distance_lod"];
             if (j.contains("skeleton_max_dist")) skeleton_max_dist = j["skeleton_max_dist"];

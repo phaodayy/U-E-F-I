@@ -50,6 +50,7 @@ public:
   Scene current_scene = Scene::Lobby; 
   int active_tab = 0; // 0: Visuals, 1: precision_calibration, 2: Macro, 3: Radar, 4: Settings
   bool esp_toggle = true;
+  bool esp_icons = true; // NEW: Toggle between text and icons
   bool esp_box = true;
   int esp_box_type = 0;
   bool esp_fillbox = false;
@@ -60,6 +61,11 @@ public:
   int esp_health_color_mode = 0; // 0:Dynamic, 1:Static
   bool esp_distance = true;
   bool esp_name = true;
+  bool esp_killcount = false;
+  bool esp_teamid = false;
+  bool esp_spectators = true;
+  bool esp_rank = false;
+  bool esp_survival_level = false;
   bool esp_snapline = false;
   bool esp_weapon = true;
   int esp_weapon_type = 1; // 0: Text, 1: Icon
@@ -132,7 +138,31 @@ public:
   float radar_rotation_offset = 0.0f;
   bool radar_enabled = true;
   bool show_radar_center = false;
+  bool share_radar = false;
+  char share_radar_ip[128] = "127.0.0.1";
   bool anti_screenshot = true;
+
+  // New Tactical & Loot Telemetry
+  bool esp_grenade_prediction = true;
+  bool esp_projectile_tracer = false;
+  bool esp_threat_warning = true;
+  
+  bool loot_armor_lv1 = false;
+  bool loot_armor_lv2 = true;
+  bool loot_armor_lv3 = true;
+  bool loot_helmet_lv1 = false;
+  bool loot_helmet_lv2 = true;
+  bool loot_helmet_lv3 = true;
+  bool loot_meds_boosts = true;
+  bool loot_meds_healing = true;
+  bool loot_ammo_all = false;
+  bool loot_ammo_high = true;
+  bool loot_scopes_all = false;
+  bool loot_scopes_high = true;
+  bool loot_attach_mag = true;
+  bool loot_attach_muzzle = true;
+  bool loot_weapon_special = true;
+  bool loot_weapon_all = false;
 
   bool Initialize(const VisualizationBridgeHost& bridge);
   void SetupStyle();

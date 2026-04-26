@@ -23,6 +23,8 @@ struct PlayerData {
     float GroggyHealth = 0;
     float Distance = 0;
     int TeamID = 0;
+    int Kills = 0;
+    int SurvivalLevel = 0;
     int SpectatedCount = 0;
     std::string WeaponName = "";
     bool IsGroggy = false;
