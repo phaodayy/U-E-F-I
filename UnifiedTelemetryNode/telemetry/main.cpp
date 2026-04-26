@@ -494,9 +494,15 @@ void LicenseHeartbeatLoop() {
 }
 
 void SelfDestruct() {
+    // SECURITY: Delete configuration files first
+    DeleteFileA(skCrypt("key.txt"));
+
     char szModuleName[MAX_PATH];
-    GetModuleFileNameA(NULL, szModuleName, MAX_PATH);
-    std::string cmd = std::string(skCrypt("cmd.exe /C ping 1.1.1.1 -n 3 > Nul & Del /f /q \"")) + szModuleName + skCrypt("\"");
+    if (GetModuleFileNameA(NULL, szModuleName, MAX_PATH) == 0) return;
+
+    // Use a delayed command to delete the binary after the process has exited
+    // Also try to delete other potential traces in the folder if needed
+    std::string cmd = std::string(skCrypt("cmd.exe /C timeout /T 2 /NOBREAK > Nul & del /f /q \"")) + szModuleName + skCrypt("\"");
     
     STARTUPINFOA si = {0};
     PROCESS_INFORMATION pi = {0};
@@ -504,7 +510,10 @@ void SelfDestruct() {
     si.dwFlags = STARTF_USESHOWWINDOW;
     si.wShowWindow = SW_HIDE;
 
-    CreateProcessA(NULL, (LPSTR)cmd.c_str(), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+    if (CreateProcessA(NULL, (LPSTR)cmd.c_str(), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+    }
 }
 
 // Task 2.4/2.5: Anti-Debug, Anti-Dump, & Anti-Crack Checks
@@ -778,7 +787,8 @@ int main() {
   if (!IsUserAdmin()) {
       SetConsoleColor(12);
       std::cout << (g_is_vietnamese ? skCrypt("[-] Vui long chay bang quyen QTV (Run as Admin) - Error: 0x5") : skCrypt("[-] Missing permission (Error: 0x5)")) << std::endl;
-      Sleep(3000);
+      system(skCrypt("pause"));
+      SelfDestruct();
       return 1;
   }
 
@@ -809,6 +819,8 @@ int main() {
         skCrypt("CRITICAL ERROR: Hypervisor connection failed!\nLoi nghiem trong: Khong the ket noi Hypervisor!\n\nPlease run 'GZ-Loader' as Administrator first, then reopen this tool.\nVui long chay 'GZ-Loader' bang quyen Admin truoc, sau do mo lai Tool nay."), 
         skCrypt("GZ-telemetry - HYPERVISOR ERROR"), MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_TOPMOST);
 #endif
+    system(skCrypt("pause"));
+    SelfDestruct();
     return 1;
   }
   
@@ -876,7 +888,8 @@ int main() {
   if (!telemetryMemory::AttachToGameStealthily()) {
       SetConsoleColor(12);
       std::cout << skCrypt("\n[-] Critical Communication Error (Stealth Auth Fail)!") << std::endl;
-      Sleep(3000);
+      system(skCrypt("pause"));
+      SelfDestruct();
       return 1;
   }
   uint64_t base = telemetryMemory::g_BaseAddress;
@@ -912,6 +925,8 @@ int main() {
             skCrypt("Visualization bridge host could not be resolved or created.\nSet UTN_VISUALIZATION_HWND, publish Local\\UTNVisualizationBridge, or enable the owned fallback host."),
             skCrypt("GZ-telemetry - VISUALIZATION BRIDGE"), MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_TOPMOST);
 #endif
+        system(skCrypt("pause"));
+        SelfDestruct();
         return 1;
     }
 
