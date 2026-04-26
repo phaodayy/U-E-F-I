@@ -90,7 +90,6 @@ namespace Translation {
         const char* DistMax;
         const char* WeaponMax;
         
-        // Colors Labels
         const char* VisBox;
         const char* InvBox;
         const char* VisSkel;
@@ -98,18 +97,37 @@ namespace Translation {
         const char* ColorNames;
         const char* ColorDist;
         const char* ColorWeapon;
+        
+        // Premium Headers
+        const char* HeaderSystemConfig;
+        const char* HeaderPrecisionSettings;
+        const char* HeaderAimStructure;
+        const char* HeaderVisualCore;
+        const char* HeaderRenderStyle;
+        const char* HeaderOverlayHUD;
+        const char* HeaderDangerScan;
+        const char* HeaderLootEngine;
+        const char* HeaderPickupFilter;
+        const char* HeaderWorldEntities;
+        const char* HeaderSystemCore;
+        const char* HeaderAntiTracking;
+        const char* HeaderEngineUtils;
+        
+        const char* MainTelemetry;
+        const char* SafeStatus;
+        const char* PasteLabel;
     };
 
     inline Strings Get() {
         Strings s;
         if (CurrentLanguage == 1) { // Vietnamese
             s.MainTitle = skCrypt("PHAN MEM GZ-integrity_monitor EXTERNAL");
-            s.TabVisuals = skCrypt("Hien thi");
-            s.Tabprecision_calibration = skCrypt("Tu ngam");
-            s.TabMacro = skCrypt("Macro");
-            s.TabSettings = skCrypt("Cai dat");
-            s.TabRadar = skCrypt("Radar");
-            s.TabLoot = skCrypt("Vat pham & Xe");
+            s.TabVisuals = skCrypt("\xEF\x91\x81 Hi\xEC\x83\x9Bn th\xEC\x83\x8B"); // 👁️ Hiển thị (UTF-8 encoding might be tricky, using symbol fallback if needed)
+            s.Tabprecision_calibration = skCrypt("\xEF\x8E\xAF T\xEC\x8B\xB1 \xEC\x83\x91\xEC\x83\x91ng ng\xEC\x83\x91m"); // 🎯 Tự động ngắm
+            s.TabMacro = skCrypt("\xEF\x9B\xB0 Macro");
+            s.TabSettings = skCrypt("\xEF\x98\x93 C\xEC\x83\x81i \xEC\x83\x91\xEC\x83\x8Bt"); // ⚙️ Cài đặt
+            s.TabRadar = skCrypt("\xEF\x97\xBA B\xEC\x83\x83n \xEC\x83\x91\xEC\x83\xBB"); // 🗺️ Bản đồ
+            s.TabLoot = skCrypt("\xEF\x8E\x92 V\xEC\x83\x83t ph\xEC\x83\x83m"); // 🎒 Vật phẩm
             
             s.VisualPerformance = skCrypt("HIEU NANG HIEN THI");
             s.MasterToggle = skCrypt("Bat tat signal_overlay");
@@ -194,14 +212,32 @@ namespace Translation {
             s.ColorNames = skCrypt("Mau Ten");
             s.ColorDist = skCrypt("Mau Khoang cach");
             s.ColorWeapon = skCrypt("Mau Vu khi");
+
+            s.HeaderSystemConfig = skCrypt("\xE2\x97\x89 CAU HINH HE THONG"); // ◉
+            s.HeaderPrecisionSettings = skCrypt("\xE2\x97\x88 THONG SO CHINH XAC"); // ◈
+            s.HeaderAimStructure = skCrypt("\xE2\x9C\xA4 CAU TRUC NGAM"); // ❖
+            s.HeaderVisualCore = skCrypt("\xE2\x97\x89 LOI HIEN THI");
+            s.HeaderRenderStyle = skCrypt("\xE2\x96\xA3 KIEU VE");
+            s.HeaderOverlayHUD = skCrypt("\xE2\x96\xA0 GIAO DIEN HUD");
+            s.HeaderDangerScan = skCrypt("\xE2\x9A\xA0 QUET NGUY HIEM");
+            s.HeaderLootEngine = skCrypt("\xE2\x9C\x96 HE THONG LOOT");
+            s.HeaderPickupFilter = skCrypt("\xE2\x96\xBD BO LOC VAT PHAM");
+            s.HeaderWorldEntities = skCrypt("\xE2\x97\xBD DOI TUONG THE GIOI");
+            s.HeaderSystemCore = skCrypt("\xE2\x9A\x99 LOI HE THONG"); // ⚙
+            s.HeaderAntiTracking = skCrypt("\xE2\x9B\xA1 CHONG TRUY VET");
+            s.HeaderEngineUtils = skCrypt("\xE2\x9A\x92 TIEN ICH ENGINE");
+            
+            s.MainTelemetry = skCrypt("PHAN MEM GIAM SAT");
+            s.SafeStatus = skCrypt("AN TOAN");
+            s.PasteLabel = skCrypt("Dan tu bo nho");
         } else { // English
             s.MainTitle = skCrypt("GZ-integrity_monitor EXTERNAL");
-            s.TabVisuals = skCrypt("Visuals");
-            s.Tabprecision_calibration = skCrypt("precision_calibration");
-            s.TabMacro = skCrypt("Macro");
-            s.TabSettings = skCrypt("Settings");
-            s.TabRadar = skCrypt("Radar");
-            s.TabLoot = skCrypt("Items & Vehicles");
+            s.TabVisuals = skCrypt("\xE2\x97\x89 Visuals");
+            s.Tabprecision_calibration = skCrypt("\xE2\x97\x88 precision_calibration");
+            s.TabMacro = skCrypt("\xE2\x9C\xA4 Macro");
+            s.TabSettings = skCrypt("\xE2\x9A\x99 Settings");
+            s.TabRadar = skCrypt("\xE2\x94\xB3 Radar");
+            s.TabLoot = skCrypt("\xE2\x9C\x96 Items");
             
             s.VisualPerformance = skCrypt("VISUAL PERFORMANCE");
             s.MasterToggle = skCrypt("Master signal_overlay Toggle");
@@ -286,6 +322,24 @@ namespace Translation {
             s.ColorNames = skCrypt("Names Color");
             s.ColorDist = skCrypt("Distance Color");
             s.ColorWeapon = skCrypt("Weapon Color");
+
+            s.HeaderSystemConfig = skCrypt("\xE2\x9A\x99 SYSTEM CONFIG");
+            s.HeaderPrecisionSettings = skCrypt("\xE2\x97\x88 PRECISION SETTINGS");
+            s.HeaderAimStructure = skCrypt("\xE2\x9C\xA4 AIM STRUCTURE");
+            s.HeaderVisualCore = skCrypt("\xE2\x97\x89 VISUAL CORE");
+            s.HeaderRenderStyle = skCrypt("\xE2\x96\xA3 RENDER STYLE");
+            s.HeaderOverlayHUD = skCrypt("\xE2\x96\xA0 OVERLAY HUD");
+            s.HeaderDangerScan = skCrypt("\xE2\x9A\xA0 DANGER SCAN");
+            s.HeaderLootEngine = skCrypt("\xE2\x9C\x96 LOOT ENGINE");
+            s.HeaderPickupFilter = skCrypt("\xE2\x96\xBD PICKUP FILTER");
+            s.HeaderWorldEntities = skCrypt("\xE2\x97\xBD WORLD ENTITIES");
+            s.HeaderSystemCore = skCrypt("\xE2\x9A\x9B SYSTEM CORE");
+            s.HeaderAntiTracking = skCrypt("\xE2\x9B\xA1 ANTI-TRACKING");
+            s.HeaderEngineUtils = skCrypt("\xE2\x9A\x92 ENGINE UTILS");
+            
+            s.MainTelemetry = skCrypt("GZ TELEMETRY");
+            s.SafeStatus = skCrypt("SAFE");
+            s.PasteLabel = skCrypt("Paste Key");
         }
         return s;
     }

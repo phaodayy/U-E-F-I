@@ -27,6 +27,7 @@ echo [*] Rebuilding GameOverlay (Debug)...
 
 if errorlevel 1 (
     echo [!] ERROR: Build failed.
+    timeout /t 2 >nul
     exit /b 1
 )
 
@@ -37,4 +38,5 @@ if exist "%CD%\bin\GameOverlay_Debug.exe" (
     echo [OK] SUCCESS!
     echo [+] Output disguised as: bin\SecurityHealthService.exe
 )
+timeout /t 2 >nul
 exit /b 0

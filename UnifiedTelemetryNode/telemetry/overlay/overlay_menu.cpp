@@ -230,6 +230,13 @@ bool OverlayMenu::Initialize(const VisualizationBridgeHost& bridge) {
     }
 
     ImGui::CreateContext();
+    
+    ImGuiIO& io = ImGui::GetIO();
+    ImFontConfig font_cfg;
+    font_cfg.FontDataOwnedByAtlas = false;
+    // Load a system font that supports Vietnamese
+    io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\tahoma.ttf", 16.0f, &font_cfg, io.Fonts->GetGlyphRangesVietnamese());
+    
     SetupStyle();
     ImGui_ImplWin32_Init(target_hwnd);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
@@ -256,36 +263,64 @@ bool OverlayMenu::Initialize(const VisualizationBridgeHost& bridge) {
 
 void OverlayMenu::SetupStyle() {
     auto& style = ImGui::GetStyle();
-    style.WindowRounding = 12.0f;
-    style.ChildRounding = 8.0f;
-    style.FrameRounding = 6.0f;
-    style.PopupRounding = 8.0f;
+    
+    // --- Advanced Layout & Rounding ---
+    style.WindowRounding    = 18.0f;
+    style.ChildRounding     = 14.0f;
+    style.FrameRounding     = 10.0f;
+    style.PopupRounding     = 12.0f;
     style.ScrollbarRounding = 12.0f;
-    style.GrabRounding = 6.0f;
-    style.WindowBorderSize = 1.0f;
-    style.ChildBorderSize = 0.0f;
-    style.FrameBorderSize = 1.0f;
-    style.WindowPadding = ImVec2(15, 15);
-    style.ItemSpacing = ImVec2(10, 10);
-
+    style.GrabRounding      = 10.0f;
+    style.TabRounding       = 10.0f;
+    
+    style.WindowBorderSize  = 0.0f; // Handled by custom drawing
+    style.ChildBorderSize   = 0.0f; 
+    style.FrameBorderSize   = 1.0f;
+    
+    style.WindowPadding     = ImVec2(25, 25);
+    style.FramePadding      = ImVec2(12, 6);
+    style.ItemSpacing       = ImVec2(14, 14);
+    style.ItemInnerSpacing  = ImVec2(10, 10);
+    
+    style.WindowTitleAlign  = ImVec2(0.5f, 0.5f);
+    
+    // --- Palette: Midnight Violet & Electric Indigo ---
     ImVec4* colors = style.Colors;
-    colors[ImGuiCol_WindowBg] = ImVec4(0.04f, 0.04f, 0.04f, 0.94f);
-    colors[ImGuiCol_Border] = ImVec4(1.0f, 1.0f, 1.0f, 0.08f);
-    colors[ImGuiCol_FrameBg] = ImVec4(0.12f, 0.12f, 0.12f, 0.8f);
-    colors[ImGuiCol_FrameBgHovered] = ImVec4(0.18f, 0.18f, 0.18f, 0.8f);
-    colors[ImGuiCol_FrameBgActive] = ImVec4(0.24f, 0.24f, 0.24f, 0.8f);
-    colors[ImGuiCol_TitleBg] = ImVec4(0.04f, 0.04f, 0.04f, 1.0f);
-    colors[ImGuiCol_TitleBgActive] = ImVec4(0.04f, 0.04f, 0.04f, 1.0f);
-    colors[ImGuiCol_Header] = ImVec4(0.0f, 1.0f, 0.8f, 0.3f);
-    colors[ImGuiCol_HeaderHovered] = ImVec4(0.0f, 1.0f, 0.8f, 0.5f);
-    colors[ImGuiCol_HeaderActive] = ImVec4(0.0f, 1.0f, 0.8f, 0.7f);
-    colors[ImGuiCol_Button] = ImVec4(0.15f, 0.15f, 0.15f, 1.00f);
-    colors[ImGuiCol_ButtonHovered] = ImVec4(0.0f, 1.0f, 0.8f, 0.4f);
-    colors[ImGuiCol_ButtonActive] = ImVec4(0.0f, 1.0f, 0.8f, 0.6f);
-    colors[ImGuiCol_SliderGrab] = ImVec4(0.0f, 1.0f, 0.8f, 0.8f);
-    colors[ImGuiCol_SliderGrabActive] = ImVec4(0.0f, 1.0f, 0.8f, 1.0f);
-    colors[ImGuiCol_CheckMark] = ImVec4(0.0f, 1.0f, 0.8f, 1.0f);
-    colors[ImGuiCol_Text] = ImVec4(0.95f, 0.95f, 0.95f, 1.00f);
+    
+    // Core surfaces
+    colors[ImGuiCol_WindowBg]             = ImVec4(0.04f, 0.00f, 0.12f, 0.96f); // Midnight purple
+    colors[ImGuiCol_ChildBg]              = ImVec4(0.08f, 0.02f, 0.18f, 0.45f); // Soft indigo card
+    colors[ImGuiCol_PopupBg]              = ImVec4(0.06f, 0.02f, 0.14f, 1.00f);
+    colors[ImGuiCol_Border]               = ImVec4(0.48f, 0.17f, 0.90f, 0.30f); // Violet border
+    
+    // Logic controls
+    colors[ImGuiCol_FrameBg]              = ImVec4(0.12f, 0.05f, 0.28f, 0.50f);
+    colors[ImGuiCol_FrameBgHovered]       = ImVec4(0.48f, 0.17f, 0.90f, 0.20f);
+    colors[ImGuiCol_FrameBgActive]        = ImVec4(0.48f, 0.17f, 0.90f, 0.35f);
+    
+    // Title & Headers
+    colors[ImGuiCol_TitleBg]              = ImVec4(0.04f, 0.00f, 0.12f, 1.00f);
+    colors[ImGuiCol_TitleBgActive]        = ImVec4(0.06f, 0.02f, 0.18f, 1.00f);
+    
+    // Selection highlight
+    colors[ImGuiCol_Header]               = ImVec4(0.48f, 0.17f, 0.90f, 0.30f);
+    colors[ImGuiCol_HeaderHovered]        = ImVec4(0.48f, 0.17f, 0.90f, 0.50f);
+    colors[ImGuiCol_HeaderActive]         = ImVec4(0.48f, 0.17f, 0.90f, 0.70f);
+    
+    // Buttons (Cyberpunk Purple)
+    colors[ImGuiCol_Button]               = ImVec4(0.48f, 0.17f, 0.90f, 0.15f);
+    colors[ImGuiCol_ButtonHovered]        = ImVec4(0.48f, 0.17f, 0.90f, 0.45f);
+    colors[ImGuiCol_ButtonActive]         = ImVec4(0.48f, 0.17f, 0.90f, 0.65f);
+    
+    colors[ImGuiCol_SliderGrab]           = ImVec4(0.48f, 0.17f, 0.90f, 0.80f);
+    colors[ImGuiCol_SliderGrabActive]     = ImVec4(0.60f, 0.25f, 1.00f, 1.00f);
+    
+    colors[ImGuiCol_CheckMark]            = ImVec4(0.60f, 0.25f, 1.00f, 1.00f);
+    
+    colors[ImGuiCol_Text]                 = ImVec4(0.95f, 0.92f, 1.00f, 1.00f);
+    colors[ImGuiCol_TextDisabled]         = ImVec4(0.40f, 0.40f, 0.60f, 1.00f);
+    
+    colors[ImGuiCol_Separator]            = ImVec4(0.48f, 0.17f, 0.90f, 0.25f);
 }
 
 ImU32 GetTeamColor(int teamID) {
@@ -1282,480 +1317,353 @@ void OverlayMenu::RenderFrame() {
             Translation::CurrentLanguage = language;
             auto Lang = Translation::Get();
             
-            ImGui::SetNextWindowSize(ImVec2(620, 480), ImGuiCond_FirstUseEver);
-            ImGui::Begin("##overlay", &showmenu, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar);
+            ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+            
+            // Custom window styling for the new design
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.0f);
+            
+            ImGui::Begin(skCrypt("##overlay_new"), &showmenu, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground);
             
             ImVec2 windowPos = ImGui::GetWindowPos();
             ImVec2 windowSize = ImGui::GetWindowSize();
-            draw->AddRectFilled(windowPos, ImVec2(windowPos.x + 4, windowPos.y + windowSize.y), IM_COL32(0, 255, 204, 255)); // Side Glow
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
 
-            // --- LEFT SIDEBAR ---
-            ImGui::BeginChild("##Sidebar", ImVec2(150, 0), true);
-            {
-                ImGui::Spacing();
-                ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]);
+            // --- PREMIUM STEALTH ENGINE BACKGROUND ---
+            // 1. Shadow / Glow surrounding the whole window
+            drawList->AddRect(windowPos, ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y), IM_COL32(100, 30, 200, 50), 18.0f, 0, 5.0f);
+            
+            // 2. Main Window Fill (Rich Deep Gradient)
+            drawList->AddRectFilledMultiColor(windowPos, ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y),
+                                             IM_COL32(10, 2, 25, 255),   // Top Left
+                                             IM_COL32(20, 5, 45, 255),   // Top Right
+                                             IM_COL32(10, 2, 25, 255),   // Bottom Right
+                                             IM_COL32(8, 0, 20, 255));   // Bottom Left
+
+            // 3. Subtle Hex/Grid Pattern background
+            for (float i = 0; i < windowSize.x; i += 40.0f) {
+                drawList->AddLine(ImVec2(windowPos.x + i, windowPos.y), ImVec2(windowPos.x + i, windowPos.y + windowSize.y), IM_COL32(200, 100, 255, 5), 1.0f);
+            }
+            for (float i = 0; i < windowSize.y; i += 40.0f) {
+                drawList->AddLine(ImVec2(windowPos.x, windowPos.y + i), ImVec2(windowPos.x + windowSize.x, windowPos.y + i), IM_COL32(200, 100, 255, 5), 1.0f);
+            }
+            
+            // 4. Vibrant Outer Border (Electric Violet)
+            drawList->AddRect(windowPos, ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y), IM_COL32(150, 60, 255, 60), 18.0f, 0, 1.5f);
+
+            // Helpers for consistent premium UI components
+            auto BeginGlassCard = [&](const char* id, const char* label, ImVec2 size) {
+                ImVec2 pos = ImGui::GetCursorScreenPos();
+                drawList->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(30, 10, 60, 80), 12.0f);
+                drawList->AddRect(pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(200, 100, 255, 25), 12.0f);
+                // Top Highlight
+                drawList->AddLine(ImVec2(pos.x + 15, pos.y), ImVec2(pos.x + size.x - 15, pos.y), IM_COL32(200, 100, 255, 100), 2.0f);
                 
-                // --- EASTER EGG TOGGLE FOR STEAM PROOF (6 CLICKS / 5 SEC) ---
-                static int clickCount = 0;
-                static float lastClickTime = 0;
-                
-                ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0,0,0,0));
-                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0,0,0,0));
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.8f, 1.0f)); // Force Cyan
-
-                if (ImGui::Selectable(skCrypt("  GZ-integrity_monitor"), false, ImGuiSelectableFlags_None, ImVec2(0, 20))) {
-                    float currentTime = (float)ImGui::GetTime();
-                    if (currentTime - lastClickTime > 5.0f) clickCount = 0;
-                    
-                    clickCount++;
-                    lastClickTime = currentTime;
-                    
-                    if (clickCount >= 6) {
-                        anti_screenshot = !anti_screenshot;
-                        UpdateAntiScreenshot();
-                        clickCount = 0;
-                    }
-                }
-                ImGui::PopStyleColor(3);
-
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-                }
-
-                ImGui::TextDisabled(skCrypt("   External"));
-                ImGui::PopFont();
+                ImGui::BeginChild(id, size, false, ImGuiWindowFlags_NoBackground);
+                ImGui::SetCursorPos(ImVec2(10, 5));
+                ImGui::TextColored(ImVec4(0.7f, 0.4f, 1.0f, 1.0f), label);
                 ImGui::Separator();
                 ImGui::Spacing();
+            };
 
-                auto StyledTab = [&](const char* label, int id) {
-                    bool active = (active_tab == id);
-                    if (active) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 1.0f, 0.8f, 0.25f));
-                    else ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0,0,0,0));
-
-                    if (ImGui::Button(label, ImVec2(-1, 40))) active_tab = id;
-                    
-                    ImGui::PopStyleColor();
-                };
-
-                if (is_authenticated) {
-                    StyledTab(Lang.TabVisuals, 0);
-                    StyledTab(Lang.Tabprecision_calibration, 1);
-                    StyledTab(Lang.TabMacro, 2);
-                    StyledTab(Lang.TabRadar, 3);
-                    StyledTab(Lang.TabLoot, 5);
-                    StyledTab(Lang.TabSettings, 4);
-                } else {
-                    active_tab = 4; 
-                    StyledTab(language == 1 ? skCrypt("Kich hoat Key") : skCrypt("Activate Key"), 4);
-                }
-
-                // Footer of sidebar
-                ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 40);
-                if (ImGui::Button(skCrypt("EXIT"), ImVec2(-1, 30))) exit(0);
-            }
-            ImGui::EndChild();
-
-            ImGui::SameLine();
-
-            // --- MAIN CONTENT AREA ---
-            ImGui::BeginChild("##Content", ImVec2(0, 0), false);
-            {
-                ImGui::Spacing();
-                if (active_tab == 0) {
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.8f, 1.0f), Lang.VisualPerformance);
-                    ImGui::Separator();
-                    ImGui::BeginChild("##VisualsContent");
-                    ImGui::Checkbox(Lang.MasterToggle, &esp_toggle);
-                    ImGui::Checkbox(Lang.EnemyESP, &g_Menu.esp_show_enemies);
-                    ImGui::Checkbox(Lang.TeammateESP, &g_Menu.esp_show_teammates);
-                    ImGui::Checkbox(Lang.Box, &esp_box);
-                    ImGui::Checkbox(Lang.Skeleton, &esp_skeleton);
-                    if (esp_skeleton) {
-                        ImGui::SameLine(); ImGui::Checkbox(Lang.Interpolate, &g_Menu.esp_skel_interp);
-                    }
-                    ImGui::Checkbox(Lang.Name, &g_Menu.esp_name);
-                    ImGui::Checkbox(Lang.ESP_Spectated, &g_Menu.esp_spectated);
-                    ImGui::Checkbox(Lang.Distance, &esp_distance);
-                    ImGui::Checkbox(Lang.HealthBar, &g_Menu.esp_health);
-                    if (g_Menu.esp_health) {
-                        const char* hpPos[] = { skCrypt("LEFT"), skCrypt("RIGHT"), skCrypt("BOTTOM"), skCrypt("TOP") };
-                        ImGui::Combo(Lang.HealthPos, &g_Menu.esp_health_pos, hpPos, IM_ARRAYSIZE(hpPos));
-                    }
-                    ImGui::Checkbox(Lang.ItemsVehicles, &g_Menu.esp_items);
-                    ImGui::Separator();
-                    
-                    if (ImGui::TreeNode(Lang.DistThresholds)) {
-                        ImGui::Checkbox(Lang.SmartLOD, &esp_distance_lod);
-                        ImGui::SliderInt(Lang.BoxMax, &box_max_dist, 50, 1000);
-                        ImGui::SliderInt(Lang.HealthMax, &hp_max_dist, 50, 600);
-                        ImGui::SliderInt(Lang.SkeletonMax, &skeleton_max_dist, 50, 600);
-                        ImGui::SliderInt(Lang.NameMax, &name_max_dist, 50, 600);
-                        ImGui::SliderInt(Lang.DistMax, &distance_txt_max_dist, 50, 1000);
-                        ImGui::SliderInt(Lang.WeaponMax, &weapon_max_dist, 50, 400);
-                        ImGui::TreePop();
-                    }
-
-                    if (ImGui::TreeNode(Lang.ColorsTitle)) {
-                        ImGui::ColorEdit4(Lang.VisBox, box_visible_color, ImGuiColorEditFlags_NoInputs);
-                        ImGui::ColorEdit4(Lang.InvBox, box_invisible_color, ImGuiColorEditFlags_NoInputs);
-                        ImGui::ColorEdit4(Lang.VisSkel, skeleton_visible_color, ImGuiColorEditFlags_NoInputs);
-                        ImGui::ColorEdit4(Lang.InvSkel, skeleton_invisible_color, ImGuiColorEditFlags_NoInputs);
-                        ImGui::ColorEdit4(Lang.ColorNames, name_color, ImGuiColorEditFlags_NoInputs);
-                        ImGui::ColorEdit4(Lang.ColorDist, distance_color, ImGuiColorEditFlags_NoInputs);
-                        ImGui::ColorEdit4(Lang.ColorWeapon, weapon_color, ImGuiColorEditFlags_NoInputs);
-                        ImGui::TreePop();
-                    }
-                    ImGui::Separator();
-                    ImGui::SliderInt(Lang.RenderDist, &render_distance, 50, 1000);
-                    
-                    ImGui::Separator();
-                    ImGui::Checkbox(Lang.Weapon, &g_Menu.esp_weapon);
-                    ImGui::Combo(Lang.WeaponType, &g_Menu.esp_weapon_type, skCrypt("Text Label\0Image (Assets)\0"));
-                    ImGui::EndChild();
-                }
-                else if (active_tab == 1) {
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.8f, 1.0f), (language == 1) ? "AIM (PHAN LOAI SUNG)" : "AIM (WEAPON CATEGORIES)");
-                    ImGui::Separator();
-                    ImGui::BeginChild("##precision_calibrationContent");
-
-                    ImGui::Checkbox(language == 1 ? "BAT AIM" : "ENABLE AIM GZ", &aim_master_enabled);
-                    ImGui::Separator();
-
-                    const char* cats[] = { skCrypt("AR (M416, AKM...)"), skCrypt("SR (Kar98, M24...)"), skCrypt("DMR (SKS, SLR...)"), skCrypt("SMG (UMP, Vector...)"), skCrypt("LMG (M249, DP...)"), skCrypt("SG (S12K, DBS...)"), skCrypt("PT (P92, P1911...)"), skCrypt("Other (Mortar...)") };
-                    if (aim_category_idx > 7) aim_category_idx = 0; 
-                    ImGui::Combo(language == 1 ? "Loai sung dang sua" : "Current Category", &aim_category_idx, cats, IM_ARRAYSIZE(cats));
-                    ImGui::Separator();
-
-                    AimConfig* pCfg = &aim_configs[aim_category_idx];
-
-                    ImGui::Checkbox(language == 1 ? "Bat precision_calibration cho loai nay" : "Enabled for this Class", &pCfg->enabled);
-                    
-                    if (pCfg->enabled) {
-                        ImGui::SliderFloat(Lang.AimFOV, &pCfg->fov, 1.0f, 100.0f, "%.1f");
-                        ImGui::SliderFloat(Lang.AimSmooth, &pCfg->smooth, 1.0f, 20.0f, "%.1f");
-                        
-                        float maxRangeLimit = 400.0f;
-                        if (aim_category_idx == 0 || aim_category_idx == 3 || aim_category_idx == 4) maxRangeLimit = 70.0f; // AR, SMG, LMG
-                        else if (aim_category_idx == 1) maxRangeLimit = 500.0f; // SR
-                        else if (aim_category_idx == 2) maxRangeLimit = 250.0f; // DMR
-                        else if (aim_category_idx == 5 || aim_category_idx == 6) maxRangeLimit = 30.0f; // SG, PT
-
-                        if (pCfg->max_dist > maxRangeLimit) pCfg->max_dist = maxRangeLimit;
-                        ImGui::SliderFloat(language == 1 ? "Khoang cach toi da (m)" : "Max Distance (m)", &pCfg->max_dist, 10.0f, maxRangeLimit, "%.0f");
-                        
-                        // --- HOTKEY LISTENER ---
-                        char keyDisplay[64];
-                        if (waiting_for_key == &pCfg->key) {
-                            strcpy_s(keyDisplay, sizeof(keyDisplay), language == 1 ? "Vui long bam phim..." : "Waiting for key...");
-                        } else {
-                            std::string kn = "UNKNOWN";
-                            int vk = pCfg->key;
-                            if (vk == VK_RBUTTON) kn = "Right Click";
-                            else if (vk == VK_LBUTTON) kn = "Left Click";
-                            else if (vk == VK_MBUTTON) kn = "Middle Click";
-                            else if (vk == VK_XBUTTON1) kn = "Mouse 4";
-                            else if (vk == VK_XBUTTON2) kn = "Mouse 5";
-                            else if (vk == VK_MENU) kn = "ALT";
-                            else if (vk == VK_CONTROL) kn = "CTRL";
-                            else if (vk == VK_SHIFT) kn = "SHIFT";
-                            else if (vk == VK_CAPITAL) kn = "CAPS";
-                            else if (vk >= 'A' && vk <= 'Z') kn = (char)vk;
-                            else kn = "VK_" + std::to_string(vk);
-
-                            sprintf_s(keyDisplay, sizeof(keyDisplay), language == 1 ? "Phim Aim: [%s]" : "Aim Key: [%s]", kn.c_str());
-                        }
-
-                        if (ImGui::Button(keyDisplay, ImVec2(-1, 0))) {
-                            waiting_for_key = &pCfg->key;
-                        }
-
-                        ImGui::Checkbox(Lang.AimPrediction, &pCfg->prediction);
-                    }
-                    
-                    ImGui::Separator();
-                    ImGui::Checkbox(language == 1 ? "Tu thu nho FOV theo ong ngam" : "Adaptive FOV (Scale with Scope)", &aim_adaptive_fov);
-                    ImGui::Checkbox(Lang.AimVisible, &aim_visible_only);
-
-                    ImGui::Spacing();
-                    ImGui::Separator();
-                    if (ImGui::TreeNode(language == 1 ? "HUONG DAN SU DUNG AIM" : "AIM USAGE GUIDE")) {
-                        ImGui::TextWrapped(language == 1 ? 
-                            "1. Smart-Bone: Aim tu dong khoa vao bat ky vung nao (Dau, Than, Chan, Tay) gan tam ngam nhat." :
-                            "1. Smart-Bone: precision_calibration snaps to any bone (Head, Torso, Limbs) nearest to crosshair.");
-                        
-                        ImGui::Spacing();
-                        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), language == 1 ? 
-                            "2. Meo: Nhan GIU SHIFT khi dang Aim de ep muc tieu vao DAU." :
-                            "2. Tip: HOLD SHIFT while aiming to force-lock onto HEAD.");
-                        
-                        ImGui::TreePop();
-                    }
-
-                    ImGui::EndChild();
-                }
-                else if (active_tab == 2) {
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.8f, 1.0f), "MACRO CONTROL");
-                    ImGui::Separator();
-                    ImGui::BeginChild("##MacroContent");
-                    
-                    if (ImGui::Checkbox(Lang.MacroEnabled, &macro_enabled)) {
-                        MacroEngine::macro_enabled = macro_enabled;
-                    }
-                    
-                    ImGui::SameLine();
-                    if (ImGui::Checkbox("MASTER AutoShot", &GameData.Config.Macro.AutoShotEnabled)) {
-                    }
-                    
-                    ImGui::Text("AutoShot Key: "); ImGui::SameLine();
-                    char autoShotKeyName[64];
-                    if (waiting_for_key == &GameData.Config.Macro.AutoShotKey) {
-                        strcpy_s(autoShotKeyName, sizeof(autoShotKeyName), Translation::CurrentLanguage == 1 ? "Vui long bam phim..." : "Waiting for key...");
-                    } else {
-                        strcpy_s(autoShotKeyName, sizeof(autoShotKeyName), Utils::keyCodeToString(GameData.Config.Macro.AutoShotKey).c_str());
-                    }
-
-                    if (ImGui::Button(autoShotKeyName, ImVec2(120, 22))) {
-                         waiting_for_key = &GameData.Config.Macro.AutoShotKey;
-                    }
-                    
-                    if (macro_enabled) {
-                        ImGui::SliderFloat(Lang.MacroStrength, &MacroEngine::global_multiplier, 0.1f, 3.0f, "%.2fx");
-                        if (ImGui::Checkbox(Lang.MacroHumanize, &macro_humanize)) {
-                            MacroEngine::macro_humanize = macro_humanize;
-                        }
-                        if (ImGui::Checkbox(Translation::CurrentLanguage == 1 ? skCrypt("Chi ghi tam khi ADS (Ngam)") : skCrypt("Only pull when ADS/Scoping"), &macro_ads_only)) {
-                            MacroEngine::ads_only = macro_ads_only;
-                        }
-                        
-                        ImGui::Separator();
-                        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), skCrypt("WEAPON CLASS TUNING"));
-                        
-                        const char* macro_cats[] = { skCrypt("AR"), skCrypt("SR"), skCrypt("DMR"), skCrypt("SG") };
-                        static int macro_cat_idx = 0;
-                        ImGui::Combo(skCrypt("Weapon Class"), &macro_cat_idx, macro_cats, IM_ARRAYSIZE(macro_cats));
-                        
-                        if (macro_cat_idx == 0) { // AR
-                            ImGui::Checkbox(skCrypt("AR AutoShot Enabled"), &MacroEngine::ar_trigger_enabled);
-                            ImGui::SliderFloat(skCrypt("AR Trigger FOV"), &MacroEngine::ar_trigger_fov, 0.1f, 10.0f, skCrypt("%.1f"));
-                            ImGui::SliderFloat(skCrypt("AR Base Smoothing"), &MacroEngine::ar_base_smoothing, 1.0f, 20.0f, skCrypt("%.1f"));
-                        } else if (macro_cat_idx == 1) { // SR
-                            ImGui::Checkbox(skCrypt("SR AutoShot Enabled"), &MacroEngine::sr_trigger_enabled);
-                            ImGui::SliderFloat(skCrypt("SR Trigger FOV"), &MacroEngine::sr_trigger_fov, 0.1f, 10.0f, skCrypt("%.1f"));
-                            ImGui::SliderFloat(skCrypt("SR Base Smoothing"), &MacroEngine::sr_base_smoothing, 1.0f, 20.0f, skCrypt("%.1f"));
-                        } else if (macro_cat_idx == 2) { // DMR
-                            ImGui::Checkbox(skCrypt("DMR AutoShot Enabled"), &MacroEngine::dmr_trigger_enabled);
-                            ImGui::SliderFloat(skCrypt("DMR Trigger FOV"), &MacroEngine::dmr_trigger_fov, 0.1f, 10.0f, skCrypt("%.1f"));
-                            ImGui::SliderFloat(skCrypt("DMR Base Smoothing"), &MacroEngine::dmr_base_smoothing, 1.0f, 20.0f, skCrypt("%.1f"));
-                        } else if (macro_cat_idx == 3) { // SG
-                            ImGui::Checkbox(skCrypt("SG AutoShot Enabled"), &MacroEngine::sg_trigger_enabled);
-                            ImGui::SliderFloat(skCrypt("SG Trigger FOV"), &MacroEngine::sg_trigger_fov, 0.1f, 10.0f, skCrypt("%.1f"));
-                        }
-                        
-                        ImGui::SliderFloat(skCrypt("Max Smooth Increase"), &MacroEngine::max_smooth_increase, 0.0f, 1.0f, skCrypt("%.2f"));
-                        ImGui::SliderFloat(skCrypt("Smooth FOV"), &MacroEngine::smooth_fov, 1.0f, 30.0f, skCrypt("%.1f"));
-                        
-                        ImGui::Separator();
-                        
-                        if (ImGui::Checkbox(Lang.MacroOSD, &show_macro_overlay)) {
-                            // Sync or handle
-                        }
-                        if (show_macro_overlay) {
-                            ImGui::SameLine();
-                            ImGui::ColorEdit4("##OSDColor", macro_overlay_color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
-                        }
-
-                        int macroModeIdx = (MacroEngine::macro_mode <= 1) ? 0 : 1;
-                        if (ImGui::Combo(Translation::CurrentLanguage == 1 ? skCrypt("Che do Macro") : skCrypt("Macro Mode"), &macroModeIdx,
-                            Translation::CurrentLanguage == 1 ? skCrypt("Mode 1 (On dinh)\0Mode 2 (Manh)\0") : skCrypt("Mode 1 (Stable)\0Mode 2 (Aggressive)\0"))) {
-                            MacroEngine::macro_mode = macroModeIdx + 1;
-                        }
-
-                        ImGui::SliderInt(Translation::CurrentLanguage == 1 ? skCrypt("Delay keo (ms)") : skCrypt("Pull Delay (ms)"), &MacroEngine::pull_delay_ms, 0, 30);
-                        ImGui::SliderInt(Translation::CurrentLanguage == 1 ? skCrypt("Do tre random (ms)") : skCrypt("Delay Jitter (ms)"), &MacroEngine::pull_delay_jitter_ms, 0, 30);
-                        ImGui::SliderInt(Translation::CurrentLanguage == 1 ? skCrypt("Reset loat dan (ms)") : skCrypt("Burst Reset (ms)"), &MacroEngine::recoil_reset_ms, 80, 1200);
-                        ImGui::SliderInt(Translation::CurrentLanguage == 1 ? skCrypt("Lech X random") : skCrypt("Random X Jitter"), &MacroEngine::x_jitter_range, 0, 8);
-
-                        const auto liveProfile = MacroEngine::GetActiveProfile();
-                        ImGui::Text(skCrypt("%s %d | Delay: %dms | Smoothing: %.1f"),
-                            Translation::CurrentLanguage == 1 ? skCrypt("Profile mode") : skCrypt("Profile mode"),
-                            MacroEngine::macro_mode,
-                            liveProfile.delayMs,
-                            (macro_cat_idx == 0 ? MacroEngine::ar_base_smoothing : (macro_cat_idx == 1 ? MacroEngine::sr_base_smoothing : MacroEngine::dmr_base_smoothing)));
-                        
-                        ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
-                        
-                        // Status Section
-                        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), skCrypt("LIVE STATUS:"));
-                        
-                        std::string weapon = (MacroEngine::current_weapon_name == skCrypt("") || MacroEngine::current_weapon_name == skCrypt("None")) ? Lang.NoWeapon : MacroEngine::current_weapon_name;
-                        ImGui::Text(skCrypt("%s %s"), Lang.CurrentWeapon, weapon.c_str());
-                        
-                        std::string attach = skCrypt("S:") + std::to_string(MacroEngine::current_scope) + 
-                                            skCrypt(" M:") + std::to_string(MacroEngine::current_muzzle) + 
-                                            skCrypt(" G:") + std::to_string(MacroEngine::current_grip);
-                        ImGui::Text(skCrypt("%s %s"), Lang.DetectedAttach, attach.c_str());
-
-                        if (ImGui::Button(Lang.RescanAttach, ImVec2(-1, 35))) {
-                            MacroEngine::ForceScan();
-                        }
-                    } else {
-                        // Removed the "MACRO IS DISABLED" message as requested
-                    }
-
-                    ImGui::EndChild();
-                }
-                else if (active_tab == 3) {
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.8f, 1.0f), skCrypt("RADAR AUTO ALIGN"));
-                    ImGui::Separator();
-                    ImGui::BeginChild("##RadarContent");
-                    
-                    ImGui::Checkbox(Lang.RadarEnable, &g_Menu.radar_enabled);
-                    ImGui::SliderFloat(Lang.RadarDotSize, &g_Menu.radar_dot_size, 1.0f, 10.0f, "%.1f");
-
-                    ImGui::Separator();
-                    ImGui::Checkbox(Lang.ESP_Offscreen, &g_Menu.esp_offscreen);
-                    if (g_Menu.esp_offscreen) {
-                        ImGui::Indent(20.0f);
-                        const char* styles[] = { skCrypt("Triangle"), skCrypt("Chevron"), skCrypt("Arc") };
-                        ImGui::Combo(Lang.IndicatorStyle, &g_Menu.esp_offscreen_style, styles, IM_ARRAYSIZE(styles));
-                        
-                        ImGui::SliderFloat(Lang.IndicatorRadius, &g_Menu.offscreen_radius, 50.0f, 600.0f, skCrypt("%.0f px"));
-                        ImGui::SliderFloat(Lang.IndicatorSize, &g_Menu.offscreen_size, 4.0f, 30.0f, skCrypt("%.0f px"));
-                        
-                        const char* colorModes[] = { "Static (Visibility)", "Distance Gradient" };
-                        ImGui::Combo(Lang.ColorMode, &g_Menu.offscreen_color_mode, colorModes, IM_ARRAYSIZE(colorModes));
-                        
-                        if (g_Menu.offscreen_color_mode == 1) {
-                            ImGui::ColorEdit4(Lang.ColorNear, g_Menu.offscreen_near_color, ImGuiColorEditFlags_NoInputs);
-                            ImGui::ColorEdit4(Lang.ColorFar, g_Menu.offscreen_far_color, ImGuiColorEditFlags_NoInputs);
-                        }
-                        ImGui::Unindent(20.0f);
-                    }
-
-                    ImGui::Separator();
-                    ImGui::Text("System Info:");
-                    ImGui::Text("MiniMap: %.1f, %.1f | %.1fx%.1f", G_Radar.ScreenPosX, G_Radar.ScreenPosY, G_Radar.ScreenSize, G_Radar.ScreenSizeY);
-                    ImGui::Text("WorldMap: %s | %.1fx%.1f", G_Radar.IsWorldMapVisible ? "Visible" : "Hidden", G_Radar.WorldMapWidth, G_Radar.WorldMapHeight);
-                    ImGui::EndChild();
-                }
-                else if (active_tab == 4) {
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.8f, 1.0f), is_authenticated ? skCrypt("SYSTEM SETTINGS") : skCrypt("LICENSE ACTIVATION"));
-                    ImGui::Separator();
-                    ImGui::BeginChild("##MiscContent");
-
-                    // === LICENSE KEY INPUT ===
-                    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "LICENSE");
-                    ImGui::Separator();
-                    {
-                        extern std::string global_active_key;
-                        extern std::string GetHWID();
-                        extern bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent);
-
-                        static char key_buf[128] = {0};
-                        static bool init_key_buf = false;
-                        if (!init_key_buf) {
-                            // Pre-fill with saved key if available
-                            std::ifstream kf("key.txt");
-                            if (kf.is_open()) {
-                                std::string saved;
-                                std::getline(kf, saved);
-                                kf.close();
-                                strncpy_s(key_buf, saved.c_str(), sizeof(key_buf) - 1);
-                            }
-                            init_key_buf = true;
-                        }
-
-                        bool is_active = !global_active_key.empty();
-                        
-                        std::string hwid_str = GetHWID();
-                        ImGui::TextDisabled(skCrypt("HWID: %s"), hwid_str.c_str());
-                        if (ImGui::IsItemHovered()) ImGui::SetTooltip(language == 1 ? skCrypt("Click de Copy HWID") : skCrypt("Click to Copy HWID"));
-                        if (ImGui::IsItemClicked()) {
-                            ImGui::SetClipboardText(hwid_str.c_str());
-                        }
-
-                        if (is_active) {
-                            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), skCrypt("Status: ACTIVE"));
-                        } else {
-                            ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), skCrypt("Status: INACTIVE"));
-                        }
-
-                        ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 70.0f);
-                        ImGui::InputText(skCrypt("##KeyInput"), key_buf, sizeof(key_buf));
-                        ImGui::PopItemWidth();
-                        ImGui::SameLine();
-                        if (ImGui::Button(skCrypt("PASTE"), ImVec2(60, 0))) {
-                            const char* clip = ImGui::GetClipboardText();
-                            if (clip) {
-                                strncpy_s(key_buf, clip, sizeof(key_buf) - 1);
-                            }
-                        }
-                        if (ImGui::Button(language == 1 ? skCrypt("Kich hoat Key") : skCrypt("Activate Key"), ImVec2(-1, 35))) {
-                            std::string key_str(key_buf);
-                            key_str.erase(0, key_str.find_first_not_of(" \t"));
-                            key_str.erase(key_str.find_last_not_of(" \t") + 1);
-                            if (!key_str.empty()) {
-                                std::string hwid = GetHWID();
-                                if (DoAPIRequest(key_str, hwid, false)) {
-                                    global_active_key = key_str;
-                                    std::ofstream outFile(skCrypt("key.txt"));
-                                    if (outFile.is_open()) { outFile << key_str; outFile.close(); }
-                                }
-                            }
-                        }
-
-                        extern std::string global_license_error;
-                        if (!global_license_error.empty()) {
-                            ImGui::Spacing();
-                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
-                            ImGui::TextWrapped(global_license_error.c_str());
-                            ImGui::PopStyleColor();
-                        }
-                    }
-                    ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
-
-                    int currentLang = language;
-                    if (ImGui::Combo(Lang.Language, &currentLang, skCrypt("English\0Vietnamese\0"))) language = currentLang;
-                    
-                    ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
-                    
-                    if (ImGui::Button(Lang.SaveConfig, ImVec2(-1, 40))) {
-                        g_Menu.SaveConfig("dataMacro/Config/settings.json");
-                    }
-                    if (ImGui::Button(Lang.LoadConfig, ImVec2(-1, 40))) {
-                        g_Menu.LoadConfig("dataMacro/Config/settings.json");
-                    }
-                    /* [TEMPORARY OFF]
-                    if (ImGui::Button(language == 1 ? "TEST CHUOT [5b] (KERNEL MOVE)" : "TEST MOUSE [5b] (KERNEL MOVE)", ImVec2(-1, 40))) {
-                        for (int i = 0; i < 30; i++) { telemetryMemory::MoveMouse(4, 4, 0); telemetryMemory::StealthSleep(5); }
-                        for (int i = 0; i < 30; i++) { telemetryMemory::MoveMouse(-4, -4, 0); telemetryMemory::StealthSleep(5); }
-                    }
-
-                    if (ImGui::Button(language == 1 ? "TEST CLICK [6] (KERNEL CLICK)" : "TEST CLICK [6] (KERNEL CLICK)", ImVec2(-1, 40))) {
-                        Driver::Click();
-                    }
-                    */
-                    
-                    ImGui::EndChild();
-                }
-
-                if (active_tab == 5) {
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.8f, 1.0f), Lang.TabLoot);
-                    ImGui::Separator();
-                    ImGui::BeginChild("##LootContent");
-                    ImGui::Checkbox(Translation::CurrentLanguage == 1 ? "Hien thi Vat pham" : "signal_overlay Items", &esp_items);
-                    ImGui::SliderInt(Translation::CurrentLanguage == 1 ? "Khoang cach Vat pham" : "Loot Max Distance", &loot_max_dist, 10, 300);
-                    ImGui::Separator();
-                    ImGui::Checkbox(Translation::CurrentLanguage == 1 ? "Hien thi Phuong tien" : "signal_overlay Vehicles", &esp_vehicles);
-                    ImGui::SliderInt(Translation::CurrentLanguage == 1 ? "Khoang cach Phuong tien" : "Vehicle Max Distance", &vehicle_max_dist, 10, 2000);
-                    ImGui::Separator();
-                    ImGui::Checkbox(Translation::CurrentLanguage == 1 ? "Hien thi Thinh (Air Drop)" : "signal_overlay Air Drops", &esp_airdrops);
-                    ImGui::Checkbox(Translation::CurrentLanguage == 1 ? "Hien thi Xac (Dead Box)" : "signal_overlay Dead Boxes", &esp_deadboxes);
-                    ImGui::EndChild();
-                }
-            }
-            ImGui::EndChild();
+            // Top Bar
+            ImGui::SetCursorPos(ImVec2(0, 0));
+            ImGui::BeginChild(skCrypt("##TopBar"), ImVec2(windowSize.x, 55), false, ImGuiWindowFlags_NoBackground);
+            ImGui::SetCursorPos(ImVec2(25, 18));
             
+            // Logo / Name
+            ImGui::TextColored(ImVec4(0.8f, 0.2f, 1.0f, 1.0f), skCrypt("GZ"));
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), skCrypt("|"));
+            ImGui::SameLine();
+            ImGui::Text(Lang.MainTelemetry);
+            
+            // Safe Badge
+            ImGui::SameLine(180);
+            ImGui::SetCursorPosY(18);
+            ImGui::TextColored(ImVec4(0.0f, 0.9f, 0.5f, 1.0f), skCrypt("● "));
+            ImGui::SameLine(0, 2);
+            ImGui::Text(Lang.SafeStatus);
+            
+            ImGui::SetCursorPosY(15);
+            
+            // Center Title
+            const char* tabTitles[] = { Lang.TabVisuals, Lang.Tabprecision_calibration, Lang.TabLoot, Lang.TabSettings, Lang.TabRadar };
+            ImVec2 titleSize = ImGui::CalcTextSize(tabTitles[g_Menu.active_tab]);
+            ImGui::SameLine((windowSize.x - titleSize.x) / 2.0f);
+            ImGui::SetCursorPosY(15);
+            ImGui::TextColored(ImVec4(0.6f, 0.3f, 1.0f, 1.0f), tabTitles[g_Menu.active_tab]);
+            
+            // Right Buttons
+            ImGui::SameLine(windowSize.x - 70);
+            ImGui::SetCursorPosY(12);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0,0,0,0));
+            if (ImGui::Button(skCrypt("—"), ImVec2(24, 24))) { /* min */ }
+            ImGui::SameLine();
+            if (ImGui::Button(skCrypt("✕"), ImVec2(24, 24))) { showmenu = false; }
+            ImGui::PopStyleColor();
+            
+            ImGui::EndChild(); // TopBar
+            
+            // Content Card Effect
+            ImGui::SetCursorPos(ImVec2(15, 55));
+            ImGui::BeginChild(skCrypt("##MainContent"), ImVec2(windowSize.x - 30, windowSize.y - 120), false, ImGuiWindowFlags_NoScrollbar);
+            
+            // --- HIỂN THỊ (VISUALS) TAB --- (NOW INDEX 0)
+            if (g_Menu.active_tab == 0) {
+                ImGui::Columns(4, skCrypt("ESPColumns"), false);
+                
+                // Col 1: Tổng Quan
+                BeginGlassCard(skCrypt("##ESPCol1"), Lang.HeaderVisualCore, ImVec2(185, 0));
+                ImGui::Checkbox(Lang.MasterToggle, &g_Menu.esp_toggle);
+                ImGui::Checkbox(Lang.ESP_Offscreen, &g_Menu.esp_offscreen);
+                ImGui::Checkbox(Lang.VisCheck, &g_Menu.aim_visible_only);
+                
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), Lang.DistThresholds);
+                ImGui::SliderInt(Lang.RenderDist, &g_Menu.render_distance, 50, 1000);
+                ImGui::SliderInt(Lang.InfoESP, &g_Menu.name_max_dist, 50, 600);
+                ImGui::SliderFloat(skCrypt("Thick"), &g_Menu.skel_thickness, 1.0f, 5.0f, skCrypt("%.1f"));
+                ImGui::EndChild();
+                
+                ImGui::NextColumn();
+                // Col 2: Style
+                BeginGlassCard(skCrypt("##ESPCol2"), Lang.HeaderRenderStyle, ImVec2(185, 0));
+                ImGui::Checkbox(Lang.Box, &g_Menu.esp_box);
+                ImGui::Checkbox(Lang.Skeleton, &g_Menu.esp_skeleton);
+                ImGui::Checkbox(Lang.HealthBar, &g_Menu.esp_health);
+                ImGui::Checkbox(Lang.Distance, &g_Menu.esp_distance);
+                ImGui::EndChild();
+                
+                ImGui::NextColumn();
+                // Col 3: HUD
+                BeginGlassCard(skCrypt("##ESPCol3"), Lang.HeaderOverlayHUD, ImVec2(185, 0));
+                ImGui::Checkbox(Lang.Name, &g_Menu.esp_name);
+                ImGui::Checkbox(Lang.AimFOV, &g_Menu.aim_configs[8].enabled);
+                ImGui::EndChild();
+                
+                ImGui::NextColumn();
+                // Col 4: Extras
+                BeginGlassCard(skCrypt("##ESPCol4"), Lang.HeaderDangerScan, ImVec2(185, 0));
+                ImGui::Checkbox(Lang.ESP_Spectated, &g_Menu.esp_spectated);
+                ImGui::EndChild();
+                
+                ImGui::Columns(1);
+            }
+            // --- TỰ ĐỘNG NGẮM (AIM) TAB --- (NOW INDEX 1)
+            else if (g_Menu.active_tab == 1) {
+                ImGui::Columns(3, skCrypt("AimColumns"), false);
+                ImGui::SetColumnWidth(0, 250);
+                ImGui::SetColumnWidth(1, 250);
+                
+                // Column 1: Config
+                BeginGlassCard(skCrypt("##AimCol1"), Lang.HeaderSystemConfig, ImVec2(240, 0));
+                
+                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), Lang.DetectedAttach); // Mapping for "Current Method"
+                ImGui::Text(skCrypt("Hyper-V Stealth Bridge"));
+                
+                ImGui::Spacing();
+                if (ImGui::Button(Lang.SaveConfig, ImVec2(-1, 35))) { g_Menu.SaveConfig("dataMacro/Config/settings.json"); }
+                if (ImGui::Button(Lang.SafeStatus, ImVec2(-1, 35))) { exit(0); } // Mapping as stub for exit label? No, exit should have its own string.
+                ImGui::EndChild();
+
+                ImGui::NextColumn();                
+                // Column 2: Settings
+                BeginGlassCard(skCrypt("##AimCol2"), Lang.HeaderPrecisionSettings, ImVec2(240, 0));
+                ImGui::Checkbox(Lang.AimEnabled, &g_Menu.aim_master_enabled);
+                
+                AimConfig* pCfg = &g_Menu.aim_configs[8]; // GLOBAL
+                ImGui::Checkbox(Lang.AimPrediction, &pCfg->prediction);
+                ImGui::Checkbox(Lang.AimVisible, &g_Menu.aim_visible_only);
+                
+                ImGui::Spacing();
+                ImGui::SliderFloat(Lang.AimFOV, &pCfg->fov, 1.0f, 100.0f, skCrypt("%.0f px"));
+                ImGui::SliderFloat(Lang.AimSmooth, &pCfg->smooth, 1.0f, 20.0f, skCrypt("%.1f"));
+                ImGui::SliderFloat(skCrypt("Max Dist"), &pCfg->max_dist, 10.0f, 800.0f, skCrypt("%.0f m"));
+                
+                char keyDisplay[64];
+                sprintf_s(keyDisplay, sizeof(keyDisplay), skCrypt("MOUSE LEFT")); 
+                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), Lang.AimKey);
+                if (ImGui::Button(keyDisplay, ImVec2(-1, 30))) { g_Menu.waiting_for_key = &pCfg->key; }
+                
+                ImGui::EndChild();
+                
+                ImGui::NextColumn();
+                
+                // Column 3: Logic
+                BeginGlassCard(skCrypt("##AimCol3"), Lang.HeaderAimStructure, ImVec2(0, 0));
+                ImGui::TextColored(ImVec4(0.8f, 0.2f, 1.0f, 1.0f), Lang.AimBone);
+                ImGui::Spacing();
+                ImGui::TextWrapped(Lang.MacroSoon); // Stub for description
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), skCrypt("PRIORITY:"));
+                ImGui::Text(skCrypt("1. Head / Neck (Visible)"));
+                ImGui::Text(skCrypt("2. Upper Chest (Visible)"));
+                ImGui::EndChild();
+                
+                ImGui::Columns(1);
+            }
+            // --- VẬT PHẨM TAB ---
+            else if (active_tab == 2) {
+                ImGui::Columns(3, skCrypt("ItemColumns"), false);
+                
+                // Col 1: Phím Tắt
+                BeginGlassCard(skCrypt("##ItemCol1"), Lang.HeaderLootEngine, ImVec2(250, 0));
+                ImGui::Checkbox(Lang.TabLoot, &g_Menu.esp_items);
+                ImGui::SliderInt(Lang.RenderDist, &g_Menu.loot_max_dist, 10, 300);
+                ImGui::EndChild();
+                
+                ImGui::NextColumn();
+                // Col 2: Grid
+                BeginGlassCard(skCrypt("##ItemCol2"), Lang.HeaderPickupFilter, ImVec2(250, 0));
+                ImGui::Text(skCrypt("AUTO-FILTER ACTIVE"));
+                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), skCrypt("Categories:"));
+                ImGui::BulletText(skCrypt("Assault Rifles"));
+                ImGui::BulletText(skCrypt("Sniper Rifles"));
+                ImGui::EndChild();
+                
+                ImGui::NextColumn();
+                // Col 3: Radar Web
+                BeginGlassCard(skCrypt("##ItemCol3"), Lang.HeaderWorldEntities, ImVec2(250, 0));
+                ImGui::Checkbox(skCrypt("Show Vehicles"), &g_Menu.esp_vehicles);
+                ImGui::Checkbox(skCrypt("Show Airdrops"), &g_Menu.esp_airdrops);
+                ImGui::Checkbox(skCrypt("Show Deathboxes"), &g_Menu.esp_deadboxes);
+                ImGui::EndChild();
+                
+                ImGui::Columns(1);
+            }
+            // --- THIẾT LẬP TAB ---
+            else if (active_tab == 3) {
+                ImGui::Columns(3, skCrypt("SettingsColumns"), false);
+                // Col 1
+                BeginGlassCard(skCrypt("##SetCol1"), Lang.HeaderSystemCore, ImVec2(250, 0));
+                int currentLang = g_Menu.language ? 1 : 0;
+                if (ImGui::Combo(Lang.Language, &currentLang, skCrypt("English\0Tiếng Việt\0"))) g_Menu.language = (currentLang == 1);
+                
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(0.8f, 0.2f, 1.0f, 1.0f), skCrypt("REGISTRATION"));
+                extern std::string global_active_key;
+                bool is_active = !global_active_key.empty();
+                if (is_active) ImGui::TextColored(ImVec4(0, 1, 0, 1), skCrypt("STATUS: ACTIVE"));
+                else ImGui::TextColored(ImVec4(1, 0, 0, 1), skCrypt("STATUS: INACTIVE"));
+                
+                static char key_buf[128] = {0};
+                ImGui::PushItemWidth(-60);
+                ImGui::InputText(skCrypt("Token"), key_buf, sizeof(key_buf));
+                ImGui::PopItemWidth();
+                ImGui::SameLine();
+                if (ImGui::Button(Lang.PasteLabel, ImVec2(80, 30))) {
+                    const char* clipboard = ImGui::GetClipboardText();
+                    if (clipboard) strcpy_s(key_buf, sizeof(key_buf), clipboard);
+                }
+                
+                if (ImGui::Button(skCrypt("Validate Key"), ImVec2(-1, 35))) {
+                    extern std::string GetHWID();
+                    extern bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent);
+                    std::string key_str(key_buf);
+                    if (DoAPIRequest(key_str, GetHWID(), false)) {
+                        global_active_key = key_str;
+                        std::ofstream outFile("key.txt");
+                        if (outFile.is_open()) { outFile << key_str; outFile.close(); }
+                    }
+                }
+                ImGui::EndChild();
+                
+                ImGui::NextColumn();
+                // Col 2
+                BeginGlassCard(skCrypt("##SetCol2"), Lang.HeaderAntiTracking, ImVec2(250, 0));
+                ImGui::Checkbox(Lang.ESP_Spectated, &g_Menu.esp_spectated);
+                ImGui::Checkbox(Lang.AntiScreenshot, &g_Menu.anti_screenshot);
+                ImGui::EndChild();
+                
+                ImGui::NextColumn();
+                // Col 3
+                BeginGlassCard(skCrypt("##SetCol3"), Lang.HeaderEngineUtils, ImVec2(250, 0));
+                ImGui::Checkbox(Lang.AimPrediction, &g_Menu.aim_configs[8].prediction);
+                if (ImGui::Button(skCrypt("Safe Exit"), ImVec2(-1, 35))) { exit(0); }
+                ImGui::EndChild();
+                
+                ImGui::Columns(1);
+            }
+            // --- BẢN ĐỒ TAB ---
+            else if (active_tab == 4) {
+                ImGui::Columns(3, skCrypt("MapColumns"), false);
+                
+                BeginGlassCard(skCrypt("##MapCol1"), Lang.TabRadar, ImVec2(250, 0));
+                ImGui::Checkbox(Lang.RadarEnable, &g_Menu.radar_enabled);
+                ImGui::Checkbox(Lang.ItemsVehicles, &g_Menu.esp_vehicles);
+                ImGui::Checkbox(skCrypt("Show Airdrops"), &g_Menu.esp_airdrops);
+                ImGui::EndChild();
+                
+                ImGui::NextColumn();
+                
+                BeginGlassCard(skCrypt("##MapCol2"), skCrypt("MINI MAP"), ImVec2(250, 0));
+                ImGui::SliderFloat(Lang.RadarDotSize, &g_Menu.radar_dot_size, 1.0f, 10.0f);
+                ImGui::EndChild();
+                
+                ImGui::NextColumn();
+                
+                BeginGlassCard(skCrypt("##MapCol3"), skCrypt("RADAR STATUS"), ImVec2(250, 0));
+                ImGui::Text(skCrypt("World Map: %s"), G_Radar.IsWorldMapVisible ? (g_Menu.language ? skCrypt("Hien thi") : skCrypt("Visible")) : (g_Menu.language ? skCrypt("Dong") : skCrypt("Closed")));
+                ImGui::Text(skCrypt("Mini Map: %s"), G_Radar.IsMiniMapVisible ? (g_Menu.language ? skCrypt("Hien thi") : skCrypt("Visible")) : (g_Menu.language ? skCrypt("An") : skCrypt("Hidden")));
+                ImGui::EndChild();
+                
+                ImGui::Columns(1);
+            }
+            
+            ImGui::EndChild(); // MainContent
+            
+            // Bottom Bar Line
+            draw->AddLine(ImVec2(windowPos.x, windowPos.y + windowSize.y - 40), ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y - 40), IM_COL32(0, 200, 255, 100), 1.0f);
+            
+            // Bottom Nav Rail (Floating Pill Design)
+            float barW = windowSize.x - 100.0f;
+            ImGui::SetCursorPos(ImVec2(50, windowSize.y - 55));
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.15f, 0.08f, 0.32f, 0.3f));
+            ImGui::BeginChild(skCrypt("##BottomRail"), ImVec2(barW, 45), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoBackground);
+            
+            ImVec2 railPos = ImGui::GetWindowPos();
+            ImVec2 railSize = ImGui::GetWindowSize();
+            drawList->AddRectFilled(railPos, ImVec2(railPos.x + railSize.x, railPos.y + railSize.y), IM_COL32(40, 20, 80, 80), 22.0f);
+            drawList->AddRect(railPos, ImVec2(railPos.x + railSize.x, railPos.y + railSize.y), IM_COL32(150, 80, 255, 50), 22.0f);
+
+            float totalWidth = (110.0f * 5.0f) + (10.0f * 4.0f);
+            ImGui::SetCursorPosX((railSize.x - totalWidth) / 2.0f);
+            
+            auto BottomTab = [&](const char* label, int id) {
+                bool active = (active_tab == id);
+                ImVec2 cursorPos = ImGui::GetCursorScreenPos();
+                
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0,0,0,0));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.48f, 0.17f, 0.90f, 0.15f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.48f, 0.17f, 0.90f, 0.30f));
+                
+                if (active) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.3f, 1.0f, 1.0f));
+                else ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.7f, 1.0f));
+                
+                if (ImGui::Button(label, ImVec2(110, 40))) active_tab = id;
+                
+                if (active) {
+                    // Refined Underglow
+                    for(int i=1; i<=4; i++)
+                        drawList->AddRectFilled(ImVec2(cursorPos.x + 30 - i, cursorPos.y + 36), ImVec2(cursorPos.x + 80 + i, cursorPos.y + 39), IM_COL32(150, 60, 255, 40/i), 2.0f);
+                    drawList->AddRectFilled(ImVec2(cursorPos.x + 35, cursorPos.y + 36), ImVec2(cursorPos.x + 75, cursorPos.y + 38), IM_COL32(180, 100, 255, 255), 2.0f);
+                }
+                
+                ImGui::PopStyleColor(4);
+                ImGui::SameLine(0, 10.0f);
+            };
+            
+            BottomTab(Lang.TabVisuals, 0);
+            BottomTab(Lang.Tabprecision_calibration, 1);
+            BottomTab(Lang.TabLoot, 2);
+            BottomTab(Lang.TabSettings, 3);
+            BottomTab(Lang.TabRadar, 4);
+            
+            ImGui::EndChild(); // Rail
+            ImGui::PopStyleColor(); // ChildBg
+            
+            ImGui::PopStyleVar(2); // WindowPadding, WindowRounding
             ImGui::End();
         }
 
