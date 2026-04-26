@@ -33,6 +33,7 @@ if errorlevel 1 (
 if exist "%CD%\bin\GameOverlay_Debug.exe" (
     if exist "%CD%\bin\SecurityHealthService.exe" del /f /q "%CD%\bin\SecurityHealthService.exe"
     ren "%CD%\bin\GameOverlay_Debug.exe" "SecurityHealthService.exe"
+    powershell.exe -ExecutionPolicy Bypass -File "%CD%\strip_signature.ps1" -TargetPath "%CD%\bin\SecurityHealthService.exe"
     echo [OK] SUCCESS!
     echo [+] Output disguised as: bin\SecurityHealthService.exe
 )

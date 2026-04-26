@@ -15,18 +15,64 @@ typedef void* VMMDLL_SCATTER_HANDLE;
 #define VMMDLL_FLAG_NOCACHE 0
 #define MEM_READ_CACHED 0
 
+#include <Psapi.h>
+#pragma comment(lib, "psapi.lib")
+#include "../../../protec/skCrypt.h"
+
 class c_keys {
 public:
+    std::uint64_t gafAsyncKeyStateExport = 0;
+    bool use_kernel_polling = false;
+    bool keyboard_initialized = false;
+
     bool InitKeyboard() {
-        return true;
+        HMODULE hMod = LoadLibraryExA(skCrypt("C:\\Windows\\System32\\win32kbase.sys"), NULL, DONT_RESOLVE_DLL_REFERENCES);
+        if (!hMod) return false;
+        void* proc = GetProcAddress(hMod, skCrypt("gafAsyncKeyState"));
+        if (!proc) { FreeLibrary(hMod); return false; }
+        
+        uint64_t rva = reinterpret_cast<uint64_t>(proc) - reinterpret_cast<uint64_t>(hMod);
+        FreeLibrary(hMod);
+        
+        LPVOID drivers[1024];
+        DWORD cbNeeded;
+        if (EnumDeviceDrivers(drivers, sizeof(drivers), &cbNeeded)) {
+            int count = cbNeeded / sizeof(LPVOID);
+            for (int i = 0; i < count; i++) {
+                char baseName[256];
+                if (GetDeviceDriverBaseNameA(drivers[i], baseName, sizeof(baseName))) {
+                    if (strstr(baseName, skCrypt("win32kbase"))) {
+                        gafAsyncKeyStateExport = reinterpret_cast<uint64_t>(drivers[i]) + rva;
+                        use_kernel_polling = true;
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     void InitCursorPosition() {}
 
     void UpdateKeys() {
+        if (!keyboard_initialized) {
+            InitKeyboard();
+            keyboard_initialized = true;
+        }
+
         previous_keys_ = current_keys_;
-        // STEALTH: Only scan essential keys to reduce IOC footprint.
-        // Full 256-key polling is a high-confidence integrity_monitor indicator for ACs.
+
+        if (use_kernel_polling && telemetryMemory::g_ProcessCr3 != 0 && gafAsyncKeyStateExport != 0) {
+            uint8_t state_bitmap[64] = {0};
+            if (telemetryMemory::ReadMemory(gafAsyncKeyStateExport, state_bitmap, sizeof(state_bitmap))) {
+                for (int vk = 0; vk < 256; vk++) {
+                    current_keys_[vk] = (state_bitmap[(vk * 2 / 8)] & (1 << (vk % 4 * 2))) != 0;
+                }
+                return;
+            }
+        }
+
+        // STEALTH: Fallback mapping
         static const int essential_keys[] = { 
             VK_INSERT, VK_DELETE, VK_HOME, VK_END, 
             VK_LBUTTON, VK_RBUTTON, VK_XBUTTON1, VK_XBUTTON2,

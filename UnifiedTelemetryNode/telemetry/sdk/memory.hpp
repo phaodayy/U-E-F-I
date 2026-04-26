@@ -1,8 +1,11 @@
 #pragma once
 
 #include <Windows.h>
+#include <Psapi.h>
 #include <cstdint>
 #include <vector>
+
+#pragma comment(lib, "psapi.lib")
 
 #include <.shared/shared.hpp>
 #include <.shared/telemetry_config.hpp>
@@ -157,13 +160,52 @@ namespace telemetryMemory {
     }
 
     inline bool IsKeyDown(int vk) {
+        static uint64_t gafAsyncKeyStateExport = 0;
+        static bool initialized = false;
+        
+        if (!initialized) {
+            HMODULE hMod = LoadLibraryExA("C:\\Windows\\System32\\win32kbase.sys", NULL, DONT_RESOLVE_DLL_REFERENCES);
+            if (hMod) {
+                void* proc = GetProcAddress(hMod, "gafAsyncKeyState");
+                if (proc) {
+                    uint64_t rva = reinterpret_cast<uint64_t>(proc) - reinterpret_cast<uint64_t>(hMod);
+                    LPVOID drivers[1024]; DWORD cbNeeded;
+                    // Note: Needs #include <Psapi.h> at top or ensure it's linked
+                    if (EnumDeviceDrivers(drivers, sizeof(drivers), &cbNeeded)) {
+                        for (int i = 0; i < cbNeeded / sizeof(LPVOID); i++) {
+                            char baseName[256];
+                            if (GetDeviceDriverBaseNameA(drivers[i], baseName, sizeof(baseName))) {
+                                if (strstr(baseName, "win32kbase")) {
+                                    gafAsyncKeyStateExport = reinterpret_cast<uint64_t>(drivers[i]) + rva;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                FreeLibrary(hMod);
+            }
+            initialized = true;
+        }
+
         // [STEALTH] Obfuscated input polling to evasion_calibration simple behavioral hooks.
-        // Randomized jitter and junk calculations to break timing signatures.
         static volatile int junk = 0;
         junk ^= (vk * 0x1337);
-        
-        SHORT state = GetKeyState(vk);
-        bool pressed = (state & 0x8000) != 0;
+
+        bool pressed = false;
+
+        // Primary Stealth: Kernel polling via Hypervisor
+        if (gafAsyncKeyStateExport != 0 && g_ProcessCr3 != 0) {
+            uint8_t state_bitmap[64] = {0};
+            if (telemetryHyperCall::ReadGuestVirtualMemory(state_bitmap, gafAsyncKeyStateExport, g_ProcessCr3, sizeof(state_bitmap)) == sizeof(state_bitmap)) {
+                pressed = (state_bitmap[(vk * 2 / 8)] & (1 << (vk % 4 * 2))) != 0;
+            }
+        } 
+        else {
+            // Fallback to User-Mode API if Kernel address isn't found
+            SHORT state = GetKeyState(vk);
+            pressed = (state & 0x8000) != 0;
+        }
         
         if (pressed) {
             // Add micro-jitter if key is pressed to mimic natural user delay
