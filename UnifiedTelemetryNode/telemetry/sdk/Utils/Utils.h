@@ -17,12 +17,12 @@
 #include <imgui/imgui.h>
 
 #define U8(_S)    (const char*)u8##_S
-#define COLOR_RED     "\033[31m"
-#define COLOR_GREEN   "\033[32m"
-#define COLOR_RESET   "\033[0m"
-#define COLOR_LYELLOW "\033[1;33m"
-#define COLOR_LGREEN  "\033[1;32m"
-#define COLOR_LBLUE   "\033[1;34m"
+#define COLOR_RED     skCrypt("\033[31m")
+#define COLOR_GREEN   skCrypt("\033[32m")
+#define COLOR_RESET   skCrypt("\033[0m")
+#define COLOR_LYELLOW skCrypt("\033[1;33m")
+#define COLOR_LGREEN  skCrypt("\033[1;32m")
+#define COLOR_LBLUE   skCrypt("\033[1;34m")
 
 #include <map>
 
@@ -30,15 +30,15 @@ namespace Utils
 {
     inline std::string keyCodeToString(int keyCode) {
         static std::map<int, std::string> keyMap = {
-            {VK_LBUTTON, "LMouse"}, {VK_RBUTTON, "RMouse"}, {VK_MBUTTON, "MMouse"},
-            {VK_XBUTTON1, "X1Mouse"}, {VK_XBUTTON2, "X2Mouse"}, {VK_CAPITAL, "CapsLock"},
-            {VK_SHIFT, "Shift"}, {VK_CONTROL, "Ctrl"}, {VK_MENU, "Alt"}, {VK_SPACE, "Space"},
-            {VK_LSHIFT, "LShift"}, {VK_RSHIFT, "RShift"}, {VK_LCONTROL, "LCtrl"}, {VK_RCONTROL, "RCtrl"}
+            {VK_LBUTTON, skCrypt("LMouse")}, {VK_RBUTTON, skCrypt("RMouse")}, {VK_MBUTTON, skCrypt("MMouse")},
+            {VK_XBUTTON1, skCrypt("X1Mouse")}, {VK_XBUTTON2, skCrypt("X2Mouse")}, {VK_CAPITAL, skCrypt("CapsLock")},
+            {VK_SHIFT, skCrypt("Shift")}, {VK_CONTROL, skCrypt("Ctrl")}, {VK_MENU, skCrypt("Alt")}, {VK_SPACE, skCrypt("Space")},
+            {VK_LSHIFT, skCrypt("LShift")}, {VK_RSHIFT, skCrypt("RShift")}, {VK_LCONTROL, skCrypt("LCtrl")}, {VK_RCONTROL, skCrypt("RCtrl")}
         };
         if (keyMap.count(keyCode)) return keyMap[keyCode];
         char keyName[64];
         if (GetKeyNameTextA(MapVirtualKeyA(keyCode, MAPVK_VK_TO_VSC) << 16, keyName, sizeof(keyName))) return std::string(keyName);
-        return "Key " + std::to_string(keyCode);
+        return skCrypt("Key ") + std::to_string(keyCode);
     }
 	// 将 Unicode 转义序列 (例如 \u5927) 转换为对应的 UTF-16 字符
 	inline std::wstring unicode_escape_to_wstring(const std::string& str) {
@@ -85,19 +85,19 @@ namespace Utils
 	}
 
 	inline bool IsLobby(const std::string& mapName) {
-		if (mapName.empty() || mapName == "fail" || mapName == "None") return true;
+		if (mapName.empty() || mapName == skCrypt("fail") || mapName == skCrypt("None")) return true;
 		
-		bool isKnownLobby = (mapName.find("TslLobby") != std::string::npos || 
-							 mapName.find("F_Lobby") != std::string::npos ||
-							 mapName.find("MainLobby") != std::string::npos);
+		bool isKnownLobby = (mapName.find(skCrypt("TslLobby")) != std::string::npos || 
+							 mapName.find(skCrypt("F_Lobby")) != std::string::npos ||
+							 mapName.find(skCrypt("MainLobby")) != std::string::npos);
 		
 		if (isKnownLobby) return true;
 		
 		// Map thuc su thuong co ten nhu "Erangel", "Miramar", "Range_Main", v.v.
 		// Neu mapName chua nhung tu khoa nay thi chac chan dang trong game.
-		if (mapName.find("Main") != std::string::npos || 
-			mapName.find("Desert") != std::string::npos || 
-			mapName.find("Savage") != std::string::npos) {
+		if (mapName.find(skCrypt("Main")) != std::string::npos || 
+			mapName.find(skCrypt("Desert")) != std::string::npos || 
+			mapName.find(skCrypt("Savage")) != std::string::npos) {
 			return false;
 		}
 
@@ -182,7 +182,7 @@ namespace Utils
 
 		hDevInfo = SetupDiGetClassDevs(&GUID_DEVCLASS_PORTS, NULL, NULL, DIGCF_PRESENT);
 		if (hDevInfo == INVALID_HANDLE_VALUE) {
-			std::cerr << "Failed to get device information set for the COM ports." << std::endl;
+			std::cerr << skCrypt("Failed to get device information set for the COM ports.") << std::endl;
 			return comPorts;
 		}
 
@@ -303,7 +303,7 @@ namespace Utils
 
 		// 使用 stringstream 格式化字符串
 		std::stringstream ss;
-		ss << std::setw(2) << std::setfill('0') << hours << ":";
+		ss << std::setw(2) << std::setfill('0') << hours << skCrypt(":");
 		ss << std::setw(2) << std::setfill('0') << remainingMinutes;
 
 		return ss.str();
@@ -329,7 +329,7 @@ namespace Utils
 
 		// 将时间转换为字符串格式
 		char timeStr[9];
-		strftime(timeStr, sizeof(timeStr), "%T", &timeinfo);
+		strftime(timeStr, sizeof(timeStr), skCrypt("%T"), &timeinfo);
 
 		return timeStr;
 	}
@@ -338,13 +338,13 @@ namespace Utils
 		std::ostringstream oss;
 
 		if (type == 1) {
-			oss << COLOR_LGREEN << "[+] ";
+			oss << COLOR_LGREEN << skCrypt("[+] ");
 		}
 		else if (type == 2) {
-			oss << COLOR_RED << "[X] ";
+			oss << COLOR_RED << skCrypt("[X] ");
 		}
 		else {
-			oss << COLOR_LYELLOW << "[-] ";
+			oss << COLOR_LYELLOW << skCrypt("[-] ");
 		}
 
 		va_list args;

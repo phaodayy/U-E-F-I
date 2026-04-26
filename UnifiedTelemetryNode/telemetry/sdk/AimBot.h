@@ -561,15 +561,15 @@ public:
         
         // Nhóm 1: Các loại súng có đạn đạo tiêu chuẩn (AR, SR, SMG phổ biến)
         static std::set<std::string> GunGroupNodes = {
-            "WeapAK47_C", "WeapLunchmeats_AK47_C", "WeapGroza_C", "WeapBerylM762_C", "WeapMini14_C", "WeapQBU88_C", 
-            "Weapon_G36C_C", "WeapKar98k_C", "WeapMosinNagant_C", "WeapJulies_Kar98k_C", "WeapM24_C", "WeapAWM_C",
-            "WeapHK416_C", "WeapDuncans_M416_C", "WeapK2_C", "WeapSCAR-L_C", "WeapM16A4_C", "WeapQBZ95_C", "WeapAUG_C",
-            "Weapon_M249_C", "WeaponMk14_C", "Weapon_L6_C", "WeapMG3_C", "WeapACE32_C", "WeapMads_QBU88_C", "Weapon_Mosin_C"
+            skCrypt("WeapAK47_C"), skCrypt("WeapLunchmeats_AK47_C"), skCrypt("WeapGroza_C"), skCrypt("WeapBerylM762_C"), skCrypt("WeapMini14_C"), skCrypt("WeapQBU88_C"), 
+            skCrypt("Weapon_G36C_C"), skCrypt("WeapKar98k_C"), skCrypt("WeapMosinNagant_C"), skCrypt("WeapJulies_Kar98k_C"), skCrypt("WeapM24_C"), skCrypt("WeapAWM_C"),
+            skCrypt("WeapHK416_C"), skCrypt("WeapDuncans_M416_C"), skCrypt("WeapK2_C"), skCrypt("WeapSCAR-L_C"), skCrypt("WeapM16A4_C"), skCrypt("WeapQBZ95_C"), skCrypt("WeapAUG_C"),
+            skCrypt("Weapon_M249_C"), skCrypt("WeaponMk14_C"), skCrypt("Weapon_L6_C"), skCrypt("WeapMG3_C"), skCrypt("WeapACE32_C"), skCrypt("WeapMads_QBU88_C"), skCrypt("Weapon_Mosin_C")
         };
 
         // Nhóm 2: Các loại súng có độ rơi cao hoặc DMR đặc thù (SKS, SLR, Mk12, Dragunov)
         static std::set<std::string> GunGroupHighDrop = {
-            "WeapSKS_C", "WeapFNFal_C", "Weapon_Mk47Mutant_C", "WeapMk12_C", "WeapDragunov_C", "WeapVSS_C", "WeapWin94_C"
+            skCrypt("WeapSKS_C"), skCrypt("WeapFNFal_C"), skCrypt("Weapon_Mk47Mutant_C"), skCrypt("WeapMk12_C"), skCrypt("WeapDragunov_C"), skCrypt("WeapVSS_C"), skCrypt("WeapWin94_C")
         };
 
         float dragFactor = 1.0f;

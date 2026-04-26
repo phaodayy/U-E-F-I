@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <string>
 #include <cstring>
+#include "../../../protec/skCrypt.h"
 
 
 
@@ -42,7 +43,7 @@ inline std::string DecryptName(const FNameEntry& Entry, uint32_t XorKey) {
 
 template<typename ReadFunc>
 inline uint32_t BruteForceFNameXorKey(uint64_t FNamePoolAddr, ReadFunc ReadMemory) {
-  const std::string TargetFName = "ByteProperty";
+  const std::string TargetFName = skCrypt("ByteProperty");
   const int FNameIndex = 3;
   
   int chunkOffset = FNameIndex >> 16;

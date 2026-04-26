@@ -36,13 +36,13 @@ public:
                 int ID = Decrypt::CIndex(mem.Read<int>(Widget + Offset::ObjID));
                 std::string WidgetName = GNames::GetNameByID(ID);
 
-                if (WidgetName == "NewWorldMapWidget_BP_C" || 
-                    WidgetName == "UI_NewWorldMapWidget_C" || 
-                    WidgetName == "UI_OldErangel_NewWorldMapWidget_BP_C" ||
-                    WidgetName == "UI_TrainingWorldMapWidget_C" || 
-                    WidgetName == "TDM_NewWorldMapWidget_BP_C" ||
-                    WidgetName == "ArcadeNewWorldMapWidget_C" ||
-                    WidgetName == "WarModeWorldMapWidget_C") {
+                if (WidgetName == skCrypt("NewWorldMapWidget_BP_C") || 
+                    WidgetName == skCrypt("UI_NewWorldMapWidget_C") || 
+                    WidgetName == skCrypt("UI_OldErangel_NewWorldMapWidget_BP_C") ||
+                    WidgetName == skCrypt("UI_TrainingWorldMapWidget_C") || 
+                    WidgetName == skCrypt("TDM_NewWorldMapWidget_BP_C") ||
+                    WidgetName == skCrypt("ArcadeNewWorldMapWidget_C") ||
+                    WidgetName == skCrypt("WarModeWorldMapWidget_C")) {
                     
                     if (CheckAndSetMapGrid(Widget, WidgetName)) return true;
                 }
@@ -61,8 +61,8 @@ public:
             std::string lowerName = WidgetName;
             std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
 
-            if (lowerName.find("worldmapwidget") != std::string::npos || 
-                lowerName.find("newworldmap") != std::string::npos) {
+            if (lowerName.find(skCrypt("worldmapwidget")) != std::string::npos || 
+                lowerName.find(skCrypt("newworldmap")) != std::string::npos) {
                 
                 if (CheckAndSetMapGrid(Value.Widget, WidgetName)) return true;
             }
@@ -79,7 +79,7 @@ public:
                 if (Layout.Right > 50.f && Layout.Bottom > 50.f) {
                     GameData.Radar.MapGrid = FastMapGrid;
                     GameData.Radar.MapWidget = Widget;
-                    Utils::Log(1, "[RADAR] Tim thay Map Grid tai %s", WidgetName.c_str());
+                    Utils::Log(1, skCrypt("[RADAR] Tim thay Map Grid tai %s"), WidgetName.c_str());
                     return true;
                 }
             }
@@ -98,10 +98,10 @@ public:
             ULONG ID = Decrypt::CIndex(mem.Read<ULONG>(Value.Widget + Offset::ObjID));
             std::string WidgetPtrName = GNames::GetName(ID);
 
-            if (WidgetPtrName == "MinimapOriginalType_C")
+            if (WidgetPtrName == skCrypt("MinimapOriginalType_C"))
             {
                 GameData.Radar.MiniMapWidget = Value.Widget;
-                Utils::Log(1, "[RADAR] Tim thay Mini-map Widget");
+                Utils::Log(1, skCrypt("[RADAR] Tim thay Mini-map Widget"));
                 return true;
             }
         }
@@ -149,7 +149,7 @@ public:
             }
             
             if (GameData.Radar.MapSize.Size <= 0) {
-                GameData.Radar.MapSize = MapsSize.count(GameData.MapName) ? MapsSize[GameData.MapName] : MapsSize["Baltic_Main"];
+                GameData.Radar.MapSize = MapsSize.count(GameData.MapName) ? MapsSize[GameData.MapName] : MapsSize[skCrypt("Baltic_Main")];
             }
 
             Throttlered.executeTaskWithSleep("RadarUpdateSleep", std::chrono::milliseconds(SleepTime), [] {});

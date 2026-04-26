@@ -25,7 +25,7 @@ public:
                 continue;
             }
 
-            Throttlered.executeTaskWithSleep("ProjectsUpdateSleep", std::chrono::milliseconds(4), [] {});
+            Throttlered.executeTaskWithSleep(skCrypt("ProjectsUpdateSleep"), std::chrono::milliseconds(4), [] {});
 
             std::unordered_map<uint64_t, ProjectInfo> CacheProjects = Data::GetCacheProjects();
 
@@ -54,7 +54,7 @@ public:
                         auto* CacheProject = activeProjects[j];
                         if (CacheProject->bVisible == 1) continue;
 
-                        if (CacheProject->EntityName != "ProjGrenade_C")
+                        if (CacheProject->EntityName != skCrypt("ProjGrenade_C"))
                         {
                             if (abs(CacheProject->TimeTillExplosion) > 0.0f && CacheProject->TimeTillExplosion == Times[CacheProject->Entity])
                             {

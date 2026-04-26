@@ -36,7 +36,7 @@ bool isValidUTF8(const std::string& str) {
 std::string gbkToUtf8(const std::string& gbkStr) {
 	try {
 		std::wstring_convert<std::codecvt_byname<wchar_t, char, std::mbstate_t>> converter(
-			new std::codecvt_byname<wchar_t, char, std::mbstate_t>("zh_CN.GBK"));
+			new std::codecvt_byname<wchar_t, char, std::mbstate_t>(skCrypt("zh_CN.GBK")));
 		std::wstring wideStr = converter.from_bytes(gbkStr);
 		std::wstring_convert<std::codecvt_utf8<wchar_t>> utf8Converter;
 		return utf8Converter.to_bytes(wideStr);
@@ -102,7 +102,7 @@ std::string compressString(const std::string& str) {
 
 		if (compress(compressedData.data(), &compressedSize,
 			reinterpret_cast<const Bytef*>(str.data()), str.size()) != Z_OK) {
-			throw std::runtime_error("Compression failed");
+			throw std::runtime_error(skCrypt("Compression failed"));
 		}
 
 		compressedData.resize(compressedSize);
@@ -203,7 +203,7 @@ public:
 	static int ScaleConversion(float Location)
 	{
 		float Scale = 1.f;
-		if (GameData.MapName == "Baltic_Main") Scale = 0.99609375f;
+		if (GameData.MapName == skCrypt("Baltic_Main")) Scale = 0.99609375f;
 		return static_cast<int>(std::round(Location * Scale));
 	}
 	static void Rundata() {
@@ -328,7 +328,7 @@ public:
 				if (!isValidUTF8(detail.Name)) {
 					detail.Name = gbkToUtf8(detail.Name);
 					if (detail.Name.empty()) {
-						detail.Name = "AI";
+						detail.Name = skCrypt("AI");
 					}
 				}
 
@@ -463,8 +463,8 @@ public:
 				}),
 				i,
 				v,
-				(send_item ? items : "CACHE"),
-				(send_item ? packages : "CACHE")
+				(send_item ? items : skCrypt("CACHE")),
+				(send_item ? packages : skCrypt("CACHE"))
 				});
 
 			try

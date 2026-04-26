@@ -39,8 +39,8 @@ namespace skc
 	};
 }
 
-#define skCrypt(str) []() { \
+#define skCrypt(str) ([]() { \
 			using CharType = std::remove_const_t<std::remove_reference_t<decltype(str[0])>>; \
 			static skc::skCrypter<sizeof(str) / sizeof(str[0]), __TIME__[4], __TIME__[7], CharType> crypted((CharType*)str); \
 			return crypted.decrypt(); \
-		}()
+		}())

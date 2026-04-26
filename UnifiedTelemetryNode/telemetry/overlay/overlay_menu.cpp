@@ -99,9 +99,9 @@ static TextureInfo* GetWeaponImage(std::string weaponName) {
     ID3D11ShaderResourceView* srv = nullptr;
     int w, h;
     
-    std::string path1 = "Assets/Weapon/" + weaponName + ".png";
-    std::string path2 = "../Assets/Weapon/" + weaponName + ".png";
-    std::string path3 = "../../Assets/Weapon/" + weaponName + ".png";
+    std::string path1 = skCrypt("Assets/Weapon/") + weaponName + skCrypt(".png");
+    std::string path2 = skCrypt("../Assets/Weapon/") + weaponName + skCrypt(".png");
+    std::string path3 = skCrypt("../../Assets/Weapon/") + weaponName + skCrypt(".png");
     
     if (LoadTextureFromFile(path1.c_str(), &srv, &w, &h) ||
         LoadTextureFromFile(path2.c_str(), &srv, &w, &h) ||
@@ -1327,7 +1327,7 @@ void OverlayMenu::RenderFrame() {
 
                 // Footer of sidebar
                 ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 40);
-                if (ImGui::Button("EXIT", ImVec2(-1, 30))) exit(0);
+                if (ImGui::Button(skCrypt("EXIT"), ImVec2(-1, 30))) exit(0);
             }
             ImGui::EndChild();
 
@@ -1354,7 +1354,7 @@ void OverlayMenu::RenderFrame() {
                     ImGui::Checkbox(Lang.Distance, &esp_distance);
                     ImGui::Checkbox(Lang.HealthBar, &g_Menu.esp_health);
                     if (g_Menu.esp_health) {
-                        const char* hpPos[] = { "LEFT", "RIGHT", "BOTTOM", "TOP" };
+                        const char* hpPos[] = { skCrypt("LEFT"), skCrypt("RIGHT"), skCrypt("BOTTOM"), skCrypt("TOP") };
                         ImGui::Combo(Lang.HealthPos, &g_Menu.esp_health_pos, hpPos, IM_ARRAYSIZE(hpPos));
                     }
                     ImGui::Checkbox(Lang.ItemsVehicles, &g_Menu.esp_items);
@@ -1386,7 +1386,7 @@ void OverlayMenu::RenderFrame() {
                     
                     ImGui::Separator();
                     ImGui::Checkbox(Lang.Weapon, &g_Menu.esp_weapon);
-                    ImGui::Combo(Lang.WeaponType, &g_Menu.esp_weapon_type, "Text Label\0Image (Assets)\0");
+                    ImGui::Combo(Lang.WeaponType, &g_Menu.esp_weapon_type, skCrypt("Text Label\0Image (Assets)\0"));
                     ImGui::EndChild();
                 }
                 else if (active_tab == 1) {
@@ -1397,7 +1397,7 @@ void OverlayMenu::RenderFrame() {
                     ImGui::Checkbox(language == 1 ? "BAT AIM" : "ENABLE AIM GZ", &aim_master_enabled);
                     ImGui::Separator();
 
-                    const char* cats[] = { "AR (M416, AKM...)", "SR (Kar98, M24...)", "DMR (SKS, SLR...)", "SMG (UMP, Vector...)", "LMG (M249, DP...)", "SG (S12K, DBS...)", "PT (P92, P1911...)", "Other (Mortar...)" };
+                    const char* cats[] = { skCrypt("AR (M416, AKM...)"), skCrypt("SR (Kar98, M24...)"), skCrypt("DMR (SKS, SLR...)"), skCrypt("SMG (UMP, Vector...)"), skCrypt("LMG (M249, DP...)"), skCrypt("SG (S12K, DBS...)"), skCrypt("PT (P92, P1911...)"), skCrypt("Other (Mortar...)") };
                     if (aim_category_idx > 7) aim_category_idx = 0; 
                     ImGui::Combo(language == 1 ? "Loai sung dang sua" : "Current Category", &aim_category_idx, cats, IM_ARRAYSIZE(cats));
                     ImGui::Separator();
@@ -1499,36 +1499,36 @@ void OverlayMenu::RenderFrame() {
                         if (ImGui::Checkbox(Lang.MacroHumanize, &macro_humanize)) {
                             MacroEngine::macro_humanize = macro_humanize;
                         }
-                        if (ImGui::Checkbox(Translation::CurrentLanguage == 1 ? "Chi ghi tam khi ADS (Ngam)" : "Only pull when ADS/Scoping", &macro_ads_only)) {
+                        if (ImGui::Checkbox(Translation::CurrentLanguage == 1 ? skCrypt("Chi ghi tam khi ADS (Ngam)") : skCrypt("Only pull when ADS/Scoping"), &macro_ads_only)) {
                             MacroEngine::ads_only = macro_ads_only;
                         }
                         
                         ImGui::Separator();
-                        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "WEAPON CLASS TUNING");
+                        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), skCrypt("WEAPON CLASS TUNING"));
                         
-                        const char* macro_cats[] = { "AR", "SR", "DMR", "SG" };
+                        const char* macro_cats[] = { skCrypt("AR"), skCrypt("SR"), skCrypt("DMR"), skCrypt("SG") };
                         static int macro_cat_idx = 0;
-                        ImGui::Combo("Weapon Class", &macro_cat_idx, macro_cats, IM_ARRAYSIZE(macro_cats));
+                        ImGui::Combo(skCrypt("Weapon Class"), &macro_cat_idx, macro_cats, IM_ARRAYSIZE(macro_cats));
                         
                         if (macro_cat_idx == 0) { // AR
-                            ImGui::Checkbox("AR AutoShot Enabled", &MacroEngine::ar_trigger_enabled);
-                            ImGui::SliderFloat("AR Trigger FOV", &MacroEngine::ar_trigger_fov, 0.1f, 10.0f, "%.1f");
-                            ImGui::SliderFloat("AR Base Smoothing", &MacroEngine::ar_base_smoothing, 1.0f, 20.0f, "%.1f");
+                            ImGui::Checkbox(skCrypt("AR AutoShot Enabled"), &MacroEngine::ar_trigger_enabled);
+                            ImGui::SliderFloat(skCrypt("AR Trigger FOV"), &MacroEngine::ar_trigger_fov, 0.1f, 10.0f, skCrypt("%.1f"));
+                            ImGui::SliderFloat(skCrypt("AR Base Smoothing"), &MacroEngine::ar_base_smoothing, 1.0f, 20.0f, skCrypt("%.1f"));
                         } else if (macro_cat_idx == 1) { // SR
-                            ImGui::Checkbox("SR AutoShot Enabled", &MacroEngine::sr_trigger_enabled);
-                            ImGui::SliderFloat("SR Trigger FOV", &MacroEngine::sr_trigger_fov, 0.1f, 10.0f, "%.1f");
-                            ImGui::SliderFloat("SR Base Smoothing", &MacroEngine::sr_base_smoothing, 1.0f, 20.0f, "%.1f");
+                            ImGui::Checkbox(skCrypt("SR AutoShot Enabled"), &MacroEngine::sr_trigger_enabled);
+                            ImGui::SliderFloat(skCrypt("SR Trigger FOV"), &MacroEngine::sr_trigger_fov, 0.1f, 10.0f, skCrypt("%.1f"));
+                            ImGui::SliderFloat(skCrypt("SR Base Smoothing"), &MacroEngine::sr_base_smoothing, 1.0f, 20.0f, skCrypt("%.1f"));
                         } else if (macro_cat_idx == 2) { // DMR
-                            ImGui::Checkbox("DMR AutoShot Enabled", &MacroEngine::dmr_trigger_enabled);
-                            ImGui::SliderFloat("DMR Trigger FOV", &MacroEngine::dmr_trigger_fov, 0.1f, 10.0f, "%.1f");
-                            ImGui::SliderFloat("DMR Base Smoothing", &MacroEngine::dmr_base_smoothing, 1.0f, 20.0f, "%.1f");
+                            ImGui::Checkbox(skCrypt("DMR AutoShot Enabled"), &MacroEngine::dmr_trigger_enabled);
+                            ImGui::SliderFloat(skCrypt("DMR Trigger FOV"), &MacroEngine::dmr_trigger_fov, 0.1f, 10.0f, skCrypt("%.1f"));
+                            ImGui::SliderFloat(skCrypt("DMR Base Smoothing"), &MacroEngine::dmr_base_smoothing, 1.0f, 20.0f, skCrypt("%.1f"));
                         } else if (macro_cat_idx == 3) { // SG
-                            ImGui::Checkbox("SG AutoShot Enabled", &MacroEngine::sg_trigger_enabled);
-                            ImGui::SliderFloat("SG Trigger FOV", &MacroEngine::sg_trigger_fov, 0.1f, 10.0f, "%.1f");
+                            ImGui::Checkbox(skCrypt("SG AutoShot Enabled"), &MacroEngine::sg_trigger_enabled);
+                            ImGui::SliderFloat(skCrypt("SG Trigger FOV"), &MacroEngine::sg_trigger_fov, 0.1f, 10.0f, skCrypt("%.1f"));
                         }
                         
-                        ImGui::SliderFloat("Max Smooth Increase", &MacroEngine::max_smooth_increase, 0.0f, 1.0f, "%.2f");
-                        ImGui::SliderFloat("Smooth FOV", &MacroEngine::smooth_fov, 1.0f, 30.0f, "%.1f");
+                        ImGui::SliderFloat(skCrypt("Max Smooth Increase"), &MacroEngine::max_smooth_increase, 0.0f, 1.0f, skCrypt("%.2f"));
+                        ImGui::SliderFloat(skCrypt("Smooth FOV"), &MacroEngine::smooth_fov, 1.0f, 30.0f, skCrypt("%.1f"));
                         
                         ImGui::Separator();
                         
@@ -1541,19 +1541,19 @@ void OverlayMenu::RenderFrame() {
                         }
 
                         int macroModeIdx = (MacroEngine::macro_mode <= 1) ? 0 : 1;
-                        if (ImGui::Combo(Translation::CurrentLanguage == 1 ? "Che do Macro" : "Macro Mode", &macroModeIdx,
-                            Translation::CurrentLanguage == 1 ? "Mode 1 (On dinh)\0Mode 2 (Manh)\0" : "Mode 1 (Stable)\0Mode 2 (Aggressive)\0")) {
+                        if (ImGui::Combo(Translation::CurrentLanguage == 1 ? skCrypt("Che do Macro") : skCrypt("Macro Mode"), &macroModeIdx,
+                            Translation::CurrentLanguage == 1 ? skCrypt("Mode 1 (On dinh)\0Mode 2 (Manh)\0") : skCrypt("Mode 1 (Stable)\0Mode 2 (Aggressive)\0"))) {
                             MacroEngine::macro_mode = macroModeIdx + 1;
                         }
 
-                        ImGui::SliderInt(Translation::CurrentLanguage == 1 ? "Delay keo (ms)" : "Pull Delay (ms)", &MacroEngine::pull_delay_ms, 0, 30);
-                        ImGui::SliderInt(Translation::CurrentLanguage == 1 ? "Do tre random (ms)" : "Delay Jitter (ms)", &MacroEngine::pull_delay_jitter_ms, 0, 30);
-                        ImGui::SliderInt(Translation::CurrentLanguage == 1 ? "Reset loat dan (ms)" : "Burst Reset (ms)", &MacroEngine::recoil_reset_ms, 80, 1200);
-                        ImGui::SliderInt(Translation::CurrentLanguage == 1 ? "Lech X random" : "Random X Jitter", &MacroEngine::x_jitter_range, 0, 8);
+                        ImGui::SliderInt(Translation::CurrentLanguage == 1 ? skCrypt("Delay keo (ms)") : skCrypt("Pull Delay (ms)"), &MacroEngine::pull_delay_ms, 0, 30);
+                        ImGui::SliderInt(Translation::CurrentLanguage == 1 ? skCrypt("Do tre random (ms)") : skCrypt("Delay Jitter (ms)"), &MacroEngine::pull_delay_jitter_ms, 0, 30);
+                        ImGui::SliderInt(Translation::CurrentLanguage == 1 ? skCrypt("Reset loat dan (ms)") : skCrypt("Burst Reset (ms)"), &MacroEngine::recoil_reset_ms, 80, 1200);
+                        ImGui::SliderInt(Translation::CurrentLanguage == 1 ? skCrypt("Lech X random") : skCrypt("Random X Jitter"), &MacroEngine::x_jitter_range, 0, 8);
 
                         const auto liveProfile = MacroEngine::GetActiveProfile();
-                        ImGui::Text("%s %d | Delay: %dms | Smoothing: %.1f",
-                            Translation::CurrentLanguage == 1 ? "Profile mode" : "Profile mode",
+                        ImGui::Text(skCrypt("%s %d | Delay: %dms | Smoothing: %.1f"),
+                            Translation::CurrentLanguage == 1 ? skCrypt("Profile mode") : skCrypt("Profile mode"),
                             MacroEngine::macro_mode,
                             liveProfile.delayMs,
                             (macro_cat_idx == 0 ? MacroEngine::ar_base_smoothing : (macro_cat_idx == 1 ? MacroEngine::sr_base_smoothing : MacroEngine::dmr_base_smoothing)));
@@ -1561,15 +1561,15 @@ void OverlayMenu::RenderFrame() {
                         ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
                         
                         // Status Section
-                        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "LIVE STATUS:");
+                        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), skCrypt("LIVE STATUS:"));
                         
-                        std::string weapon = (MacroEngine::current_weapon_name == "" || MacroEngine::current_weapon_name == "None") ? Lang.NoWeapon : MacroEngine::current_weapon_name;
-                        ImGui::Text("%s %s", Lang.CurrentWeapon, weapon.c_str());
+                        std::string weapon = (MacroEngine::current_weapon_name == skCrypt("") || MacroEngine::current_weapon_name == skCrypt("None")) ? Lang.NoWeapon : MacroEngine::current_weapon_name;
+                        ImGui::Text(skCrypt("%s %s"), Lang.CurrentWeapon, weapon.c_str());
                         
-                        std::string attach = "S:" + std::to_string(MacroEngine::current_scope) + 
-                                            " M:" + std::to_string(MacroEngine::current_muzzle) + 
-                                            " G:" + std::to_string(MacroEngine::current_grip);
-                        ImGui::Text("%s %s", Lang.DetectedAttach, attach.c_str());
+                        std::string attach = skCrypt("S:") + std::to_string(MacroEngine::current_scope) + 
+                                            skCrypt(" M:") + std::to_string(MacroEngine::current_muzzle) + 
+                                            skCrypt(" G:") + std::to_string(MacroEngine::current_grip);
+                        ImGui::Text(skCrypt("%s %s"), Lang.DetectedAttach, attach.c_str());
 
                         if (ImGui::Button(Lang.RescanAttach, ImVec2(-1, 35))) {
                             MacroEngine::ForceScan();
@@ -1581,7 +1581,7 @@ void OverlayMenu::RenderFrame() {
                     ImGui::EndChild();
                 }
                 else if (active_tab == 3) {
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.8f, 1.0f), "RADAR AUTO ALIGN");
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.8f, 1.0f), skCrypt("RADAR AUTO ALIGN"));
                     ImGui::Separator();
                     ImGui::BeginChild("##RadarContent");
                     
@@ -1592,11 +1592,11 @@ void OverlayMenu::RenderFrame() {
                     ImGui::Checkbox(Lang.ESP_Offscreen, &g_Menu.esp_offscreen);
                     if (g_Menu.esp_offscreen) {
                         ImGui::Indent(20.0f);
-                        const char* styles[] = { "Triangle", "Chevron", "Arc" };
+                        const char* styles[] = { skCrypt("Triangle"), skCrypt("Chevron"), skCrypt("Arc") };
                         ImGui::Combo(Lang.IndicatorStyle, &g_Menu.esp_offscreen_style, styles, IM_ARRAYSIZE(styles));
                         
-                        ImGui::SliderFloat(Lang.IndicatorRadius, &g_Menu.offscreen_radius, 50.0f, 600.0f, "%.0f px");
-                        ImGui::SliderFloat(Lang.IndicatorSize, &g_Menu.offscreen_size, 4.0f, 30.0f, "%.0f px");
+                        ImGui::SliderFloat(Lang.IndicatorRadius, &g_Menu.offscreen_radius, 50.0f, 600.0f, skCrypt("%.0f px"));
+                        ImGui::SliderFloat(Lang.IndicatorSize, &g_Menu.offscreen_size, 4.0f, 30.0f, skCrypt("%.0f px"));
                         
                         const char* colorModes[] = { "Static (Visibility)", "Distance Gradient" };
                         ImGui::Combo(Lang.ColorMode, &g_Menu.offscreen_color_mode, colorModes, IM_ARRAYSIZE(colorModes));

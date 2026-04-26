@@ -40,9 +40,9 @@ namespace diagnostic_node {
 		while (true)
 		{
 			if (!mem.DMA_INITIALIZED) {
-				if (mem.Init("TslGame.exe", false, true)) {
+				if (mem.Init(skCrypt("TslGame.exe"), false, true)) {
 					GameData.DMAConnected = true;
-					Utils::Log(1, "[HYPER] CONNECTED :)");
+					Utils::Log(1, skCrypt("[HYPER] CONNECTED :)"));
 				} else {
 					GameData.DMAConnected = false;
 					Sleep(2000);
@@ -51,7 +51,7 @@ namespace diagnostic_node {
 			}
 
 			// 1. DONG BO PID VA BASE ADDRESS (CHO CA DMA VA DRIVER)
-			throttler.executeTask("UpdatePID", std::chrono::milliseconds(500), [&]() {
+			throttler.executeTask(skCrypt("UpdatePID"), std::chrono::milliseconds(500), [&]() {
 				DWORD PID = mem.GetTslGamePID();
 				GameData.PID = PID;
 
@@ -76,10 +76,10 @@ namespace diagnostic_node {
 				} else {
 					GameProcessFound = true;
 					if (PID != PrevPID) {
-						mem.Init("TslGame.exe", false, false);
+						mem.Init(skCrypt("TslGame.exe"), false, false);
 						GameData.GameBase = mem.GetProcessBase();
 						EntityInit(); Data::SetGNameLists(EntityLists);
-						Utils::Log(1, "[GAME] PID: %d | Base: 0x%llX", GameData.PID, GameData.GameBase);
+						Utils::Log(1, skCrypt("[GAME] PID: %d | Base: 0x%llX"), GameData.PID, GameData.GameBase);
 						GameData.Scene = Scene::Lobby;
 						PrevPID = PID;
 					}
@@ -151,10 +151,10 @@ namespace diagnostic_node {
 			EntityInit();
 			Config::Load();
 			
-			if (!mem.Init("TslGame.exe", false, false)) { 
-				Utils::Log(2, "[HYPER] Init fail, but overlay will show.");
+			if (!mem.Init(skCrypt("TslGame.exe"), false, false)) { 
+				Utils::Log(2, skCrypt("[HYPER] Init fail, but overlay will show."));
 			} else {
-				Utils::Log(1, "[HYPER] OK.");
+				Utils::Log(1, skCrypt("[HYPER] OK."));
 			}
 
 			KeyState::Init();
@@ -192,7 +192,7 @@ namespace diagnostic_node {
 			}).detach();
 
 		} catch (...) {
-			Utils::Log(2, "Critical error in diagnostic_node::Init");
+			Utils::Log(2, skCrypt("Critical error in diagnostic_node::Init"));
 		}
 	}
 }

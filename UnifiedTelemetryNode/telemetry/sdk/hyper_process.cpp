@@ -91,8 +91,8 @@ namespace
 
         std::string image_path(raw_path);
 
-        const std::string system_root_prefix = "\\SystemRoot\\";
-        const std::string dos_device_prefix = "\\??\\";
+        const std::string system_root_prefix = skCrypt("\\SystemRoot\\");
+        const std::string dos_device_prefix = skCrypt("\\??\\");
 
         if (image_path.rfind(system_root_prefix, 0) == 0)
         {
@@ -102,7 +102,7 @@ namespace
                 return {};
             }
 
-            return std::string(windows_directory) + "\\" + image_path.substr(system_root_prefix.size());
+            return std::string(windows_directory) + skCrypt("\\") + image_path.substr(system_root_prefix.size());
         }
 
         if (image_path.rfind(dos_device_prefix, 0) == 0)
@@ -126,14 +126,14 @@ namespace
             return false;
         }
 
-        auto* ntdll = GetModuleHandleA("ntdll.dll");
+        auto* ntdll = GetModuleHandleA(skCrypt("ntdll.dll"));
         if (ntdll == nullptr)
         {
             return false;
         }
 
         const auto nt_query_system_information = reinterpret_cast<NtQuerySystemInformation_t>(
-            GetProcAddress(ntdll, "NtQuerySystemInformation"));
+            GetProcAddress(ntdll, skCrypt("NtQuerySystemInformation")));
         if (nt_query_system_information == nullptr)
         {
             return false;
@@ -210,7 +210,7 @@ namespace
             for (std::uint64_t offset = 0x400; offset < 0x800; offset++) {
                 char buf[8] = {};
                 if (telemetryHyperCall::ReadGuestVirtualMemory(buf, system_eprocess + offset, g_CurrentCr3, 6) == 6) {
-                    if (strcmp(buf, "System") == 0) {
+                    if (strcmp(buf, skCrypt("System")) == 0) {
                         g_ImageFileNameOffset = offset;
                         break;
                     }

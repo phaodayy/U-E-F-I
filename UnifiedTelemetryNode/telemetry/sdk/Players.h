@@ -56,8 +56,8 @@ public:
 	{
 		std::unordered_map <std::string, int> playerWhiteLists;
 		std::unordered_map <std::string, int> playerBlackLists;
-		std::string filename = "C:\\BlackLists.txt";
-		if (type == 2) filename = "C:\\WhiteLists.txt";
+		std::string filename = skCrypt("C:\\BlackLists.txt");
+		if (type == 2) filename = skCrypt("C:\\WhiteLists.txt");
 
 		std::ifstream file(filename);
 		if (!file.is_open()) return;
@@ -80,11 +80,11 @@ public:
 		std::unordered_map<std::string, int> currentList;
 
 		if (type == 2) {
-			filename = "C:\\WhiteLists.txt";
+			filename = skCrypt("C:\\WhiteLists.txt");
 			currentList = playerWhiteLists;
 		}
 		else {
-			filename = "C:\\BlackLists.txt";
+			filename = skCrypt("C:\\BlackLists.txt");
 			currentList = playerBlackLists;
 		}
 
@@ -584,7 +584,7 @@ private:
 			if (player.CurrentWeapon > 0) {
 				player.WeaponID = Decrypt::CIndex(player.WeaponID);
 				auto newInfo = Data::GetGNameListsByIDItem(player.WeaponID);
-				if (newInfo.DisplayName != "" && newInfo.DisplayName != "Unknown") {
+				if (newInfo.DisplayName != "" && newInfo.DisplayName != skCrypt("Unknown")) {
 					player.WeaponEntityInfo = newInfo;
 					player.WeaponName = newInfo.DisplayName;
 				}

@@ -4,6 +4,7 @@
 #include <nlohmann/json.hpp>
 #include <Mosquitto/mosquitto.h>
 #include <TlHelp32.h>
+#include "../../../protec/skCrypt.h"
 #pragma comment(lib, "mosquitto.lib")
 
 static struct mosquitto* mosq;
@@ -16,11 +17,11 @@ public:
 			GameData.Config.WebRadar.isWebRadarConnect = true;
 		}
 		else {
-			std::cerr << "Failed to connect to MQTT broker with code " << rc << std::endl;
+			std::cerr << skCrypt("Failed to connect to MQTT broker with code ") << rc << std::endl;
 		}
 	}
 	static void on_message(struct mosquitto* mosq, void* userdata, const struct mosquitto_message* message) {
-		std::cout << "Received message on topic " << message->topic << ": " << (char*)message->payload << std::endl;
+		std::cout << skCrypt("Received message on topic ") << message->topic << skCrypt(": ") << (char*)message->payload << std::endl;
 	}
 	static void on_disconnec(struct mosquitto* mosq, void*, int rc) {
 		while (true)
@@ -99,15 +100,15 @@ public:
 				nlohmann::json Config;
 				if (GameData.Scene == Scene::Gaming) {
 
-					Config["Map"] = GameData.MapName;
-					Config["MapX"] = GameData.Radar.WorldOriginLocation.X;
-					Config["MapY"] = GameData.Radar.WorldOriginLocation.Y;
-					Config["Game"][0][0] = GameData.Radar.SafetyZonePosition.X;
-					Config["Game"][0][1] = GameData.Radar.SafetyZonePosition.Y;
-					Config["Game"][0][2] = GameData.Radar.SafetyZoneRadius;
-					Config["Game"][1][0] = GameData.Radar.BlueZonePosition.X;
-					Config["Game"][1][1] = GameData.Radar.BlueZonePosition.Y;
-					Config["Game"][1][2] = GameData.Radar.BlueZoneRadius;
+					Config[ skCrypt("Map") ] = GameData.MapName;
+					Config[ skCrypt("MapX") ] = GameData.Radar.WorldOriginLocation.X;
+					Config[ skCrypt("MapY") ] = GameData.Radar.WorldOriginLocation.Y;
+					Config[ skCrypt("Game") ][0][0] = GameData.Radar.SafetyZonePosition.X;
+					Config[ skCrypt("Game") ][0][1] = GameData.Radar.SafetyZonePosition.Y;
+					Config[ skCrypt("Game") ][0][2] = GameData.Radar.SafetyZoneRadius;
+					Config[ skCrypt("Game") ][1][0] = GameData.Radar.BlueZonePosition.X;
+					Config[ skCrypt("Game") ][1][1] = GameData.Radar.BlueZonePosition.Y;
+					Config[ skCrypt("Game") ][1][2] = GameData.Radar.BlueZoneRadius;
 					auto Players = Data::GetPlayers();
 					int i = 0;
 					for (auto Item : Players) {
@@ -121,30 +122,30 @@ public:
 						float AngleRadians = atan2(Direction.Y, Direction.X);
 						float AngleDegrees = AngleRadians;
 						float sin_a = sinf(AngleDegrees), cos_a = cosf(AngleDegrees);
-						Config["Player"][i][0] = Player.Location.X + GameData.Radar.WorldOriginLocation.X;
-						Config["Player"][i][1] = Player.Location.Y + GameData.Radar.WorldOriginLocation.Y;
-						Config["Player"][i][2] = Player.Distance;
-						Config["Player"][i][3] = Player.TeamID;
-						Config["Player"][i][4] = Player.Health;
-						Config["Player"][i][5] = Player.KillCount;
-						Config["Player"][i][6] = Player.SpectatedCount;
-						Config["Player"][i][7] = Player.AimOffsets.Yaw;
-						Config["Player"][i][8] = Player.IsMyTeam;
-						Config["Player"][i][9] = Player.Type == EntityType::AI;
-						Config["Player"][i][10] = Player.IsVisible;
-						Config["Player"][i][11] = Player.IsMe;
-						Config["Player"][i][12] = Player.IsAimMe;
-						Config["Player"][i][13] = Player.GroggyHealth;
-						Config["Player"][i][14] = Player.WeaponName;
-						Config["Player"][i][15] = Player.SquadMemberIndex;
-						Config["Player"][i][16] = Player.Name;
+						Config[ skCrypt("Player") ][i][0] = Player.Location.X + GameData.Radar.WorldOriginLocation.X;
+						Config[ skCrypt("Player") ][i][1] = Player.Location.Y + GameData.Radar.WorldOriginLocation.Y;
+						Config[ skCrypt("Player") ][i][2] = Player.Distance;
+						Config[ skCrypt("Player") ][i][3] = Player.TeamID;
+						Config[ skCrypt("Player") ][i][4] = Player.Health;
+						Config[ skCrypt("Player") ][i][5] = Player.KillCount;
+						Config[ skCrypt("Player") ][i][6] = Player.SpectatedCount;
+						Config[ skCrypt("Player") ][i][7] = Player.AimOffsets.Yaw;
+						Config[ skCrypt("Player") ][i][8] = Player.IsMyTeam;
+						Config[ skCrypt("Player") ][i][9] = Player.Type == EntityType::AI;
+						Config[ skCrypt("Player") ][i][10] = Player.IsVisible;
+						Config[ skCrypt("Player") ][i][11] = Player.IsMe;
+						Config[ skCrypt("Player") ][i][12] = Player.IsAimMe;
+						Config[ skCrypt("Player") ][i][13] = Player.GroggyHealth;
+						Config[ skCrypt("Player") ][i][14] = Player.WeaponName;
+						Config[ skCrypt("Player") ][i][15] = Player.SquadMemberIndex;
+						Config[ skCrypt("Player") ][i][16] = Player.Name;
 						int* teamNumberColor = GetColorForNumber(Player.TeamID);
-						Config["Player"][i][17] = Player.Name;
+						Config[ skCrypt("Player") ][i][17] = Player.Name;
 						auto infoColor = GameData.Config.signal_overlay.Color.Default.Info;
-						Config["Player"][i][17] = rgb2hex(teamNumberColor[0], teamNumberColor[1], teamNumberColor[2], true);
-						Config["Player"][i][18] = cos_a;
-						Config["Player"][i][19] = sin_a;
-						Config["Player"][i][20] = Player.ClanName;
+						Config[ skCrypt("Player") ][i][17] = rgb2hex(teamNumberColor[0], teamNumberColor[1], teamNumberColor[2], true);
+						Config[ skCrypt("Player") ][i][18] = cos_a;
+						Config[ skCrypt("Player") ][i][19] = sin_a;
+						Config[ skCrypt("Player") ][i][20] = Player.ClanName;
 						i++;
 					}
 
@@ -159,9 +160,9 @@ public:
 						else {
 							vehicleIndex = 13;
 						}
-						Config["Car"][i][0] = vehicleIndex;
-						Config["Car"][i][1] = Vehicle.Location.X + GameData.Radar.WorldOriginLocation.X;
-						Config["Car"][i][2] = Vehicle.Location.Y + GameData.Radar.WorldOriginLocation.Y;
+						Config[ skCrypt("Car") ][i][0] = vehicleIndex;
+						Config[ skCrypt("Car") ][i][1] = Vehicle.Location.X + GameData.Radar.WorldOriginLocation.X;
+						Config[ skCrypt("Car") ][i][2] = Vehicle.Location.Y + GameData.Radar.WorldOriginLocation.Y;
 					}
 					Send(Config.dump());
 				}
@@ -190,7 +191,7 @@ public:
 				if (rc != MOSQ_ERR_SUCCESS) {
 				}
 				GameData.Config.WebRadar.isWebRadarConnect = true;
-				GameData.Config.WebRadar.RadarUrl = "https://" + std::string(GameData.Config.WebRadar.IP) + ":" + std::string(GameData.Config.WebRadar.Port) + "/?" + std::string(GameData.Config.WebRadar.IP) + "&sub=" + std::string(GameData.Config.WebRadar.SubTitle);
+				GameData.Config.WebRadar.RadarUrl = skCrypt("https://") + std::string(GameData.Config.WebRadar.IP) + skCrypt(":") + std::string(GameData.Config.WebRadar.Port) + skCrypt("/?") + std::string(GameData.Config.WebRadar.IP) + skCrypt("&sub=") + std::string(GameData.Config.WebRadar.SubTitle);
 			}
 			
 
@@ -246,7 +247,7 @@ public:
 	}
 
 	static void OpenMqtt() {
-		if (getProcess("mqtt.exe"))
+		if (getProcess(skCrypt("mqtt.exe")))
 		{
 			return;
 		}
@@ -255,14 +256,14 @@ public:
 		char str3[MAX_PATH];
 		strncpy(str3, pBuf, MAX_PATH - 6);
 		str3[MAX_PATH - 6] = '\0';
-		strncat(str3, "\\mqtt", 5);
+		strncat(str3, skCrypt("\\mqtt"), 5);
 		SHELLEXECUTEINFOA sei;
 		memset(&sei, 0, sizeof(SHELLEXECUTEINFO));
 		sei.cbSize = sizeof(SHELLEXECUTEINFO);
 		sei.fMask = SEE_MASK_NOCLOSEPROCESS;
-		sei.lpVerb = "open";
-		sei.lpFile = "mqtt.exe";
-		sei.lpParameters = "-c mqtt.conf";
+		sei.lpVerb = skCrypt("open");
+		sei.lpFile = skCrypt("mqtt.exe");
+		sei.lpParameters = skCrypt("-c mqtt.conf");
 		sei.lpDirectory = str3;
 		sei.nShow = SW_HIDE;
 		ShellExecuteExA(&sei);

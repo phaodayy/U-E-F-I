@@ -35,13 +35,13 @@ namespace Scanner {
     // ============================================================
     static void CheckResult(const char* name, uint64_t scanned, uint64_t current = 0) {
         if (scanned == 0) {
-            Utils::Log(2, "[SCANNER]   %-28s : KHONG TIM THAY", name);
+            Utils::Log(2, skCrypt("[SCANNER]   %-28s : KHONG TIM THAY"), name);
         } else if (current == 0) {
-            Utils::Log(1, "[SCANNER]   %-28s : 0x%llX", name, scanned);
+            Utils::Log(1, skCrypt("[SCANNER]   %-28s : 0x%llX"), name, scanned);
         } else if (scanned == current) {
-            Utils::Log(1, "[SCANNER]   %-28s : 0x%llX  (KHOP - OK)", name, scanned);
+            Utils::Log(1, skCrypt("[SCANNER]   %-28s : 0x%llX  (KHOP - OK)"), name, scanned);
         } else {
-            Utils::Log(0, "[SCANNER]   %-28s : 0x%llX  (KHAC BIET! Hien tai: 0x%llX)", name, scanned, current);
+            Utils::Log(0, skCrypt("[SCANNER]   %-28s : 0x%llX  (KHAC BIET! Hien tai: 0x%llX)"), name, scanned, current);
         }
     }
 
@@ -61,7 +61,7 @@ namespace Scanner {
     //  Signature scan: XenuineDecrypt
     // ============================================================
     uint64_t FindXenuineDecrypt() {
-        const char* pattern = "48 89 0D ? ? ? ? 48 8D 05 ? ? ? ? 48 89 05 ? ? ? ? 48 8D 05";
+        const char* pattern = skCrypt("48 89 0D ? ? ? ? 48 8D 05 ? ? ? ? 48 89 05 ? ? ? ? 48 8D 05");
         uint64_t base = GameData.GameBase;  // Da xac dinh dung process
         uint64_t size = GameData.GameSize > 0 ? GameData.GameSize : 0x10000000;
 
@@ -75,9 +75,9 @@ namespace Scanner {
     // ============================================================
     uint64_t FindUWorld() {
         const char* patterns[] = {
-            "48 8B 05 ? ? ? ? 48 8B 88 ? ? ? ? 48 85 C9 74 06 48 8B 49 70",
-            "48 8B 05 ? ? ? ? 48 85 C0 74 08 48 8B 48 70 48 8B 01",
-            "48 8B 0D ? ? ? ? 48 85 C9 74 08 48 8B 41 70 48 8B 00"
+            skCrypt("48 8B 05 ? ? ? ? 48 8B 88 ? ? ? ? 48 85 C9 74 06 48 8B 49 70"),
+            skCrypt("48 8B 05 ? ? ? ? 48 85 C0 74 08 48 8B 48 70 48 8B 01"),
+            skCrypt("48 8B 0D ? ? ? ? 48 85 C9 74 08 48 8B 41 70 48 8B 00")
         };
         uint64_t base = GameData.GameBase;  // Da xac dinh dung process
         uint64_t size = GameData.GameSize > 0 ? GameData.GameSize : 0x10000000;
@@ -103,9 +103,9 @@ namespace Scanner {
     // ============================================================
     uint64_t FindGNames() {
         const char* patterns[] = {
-            "48 8B 05 ? ? ? ? 48 8B 0C C8",
-            "48 8B 15 ? ? ? ? 48 85 D2 74 07",
-            "48 8B 0D ? ? ? ? 48 85 C9 0F 84 ? ? ? ? 48 8B 01 FF 90"
+            skCrypt("48 8B 05 ? ? ? ? 48 8B 0C C8"),
+            skCrypt("48 8B 15 ? ? ? ? 48 85 D2 74 07"),
+            skCrypt("48 8B 0D ? ? ? ? 48 85 C9 0F 84 ? ? ? ? 48 8B 01 FF 90")
         };
         uint64_t base = GameData.GameBase;  // Da xac dinh dung process
         uint64_t size = GameData.GameSize > 0 ? GameData.GameSize : 0x10000000;
@@ -268,7 +268,7 @@ namespace Scanner {
         }
 
         if (fovOff == 0 || locOff == 0 || rotOff == 0) {
-            Utils::Log(0, "[SCANNER]   Camera: Fallback sang quet toan bo (fov=%d loc=%d rot=%d)",
+            Utils::Log(0, skCrypt("[SCANNER]   Camera: Fallback sang quet toan bo (fov=%d loc=%d rot=%d)"),
                 fovOff!=0, locOff!=0, rotOff!=0);
             if (locOff == 0) {
                 for (uint64_t off = 0x400; off + 12 <= (uint64_t)CHUNK; off += 4) {
@@ -343,37 +343,37 @@ namespace Scanner {
     }
 
     void ScanAll() {
-        Utils::Log(1, "[SCANNER] ====================================================");
-        Utils::Log(1, "[SCANNER]  BAT DAU SCAN - Dung UWorld + Decrypt co san");
-        Utils::Log(1, "[SCANNER] ====================================================");
+        Utils::Log(1, skCrypt("[SCANNER] ===================================================="));
+        Utils::Log(1, skCrypt("[SCANNER]  BAT DAU SCAN - Dung UWorld + Decrypt co san"));
+        Utils::Log(1, skCrypt("[SCANNER] ===================================================="));
 
         if (GameData.PID == 0 || !IsValidPtr(GameData.GameBase)) {
-            Utils::Log(2, "[SCANNER] LOI: Game chua chay hoac GameBase khong hop le!");
+            Utils::Log(2, skCrypt("[SCANNER] LOI: Game chua chay hoac GameBase khong hop le!"));
             return;
         }
         if (!IsValidPtr(GameData.UWorld)) {
-            Utils::Log(2, "[SCANNER] LOI: UWorld chua san sang (0x%llX)!", GameData.UWorld);
+            Utils::Log(2, skCrypt("[SCANNER] LOI: UWorld chua san sang (0x%llX)!"), GameData.UWorld);
             return;
         }
 
         uint64_t UW = GameData.UWorld;
-        Utils::Log(1, "[SCANNER] UWorld = 0x%llX | Map = %s", UW, GameData.MapName.c_str());
+        Utils::Log(1, skCrypt("[SCANNER] UWorld = 0x%llX | Map = %s"), UW, GameData.MapName.c_str());
 
         // BLOCK 1: Signature scan
-        CheckResult("XenuineDecrypt", FindXenuineDecrypt(), Offset::XenuineDecrypt);
-        CheckResult("UWorld",         FindUWorld(),         Offset::UWorld);
-        CheckResult("GNames",         FindGNames(),         Offset::GNames);
+        CheckResult(skCrypt("XenuineDecrypt"), FindXenuineDecrypt(), Offset::XenuineDecrypt);
+        CheckResult(skCrypt("UWorld"),         FindUWorld(),         Offset::UWorld);
+        CheckResult(skCrypt("GNames"),         FindGNames(),         Offset::GNames);
 
         // BLOCK 2: Scan tu UWorld chain
         uint64_t scGI_off = ScanGameInstance(UW);
-        CheckResult("GameInstance", scGI_off, Offset::GameInstance);
+        CheckResult(skCrypt("GameInstance"), scGI_off, Offset::GameInstance);
         uint64_t GameInstance = (scGI_off != 0) ? ReadXe(UW + scGI_off) : GameData.GameInstance;
-
+        
         uint64_t scCL_off = ScanCurrentLevel(UW);
-        CheckResult("CurrentLevel", scCL_off, Offset::CurrentLevel);
-
+        CheckResult(skCrypt("CurrentLevel"), scCL_off, Offset::CurrentLevel);
+        
         uint64_t scGS_off = ScanGameState(UW);
-        CheckResult("GameState", scGS_off, Offset::GameState);
+        CheckResult(skCrypt("GameState"), scGS_off, Offset::GameState);
 
         // BLOCK 3: LocalPlayer -> Pawn chain
         uint64_t LocalPlayers = mem.Read<uint64_t>(GameInstance + Offset::LocalPlayer);
@@ -398,7 +398,7 @@ namespace Scanner {
                         scAP = off; break;
                     }
                 }
-                CheckResult("AcknowledgedPawn", scAP, Offset::AcknowledgedPawn);
+                CheckResult(skCrypt("AcknowledgedPawn"), scAP, Offset::AcknowledgedPawn);
 
                 uint64_t Pawn = scAP ? Decrypt::Xe(mem.Read<uint64_t>(PC + scAP)) : 0;
                 if (IsValidPtr(Pawn)) {
@@ -409,7 +409,7 @@ namespace Scanner {
                             scMesh = off; break;
                         }
                     }
-                    CheckResult("Mesh", scMesh, Offset::Mesh);
+                    CheckResult(skCrypt("Mesh"), scMesh, Offset::Mesh);
 
                     uint64_t scRC = 0;
                     for (uint64_t off = 0x330; off <= 0x420; off += 8) {
@@ -418,7 +418,7 @@ namespace Scanner {
                             scRC = off; break;
                         }
                     }
-                    CheckResult("RootComponent", scRC, Offset::RootComponent);
+                    CheckResult(skCrypt("RootComponent"), scRC, Offset::RootComponent);
                 }
             }
         }
@@ -431,9 +431,9 @@ namespace Scanner {
         CheckResult("mPhysXScene",   scMPS_off, Offset::mPhysXScene);
         */
 
-        Utils::Log(1, "[SCANNER] ====================================================");
-        Utils::Log(1, "[SCANNER]  HOAN TAT SCAN OFFSET");
-        Utils::Log(1, "[SCANNER] ====================================================");
+        Utils::Log(1, skCrypt("[SCANNER] ===================================================="));
+        Utils::Log(1, skCrypt("[SCANNER]  HOAN TAT SCAN OFFSET"));
+        Utils::Log(1, skCrypt("[SCANNER] ===================================================="));
     }
 
 } // namespace Scanner

@@ -5,6 +5,7 @@
 #include "Decrypt.h"
 #include <Utils/FNVHash.h>
 #include <Common/Offset.h>
+#include "../../../protec/skCrypt.h"
 
 class GNames
 {
@@ -90,8 +91,8 @@ public:
         char names_c[258];
         mem.Read(fName + 0x15, names_c, sizeof(names_c));
         std::string names = std::string(names_c);
-        if (names == "")
-            names = "fail";
+        if (names == skCrypt(""))
+            names = skCrypt("fail");
 
         return names;
     }
@@ -104,8 +105,8 @@ public:
         char names_c[258];
         mem.Read(fName + 0x10, names_c, sizeof(names_c));
         std::string names = std::string(names_c);
-        if (names == "")
-            names = "fail";
+        if (names == skCrypt(""))
+            names = skCrypt("fail");
 
         return names;
     }
@@ -123,7 +124,7 @@ public:
         std::unordered_map<std::string, EntityInfo, FnvHash> GNameLists;
         std::unordered_map<int, EntityInfo> GNameListsByID;
 
-        if (names != "fail") {
+        if (names != skCrypt("fail")) {
             EntityInfo GNameItem = Data::GetGNameListsItem(names);
 
             if (GNameItem.Type != EntityType::Unknown) {

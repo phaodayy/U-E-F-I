@@ -81,79 +81,79 @@ public:
                     EntityInfo EntityInfo = Data::GetGNameListsByIDItem(Item.second.ItemID);
 
                     // ���� 
-                    if (EntityInfo.Name == "Item_Heal_Bandage_C" && Item.second.Count >= GameData.Config.ItemFiltering.Bandage)
+                    if (EntityInfo.Name == skCrypt("Item_Heal_Bandage_C") && Item.second.Count >= GameData.Config.ItemFiltering.Bandage)
                     {
                         WeaponAttachmentItemID[Item.second.ItemID] = Item.second.ItemID;
                     }
 
                     //���Ȱ�
-                    if (EntityInfo.Name == "Item_Heal_FirstAid_C" && Item.second.Count >= GameData.Config.ItemFiltering.FirstAidKit)
+                    if (EntityInfo.Name == skCrypt("Item_Heal_FirstAid_C") && Item.second.Count >= GameData.Config.ItemFiltering.FirstAidKit)
                     {
                         WeaponAttachmentItemID[Item.second.ItemID] = Item.second.ItemID;
                     }
 
                     //ҽ����
-                    if (EntityInfo.Name == "Item_Heal_MedKit_C" && Item.second.Count >= GameData.Config.ItemFiltering.MedicalKit)
+                    if (EntityInfo.Name == skCrypt("Item_Heal_MedKit_C") && Item.second.Count >= GameData.Config.ItemFiltering.MedicalKit)
                     {
                         WeaponAttachmentItemID[Item.second.ItemID] = Item.second.ItemID;
                     }
 
                     //ֹʹҩ
-                    if (EntityInfo.Name == "Item_Boost_PainKiller_C" && Item.second.Count >= GameData.Config.ItemFiltering.Painkiller)
+                    if (EntityInfo.Name == skCrypt("Item_Boost_PainKiller_C") && Item.second.Count >= GameData.Config.ItemFiltering.Painkiller)
                     {
                         WeaponAttachmentItemID[Item.second.ItemID] = Item.second.ItemID;
                     }
 
                     //��������
-                    if (EntityInfo.Name == "Item_Boost_EnergyDrink_C" && Item.second.Count >= GameData.Config.ItemFiltering.EnergyDrink)
+                    if (EntityInfo.Name == skCrypt("Item_Boost_EnergyDrink_C") && Item.second.Count >= GameData.Config.ItemFiltering.EnergyDrink)
                     {
                         WeaponAttachmentItemID[Item.second.ItemID] = Item.second.ItemID;
                     }
 
                     //��������
-                    if (EntityInfo.Name == "Item_Boost_AdrenalineSyringe_C" && Item.second.Count >= GameData.Config.ItemFiltering.Adrenaline)
+                    if (EntityInfo.Name == skCrypt("Item_Boost_AdrenalineSyringe_C") && Item.second.Count >= GameData.Config.ItemFiltering.Adrenaline)
                     {
                         WeaponAttachmentItemID[Item.second.ItemID] = Item.second.ItemID;
                     }
 
                     //C4
-                    if (EntityInfo.Name == "Item_Weapon_C4_C" && Item.second.Count >= GameData.Config.ItemFiltering.C4)
+                    if (EntityInfo.Name == skCrypt("Item_Weapon_C4_C") && Item.second.Count >= GameData.Config.ItemFiltering.C4)
                     {
                         WeaponAttachmentItemID[Item.second.ItemID] = Item.second.ItemID;
                     }
 
                     //����
-                    if (EntityInfo.Name == "Item_Weapon_Grenade_C" && Item.second.Count >= GameData.Config.ItemFiltering.Grenade)
+                    if (EntityInfo.Name == skCrypt("Item_Weapon_Grenade_C") && Item.second.Count >= GameData.Config.ItemFiltering.Grenade)
                     {
                         WeaponAttachmentItemID[Item.second.ItemID] = Item.second.ItemID;
                     }
 
                     //������
-                    if (EntityInfo.Name == "Item_Weapon_SmokeBomb_C" && Item.second.Count >= GameData.Config.ItemFiltering.SmokeGrenade)
+                    if (EntityInfo.Name == skCrypt("Item_Weapon_SmokeBomb_C") && Item.second.Count >= GameData.Config.ItemFiltering.SmokeGrenade)
                     {
                         WeaponAttachmentItemID[Item.second.ItemID] = Item.second.ItemID;
                     }
 
                     //���ⵯ
-                    if (EntityInfo.Name == "Item_Weapon_FlashBang_C" && Item.second.Count >= GameData.Config.ItemFiltering.Flashbang)
+                    if (EntityInfo.Name == skCrypt("Item_Weapon_FlashBang_C") && Item.second.Count >= GameData.Config.ItemFiltering.Flashbang)
                     {
                         WeaponAttachmentItemID[Item.second.ItemID] = Item.second.ItemID;
                     }
 
                     //ȼ��ƿ
-                    if (EntityInfo.Name == "Item_Weapon_Molotov_C" && Item.second.Count >= GameData.Config.ItemFiltering.Molotov)
+                    if (EntityInfo.Name == skCrypt("Item_Weapon_Molotov_C") && Item.second.Count >= GameData.Config.ItemFiltering.Molotov)
                     {
                         WeaponAttachmentItemID[Item.second.ItemID] = Item.second.ItemID;
                     }
 
                     //��Ȧ����
-                    if (EntityInfo.Name == "Item_Weapon_BluezoneGrenade_C" && Item.second.Count >= GameData.Config.ItemFiltering.BlueZoneGrenade)
+                    if (EntityInfo.Name == skCrypt("Item_Weapon_BluezoneGrenade_C") && Item.second.Count >= GameData.Config.ItemFiltering.BlueZoneGrenade)
                     {
                         WeaponAttachmentItemID[Item.second.ItemID] = Item.second.ItemID;
                     }
 
                     //ճ��ը��
-                    if (EntityInfo.Name == "Item_Weapon_StickyGrenade_C" && Item.second.Count >= GameData.Config.ItemFiltering.StickyBomb)
+                    if (EntityInfo.Name == skCrypt("Item_Weapon_StickyGrenade_C") && Item.second.Count >= GameData.Config.ItemFiltering.StickyBomb)
                     {
                         WeaponAttachmentItemID[Item.second.ItemID] = Item.second.ItemID;
                     }

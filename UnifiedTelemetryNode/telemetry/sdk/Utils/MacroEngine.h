@@ -167,8 +167,8 @@ public:
 
         for (const std::string& base : candidates)
         {
-            const std::string cfgPath = base + "dataMacro\\Config\\macro_config.json";
-            const std::string gunDir = base + "dataMacro\\GunData\\";
+            const std::string cfgPath = base + skCrypt("dataMacro\\Config\\macro_config.json");
+            const std::string gunDir = base + skCrypt("dataMacro\\GunData\\");
             if (FileExists(cfgPath) || fs::exists(gunDir))
             {
                 return base;
@@ -228,12 +228,12 @@ public:
 
     static std::string ConfigPath()
     {
-        return external_base_path + "dataMacro\\Config\\macro_config.json";
+        return external_base_path + skCrypt("dataMacro\\Config\\macro_config.json");
     }
 
     static std::string WeaponPath(const std::string& weapon)
     {
-        return external_base_path + "dataMacro\\GunData\\" + weapon + ".json";
+        return external_base_path + skCrypt("dataMacro\\GunData\\") + weapon + skCrypt(".json");
     }
 
     static void RefreshResolutionScale()
@@ -244,16 +244,16 @@ public:
         int configX = currentX;
         int configY = currentY;
 
-        if (!global_config.is_null() && global_config.contains("resolution"))
+        if (!global_config.is_null() && global_config.contains(skCrypt("resolution")))
         {
             try
             {
-                if (global_config["resolution"].is_string())
+                if (global_config[ skCrypt("resolution") ].is_string())
                 {
-                    std::string resStr = global_config["resolution"].get<std::string>();
+                    std::string resStr = global_config[ skCrypt("resolution") ].get<std::string>();
                     std::transform(resStr.begin(), resStr.end(), resStr.begin(), [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
-                    if (resStr != "auto")
+                    if (resStr != skCrypt("auto"))
                     {
                         const size_t xPos = resStr.find('x');
                         if (xPos != std::string::npos)
@@ -263,16 +263,16 @@ public:
                         }
                     }
                 }
-                else if (global_config["resolution"].is_object())
+                else if (global_config[ skCrypt("resolution") ].is_object())
                 {
-                    const auto& r = global_config["resolution"];
-                    if (r.contains("x"))
+                    const auto& r = global_config[ skCrypt("resolution") ];
+                    if (r.contains(skCrypt("x")))
                     {
-                        configX = r["x"].get<int>();
+                        configX = r[ skCrypt("x") ].get<int>();
                     }
-                    if (r.contains("y"))
+                    if (r.contains(skCrypt("y")))
                     {
-                        configY = r["y"].get<int>();
+                        configY = r[ skCrypt("y") ].get<int>();
                     }
                 }
             }
@@ -314,39 +314,39 @@ public:
             return;
         }
 
-        const auto& runtime = global_config["runtime"];
-        recoil_reset_ms = ReadIntConfig(runtime, "recoil_reset_ms", recoil_reset_ms, 50, 2000);
-        pull_delay_ms = ReadIntConfig(runtime, "pull_delay_ms", pull_delay_ms, 0, 50);
-        pull_delay_jitter_ms = ReadIntConfig(runtime, "pull_delay_jitter_ms", pull_delay_jitter_ms, 0, 50);
-        x_jitter_range = ReadIntConfig(runtime, "x_jitter_range", x_jitter_range, 0, 12);
-        humanize_y_min = ReadFloatConfig(runtime, "humanize_y_min", humanize_y_min, 0.10f, 3.0f);
-        humanize_y_max = ReadFloatConfig(runtime, "humanize_y_max", humanize_y_max, 0.10f, 3.0f);
-        angle_to_pixel_x = ReadFloatConfig(runtime, "angle_to_pixel_x", angle_to_pixel_x, 0.1f, 200.0f);
-        angle_to_pixel_y = ReadFloatConfig(runtime, "angle_to_pixel_y", angle_to_pixel_y, 0.1f, 200.0f);
-        yaw_gain = ReadFloatConfig(runtime, "yaw_gain", yaw_gain, 0.01f, 10.0f);
-        pitch_gain = ReadFloatConfig(runtime, "pitch_gain", pitch_gain, 0.01f, 10.0f);
-        angle_deadzone = ReadFloatConfig(runtime, "angle_deadzone", angle_deadzone, 0.0f, 1.5f);
-        ar_max_step_x = ReadFloatConfig(runtime, "ar_max_step_x", ar_max_step_x, 0.1f, 500.0f);
-        ar_max_step_y = ReadFloatConfig(runtime, "ar_max_step_y", ar_max_step_y, 0.1f, 500.0f);
-        sr_max_step_x = ReadFloatConfig(runtime, "sr_max_step_x", sr_max_step_x, 0.1f, 500.0f);
-        sr_max_step_y = ReadFloatConfig(runtime, "sr_max_step_y", sr_max_step_y, 0.1f, 500.0f);
-        dmr_max_step_x = ReadFloatConfig(runtime, "dmr_max_step_x", dmr_max_step_x, 0.1f, 500.0f);
-        dmr_max_step_y = ReadFloatConfig(runtime, "dmr_max_step_y", dmr_max_step_y, 0.1f, 500.0f);
+        const auto& runtime = global_config[skCrypt("runtime")];
+        recoil_reset_ms = ReadIntConfig(runtime, skCrypt("recoil_reset_ms"), recoil_reset_ms, 50, 2000);
+        pull_delay_ms = ReadIntConfig(runtime, skCrypt("pull_delay_ms"), pull_delay_ms, 0, 50);
+        pull_delay_jitter_ms = ReadIntConfig(runtime, skCrypt("pull_delay_jitter_ms"), pull_delay_jitter_ms, 0, 50);
+        x_jitter_range = ReadIntConfig(runtime, skCrypt("x_jitter_range"), x_jitter_range, 0, 12);
+        humanize_y_min = ReadFloatConfig(runtime, skCrypt("humanize_y_min"), humanize_y_min, 0.10f, 3.0f);
+        humanize_y_max = ReadFloatConfig(runtime, skCrypt("humanize_y_max"), humanize_y_max, 0.10f, 3.0f);
+        angle_to_pixel_x = ReadFloatConfig(runtime, skCrypt("angle_to_pixel_x"), angle_to_pixel_x, 0.1f, 200.0f);
+        angle_to_pixel_y = ReadFloatConfig(runtime, skCrypt("angle_to_pixel_y"), angle_to_pixel_y, 0.1f, 200.0f);
+        yaw_gain = ReadFloatConfig(runtime, skCrypt("yaw_gain"), yaw_gain, 0.01f, 10.0f);
+        pitch_gain = ReadFloatConfig(runtime, skCrypt("pitch_gain"), pitch_gain, 0.01f, 10.0f);
+        angle_deadzone = ReadFloatConfig(runtime, skCrypt("angle_deadzone"), angle_deadzone, 0.0f, 1.5f);
+        ar_max_step_x = ReadFloatConfig(runtime, skCrypt("ar_max_step_x"), ar_max_step_x, 0.1f, 500.0f);
+        ar_max_step_y = ReadFloatConfig(runtime, skCrypt("ar_max_step_y"), ar_max_step_y, 0.1f, 500.0f);
+        sr_max_step_x = ReadFloatConfig(runtime, skCrypt("sr_max_step_x"), sr_max_step_x, 0.1f, 500.0f);
+        sr_max_step_y = ReadFloatConfig(runtime, skCrypt("sr_max_step_y"), sr_max_step_y, 0.1f, 500.0f);
+        dmr_max_step_x = ReadFloatConfig(runtime, skCrypt("dmr_max_step_x"), dmr_max_step_x, 0.1f, 500.0f);
+        dmr_max_step_y = ReadFloatConfig(runtime, skCrypt("dmr_max_step_y"), dmr_max_step_y, 0.1f, 500.0f);
         
-        ar_trigger_fov = ReadFloatConfig(runtime, "ar_trigger_fov", ar_trigger_fov, 0.1f, 50.0f);
-        sr_trigger_fov = ReadFloatConfig(runtime, "sr_trigger_fov", sr_trigger_fov, 0.1f, 50.0f);
-        dmr_trigger_fov = ReadFloatConfig(runtime, "dmr_trigger_fov", dmr_trigger_fov, 0.1f, 50.0f);
-        sg_trigger_fov = ReadFloatConfig(runtime, "sg_trigger_fov", sg_trigger_fov, 0.1f, 50.0f);
+        ar_trigger_fov = ReadFloatConfig(runtime, skCrypt("ar_trigger_fov"), ar_trigger_fov, 0.1f, 50.0f);
+        sr_trigger_fov = ReadFloatConfig(runtime, skCrypt("sr_trigger_fov"), sr_trigger_fov, 0.1f, 50.0f);
+        dmr_trigger_fov = ReadFloatConfig(runtime, skCrypt("dmr_trigger_fov"), dmr_trigger_fov, 0.1f, 50.0f);
+        sg_trigger_fov = ReadFloatConfig(runtime, skCrypt("sg_trigger_fov"), sg_trigger_fov, 0.1f, 50.0f);
 
-        trigger_delay_ms = ReadIntConfig(runtime, "trigger_delay_ms", trigger_delay_ms, 0, 5000);
-        sr_autoshot_delay1 = ReadIntConfig(runtime, "sr_autoshot_delay1", sr_autoshot_delay1, 0, 1000);
-        sr_autoshot_delay2 = ReadIntConfig(runtime, "sr_autoshot_delay2", sr_autoshot_delay2, 0, 5000);
+        trigger_delay_ms = ReadIntConfig(runtime, skCrypt("trigger_delay_ms"), trigger_delay_ms, 0, 5000);
+        sr_autoshot_delay1 = ReadIntConfig(runtime, skCrypt("sr_autoshot_delay1"), sr_autoshot_delay1, 0, 1000);
+        sr_autoshot_delay2 = ReadIntConfig(runtime, skCrypt("sr_autoshot_delay2"), sr_autoshot_delay2, 0, 5000);
         
-        ar_base_smoothing = ReadFloatConfig(runtime, "ar_base_smoothing", ar_base_smoothing, 1.0f, 50.0f);
-        sr_base_smoothing = ReadFloatConfig(runtime, "sr_base_smoothing", sr_base_smoothing, 1.0f, 50.0f);
-        dmr_base_smoothing = ReadFloatConfig(runtime, "dmr_base_smoothing", dmr_base_smoothing, 1.0f, 50.0f);
-        max_smooth_increase = ReadFloatConfig(runtime, "max_smooth_increase", max_smooth_increase, 0.0f, 20.0f);
-        smooth_fov = ReadFloatConfig(runtime, "smooth_fov", smooth_fov, 0.0f, 100.0f);
+        ar_base_smoothing = ReadFloatConfig(runtime, skCrypt("ar_base_smoothing"), ar_base_smoothing, 1.0f, 50.0f);
+        sr_base_smoothing = ReadFloatConfig(runtime, skCrypt("sr_base_smoothing"), sr_base_smoothing, 1.0f, 50.0f);
+        dmr_base_smoothing = ReadFloatConfig(runtime, skCrypt("dmr_base_smoothing"), dmr_base_smoothing, 1.0f, 50.0f);
+        max_smooth_increase = ReadFloatConfig(runtime, skCrypt("max_smooth_increase"), max_smooth_increase, 0.0f, 20.0f);
+        smooth_fov = ReadFloatConfig(runtime, skCrypt("smooth_fov"), smooth_fov, 0.0f, 100.0f);
 
         if (runtime.contains("ar_trigger_enabled")) try { ar_trigger_enabled = runtime["ar_trigger_enabled"].get<bool>(); } catch (...) {}
         if (runtime.contains("sr_trigger_enabled")) try { sr_trigger_enabled = runtime["sr_trigger_enabled"].get<bool>(); } catch (...) {}
@@ -463,36 +463,36 @@ public:
     static std::string NormalizeWeaponName(const std::string& raw)
     {
         std::string name = raw;
-        if (name.find("Weap") == 0) name.erase(0, 4);
-        if (name.find("Item_Weapon_") == 0) name.erase(0, 12);
-        if (name.find("_C") != std::string::npos) name.erase(name.find("_C"));
+        if (name.find(skCrypt("Weap")) == 0) name.erase(0, 4);
+        if (name.find(skCrypt("Item_Weapon_")) == 0) name.erase(0, 12);
+        if (name.find(skCrypt("_C")) != std::string::npos) name.erase(name.find(skCrypt("_C")));
 
-        if (name == "HK416") return "m416";
-        if (name == "BerylM762") return "m762";
-        if (name == "AK47") return "akm";
-        if (name == "SCAR-L") return "scar-l";
-        if (name == "FNFal") return "slr";
-        if (name == "G36C") return "g36c";
-        if (name == "Mk14") return "mk14";
-        if (name == "M249") return "m249";
-        if (name == "UMP") return "ump45";
-        if (name == "Vector") return "vector";
-        if (name == "Uzi") return "uzi";
-        if (name == "Thompson") return "tommygun";
-        if (name == "BizonPP19") return "pp19";
+        if (name == skCrypt("HK416")) return skCrypt("m416");
+        if (name == skCrypt("BerylM762")) return skCrypt("m762");
+        if (name == skCrypt("AK47")) return skCrypt("akm");
+        if (name == skCrypt("SCAR-L")) return skCrypt("scar-l");
+        if (name == skCrypt("FNFal")) return skCrypt("slr");
+        if (name == skCrypt("G36C")) return skCrypt("g36c");
+        if (name == skCrypt("Mk14")) return skCrypt("mk14");
+        if (name == skCrypt("M249")) return skCrypt("m249");
+        if (name == skCrypt("UMP")) return skCrypt("ump45");
+        if (name == skCrypt("Vector")) return skCrypt("vector");
+        if (name == skCrypt("Uzi")) return skCrypt("uzi");
+        if (name == skCrypt("Thompson")) return skCrypt("tommygun");
+        if (name == skCrypt("BizonPP19")) return skCrypt("pp19");
         std::transform(name.begin(), name.end(), name.begin(), ::tolower);
         return name;
     }
 
     static WeaponCategory GetCategoryByName(const std::string& name)
     {
-        if (name == "m416" || name == "m762" || name == "akm" || name == "scar-l" || name == "g36c" || name == "aug" || name == "qbz" || name == "k2" || name == "ace32" || name == "famas") return CAT_AR;
-        if (name == "slr" || name == "sks" || name == "mk14" || name == "qbu" || name == "mini14" || name == "vss" || name == "mk12" || name == "dragunov") return CAT_DMR;
-        if (name == "kar98k" || name == "m24" || name == "awm" || name == "mosin" || name == "lynx" || name == "win94") return CAT_SR;
-        if (name == "ump45" || name == "vector" || name == "uzi" || name == "tommygun" || name == "pp19" || name == "mp5k" || name == "p90" || name == "js9") return CAT_SMG;
-        if (name == "m249" || name == "dp28" || name == "mg3") return CAT_LMG;
-        if (name == "s12k" || name == "s1897" || name == "s686" || name == "dbs" || name == "o12") return CAT_SG;
-        if (name == "p18c" || name == "p1911" || name == "p92" || name == "r1895" || name == "r45" || name == "deagle" || name == "skorpion") return CAT_PT;
+        if (name == skCrypt("m416") || name == skCrypt("m762") || name == skCrypt("akm") || name == skCrypt("scar-l") || name == skCrypt("g36c") || name == skCrypt("aug") || name == skCrypt("qbz") || name == skCrypt("k2") || name == skCrypt("ace32") || name == skCrypt("famas")) return CAT_AR;
+        if (name == skCrypt("slr") || name == skCrypt("sks") || name == skCrypt("mk14") || name == skCrypt("qbu") || name == skCrypt("mini14") || name == skCrypt("vss") || name == skCrypt("mk12") || name == skCrypt("dragunov")) return CAT_DMR;
+        if (name == skCrypt("kar98k") || name == skCrypt("m24") || name == skCrypt("awm") || name == skCrypt("mosin") || name == skCrypt("lynx") || name == skCrypt("win94")) return CAT_SR;
+        if (name == skCrypt("ump45") || name == skCrypt("vector") || name == skCrypt("uzi") || name == skCrypt("tommygun") || name == skCrypt("pp19") || name == skCrypt("mp5k") || name == skCrypt("p90") || name == skCrypt("js9")) return CAT_SMG;
+        if (name == skCrypt("m249") || name == skCrypt("dp28") || name == skCrypt("mg3")) return CAT_LMG;
+        if (name == skCrypt("s12k") || name == skCrypt("s1897") || name == skCrypt("s686") || name == skCrypt("dbs") || name == skCrypt("o12")) return CAT_SG;
+        if (name == skCrypt("p18c") || name == skCrypt("p1911") || name == skCrypt("p92") || name == skCrypt("r1895") || name == skCrypt("r45") || name == skCrypt("deagle") || name == skCrypt("skorpion")) return CAT_PT;
         return CAT_NONE;
     }
 
@@ -535,14 +535,14 @@ public:
     {
         switch (category)
         {
-        case CAT_AR: return "AR";
-        case CAT_SR: return "SR";
-        case CAT_DMR: return "DMR";
-        case CAT_SMG: return "SMG";
-        case CAT_LMG: return "LMG";
-        case CAT_SG: return "SG";
-        case CAT_PT: return "PT";
-        default: return "OTHER";
+        case CAT_AR: return skCrypt("AR");
+        case CAT_SR: return skCrypt("SR");
+        case CAT_DMR: return skCrypt("DMR");
+        case CAT_SMG: return skCrypt("SMG");
+        case CAT_LMG: return skCrypt("LMG");
+        case CAT_SG: return skCrypt("SG");
+        case CAT_PT: return skCrypt("PT");
+        default: return skCrypt("OTHER");
         }
     }
 
@@ -553,49 +553,49 @@ public:
             return;
         }
 
-        if (src.contains("enabled"))
+        if (src.contains(skCrypt("enabled")))
         {
-            try { out.enabled = src["enabled"].get<bool>(); } catch (...) {}
+            try { out.enabled = src[skCrypt("enabled")].get<bool>(); } catch (...) {}
         }
 
-        out.multiplier = ReadFloatConfig(src, "multiplier", out.multiplier, 0.01f, 10.0f);
-        out.resetMs = ReadIntConfig(src, "reset_ms", out.resetMs, 50, 2000);
-        out.delayMs = ReadIntConfig(src, "delay_ms", out.delayMs, 0, 60);
-        out.delayJitterMs = ReadIntConfig(src, "delay_jitter_ms", out.delayJitterMs, 0, 60);
+        out.multiplier = ReadFloatConfig(src, skCrypt("multiplier"), out.multiplier, 0.01f, 10.0f);
+        out.resetMs = ReadIntConfig(src, skCrypt("reset_ms"), out.resetMs, 50, 2000);
+        out.delayMs = ReadIntConfig(src, skCrypt("delay_ms"), out.delayMs, 0, 60);
+        out.delayJitterMs = ReadIntConfig(src, skCrypt("delay_jitter_ms"), out.delayJitterMs, 0, 60);
         
-        out.arMaxStepX = ReadFloatConfig(src, "ar_max_step_x", out.arMaxStepX, 0.1f, 500.0f);
-        out.arMaxStepY = ReadFloatConfig(src, "ar_max_step_y", out.arMaxStepY, 0.1f, 500.0f);
-        out.srMaxStepX = ReadFloatConfig(src, "sr_max_step_x", out.srMaxStepX, 0.1f, 500.0f);
-        out.srMaxStepY = ReadFloatConfig(src, "sr_max_step_y", out.srMaxStepY, 0.1f, 500.0f);
-        out.dmrMaxStepX = ReadFloatConfig(src, "dmr_max_step_x", out.dmrMaxStepX, 0.1f, 500.0f);
-        out.dmrMaxStepY = ReadFloatConfig(src, "dmr_max_step_y", out.dmrMaxStepY, 0.1f, 500.0f);
+        out.arMaxStepX = ReadFloatConfig(src, skCrypt("ar_max_step_x"), out.arMaxStepX, 0.1f, 500.0f);
+        out.arMaxStepY = ReadFloatConfig(src, skCrypt("ar_max_step_y"), out.arMaxStepY, 0.1f, 500.0f);
+        out.srMaxStepX = ReadFloatConfig(src, skCrypt("sr_max_step_x"), out.srMaxStepX, 0.1f, 500.0f);
+        out.srMaxStepY = ReadFloatConfig(src, skCrypt("sr_max_step_y"), out.srMaxStepY, 0.1f, 500.0f);
+        out.dmrMaxStepX = ReadFloatConfig(src, skCrypt("dmr_max_step_x"), out.dmrMaxStepX, 0.1f, 500.0f);
+        out.dmrMaxStepY = ReadFloatConfig(src, skCrypt("dmr_max_step_y"), out.dmrMaxStepY, 0.1f, 500.0f);
 
-        out.arTriggerFov = ReadFloatConfig(src, "ar_trigger_fov", out.arTriggerFov, 0.1f, 50.0f);
-        out.srTriggerFov = ReadFloatConfig(src, "sr_trigger_fov", out.srTriggerFov, 0.1f, 50.0f);
-        out.dmrTriggerFov = ReadFloatConfig(src, "dmr_trigger_fov", out.dmrTriggerFov, 0.1f, 50.0f);
-        out.sgTriggerFov = ReadFloatConfig(src, "sg_trigger_fov", out.sgTriggerFov, 0.1f, 50.0f);
-        out.triggerDelayMs = ReadIntConfig(src, "trigger_delay_ms", out.triggerDelayMs, 0, 5000);
-        out.srDelay1 = ReadIntConfig(src, "sr_autoshot_delay1", out.srDelay1, 0, 1000);
-        out.srDelay2 = ReadIntConfig(src, "sr_autoshot_delay2", out.srDelay2, 0, 5000);
+        out.arTriggerFov = ReadFloatConfig(src, skCrypt("ar_trigger_fov"), out.arTriggerFov, 0.1f, 50.0f);
+        out.srTriggerFov = ReadFloatConfig(src, skCrypt("sr_trigger_fov"), out.srTriggerFov, 0.1f, 50.0f);
+        out.dmrTriggerFov = ReadFloatConfig(src, skCrypt("dmr_trigger_fov"), out.dmrTriggerFov, 0.1f, 50.0f);
+        out.sgTriggerFov = ReadFloatConfig(src, skCrypt("sg_trigger_fov"), out.sgTriggerFov, 0.1f, 50.0f);
+        out.triggerDelayMs = ReadIntConfig(src, skCrypt("trigger_delay_ms"), out.triggerDelayMs, 0, 5000);
+        out.srDelay1 = ReadIntConfig(src, skCrypt("sr_autoshot_delay1"), out.srDelay1, 0, 1000);
+        out.srDelay2 = ReadIntConfig(src, skCrypt("sr_autoshot_delay2"), out.srDelay2, 0, 5000);
 
-        out.arBaseSmoothing = ReadFloatConfig(src, "ar_base_smoothing", out.arBaseSmoothing, 1.0f, 50.0f);
-        out.srBaseSmoothing = ReadFloatConfig(src, "sr_base_smoothing", out.srBaseSmoothing, 1.0f, 50.0f);
-        out.dmrBaseSmoothing = ReadFloatConfig(src, "dmr_base_smoothing", out.dmrBaseSmoothing, 1.0f, 50.0f);
-        out.maxSmoothIncrease = ReadFloatConfig(src, "max_smooth_increase", out.maxSmoothIncrease, 0.0f, 20.0f);
-        out.smoothFov = ReadFloatConfig(src, "smooth_fov", out.smoothFov, 0.0f, 100.0f);
+        out.arBaseSmoothing = ReadFloatConfig(src, skCrypt("ar_base_smoothing"), out.arBaseSmoothing, 1.0f, 50.0f);
+        out.srBaseSmoothing = ReadFloatConfig(src, skCrypt("sr_base_smoothing"), out.srBaseSmoothing, 1.0f, 50.0f);
+        out.dmrBaseSmoothing = ReadFloatConfig(src, skCrypt("dmr_base_smoothing"), out.dmrBaseSmoothing, 1.0f, 50.0f);
+        out.maxSmoothIncrease = ReadFloatConfig(src, skCrypt("max_smooth_increase"), out.maxSmoothIncrease, 0.0f, 20.0f);
+        out.smoothFov = ReadFloatConfig(src, skCrypt("smooth_fov"), out.smoothFov, 0.0f, 100.0f);
 
-        if (src.contains("ar_trigger_enabled")) try { out.arTriggerEnabled = src["ar_trigger_enabled"].get<bool>(); } catch (...) {}
-        if (src.contains("sr_trigger_enabled")) try { out.srTriggerEnabled = src["sr_trigger_enabled"].get<bool>(); } catch (...) {}
-        if (src.contains("dmr_trigger_enabled")) try { out.dmrTriggerEnabled = src["dmr_trigger_enabled"].get<bool>(); } catch (...) {}
-        if (src.contains("sg_trigger_enabled")) try { out.sgTriggerEnabled = src["sg_trigger_enabled"].get<bool>(); } catch (...) {}
-        out.xJitterRange = ReadIntConfig(src, "x_jitter", out.xJitterRange, 0, 16);
-        out.humanizeMin = ReadFloatConfig(src, "humanize_min", out.humanizeMin, 0.1f, 3.0f);
-        out.humanizeMax = ReadFloatConfig(src, "humanize_max", out.humanizeMax, 0.1f, 3.0f);
-        out.angleToPixelX = ReadFloatConfig(src, "angle_to_pixel_x", out.angleToPixelX, 0.1f, 200.0f);
-        out.angleToPixelY = ReadFloatConfig(src, "angle_to_pixel_y", out.angleToPixelY, 0.1f, 200.0f);
-        out.yawGain = ReadFloatConfig(src, "yaw_gain", out.yawGain, 0.01f, 10.0f);
-        out.pitchGain = ReadFloatConfig(src, "pitch_gain", out.pitchGain, 0.01f, 10.0f);
-        out.deadzone = ReadFloatConfig(src, "angle_deadzone", out.deadzone, 0.0f, 1.5f);
+        if (src.contains(skCrypt("ar_trigger_enabled"))) try { out.arTriggerEnabled = src[skCrypt("ar_trigger_enabled")].get<bool>(); } catch (...) {}
+        if (src.contains(skCrypt("sr_trigger_enabled"))) try { out.srTriggerEnabled = src[skCrypt("sr_trigger_enabled")].get<bool>(); } catch (...) {}
+        if (src.contains(skCrypt("dmr_trigger_enabled"))) try { out.dmrTriggerEnabled = src[skCrypt("dmr_trigger_enabled")].get<bool>(); } catch (...) {}
+        if (src.contains(skCrypt("sg_trigger_enabled"))) try { out.sgTriggerEnabled = src[skCrypt("sg_trigger_enabled")].get<bool>(); } catch (...) {}
+        out.xJitterRange = ReadIntConfig(src, skCrypt("x_jitter"), out.xJitterRange, 0, 16);
+        out.humanizeMin = ReadFloatConfig(src, skCrypt("humanize_min"), out.humanizeMin, 0.1f, 3.0f);
+        out.humanizeMax = ReadFloatConfig(src, skCrypt("humanize_max"), out.humanizeMax, 0.1f, 3.0f);
+        out.angleToPixelX = ReadFloatConfig(src, skCrypt("angle_to_pixel_x"), out.angleToPixelX, 0.1f, 200.0f);
+        out.angleToPixelY = ReadFloatConfig(src, skCrypt("angle_to_pixel_y"), out.angleToPixelY, 0.1f, 200.0f);
+        out.yawGain = ReadFloatConfig(src, skCrypt("yaw_gain"), out.yawGain, 0.01f, 10.0f);
+        out.pitchGain = ReadFloatConfig(src, skCrypt("pitch_gain"), out.pitchGain, 0.01f, 10.0f);
+        out.deadzone = ReadFloatConfig(src, skCrypt("angle_deadzone"), out.deadzone, 0.0f, 1.5f);
 
         if (out.humanizeMin > out.humanizeMax)
         {
@@ -644,22 +644,22 @@ public:
         profile.maxSmoothIncrease = max_smooth_increase;
         profile.smoothFov = smooth_fov;
 
-        if (global_config.is_null() || !global_config.contains("category_profiles") || !global_config["category_profiles"].is_object())
+        if (global_config.is_null() || !global_config.contains(skCrypt("category_profiles")) || !global_config[skCrypt("category_profiles")].is_object())
         {
             return profile;
         }
 
-        const auto& allProfiles = global_config["category_profiles"];
+        const auto& allProfiles = global_config[ skCrypt("category_profiles") ];
         const std::string key = CategoryKey(current_category);
 
         const json* selected = nullptr;
-        if (allProfiles.contains(key) && allProfiles[key].is_object())
+        if (allProfiles.contains(key) && allProfiles[ key ].is_object())
         {
-            selected = &allProfiles[key];
+            selected = &allProfiles[ key ];
         }
-        else if (allProfiles.contains("default") && allProfiles["default"].is_object())
+        else if (allProfiles.contains(skCrypt("default")) && allProfiles[ skCrypt("default") ].is_object())
         {
-            selected = &allProfiles["default"];
+            selected = &allProfiles[ skCrypt("default") ];
         }
 
         if (selected == nullptr)
@@ -668,15 +668,15 @@ public:
         }
 
         const json* modeNode = selected;
-        if (selected->contains("mode1") || selected->contains("mode2"))
+        if (selected->contains(skCrypt("mode1")) || selected->contains(skCrypt("mode2")))
         {
-            if (macro_mode == 2 && selected->contains("mode2"))
+            if (macro_mode == 2 && selected->contains(skCrypt("mode2")))
             {
-                modeNode = &(*selected)["mode2"];
+                modeNode = &(*selected)[skCrypt("mode2")];
             }
-            else if (selected->contains("mode1"))
+            else if (selected->contains(skCrypt("mode1")))
             {
-                modeNode = &(*selected)["mode1"];
+                modeNode = &(*selected)[skCrypt("mode1")];
             }
         }
 
@@ -762,24 +762,24 @@ public:
 
     static void ClassifyAttachment(const std::string& name)
     {
-        if (name.find("Dot") != std::string::npos || name.find("RedDot") != std::string::npos || name.find("Aimpoint") != std::string::npos) current_scope = 1;
-        else if (name.find("Holo") != std::string::npos) current_scope = 2;
-        else if (name.find("2x") != std::string::npos || name.find("Scope2x") != std::string::npos) current_scope = 3;
-        else if (name.find("3x") != std::string::npos || name.find("Scope3x") != std::string::npos) current_scope = 4;
-        else if (name.find("4x") != std::string::npos || name.find("ACOG") != std::string::npos || name.find("Scope4x") != std::string::npos) current_scope = 5;
-        else if (name.find("6x") != std::string::npos || name.find("Scope6x") != std::string::npos) current_scope = 6;
-        else if (name.find("8x") != std::string::npos || name.find("Scope8x") != std::string::npos || name.find("CQBSS") != std::string::npos) current_scope = 7;
-        else if (name.find("15x") != std::string::npos) current_scope = 8;
+        if (name.find(skCrypt("Dot")) != std::string::npos || name.find(skCrypt("RedDot")) != std::string::npos || name.find(skCrypt("Aimpoint")) != std::string::npos) current_scope = 1;
+        else if (name.find(skCrypt("Holo")) != std::string::npos) current_scope = 2;
+        else if (name.find(skCrypt("2x")) != std::string::npos || name.find(skCrypt("Scope2x")) != std::string::npos) current_scope = 3;
+        else if (name.find(skCrypt("3x")) != std::string::npos || name.find(skCrypt("Scope3x")) != std::string::npos) current_scope = 4;
+        else if (name.find(skCrypt("4x")) != std::string::npos || name.find(skCrypt("ACOG")) != std::string::npos || name.find(skCrypt("Scope4x")) != std::string::npos) current_scope = 5;
+        else if (name.find(skCrypt("6x")) != std::string::npos || name.find(skCrypt("Scope6x")) != std::string::npos) current_scope = 6;
+        else if (name.find(skCrypt("8x")) != std::string::npos || name.find(skCrypt("Scope8x")) != std::string::npos || name.find(skCrypt("CQBSS")) != std::string::npos) current_scope = 7;
+        else if (name.find(skCrypt("15x")) != std::string::npos) current_scope = 8;
 
-        if (name.find("Compensator") != std::string::npos) current_muzzle = 4;
-        else if (name.find("FlashHider") != std::string::npos) current_muzzle = 1;
-        else if (name.find("Suppressor") != std::string::npos || name.find("Silencer") != std::string::npos) current_muzzle = 2;
+        if (name.find(skCrypt("Compensator")) != std::string::npos) current_muzzle = 4;
+        else if (name.find(skCrypt("FlashHider")) != std::string::npos) current_muzzle = 1;
+        else if (name.find(skCrypt("Suppressor")) != std::string::npos || name.find(skCrypt("Silencer")) != std::string::npos) current_muzzle = 2;
 
-        if (name.find("Angled") != std::string::npos) current_grip = 2;
-        else if (name.find("Half") != std::string::npos || name.find("HalfGrip") != std::string::npos) current_grip = 3;
-        else if (name.find("Light") != std::string::npos || name.find("LightGrip") != std::string::npos) current_grip = 4;
-        else if (name.find("Thumb") != std::string::npos || name.find("ThumbGrip") != std::string::npos) current_grip = 1;
-        else if (name.find("Vertical") != std::string::npos || name.find("Foregrip") != std::string::npos) current_grip = 1;
+        if (name.find(skCrypt("Angled")) != std::string::npos) current_grip = 2;
+        else if (name.find(skCrypt("Half")) != std::string::npos || name.find(skCrypt("HalfGrip")) != std::string::npos) current_grip = 3;
+        else if (name.find(skCrypt("Light")) != std::string::npos || name.find(skCrypt("LightGrip")) != std::string::npos) current_grip = 4;
+        else if (name.find(skCrypt("Thumb")) != std::string::npos || name.find(skCrypt("ThumbGrip")) != std::string::npos) current_grip = 1;
+        else if (name.find(skCrypt("Vertical")) != std::string::npos || name.find(skCrypt("Foregrip")) != std::string::npos) current_grip = 1;
     }
 
     static void UpdateAttachments(const uint64_t weapon)

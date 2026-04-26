@@ -204,7 +204,7 @@ public:
                 NeedGetNameIDs.erase(std::unique(NeedGetNameIDs.begin(), NeedGetNameIDs.end()), NeedGetNameIDs.end());
                 if (NeedGetNameIDs.size() > 50) NeedGetNameIDs.resize(50);
                 std::vector<int> localIDs = NeedGetNameIDs;
-                Throttlered.executeTask("ReadGNames", std::chrono::milliseconds(1000), [localIDs] {
+                Throttlered.executeTask(skCrypt("ReadGNames"), std::chrono::milliseconds(1000), [localIDs] {
                     std::thread([localIDs]() { GNames::ReadGNames(const_cast<std::vector<int>&>(localIDs)); }).detach();
                 });
             }

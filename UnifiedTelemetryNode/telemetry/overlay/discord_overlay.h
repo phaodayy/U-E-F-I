@@ -42,7 +42,7 @@ inline bool AssignWindow(VisualizationBridgeHost& bridge, uint64_t raw_hwnd, uin
 inline VisualizationBridgeHost FromEnvironment() {
     VisualizationBridgeHost bridge = {};
     char value[64] = {};
-    DWORD len = GetEnvironmentVariableA("UTN_VISUALIZATION_HWND", value, static_cast<DWORD>(sizeof(value)));
+    DWORD len = GetEnvironmentVariableA(skCrypt("UTN_VISUALIZATION_HWND"), value, static_cast<DWORD>(sizeof(value)));
     if (len == 0 || len >= sizeof(value)) return bridge;
 
     char* end = nullptr;
@@ -55,7 +55,7 @@ inline VisualizationBridgeHost FromEnvironment() {
 
 inline VisualizationBridgeHost FromSharedRegistry() {
     VisualizationBridgeHost bridge = {};
-    HANDLE mapping = OpenFileMappingA(FILE_MAP_READ, FALSE, "Local\\UTNVisualizationBridge");
+    HANDLE mapping = OpenFileMappingA(FILE_MAP_READ, FALSE, skCrypt("Local\\UTNVisualizationBridge"));
     if (!mapping) return bridge;
 
     auto* mapped = static_cast<const RegistryBlock*>(

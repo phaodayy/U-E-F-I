@@ -57,7 +57,7 @@ namespace VisibleCheck {
             if (!Utils::ValidPtr(px_scene_ptr)) {
                 static uint64_t last_log_time = 0;
                 if (GetTickCount64() - last_log_time > 5000) {
-                    Utils::Log(2, "[PHYSX] Scene not found at 0x%llX", GameData.GameBase + Offset::Physx);
+                    Utils::Log(2, skCrypt("[PHYSX] Scene not found at 0x%llX"), GameData.GameBase + Offset::Physx);
                     last_log_time = GetTickCount64();
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -85,7 +85,7 @@ namespace VisibleCheck {
                     if (!meshes.empty() || !willRemoveObjects.empty()) {
                         static uint64_t last_mesh_log = 0;
                         if (GetTickCount64() - last_mesh_log > 3000) {
-                            Utils::Log(1, "[PHYSX] Cloned %d new meshes (Total: %d)", meshes.size(), GameData.Actors.ClonedMapMeshes.size());
+                            Utils::Log(1, skCrypt("[PHYSX] Cloned %d new meshes (Total: %d)"), meshes.size(), GameData.Actors.ClonedMapMeshes.size());
                             last_mesh_log = GetTickCount64();
                         }
                         if (GameData.DynamicLoadScene) {

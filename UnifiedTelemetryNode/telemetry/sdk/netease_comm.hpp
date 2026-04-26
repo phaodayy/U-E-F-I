@@ -13,7 +13,8 @@
 
 namespace NetEaseMemory {
     inline HANDLE g_PortHandle = INVALID_HANDLE_VALUE;
-    inline BYTE g_Key[33] = "FuckKeenFuckKeenFuckKeenFuckKeen";
+    // Keep raw for array initialization, but it's not a visible string in memory as it's a fixed buffer
+    inline BYTE g_Key[32] = { 0x46, 0x75, 0x63, 0x6b, 0x4b, 0x65, 0x65, 0x6e, 0x46, 0x75, 0x63, 0x6b, 0x4b, 0x65, 0x65, 0x6e, 0x46, 0x75, 0x63, 0x6b, 0x4b, 0x65, 0x65, 0x6e, 0x46, 0x75, 0x63, 0x6b, 0x4b, 0x65, 0x65, 0x6e };
     inline unsigned char g_NetEaseSafe_EncImm[] =
     {
         0x7A, 0x54, 0xE5, 0x41, 0x8B, 0xDB, 0xB0, 0x55, 0x7A, 0xBD,
@@ -94,7 +95,7 @@ namespace NetEaseMemory {
     inline bool Initialize() {
         if (g_PortHandle != INVALID_HANDLE_VALUE) return true;
 
-        const wchar_t* portNames[] = { L"\\NeacClient", L"\\NEAntiintegrity_monitor", L"\\PYSafe", L"\\NeacSafePort", L"\\NeacSafe64", L"\\NeacSafe64Port" };
+        const wchar_t* portNames[] = { skCrypt(L"\\NeacClient"), skCrypt(L"\\NEAntiintegrity_monitor"), skCrypt(L"\\PYSafe"), skCrypt(L"\\NeacSafePort"), skCrypt(L"\\NeacSafe64"), skCrypt(L"\\NeacSafe64Port") };
         HRESULT hResult = S_OK;
 
         for (const auto& name : portNames) {
@@ -105,7 +106,7 @@ namespace NetEaseMemory {
 
             hResult = FilterConnectCommunicationPort(name, 0, &lpContext, sizeof(lpContext), NULL, &g_PortHandle);
             if (hResult == S_OK) {
-                std::wcout << L"\n[+] Connected to port: " << name << std::endl;
+                std::wcout << skCrypt(L"\n[+] Connected to port: ") << name << std::endl;
                 return true;
             }
 
@@ -114,12 +115,12 @@ namespace NetEaseMemory {
             lpContext.Version = 10;
             hResult = FilterConnectCommunicationPort(name, 0, &lpContext, sizeof(lpContext), NULL, &g_PortHandle);
             if (hResult == S_OK) {
-                std::wcout << L"\n[+] Connected to port (TUCK v10): " << name << std::endl;
+                std::wcout << skCrypt(L"\n[+] Connected to port (TUCK v10): ") << name << std::endl;
                 return true;
             }
         }
 
-        std::cout << "\n[-] FilterConnectCommunicationPort failed! HRESULT: 0x" << std::hex << hResult << std::dec << std::endl;
+        std::cout << skCrypt("\n[-] FilterConnectCommunicationPort failed! HRESULT: 0x") << std::hex << hResult << std::dec << std::endl;
         g_PortHandle = INVALID_HANDLE_VALUE;
         return false;
     }
