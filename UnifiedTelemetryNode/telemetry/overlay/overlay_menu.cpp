@@ -40,6 +40,14 @@ struct TextureInfo {
     int Width = 0;
     int Height = 0;
 };
+
+struct VividThreat {
+    std::string Name;
+    int Dist;
+    float HP;
+    bool IsSpectator;
+};
+
 static std::map<std::string, TextureInfo> WeaponImages;
 static std::map<std::string, TextureInfo> VehicleIcons;
 static std::map<std::string, TextureInfo> ItemIcons;
@@ -1007,8 +1015,9 @@ void OverlayMenu::RenderFrame() {
                     boxCol = ApplyAlpha(boxCol, alphaMult);
 
                     if (esp_box && player.Distance < g_Menu.box_max_dist) {
-                        draw->AddRect(ImVec2(finalBoxLeft, finalBoxTop), ImVec2(finalBoxRight, finalBoxBottom), IM_COL32(0,0,0,(int)(180 * alphaMult)), 2.5f, 0, 2.5f); // Border
-                        draw->AddRect(ImVec2(finalBoxLeft, finalBoxTop), ImVec2(finalBoxRight, finalBoxBottom), boxCol, 2.5f, 0, 1.25f);       // Main Box
+                        float thick = g_Menu.box_thickness;
+                        draw->AddRect(ImVec2(finalBoxLeft, finalBoxTop), ImVec2(finalBoxRight, finalBoxBottom), IM_COL32(0,0,0,(int)(180 * alphaMult)), 2.5f, 0, thick + 1.25f); // Border
+                        draw->AddRect(ImVec2(finalBoxLeft, finalBoxTop), ImVec2(finalBoxRight, finalBoxBottom), boxCol, 2.5f, 0, thick);       // Main Box
                     }
                     
                     // --- PREMIUM HEALTH BAR (DYNAMIC SCALING) ---
@@ -1123,7 +1132,11 @@ void OverlayMenu::RenderFrame() {
                                     ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.skeleton_visible_color) : 
                                     ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.skeleton_invisible_color);
                                 
-                                draw->AddLine(ImVec2(s1.x, s1.y), ImVec2(s2.x, s2.y), ApplyAlpha(skelCol, alphaMult), g_Menu.skel_thickness);
+                                 draw->AddLine(ImVec2(s1.x, s1.y), ImVec2(s2.x, s2.y), ApplyAlpha(skelCol, alphaMult), g_Menu.skel_thickness);
+                                if (g_Menu.esp_skeleton_dots) {
+                                    draw->AddCircleFilled(ImVec2(s1.x, s1.y), g_Menu.skel_thickness * 1.5f, ApplyAlpha(skelCol, alphaMult));
+                                    draw->AddCircleFilled(ImVec2(s2.x, s2.y), g_Menu.skel_thickness * 1.5f, ApplyAlpha(skelCol, alphaMult));
+                                }
                             }
                         };
                         DrawLine(player.Bone_Head, player.Bone_Neck);
@@ -1175,7 +1188,7 @@ void OverlayMenu::RenderFrame() {
                             if (textScale < 0.65f) textScale = 0.65f;
                         }
 
-                        float baseFontSize = 13.0f;
+                        float baseFontSize = g_Menu.esp_font_size * 0.9f;
                         ImVec2 distSize = ImGui::GetFont()->CalcTextSizeA(baseFontSize * textScale, FLT_MAX, 0.0f, distStr);
                         
                         ImU32 distCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.distance_color);
@@ -1211,7 +1224,7 @@ void OverlayMenu::RenderFrame() {
                             }
                         } else { // TEXT
                             ImU32 weaponCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.weapon_color);
-                            float baseFontSize = 14.5f;
+                            float baseFontSize = g_Menu.esp_font_size * 1.05f;
                             ImVec2 ws = ImGui::GetFont()->CalcTextSizeA(baseFontSize, FLT_MAX, 0.0f, player.WeaponName.c_str());
                             currentTopY -= ws.y;
                             draw->AddText(ImVec2(head_s.x - ws.x/2, currentTopY), ApplyAlpha(weaponCol, alphaMult), player.WeaponName.c_str());
@@ -1227,7 +1240,7 @@ void OverlayMenu::RenderFrame() {
                             textScale = 1.0f - ((player.Distance - 50.0f) / 1000.0f);
                             if (textScale < 0.65f) textScale = 0.65f;
                         }
-                        float baseFontSize = 12.0f;
+                        float baseFontSize = g_Menu.esp_font_size * 0.85f;
                         ImVec2 rs = ImGui::GetFont()->CalcTextSizeA(baseFontSize * textScale, FLT_MAX, 0.0f, rankStr.c_str());
                         currentTopY -= (rs.y + 1.0f);
                         ImU32 rankCol = IM_COL32(200, 200, 200, 255); // Default grey
@@ -1246,7 +1259,7 @@ void OverlayMenu::RenderFrame() {
                             if (textScale < 0.65f) textScale = 0.65f;
                         }
 
-                        float baseFontSize = 14.5f;
+                        float baseFontSize = g_Menu.esp_font_size;
                         ImVec2 ns = ImGui::GetFont()->CalcTextSizeA(baseFontSize * textScale, FLT_MAX, 0.0f, infoTag.c_str());
                         currentTopY -= ns.y;
                         
@@ -1457,6 +1470,69 @@ void OverlayMenu::RenderFrame() {
             draw->AddText(ImVec2(hudX, hudY), ImColor(macro_overlay_color[0], macro_overlay_color[1], macro_overlay_color[2], macro_overlay_color[3]), buf);
         }
 
+        // --- 1.6 VIVID SPECTATOR & THREAT LIST ---
+        if (is_authenticated && g_Menu.esp_spectator_list && (current_scene == Scene::Gaming || current_scene == Scene::Lobby)) {
+            float listWidth = 240.0f;
+            float listX = ScreenWidth - listWidth - 20.0f;
+            float listY = 150.0f;
+            
+            std::vector<VividThreat> threats;
+            int totalSpectators = 0;
+
+            for (size_t i = 0; i < localPlayers.size(); ++i) {
+                const auto& p = localPlayers[i];
+                if (p.SpectatedCount > 0) {
+                    totalSpectators += p.SpectatedCount;
+                    VividThreat vt; vt.Name = p.Name; vt.Dist = (int)p.Distance; vt.HP = p.Health; vt.IsSpectator = true;
+                    threats.push_back(vt);
+                } else if (p.Distance < 120.0f && !p.IsTeammate && p.Distance > 0) {
+                    VividThreat vt; vt.Name = p.Name; vt.Dist = (int)p.Distance; vt.HP = p.Health; vt.IsSpectator = false;
+                    threats.push_back(vt);
+                }
+            }
+
+            // Sort by distance
+            std::sort(threats.begin(), threats.end(), [](const VividThreat& a, const VividThreat& b) { return a.Dist < b.Dist; });
+
+            if (!threats.empty() || totalSpectators > 0) {
+                auto Lang = Translation::Get();
+                float entryHeight = 28.0f;
+                float headerHeight = 35.0f;
+                float totalHeight = headerHeight + (threats.size() * entryHeight) + 8.0f;
+
+                // Glass-morphism effect
+                draw->AddRectFilled(ImVec2(listX, listY), ImVec2(listX + listWidth, listY + totalHeight), IM_COL32(5, 15, 30, 220), 10.0f);
+                draw->AddRect(ImVec2(listX, listY), ImVec2(listX + listWidth, listY + totalHeight), IM_COL32(0, 200, 255, 60), 10.0f, 0, 1.5f);
+                
+                // Header Gradient
+                draw->AddRectFilledMultiColor(ImVec2(listX + 2, listY + 2), ImVec2(listX + listWidth - 2, listY + headerHeight),
+                    IM_COL32(0, 100, 255, 30), IM_COL32(0, 200, 255, 10), IM_COL32(0, 200, 255, 10), IM_COL32(0, 100, 255, 30));
+
+                char headerBuf[128]; 
+                sprintf_s(headerBuf, skCrypt("%s (%d)"), Lang.ESP_SpectatorList, totalSpectators);
+                draw->AddText(ImVec2(listX + 12, listY + 8), IM_COL32(0, 220, 255, 255), headerBuf);
+                
+                float currentY = listY + headerHeight;
+                for (const auto& t : threats) {
+                    ImU32 textCol = t.IsSpectator ? IM_COL32(255, 80, 80, 255) : IM_COL32(220, 220, 220, 255);
+                    
+                    char entryBuf[128];
+                    sprintf_s(entryBuf, skCrypt("%s (%dm)"), t.Name.c_str(), t.Dist);
+                    draw->AddText(ImVec2(listX + 12, currentY), textCol, entryBuf);
+                    
+                    // Health pill
+                    float hpW = 45.0f;
+                    float hpH = 5.0f;
+                    float hpx = listX + listWidth - hpW - 12.0f;
+                    float hpy = currentY + 10.0f;
+                    draw->AddRectFilled(ImVec2(hpx, hpy), ImVec2(hpx + hpW, hpy + hpH), IM_COL32(40, 40, 40, 200), 2.0f);
+                    draw->AddRectFilled(ImVec2(hpx, hpy), ImVec2(hpx + (hpW * (t.HP / 100.0f)), hpy + hpH), IM_COL32(0, 255, 120, 255), 2.0f);
+
+                    currentY += entryHeight;
+                }
+            }
+        }
+
         // --- 1.6 STEAM PROOF STATUS INDICATOR (WARNING ONLY) ---
         if (!anti_screenshot) {
             auto Lang = Translation::Get();
@@ -1591,13 +1667,16 @@ void OverlayMenu::RenderFrame() {
                 ImGui::Checkbox(Lang.ESP_Offscreen, &g_Menu.esp_offscreen);
                 ImGui::Checkbox(Lang.VisCheck, &g_Menu.aim_visible_only);
                 ImGui::Checkbox(Lang.ESP_Spectated, &g_Menu.esp_spectated);
+                ImGui::Checkbox(Lang.ESP_SpectatorList, &g_Menu.esp_spectator_list);
                 ImGui::EndChild();
                 
                 ImGui::NextColumn();
                 // Col 2: Kiểu Vẽ & HUD
                 BeginGlassCard(skCrypt("##ESPCol2"), Lang.HeaderRenderStyle, ImVec2(totalWidth / 4.0f - 15, 0));
                 ImGui::Checkbox(Lang.Box, &g_Menu.esp_box);
+                ImGui::SliderFloat(Lang.BoxThick, &g_Menu.box_thickness, 1.0f, 5.0f, skCrypt("%.1f px"));
                 ImGui::Checkbox(Lang.Skeleton, &g_Menu.esp_skeleton);
+                ImGui::Checkbox(Lang.ESP_SkeletonDots, &g_Menu.esp_skeleton_dots);
                 ImGui::Checkbox(Lang.HealthBar, &g_Menu.esp_health);
                 ImGui::Checkbox(Lang.Distance, &g_Menu.esp_distance);
                 ImGui::Checkbox(Lang.Name, &g_Menu.esp_name);
@@ -1612,6 +1691,7 @@ void OverlayMenu::RenderFrame() {
                 ImGui::NextColumn();
                 // Col 3: Thông số & Màu Sắc
                 BeginGlassCard(skCrypt("##ESPCol3"), Lang.HeaderOverlayHUD, ImVec2(totalWidth / 4.0f - 15, 0));
+                ImGui::SliderFloat(Lang.FontSize, &g_Menu.esp_font_size, 8.0f, 24.0f, skCrypt("%.1f px"));
                 ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), Lang.DistThresholds);
                 ImGui::SliderInt(Lang.RenderDist, &g_Menu.render_distance, 50, 1000, skCrypt("%d m"));
                 ImGui::SliderInt(Lang.InfoESP, &g_Menu.name_max_dist, 50, 600, skCrypt("%d m"));
@@ -1883,8 +1963,18 @@ void OverlayMenu::RenderFrame() {
                 
                 char keyDisplay[64];
                 sprintf_s(keyDisplay, sizeof(keyDisplay), skCrypt("MOUSE LEFT")); 
-                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), Lang.AimKey);
-                if (ImGui::Button(keyDisplay, ImVec2(-1, 30))) { g_Menu.waiting_for_key = &pCfg->key; }
+                ImGui::Separator();
+                ImGui::SliderFloat(Lang.SmoothRNG, &g_Menu.aim_smooth_rng, 0.0f, 10.0f, skCrypt("%.1f"));
+                
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(0.8f, 0.2f, 1.0f, 1.0f), Lang.AimKey2);
+                const char* keys[] = { "NONE", "MOUSE LEFT", "MOUSE RIGHT", "L-ALT", "L-SHIFT", "X", "V" };
+                int keyVals[] = { 0, VK_LBUTTON, VK_RBUTTON, VK_LMENU, VK_LSHIFT, 'X', 'V' };
+                int key2Idx = 0;
+                for(int i=0; i<7; i++) if(g_Menu.aim_key2 == keyVals[i]) key2Idx = i;
+                if (ImGui::Combo(skCrypt("##AimKey2Combo"), &key2Idx, keys, IM_ARRAYSIZE(keys))) {
+                    g_Menu.aim_key2 = keyVals[key2Idx];
+                }
                 
                 ImGui::EndChild();
                 
@@ -2197,6 +2287,12 @@ void OverlayMenu::SaveConfig(const char* path) {
         nlohmann::json j;
         j["esp_toggle"] = esp_toggle;
         j["esp_icons"] = esp_icons;
+        j["esp_font_size"] = esp_font_size;
+        j["box_thickness"] = box_thickness;
+        j["esp_skeleton_dots"] = esp_skeleton_dots;
+        j["esp_spectator_list"] = esp_spectator_list;
+        j["aim_smooth_rng"] = aim_smooth_rng;
+        j["aim_key2"] = aim_key2;
         j["esp_show_enemies"] = esp_show_enemies;
         j["esp_show_teammates"] = esp_show_teammates;
         j["esp_offscreen"] = esp_offscreen;
@@ -2311,6 +2407,12 @@ void OverlayMenu::LoadConfig(const char* path) {
 
             if (j.contains("esp_toggle")) esp_toggle = j["esp_toggle"];
             if (j.contains("esp_icons")) esp_icons = j["esp_icons"];
+            if (j.contains("esp_font_size")) esp_font_size = j["esp_font_size"];
+            if (j.contains("box_thickness")) box_thickness = j["box_thickness"];
+            if (j.contains("esp_skeleton_dots")) esp_skeleton_dots = j["esp_skeleton_dots"];
+            if (j.contains("esp_spectator_list")) esp_spectator_list = j["esp_spectator_list"];
+            if (j.contains("aim_smooth_rng")) aim_smooth_rng = j["aim_smooth_rng"];
+            if (j.contains("aim_key2")) aim_key2 = j["aim_key2"];
             if (j.contains("esp_show_enemies")) esp_show_enemies = j["esp_show_enemies"];
             if (j.contains("esp_show_teammates")) {
                 esp_show_teammates = j["esp_show_teammates"];

@@ -58,12 +58,19 @@ namespace Translation {
 
         const char* Name;
         const char* ESP_Icons;
+        const char* ESP_SkeletonDots;
+        const char* ESP_SpectatorList;
         const char* KillCount;
         const char* TeamID;
         const char* Rank;
         const char* SurvivalLevel;
         const char* ESP_Spectated;
         const char* ESP_Offscreen;
+
+        const char* FontSize;
+        const char* BoxThick;
+        const char* SmoothRNG;
+        const char* AimKey2;
 
         const char* IndicatorRadius;
 
@@ -471,6 +478,12 @@ namespace Translation {
             s.SkeletonMax = (const char*)u8"Xương xa nhất";
 
             s.NameMax = (const char*)u8"Tên xa nhất";
+            s.ESP_SkeletonDots = (const char*)u8"Hiện khớp xương";
+            s.ESP_SpectatorList = (const char*)u8"Danh sách người xem";
+            s.FontSize = (const char*)u8"Cỡ chữ";
+            s.BoxThick = (const char*)u8"Độ dày khung";
+            s.SmoothRNG = (const char*)u8"Độ mượt ngẫu nhiên";
+            s.AimKey2 = (const char*)u8"Phím nhắm 2";
 
             s.DistMax = (const char*)u8"KC xa nhất";
 
@@ -728,6 +741,12 @@ namespace Translation {
             s.SkeletonMax = skCrypt("Skeleton Max");
 
             s.NameMax = skCrypt("Name Max");
+            s.ESP_SkeletonDots = skCrypt("Draw Joints");
+            s.ESP_SpectatorList = skCrypt("Spectators List");
+            s.FontSize = skCrypt("Global Text Scale");
+            s.BoxThick = skCrypt("Box Thickness");
+            s.SmoothRNG = skCrypt("Smoothing RNG");
+            s.AimKey2 = skCrypt("Secondary Aim Key");
 
             s.DistMax = skCrypt("Dist Max");
 

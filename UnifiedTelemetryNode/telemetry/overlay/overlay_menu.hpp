@@ -101,6 +101,10 @@ public:
   float shield_color[4] = {0.25f, 0.6f, 1.0f, 1.0f};
   bool esp_skel_interp = true;
   float skel_thickness = 1.0f;
+  float box_thickness = 1.0f; // NEW
+  float esp_font_size = 14.0f; // NEW
+  bool esp_skeleton_dots = true; // NEW
+  bool esp_spectator_list = true; // NEW
   int box_max_dist = 600; 
   int hp_max_dist = 400; 
   int distance_txt_max_dist = 500; 
@@ -116,11 +120,12 @@ public:
   bool language = 0; // 0: English, 1: Vietnamese
   bool macro_enabled = false;
   bool macro_humanize = true;
-  bool macro_ads_only = true; // NEW
-  bool show_macro_overlay = true; // Show current weapon on OSD
-  float macro_overlay_color[4] = { 0.0f, 1.0f, 0.8f, 1.0f }; // Default cyan
-
-  // precision_calibration Settings - ALWAYS PER-WEAPON NOW
+  bool macro_ads_only = true; 
+  bool show_macro_overlay = true; 
+  float macro_overlay_color[4] = { 0.0f, 1.0f, 0.8f, 1.0f }; 
+  float aim_smooth_rng = 0.0f; // NEW
+  int aim_key2 = 0; // NEW
+  
   bool aim_master_enabled = true;
   bool aim_visible_only = true;
   bool aim_adaptive_fov = true;
