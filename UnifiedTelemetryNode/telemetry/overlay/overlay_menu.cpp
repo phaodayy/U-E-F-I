@@ -234,7 +234,7 @@ bool OverlayMenu::Initialize(const VisualizationBridgeHost& bridge) {
     ImGuiIO& io = ImGui::GetIO();
     ImFontConfig font_cfg;
     font_cfg.FontDataOwnedByAtlas = false;
-    // Load a system font that supports Vietnamese
+    // Load a system font that supports Vietnamese (Tahoma is preferred by user)
     io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\tahoma.ttf", 16.0f, &font_cfg, io.Fonts->GetGlyphRangesVietnamese());
     
     SetupStyle();
@@ -1398,9 +1398,9 @@ void OverlayMenu::RenderFrame() {
             ImGui::SameLine(windowSize.x - 70);
             ImGui::SetCursorPosY(12);
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0,0,0,0));
-            if (ImGui::Button(skCrypt("—"), ImVec2(24, 24))) { /* min */ }
+            if (ImGui::Button(skCrypt("\xE2\x80\x94"), ImVec2(24, 24))) { /* min */ }
             ImGui::SameLine();
-            if (ImGui::Button(skCrypt("✕"), ImVec2(24, 24))) { showmenu = false; }
+            if (ImGui::Button(skCrypt("\xE2\x9C\x95"), ImVec2(24, 24))) { showmenu = false; }
             ImGui::PopStyleColor();
             
             ImGui::EndChild(); // TopBar
@@ -1452,9 +1452,11 @@ void OverlayMenu::RenderFrame() {
             }
             // --- TỰ ĐỘNG NGẮM (AIM) TAB --- (NOW INDEX 1)
             else if (g_Menu.active_tab == 1) {
+                float totalWidth = windowSize.x - 60;
                 ImGui::Columns(3, skCrypt("AimColumns"), false);
-                ImGui::SetColumnWidth(0, 250);
-                ImGui::SetColumnWidth(1, 250);
+                ImGui::SetColumnWidth(0, totalWidth / 3.0f);
+                ImGui::SetColumnWidth(1, totalWidth / 3.0f);
+                ImGui::SetColumnWidth(2, totalWidth / 3.0f);
                 
                 // Column 1: Config
                 BeginGlassCard(skCrypt("##AimCol1"), Lang.HeaderSystemConfig, ImVec2(240, 0));
@@ -1548,14 +1550,15 @@ void OverlayMenu::RenderFrame() {
                 else ImGui::TextColored(ImVec4(1, 0, 0, 1), skCrypt("STATUS: INACTIVE"));
                 
                 static char key_buf[128] = {0};
-                ImGui::PushItemWidth(-60);
-                ImGui::InputText(skCrypt("Token"), key_buf, sizeof(key_buf));
+                ImGui::PushItemWidth(140);
+                ImGui::InputText(skCrypt("##TokenInput"), key_buf, sizeof(key_buf));
                 ImGui::PopItemWidth();
                 ImGui::SameLine();
-                if (ImGui::Button(Lang.PasteLabel, ImVec2(80, 30))) {
+                if (ImGui::Button(Lang.PasteLabel, ImVec2(80, 25))) {
                     const char* clipboard = ImGui::GetClipboardText();
                     if (clipboard) strcpy_s(key_buf, sizeof(key_buf), clipboard);
                 }
+                ImGui::TextDisabled(skCrypt("Paste your activation token above"));
                 
                 if (ImGui::Button(skCrypt("Validate Key"), ImVec2(-1, 35))) {
                     extern std::string GetHWID();
