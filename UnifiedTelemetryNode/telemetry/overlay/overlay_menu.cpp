@@ -398,6 +398,9 @@ static bool HasPaodMiniMapProfile(float screenWidth, float screenHeight) {
 }
 
 void OverlayMenu::RenderFrame() {
+    extern std::string global_active_key;
+    bool is_authenticated = !global_active_key.empty();
+
     static bool need_to_release = false;
     if (waiting_for_key) {
         // First time entering wait state? Set need_to_release to true
@@ -494,20 +497,33 @@ void OverlayMenu::RenderFrame() {
         float ScreenHeight = io.DisplaySize.y;
         
         // Sync Camera right before rendering for buttery smooth signal_overlay
-        telemetryContext::UpdateCamera();
+        if (is_authenticated) {
+            telemetryContext::UpdateCamera();
+        }
 
         std::vector<PlayerData> localPlayers = G_Players;
-        if (esp_toggle) telemetryContext::SyncLivePlayers(localPlayers);
+        if (esp_toggle && is_authenticated) telemetryContext::SyncLivePlayers(localPlayers);
         
         Vector2 local_feet_s;
-        bool hasLocalS = telemetryContext::WorldToScreen(G_LocalPlayerPos, local_feet_s);
+        bool hasLocalS = false;
+        if (is_authenticated) {
+            hasLocalS = telemetryContext::WorldToScreen(G_LocalPlayerPos, local_feet_s);
+        }
 
         float ScreenCenterX = ScreenWidth / 2.0f;
         float ScreenCenterY = ScreenHeight / 2.0f;
         ImDrawList* draw = ImGui::GetBackgroundDrawList();
 
+        // --- LICENSE STATUS WATERMARK (If INACTIVE) ---
+        if (!is_authenticated) {
+            std::string alertTxt = skCrypt("LICENSE STATUS: INACTIVE - PLEASE ENTER KEY IN SETTINGS [F5]");
+            ImVec2 txtSize = ImGui::GetFont()->CalcTextSizeA(18.0f, FLT_MAX, 0.0f, alertTxt.c_str());
+            draw->AddRectFilled(ImVec2(10, 10), ImVec2(20 + txtSize.x, 20 + txtSize.y), IM_COL32(0, 0, 0, 150), 5.0f);
+            draw->AddText(ImGui::GetFont(), 18.0f, ImVec2(15, 15), IM_COL32(255, 50, 50, 255), alertTxt.c_str());
+        }
+
         // --- GLOBAL SPECTATOR WARNING ---
-        if (esp_toggle && g_Menu.esp_spectated && G_LocalSpectatedCount > 0) {
+        if (is_authenticated && esp_toggle && g_Menu.esp_spectated && G_LocalSpectatedCount > 0) {
             char specText[64];
             sprintf_s(specText, sizeof(specText), "SPECTATORS: %d", G_LocalSpectatedCount);
             
@@ -536,7 +552,7 @@ void OverlayMenu::RenderFrame() {
         }
 
         // --- 0. RADAR (MINI MAP + WORLD MAP) ---
-        if (esp_toggle && radar_enabled) {
+        if (is_authenticated && esp_toggle && radar_enabled) {
             const bool expandedMiniMap = G_Radar.SelectMinimapSizeIndex > 0;
             const bool hasHudMiniMapRect = G_Radar.ScreenPosX > 1.0f && G_Radar.ScreenPosY > 1.0f &&
                                            G_Radar.ScreenSize > 40.0f && G_Radar.ScreenSizeY > 40.0f;
@@ -702,16 +718,17 @@ void OverlayMenu::RenderFrame() {
         Vector2 bestScreenPos = { 0, 0 };
         float closestDist = finalFov * 8.0f; // Reset each frame
 
-        if (canAim && activeConfig.enabled) {
+        if (is_authenticated && canAim && activeConfig.enabled) {
             draw->AddCircle(ImVec2(ScreenCenterX, ScreenCenterY), finalFov * 8.0f, ImColor(255, 255, 255, 60), 64, 1.0f);
         }
 
         // --- 1. VISUALS (signal_overlay) & precision_calibration CORE ---
-        float dt_esp = (GetTickCount64() - G_LastScanTime) / 1000.0f;
-        if (!g_Menu.esp_skel_interp) dt_esp = 0.0f;
-        else if (dt_esp > 0.10f) dt_esp = 0.10f;
+        if (is_authenticated) {
+            float dt_esp = (GetTickCount64() - G_LastScanTime) / 1000.0f;
+            if (!g_Menu.esp_skel_interp) dt_esp = 0.0f;
+            else if (dt_esp > 0.10f) dt_esp = 0.10f;
 
-        for (const auto& player_ref : localPlayers) {
+            for (const auto& player_ref : localPlayers) {
             auto& player = const_cast<PlayerData&>(player_ref); 
 
             if (player.Distance > render_distance) continue;
@@ -1178,8 +1195,10 @@ void OverlayMenu::RenderFrame() {
             }
         }
 
+        }
+
         // --- 1.5. ITEM & VEHICLE RENDERING ---
-        if (esp_toggle) {
+        if (is_authenticated && esp_toggle) {
             for (const auto& item : CachedItems) {
                 if (item.Distance <= 0) continue;
 
@@ -1213,7 +1232,7 @@ void OverlayMenu::RenderFrame() {
         }
 
         // --- 1.5 MACRO OSD (USER REQUEST) ---
-        if (show_macro_overlay && current_scene == Scene::Gaming) {
+        if (is_authenticated && show_macro_overlay && current_scene == Scene::Gaming) {
             char buf[256];
             std::string scopeName = Translation::GetAttachmentName(0, MacroEngine::current_scope);
             std::string muzzleName = Translation::GetAttachmentName(1, MacroEngine::current_muzzle);
@@ -1246,7 +1265,7 @@ void OverlayMenu::RenderFrame() {
 
         // --- 2. APPLY precision_calibration MOVEMENT ---
         // Finalize the mouse movement after all player iteration is DONE.
-        if (bestTarget) {
+        if (is_authenticated && bestTarget) {
             float moveX = (bestScreenPos.x - ScreenCenterX);
             float moveY = (bestScreenPos.y - ScreenCenterY);
 
@@ -1284,7 +1303,7 @@ void OverlayMenu::RenderFrame() {
                 ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0,0,0,0));
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.8f, 1.0f)); // Force Cyan
 
-                if (ImGui::Selectable("  GZ-integrity_monitor", false, ImGuiSelectableFlags_None, ImVec2(0, 20))) {
+                if (ImGui::Selectable(skCrypt("  GZ-integrity_monitor"), false, ImGuiSelectableFlags_None, ImVec2(0, 20))) {
                     float currentTime = (float)ImGui::GetTime();
                     if (currentTime - lastClickTime > 5.0f) clickCount = 0;
                     
@@ -1303,7 +1322,7 @@ void OverlayMenu::RenderFrame() {
                     ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
                 }
 
-                ImGui::TextDisabled("   External");
+                ImGui::TextDisabled(skCrypt("   External"));
                 ImGui::PopFont();
                 ImGui::Separator();
                 ImGui::Spacing();
@@ -1318,12 +1337,17 @@ void OverlayMenu::RenderFrame() {
                     ImGui::PopStyleColor();
                 };
 
-                StyledTab(Lang.TabVisuals, 0);
-                StyledTab(Lang.Tabprecision_calibration, 1);
-                StyledTab(Lang.TabMacro, 2);
-                StyledTab(Lang.TabRadar, 3);
-                StyledTab(Lang.TabLoot, 5);
-                StyledTab(Lang.TabSettings, 4);
+                if (is_authenticated) {
+                    StyledTab(Lang.TabVisuals, 0);
+                    StyledTab(Lang.Tabprecision_calibration, 1);
+                    StyledTab(Lang.TabMacro, 2);
+                    StyledTab(Lang.TabRadar, 3);
+                    StyledTab(Lang.TabLoot, 5);
+                    StyledTab(Lang.TabSettings, 4);
+                } else {
+                    active_tab = 4; 
+                    StyledTab(language == 1 ? skCrypt("Kich hoat Key") : skCrypt("Activate Key"), 4);
+                }
 
                 // Footer of sidebar
                 ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 40);
@@ -1615,11 +1639,83 @@ void OverlayMenu::RenderFrame() {
                     ImGui::EndChild();
                 }
                 else if (active_tab == 4) {
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.8f, 1.0f), "SYSTEM SETTINGS");
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.8f, 1.0f), is_authenticated ? skCrypt("SYSTEM SETTINGS") : skCrypt("LICENSE ACTIVATION"));
                     ImGui::Separator();
                     ImGui::BeginChild("##MiscContent");
+
+                    // === LICENSE KEY INPUT ===
+                    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "LICENSE");
+                    ImGui::Separator();
+                    {
+                        extern std::string global_active_key;
+                        extern std::string GetHWID();
+                        extern bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent);
+
+                        static char key_buf[128] = {0};
+                        static bool init_key_buf = false;
+                        if (!init_key_buf) {
+                            // Pre-fill with saved key if available
+                            std::ifstream kf("key.txt");
+                            if (kf.is_open()) {
+                                std::string saved;
+                                std::getline(kf, saved);
+                                kf.close();
+                                strncpy_s(key_buf, saved.c_str(), sizeof(key_buf) - 1);
+                            }
+                            init_key_buf = true;
+                        }
+
+                        bool is_active = !global_active_key.empty();
+                        
+                        std::string hwid_str = GetHWID();
+                        ImGui::TextDisabled(skCrypt("HWID: %s"), hwid_str.c_str());
+                        if (ImGui::IsItemHovered()) ImGui::SetTooltip(language == 1 ? skCrypt("Click de Copy HWID") : skCrypt("Click to Copy HWID"));
+                        if (ImGui::IsItemClicked()) {
+                            ImGui::SetClipboardText(hwid_str.c_str());
+                        }
+
+                        if (is_active) {
+                            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), skCrypt("Status: ACTIVE"));
+                        } else {
+                            ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), skCrypt("Status: INACTIVE"));
+                        }
+
+                        ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 70.0f);
+                        ImGui::InputText(skCrypt("##KeyInput"), key_buf, sizeof(key_buf));
+                        ImGui::PopItemWidth();
+                        ImGui::SameLine();
+                        if (ImGui::Button(skCrypt("PASTE"), ImVec2(60, 0))) {
+                            const char* clip = ImGui::GetClipboardText();
+                            if (clip) {
+                                strncpy_s(key_buf, clip, sizeof(key_buf) - 1);
+                            }
+                        }
+                        if (ImGui::Button(language == 1 ? skCrypt("Kich hoat Key") : skCrypt("Activate Key"), ImVec2(-1, 35))) {
+                            std::string key_str(key_buf);
+                            key_str.erase(0, key_str.find_first_not_of(" \t"));
+                            key_str.erase(key_str.find_last_not_of(" \t") + 1);
+                            if (!key_str.empty()) {
+                                std::string hwid = GetHWID();
+                                if (DoAPIRequest(key_str, hwid, false)) {
+                                    global_active_key = key_str;
+                                    std::ofstream outFile(skCrypt("key.txt"));
+                                    if (outFile.is_open()) { outFile << key_str; outFile.close(); }
+                                }
+                            }
+                        }
+
+                        extern std::string global_license_error;
+                        if (!global_license_error.empty()) {
+                            ImGui::Spacing();
+                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
+                            ImGui::TextWrapped(global_license_error.c_str());
+                            ImGui::PopStyleColor();
+                        }
+                    }
+                    ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+
                     int currentLang = language;
-                    if (ImGui::Combo(Lang.Language, &currentLang, "English\0Vietnamese\0")) language = currentLang;
+                    if (ImGui::Combo(Lang.Language, &currentLang, skCrypt("English\0Vietnamese\0"))) language = currentLang;
                     
                     ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
                     
@@ -1642,6 +1738,7 @@ void OverlayMenu::RenderFrame() {
                     
                     ImGui::EndChild();
                 }
+
                 if (active_tab == 5) {
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.8f, 1.0f), Lang.TabLoot);
                     ImGui::Separator();

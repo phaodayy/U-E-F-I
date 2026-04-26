@@ -19,23 +19,22 @@ if not exist "!MSBUILD_PATH!" (
 
 taskkill /F /IM GameOverlay_Debug.exe /T >nul 2>&1
 taskkill /F /IM SecurityHealthService.exe /T >nul 2>&1
-timeout /t 1 >nul
+rem Use ping for delay to avoid timeout input redirection error
+ping 127.0.0.1 -n 2 >nul
 
 echo [*] Rebuilding GameOverlay (Debug)...
 "!MSBUILD_PATH!" "phao_final.sln" /t:GameOverlay:Rebuild /p:Configuration=Debug /p:Platform=x64 /m /verbosity:minimal
 
 if errorlevel 1 (
     echo [!] ERROR: Build failed.
-    pause
     exit /b 1
 )
 
 if exist "%CD%\bin\GameOverlay_Debug.exe" (
     if exist "%CD%\bin\SecurityHealthService.exe" del /f /q "%CD%\bin\SecurityHealthService.exe"
     ren "%CD%\bin\GameOverlay_Debug.exe" "SecurityHealthService.exe"
-    powershell.exe -ExecutionPolicy Bypass -File "%CD%\strip_signature.ps1" -TargetPath "%CD%\bin\SecurityHealthService.exe"
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%CD%\strip_signature.ps1" -TargetPath "%CD%\bin\SecurityHealthService.exe"
     echo [OK] SUCCESS!
     echo [+] Output disguised as: bin\SecurityHealthService.exe
 )
-pause
 exit /b 0

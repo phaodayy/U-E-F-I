@@ -18,7 +18,9 @@ enum class hypercall_type_t : std::uint64_t
     _hc_0x180, // log_current_state
     _hc_0x190, // flush_logs
     _hc_0x200, // get_heap_free_page_count
-    _hc_0x240  // slat_signal_page_operation
+    _hc_0x240, // slat_signal_page_operation
+    _hc_0x250, // toggle_process_protection
+    _hc_0x260  // unlink_process_from_list (DKOM)
 };
 
 struct scatter_read_entry_t

@@ -45,7 +45,7 @@ copy /Y "hyperv-attachment\bin\hyperv-attachment.dll" bin\ >nul 2>&1
 
 :: 4. Build Launcher/Loader (Embeds files from bin)
 echo [*] Step 3: Building Loader and Usermode...
-"!MSBUILD_PATH!" "usermode\usermode.vcxproj" /t:Rebuild /p:Configuration=Release /p:Platform=x64 /m /verbosity:minimal
+:: "!MSBUILD_PATH!" "usermode\usermode.vcxproj" /t:Rebuild /p:Configuration=Release /p:Platform=x64 /m /verbosity:minimal
 "!MSBUILD_PATH!" "loader\loader.vcxproj" /t:Rebuild /p:Configuration=Release /p:Platform=x64 /m /verbosity:minimal
 
 copy /Y "usermode\bin\usermode.exe" bin\ >nul 2>&1

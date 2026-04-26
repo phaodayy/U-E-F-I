@@ -99,15 +99,24 @@ static uint32_t g_session_token = 0;
 std::string GetHWID() {
     std::string hwid_raw = "";
 
-    // 1. Get Volume Serial Number (Ổ đĩa C)
+    // Helper: Trim whitespace from serial strings (fixes inconsistent reads)
+    auto TrimStr = [](std::string s) -> std::string {
+        s.erase(0, s.find_first_not_of(" \t\n\r\0"));
+        s.erase(s.find_last_not_of(" \t\n\r\0") + 1);
+        return s;
+    };
+
+    // 1. Volume Serial Number (Ổ đĩa C) - Ổn định trừ khi format lại
     DWORD vol_serial = 0;
     if (GetVolumeInformationA(skCrypt("C:\\"), NULL, 0, &vol_serial, NULL, NULL, NULL, 0)) {
         char vol_str[32];
         sprintf_s(vol_str, skCrypt("%08X"), vol_serial);
         hwid_raw += vol_str;
+    } else {
+        hwid_raw += skCrypt("NOVOL");
     }
 
-    // 2. Get Disk Physical Serial Number (SSD/HDD thật - Khó spoof)
+    // 2. Disk Physical Serial Number (SSD/HDD - Khó spoof)
     HANDLE hDrive = CreateFileA(skCrypt("\\\\.\\PhysicalDrive0"), 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
     if (hDrive != INVALID_HANDLE_VALUE) {
         STORAGE_PROPERTY_QUERY query = { StorageDeviceProperty, PropertyStandardQuery };
@@ -118,35 +127,41 @@ std::string GetHWID() {
             if (DeviceIoControl(hDrive, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), buffer.data(), (DWORD)buffer.size(), &bytesReturned, NULL)) {
                 PSTORAGE_DEVICE_DESCRIPTOR pDesc = (PSTORAGE_DEVICE_DESCRIPTOR)buffer.data();
                 if (pDesc->SerialNumberOffset != 0) {
-                    hwid_raw += (char*)(buffer.data() + pDesc->SerialNumberOffset);
+                    std::string diskSerial = TrimStr((char*)(buffer.data() + pDesc->SerialNumberOffset));
+                    hwid_raw += diskSerial;
                 }
             }
         }
         CloseHandle(hDrive);
+    } else {
+        hwid_raw += skCrypt("NODISK");
     }
 
-    // 3. Get CPU ID (Chipset)
+    // 3. CPU ID (Full 4 registers - Luôn ổn định)
     int cpuinfo[4];
     __cpuid(cpuinfo, 1);
-    char cpu_str[64];
-    sprintf_s(cpu_str, skCrypt("%08X%08X"), cpuinfo[0], cpuinfo[3]);
+    char cpu_str[128];
+    sprintf_s(cpu_str, skCrypt("%08X%08X%08X%08X"), cpuinfo[0], cpuinfo[1], cpuinfo[2], cpuinfo[3]);
     hwid_raw += cpu_str;
 
-    // 4. Get BIOS/Mainboard Serial (Registry fallback)
+    // 4. BIOS/Mainboard Serial (Registry)
     HKEY hKey;
     char szBiosSerial[256] = { 0 };
     DWORD dwBufLen = 256;
     if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, skCrypt("HARDWARE\\DESCRIPTION\\System\\BIOS"), 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
         if (RegQueryValueExA(hKey, skCrypt("BaseBoardSerialNumber"), NULL, NULL, (LPBYTE)szBiosSerial, &dwBufLen) == ERROR_SUCCESS) {
-            hwid_raw += szBiosSerial;
+            hwid_raw += TrimStr(std::string(szBiosSerial));
+        } else {
+            hwid_raw += skCrypt("NOBIOS");
         }
         RegCloseKey(hKey);
+    } else {
+        hwid_raw += skCrypt("NOREG");
     }
 
-    // Hash toàn bộ thông tin phần cứng để tạo mã duy nhất (vẫn giữ format HWID- cho app)
-    std::string hashed_raw = Sha::hmac_sha256(skCrypt("GZ_HARD_HWID_FINAL_V1"), hwid_raw);
-    std::string prefix = skCrypt("HWID-");
-    return prefix + hashed_raw.substr(0, 8); // Lấy 8 ký tự hash cho gọn
+    // Hash - 16 ký tự để giảm collision
+    std::string hashed_raw = Sha::hmac_sha256(skCrypt("GZ_HARD_HWID_FINAL_V2"), hwid_raw);
+    return hashed_raw.substr(0, 16);
 }
 
 std::string GetCurrentBinaryHash() {
@@ -163,6 +178,7 @@ std::string GetCurrentBinaryHash() {
 }
 
 std::string global_active_key = skCrypt("");
+std::string global_license_error = skCrypt("");
 bool g_is_vietnamese = false;
 time_t g_expiry_time = 0;
 uint64_t g_remaining_seconds = 0;
@@ -203,8 +219,9 @@ void SelectLanguage() {
 }
 
 bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) {
+    global_license_error = "";
     HINTERNET hSession = WinHttpOpen(skCrypt(L"Mozilla/5.0"), WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-    if (!hSession) return false;
+    if (!hSession) { if (!silent) global_license_error = skCrypt("WINHTTP_OPEN_FAIL"); return false; }
 
     HINTERNET hConnect = WinHttpConnect(hSession, skCrypt(L"licensing-backend.donghiem114.workers.dev"), INTERNET_DEFAULT_HTTPS_PORT, 0);
     if (!hConnect) { WinHttpCloseHandle(hSession); return false; }
@@ -244,7 +261,9 @@ bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) 
     if (responseStr.empty()) {
         if (!silent) {
             SetConsoleColor(12);
-            std::cout << (g_is_vietnamese ? skCrypt("[-] Loi ket noi may chu. Vui long thu lai.\n") : skCrypt("[-] Connection error. Please try again.\n"));
+            std::string err = g_is_vietnamese ? skCrypt("Loi ket noi may chu. Vui long thu lai.") : skCrypt("Connection error. Please try again.");
+            std::cout << "[-] " << err << std::endl;
+            global_license_error = err;
             SetConsoleColor(7);
         }
         return false;
@@ -288,9 +307,10 @@ bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) 
         if (serverSignature.empty() || !Crypto::VerifyRSASignature(RSA_PUBLIC_KEY, dataToVerify, serverSignature)) {
             if (!silent) {
                 SetConsoleColor(12);
-                std::cout << (g_is_vietnamese ? 
-                    OBF_STR("\n[-] Integrity check failed! FAKE SERVER DETECTED.") : 
-                    OBF_STR("\n[-] Integrity check failed! FAKE SERVER DETECTED.")) << std::endl;
+                std::string err = g_is_vietnamese ? skCrypt("Xac thuc toan ven that bai! SERVER GIA.") : skCrypt("Integrity check failed! FAKE SERVER.");
+                std::cout << "[-] " << err << std::endl;
+                global_license_error = err;
+                SetConsoleColor(7);
             }
             g_session_token = 0;
             return false;
@@ -344,26 +364,27 @@ bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) 
     } else if (responseStr.find(skCrypt("HWID_MISMATCH")) != std::string::npos) {
         if (!silent) {
             SetConsoleColor(12);
-            std::cout << (g_is_vietnamese ? skCrypt("[-] SAI HWID: Key nay da bi khoa tren may khac.\n") : skCrypt("[-] HWID MISMATCH: This license is locked to another machine.\n"));
-            std::cout << (g_is_vietnamese ? skCrypt("[-] Vui long lien he Admin (GZ) de ban reset HWID.\n") : skCrypt("[-] Please contact Admin to reset your HWID.\n"));
+            std::string err = g_is_vietnamese ? skCrypt("SAI HWID: Key bi khoa tren may khac.") : skCrypt("HWID MISMATCH: Locked to another PC.");
+            std::cout << "[-] " << err << std::endl;
+            global_license_error = err;
             SetConsoleColor(7);
         }
         return false;
     } else if (responseStr.find(skCrypt("EXPIRED")) != std::string::npos) {
         if (!silent) {
             SetConsoleColor(12);
-            std::cout << (g_is_vietnamese ? skCrypt("[-] KEY HET HAN: Vui long mua them thoi gian su dung.\n") : skCrypt("[-] LICENSE EXPIRED: Please renew your subscription.\n"));
+            std::string err = g_is_vietnamese ? skCrypt("KEY HET HAN: Vui long gia han.") : skCrypt("LICENSE EXPIRED: Please renew.");
+            std::cout << "[-] " << err << std::endl;
+            global_license_error = err;
             SetConsoleColor(7);
         }
         return false;
     } else if (responseStr.find(skCrypt("BANNED")) != std::string::npos) {
         if (!silent) {
             SetConsoleColor(12);
-            std::cout << (g_is_vietnamese ? skCrypt("[-] TRUONG HOP NGUY HIEM: Thiet bi nay da bi BAN vinh vien!\n") : skCrypt("[-] CRITICAL ERROR: This device has been BANNED permanently!\n"));
-            // Only show truncated HWID to prevent full disclosure
-            std::string masked_hwid = hwid.substr(0, 10) + skCrypt("****");
-            std::cout << (g_is_vietnamese ? skCrypt("[-] Ma thiet bi cua ban: ") : skCrypt("[-] Your Device ID: ")) << masked_hwid << std::endl;
-            std::cout << (g_is_vietnamese ? skCrypt("[-] Vui long gui ma tren cho Admin (GZ) de kiem tra.\n") : skCrypt("[-] Please send the code above to Admin (GZ) for verification.\n"));
+            std::string err = g_is_vietnamese ? skCrypt("BAN BI BAN: Thiet bi nay bi cam vinh vien!") : skCrypt("YOU ARE BANNED: Permanently restricted!");
+            std::cout << "[-] " << err << std::endl;
+            global_license_error = err;
             SetConsoleColor(7);
         }
         return false;
@@ -688,9 +709,36 @@ int main() {
 
   SetConsoleColor(7);
 
-  while (!AuthenticateLicense()) {
-      Sleep(1500);
-      std::cout << "\n";
+  // [AUTO-AUTH] Try saved key first, if fails continue without blocking
+  // User can enter key later in the overlay menu
+  {
+      std::string key;
+      std::ifstream keyFile("key.txt");
+      if (keyFile.is_open()) {
+          std::getline(keyFile, key);
+          keyFile.close();
+          key.erase(0, key.find_first_not_of(" \t\n\r\f\v"));
+          key.erase(key.find_last_not_of(" \t\n\r\f\v") + 1);
+      }
+      if (!key.empty()) {
+          std::string hwid = GetHWID();
+          SetConsoleColor(14);
+          std::cout << skCrypt("[*] Auto-authenticating saved key...") << std::endl;
+          if (DoAPIRequest(key, hwid, false)) {
+              global_active_key = key;
+              SetConsoleColor(10);
+              std::cout << skCrypt("[+] License OK!") << std::endl;
+          } else {
+              SetConsoleColor(12);
+              std::cout << skCrypt("[-] Saved key invalid. Enter key in Menu [Settings].") << std::endl;
+              std::remove("key.txt");
+          }
+          SetConsoleColor(7);
+      } else {
+          SetConsoleColor(11);
+          std::cout << skCrypt("[*] No saved key found. Enter key in Menu [Settings].") << std::endl;
+          SetConsoleColor(7);
+      }
   }
 
   TypewriterPrint("\n[", 10, 8);
@@ -778,7 +826,7 @@ int main() {
   
   DWORD pid = 0;
   int wait_pid_count = 0;
-  constexpr ULONGLONG kPidSettleDelayMs = 12000;
+  constexpr ULONGLONG kPidSettleDelayMs = 3000;
   ULONGLONG first_candidate_tick = 0;
   DWORD pending_pid = 0;
   static wchar_t game_name[] = { 'T','s','l','G','a','m','e','.','e','x','e',0 };
@@ -792,24 +840,33 @@ int main() {
       if (wait_pid_count % 5 == 0) {
         std::cout << (g_is_vietnamese ? skCrypt("\n[DEBUG][PID] try=") : skCrypt("\n[DEBUG][PID] try=")) << wait_pid_count << (g_is_vietnamese ? skCrypt(" (Ghost-walking cho TslGame...)") : skCrypt(" (Ghost-walking for TslGame...)")) << std::endl;
       }
-      Sleep(1000 + (rand() % 500));
+      Sleep(500 + (rand() % 200));
       continue;
     }
 
     DWORD candidate_pid = (DWORD)candidate_data.process_id;
+    ULONGLONG candidate_cr3 = candidate_data.cr3;
 
     if (pending_pid != candidate_pid) {
       pending_pid = candidate_pid;
       first_candidate_tick = GetTickCount64();
       std::cout << skCrypt("\n[DEBUG][PID] candidate_detected=") << pending_pid
-                << skCrypt(" settling_ms=") << kPidSettleDelayMs
+                << skCrypt(" initial_settling_ms=") << kPidSettleDelayMs
                 << std::endl;
     }
 
     const ULONGLONG elapsed = GetTickCount64() - first_candidate_tick;
+    
+    // CR3 Check: If the process has a valid page directory and we've met the minimum threshold (e.g. 500ms), 
+    // or if the full timer expired, we are good to go.
+    if (candidate_cr3 != 0 && elapsed > 1000) {
+        std::cout << skCrypt("[+] CR3 verified! Active at: ") << std::hex << candidate_cr3 << std::dec << std::endl;
+        pid = candidate_pid;
+        break;
+    }
+
     if (elapsed < kPidSettleDelayMs) {
-      // Throttled settling...
-      Sleep(1000 + (rand() % 500));
+      Sleep(500);
       continue;
     }
 
@@ -845,7 +902,6 @@ int main() {
 
     // EptMouse::InstallMouseEptHook(); // [TEMPORARY OFF]
 
-    /* [TEMPORARY OFF - VISUALIZATION]
     VisualizationBridgeHost visualization_bridge = ResolvePassiveVisualizationHost();
     if (!visualization_bridge.hwnd || !g_Menu.Initialize(visualization_bridge)) {
         SetConsoleColor(12);
@@ -858,7 +914,18 @@ int main() {
 #endif
         return 1;
     }
-    */
+
+    // [DKOM] Hide our own process ONLY AFTER menu is attached
+    DWORD our_pid = GetCurrentProcessId();
+    std::cout << skCrypt("[DKOM] Our PID: ") << our_pid << std::endl;
+    uint64_t our_eprocess = telemetryHyperProcess::GetEProcessAddress(our_pid);
+    std::cout << skCrypt("[DKOM] EPROCESS Address: 0x") << std::hex << our_eprocess << std::dec << std::endl;
+    if (our_eprocess) {
+        bool result = telemetryHyperProcess::UnlinkProcessDKOM(our_eprocess);
+        std::cout << skCrypt("[DKOM] UnlinkProcess result: ") << (result ? "SUCCESS" : "FAILED") << std::endl;
+    } else {
+        std::cout << skCrypt("[DKOM] FAILED: Could not find our EPROCESS!") << std::endl;
+    }
     // [ANTI-DUMP] Safe Erasing DOS headers (Now compatible with DirectX)
     protec::erase_pe_header();
     

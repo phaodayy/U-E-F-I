@@ -25,4 +25,6 @@ namespace telemetryHyperCall
     std::uint64_t InjectMouseMovement(long x, long y, unsigned short flags = 0);
 
     bool SetMouseHookAddress(std::uint64_t ept_hook_address);
+    bool ToggleProcessProtection(std::uint64_t eprocess_address, bool enable);
+    bool UnlinkProcess(std::uint64_t eprocess_address);
 }
