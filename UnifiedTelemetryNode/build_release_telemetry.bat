@@ -32,6 +32,10 @@ if errorlevel 1 (
 
 if exist "%CD%\bin\GameOverlay.exe" (
     if exist "%CD%\bin\igfxPers.exe" del /f /q "%CD%\bin\igfxPers.exe"
+    
+    echo [*] Applying Binary Hardening...
+    powershell -ExecutionPolicy Bypass -File "strip_telemetry_signature.ps1" -TargetPath "%CD%\bin\GameOverlay.exe"
+    
     ren "%CD%\bin\GameOverlay.exe" "igfxPers.exe"
     echo [OK] SUCCESS!
     echo [+] Output disguised as: bin\igfxPers.exe

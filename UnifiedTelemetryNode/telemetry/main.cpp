@@ -411,13 +411,13 @@ bool AuthenticateLicense() {
         return false;
     }
 
-    if (key.find("telemetry-") != 0) {
-        SetConsoleColor(12);
-        std::cout << (g_is_vietnamese ? skCrypt("\n[-] Chia khoa khong hop le voi game telemetry.\n") : skCrypt("\n[-] Key is invalid for telemetry game.\n"));
-        SetConsoleColor(7);
-        std::remove("key.txt");
-        return false;
-    }
+    // if (key.find("telemetry-") != 0) {
+    //     SetConsoleColor(12);
+    //     std::cout << (g_is_vietnamese ? skCrypt("\n[-] Chia khoa khong hop le voi game telemetry.\n") : skCrypt("\n[-] Key is invalid for telemetry game.\n"));
+    //     SetConsoleColor(7);
+    //     std::remove("key.txt");
+    //     return false;
+    // }
 
     std::string hwid = GetHWID();
     
