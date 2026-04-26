@@ -1540,7 +1540,7 @@ void OverlayMenu::RenderFrame() {
                 // Col 1
                 BeginGlassCard(skCrypt("##SetCol1"), Lang.HeaderSystemCore, ImVec2(250, 0));
                 int currentLang = g_Menu.language ? 1 : 0;
-                if (ImGui::Combo(Lang.Language, &currentLang, skCrypt("English\0Tiếng Việt\0"))) g_Menu.language = (currentLang == 1);
+                if (ImGui::Combo(Lang.Language, &currentLang, U8("English\0Tiếng Việt\0"))) g_Menu.language = (currentLang == 1);
                 
                 ImGui::Spacing();
                 ImGui::TextColored(ImVec4(0.8f, 0.2f, 1.0f, 1.0f), skCrypt("REGISTRATION"));
