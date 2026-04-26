@@ -384,15 +384,15 @@ bool AuthenticateLicense() {
     std::cout << "\n";
 
     std::string key;
-    std::ifstream keyFile(skCrypt("key.txt"));
+    std::ifstream keyFile("key.txt");
     if (keyFile.is_open()) {
         std::getline(keyFile, key);
         keyFile.close();
-        key.erase(0, key.find_first_not_of(skCrypt(" \t\n\r\f\v")));
-        key.erase(key.find_last_not_of(skCrypt(" \t\n\r\f\v")) + 1);
+        key.erase(0, key.find_first_not_of(" \t\n\r\f\v"));
+        key.erase(key.find_last_not_of(" \t\n\r\f\v") + 1);
     }
 
-    if (!key.empty() && key.find(skCrypt("telemetry-")) == 0) {
+    if (!key.empty()) {
         SetConsoleColor(10);
         std::cout << (g_is_vietnamese ? skCrypt("[*] Tu dong thay key da luu. Dang nap...\n") : skCrypt("[*] Saved Key found. Loading...\n"));
     } else {
@@ -428,7 +428,7 @@ bool AuthenticateLicense() {
     bool isValid = DoAPIRequest(key, hwid, false);
     if (isValid) {
         global_active_key = key;
-        std::ofstream outFile(skCrypt("key.txt"));
+        std::ofstream outFile("key.txt");
         if (outFile.is_open()) {
             outFile << key;
             outFile.close();
@@ -437,7 +437,7 @@ bool AuthenticateLicense() {
         SetConsoleColor(12);
         std::cout << (g_is_vietnamese ? skCrypt("[!] License key khong hop le!\n") : skCrypt("[!] Invalid license key!\n"));
         SetConsoleColor(7);
-        std::remove(skCrypt("key.txt"));
+        std::remove("key.txt");
     }
     return isValid;
 }

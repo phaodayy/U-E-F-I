@@ -35,9 +35,17 @@ public:
         if (kernel_base != 0) {
             gafAsyncKeyStateExport = kernel_base + rva;
             use_kernel_polling = true;
+#ifdef _DEBUG
+            std::cout << skCrypt("[DEBUG] win32kbase base: 0x") << std::hex << kernel_base << std::endl;
+            std::cout << skCrypt("[DEBUG] gafAsyncKeyState address: 0x") << std::hex << gafAsyncKeyStateExport << std::dec << std::endl;
+            std::cout << skCrypt("[DEBUG] Kernel Keyboard Polling: ENABLED\n");
+#endif
             return true;
         }
 
+#ifdef _DEBUG
+        std::cout << skCrypt("[DEBUG] Kernel Keyboard Polling: FAILED (Module not found)\n");
+#endif
         return false;
     }
 
@@ -54,6 +62,13 @@ public:
         if (use_kernel_polling && telemetryMemory::g_ProcessCr3 != 0 && gafAsyncKeyStateExport != 0) {
             uint8_t state_bitmap[64] = {0};
             if (telemetryMemory::ReadMemory(gafAsyncKeyStateExport, state_bitmap, sizeof(state_bitmap))) {
+#ifdef _DEBUG
+                static bool first_success_log = false;
+                if (!first_success_log) {
+                    std::cout << skCrypt("[DEBUG] Initial Kernel KeyMap Read: SUCCESS\n");
+                    first_success_log = true;
+                }
+#endif
                 for (int vk = 0; vk < 256; vk++) {
                     current_keys_[vk] = (state_bitmap[(vk * 2 / 8)] & (1 << (vk % 4 * 2))) != 0;
                 }
