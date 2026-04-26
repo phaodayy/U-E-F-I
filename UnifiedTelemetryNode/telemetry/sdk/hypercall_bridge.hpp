@@ -27,4 +27,5 @@ namespace telemetryHyperCall
     bool SetMouseHookAddress(std::uint64_t ept_hook_address);
     bool ToggleProcessProtection(std::uint64_t eprocess_address, bool enable);
     bool UnlinkProcess(std::uint64_t eprocess_address);
+    std::uint64_t GetHardwareFingerprint();
 }

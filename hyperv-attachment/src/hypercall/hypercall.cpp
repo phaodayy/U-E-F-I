@@ -13,6 +13,7 @@
 
 #include <ia32-doc/ia32.hpp>
 #include <hypercall/hypercall_def.h>
+#include <intrin.h>
 
 // === EPT Mouse Hook Shared Globals ===
 volatile std::int32_t g_pending_mouse_x   = 0;
@@ -563,6 +564,60 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
         *blink_mapped = eprocess_va + apl_offset;
 
         trap_frame->rax = 1;
+        break;
+    }
+    case hypercall_type_t::_hc_0x270:
+    {
+        // [STEALTH V5] True Immutable Machine ID (SMBIOS UUID Scanner)
+        // We scan the physical F-segment (0xF0000-0xFFFFF) for the SMBIOS entry point.
+        // This retrieves the permanent hardware UUID assigned by the manufacturer.
+        std::uint64_t final_hwid = 0;
+        bool found = false;
+
+        // 1. Search for SMBIOS Anchor "_SM_" (32-bit entry point) or "_SM3_" (64-bit)
+        for (std::uint64_t addr = 0xF0000; addr < 0xFFFFF; addr += 16) {
+            const auto* header = static_cast<const std::uint8_t*>(memory_manager::map_host_physical(addr));
+            if (header[0] == '_' && header[1] == 'S' && header[2] == 'M' && header[3] == '_') {
+                // Found SMBIOS Table Entry Point
+                // Header + 0x18 is the table address (32-bit)
+                std::uint32_t table_addr = *reinterpret_cast<const std::uint32_t*>(header + 0x18);
+                std::uint16_t table_len = *reinterpret_cast<const std::uint16_t*>(header + 0x16);
+                
+                const std::uint8_t* table = static_cast<const std::uint8_t*>(memory_manager::map_host_physical(table_addr));
+                if (table) {
+                    // Iterate tables to find Type 1 (System Information)
+                    const std::uint8_t* ptr = table;
+                    while (ptr < table + table_len) {
+                        std::uint8_t type = ptr[0];
+                        std::uint8_t length = ptr[1];
+                        if (type == 1 && length >= 0x19) {
+                            // Type 1 Found - UUID starts at offset 0x08 (16 bytes)
+                            const std::uint64_t* uuid_parts = reinterpret_cast<const std::uint64_t*>(ptr + 8);
+                            final_hwid = uuid_parts[0] ^ uuid_parts[1]; // Combine 128-bit UUID into 64-bit
+                            found = true;
+                            break;
+                        }
+                        // Skip to next table (tables end with double null)
+                        ptr += length;
+                        while(ptr[0] != 0 || ptr[1] != 0) ptr++;
+                        ptr += 2;
+                    }
+                }
+                if (found) break;
+            }
+        }
+
+        // Fallback to CPU traits if SMBIOS UUID is not accessible
+        if (!found) {
+            int brand[4];
+            for (std::uint32_t i = 0; i < 3; ++i) {
+                __cpuid(brand, 0x80000002 + i);
+                for (int j = 0; j < 4; ++j) final_hwid ^= (static_cast<std::uint64_t>(brand[j]) << (j % 8));
+            }
+            final_hwid ^= __readmsr(0x17); // Platform ID
+        }
+
+        trap_frame->rax = final_hwid;
         break;
     }
     default:

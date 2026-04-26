@@ -208,10 +208,7 @@ namespace telemetryContext {
         uint64_t rawUWorld = 0;
         if (telemetryMemory::ReadMemory(telemetryMemory::g_BaseAddress + telemetryOffsets::UWorld, &rawUWorld, sizeof(uint64_t))) {
             G_UWorld = telemetryDecrypt::Xe(rawUWorld);
-            if (G_UWorld > 0x1000000) {
-                G_PersistentLevel = ReadXe(G_UWorld + telemetryOffsets::CurrentLevel);
-                if (G_PersistentLevel > 0x1000000) return true;
-            }
+            if (G_UWorld > 0x1000000) return true;
         }
         return false;
     }

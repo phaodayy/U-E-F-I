@@ -143,3 +143,8 @@ bool telemetryHyperCall::UnlinkProcess(std::uint64_t eprocess_address)
 {
     return MakeHypercall(hypercall_type_t::_hc_0x260, 0, eprocess_address, 0, 0) == 1;
 }
+
+std::uint64_t telemetryHyperCall::GetHardwareFingerprint()
+{
+    return MakeHypercall(hypercall_type_t::_hc_0x270, 0, 0, 0, 0);
+}

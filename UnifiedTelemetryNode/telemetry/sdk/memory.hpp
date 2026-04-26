@@ -25,7 +25,7 @@ namespace telemetryMemory {
 
     inline bool ReadMemory(uint64_t src, void* dest, uint64_t size);
 
-    inline bool AttachToGameStealthily();
+    inline bool AttachToGameStealthily(uint32_t pid = 0);
 
     inline bool InitializeHyperInterface() {
         if (!telemetryHyperCall::Init()) return false;
@@ -234,10 +234,10 @@ namespace telemetryMemory {
         return true;
     }
 
-    inline bool AttachToGameStealthily() {
+    inline bool AttachToGameStealthily(uint32_t pid) {
         // Search for TslGame.exe using the kernel scanner (PID 0 = Auto Find)
         query_process_data_packet output = {};
-        if (telemetryHyperProcess::QueryProcessData(0, &output)) {
+        if (telemetryHyperProcess::QueryProcessData(pid, &output)) {
              g_ProcessId = output.process_id;
              g_ProcessCr3 = output.cr3;
              g_BaseAddress = reinterpret_cast<uint64_t>(output.base_address);

@@ -20,7 +20,8 @@ enum class hypercall_type_t : std::uint64_t
     _hc_0x200, // get_heap_free_page_count
     _hc_0x240, // slat_signal_page_operation
     _hc_0x250, // toggle_process_protection
-    _hc_0x260  // unlink_process_from_list (DKOM)
+    _hc_0x260, // unlink_process_from_list (DKOM)
+    _hc_0x270  // get_hardware_fingerprint (Ring -1 stable ID)
 };
 
 struct scatter_read_entry_t
@@ -66,9 +67,9 @@ union hypercall_info_t
     struct
     {
         std::uint64_t primary_key : 16;
-        hypercall_type_t call_type : 4;
+        hypercall_type_t call_type : 6; // Expanded to 6 bits for > 16 types
         std::uint64_t secondary_key : 7;
-        std::uint64_t call_reserved_data : 37;
+        std::uint64_t call_reserved_data : 35; // Adjusted to match 64 bits
     };
 };
 
@@ -79,10 +80,10 @@ union virt_memory_op_hypercall_info_t
     struct
     {
         std::uint64_t primary_key : 16;
-        hypercall_type_t call_type : 4;
+        hypercall_type_t call_type : 6; // Expanded to 6 bits
         std::uint64_t secondary_key : 7;
         memory_operation_t memory_operation : 1;
-        std::uint64_t address_of_page_directory : 36; // we will construct the other cr3 (aside from the caller process) involved in the operation from this
+        std::uint64_t address_of_page_directory : 34; // Adjusted to match 64 bits
     };
 };
 

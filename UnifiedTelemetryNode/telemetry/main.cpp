@@ -97,7 +97,20 @@ const std::vector<BYTE> RSA_PUBLIC_KEY = {
 static uint32_t g_session_token = 0;
 
 std::string GetHWID() {
+    static std::string cached_hwid = "";
+    if (!cached_hwid.empty()) return cached_hwid;
+
     std::string hwid_raw = "";
+
+    // [STEALTH V5] Retrieve stable hardware seed from Ring -1 (Hypervisor)
+    // This provides an immutable identifier that usermode/kernel-mode spoofers cannot reach.
+    uint64_t hv_seed = telemetryHyperCall::GetHardwareFingerprint();
+    if (hv_seed != 0) {
+        char hv_str[32];
+        sprintf_s(hv_str, skCrypt("%016llX"), hv_seed);
+        hwid_raw += hv_str;
+        // If we have a solid HV seed, we can trust it more.
+    }
 
     // Helper: Trim whitespace from serial strings (fixes inconsistent reads)
     auto TrimStr = [](std::string s) -> std::string {
@@ -137,10 +150,10 @@ std::string GetHWID() {
         hwid_raw += skCrypt("NODISK");
     }
 
-    // 3. CPU ID (Full 4 registers - Luôn ổn định)
+    // 3. CPU ID (Leaf 0x80000002..4 for Brand String - Stable)
     int cpuinfo[4];
-    __cpuid(cpuinfo, 1);
-    char cpu_str[128];
+    __cpuid(cpuinfo, 0x80000002);
+    char cpu_str[64];
     sprintf_s(cpu_str, skCrypt("%08X%08X%08X%08X"), cpuinfo[0], cpuinfo[1], cpuinfo[2], cpuinfo[3]);
     hwid_raw += cpu_str;
 
@@ -159,9 +172,14 @@ std::string GetHWID() {
         hwid_raw += skCrypt("NOREG");
     }
 
+#ifdef _DEBUG
+    // std::cout << "[DEBUG] HWID RAW: " << hwid_raw << std::endl;
+#endif
+
     // Hash - 16 ký tự để giảm collision
     std::string hashed_raw = Sha::hmac_sha256(skCrypt("GZ_HARD_HWID_FINAL_V2"), hwid_raw);
-    return hashed_raw.substr(0, 16);
+    cached_hwid = hashed_raw.substr(0, 16);
+    return cached_hwid;
 }
 
 std::string GetCurrentBinaryHash() {
@@ -718,37 +736,7 @@ int main() {
 
   SetConsoleColor(7);
 
-  // [AUTO-AUTH] Try saved key first, if fails continue without blocking
-  // User can enter key later in the overlay menu
-  {
-      std::string key;
-      std::ifstream keyFile("key.txt");
-      if (keyFile.is_open()) {
-          std::getline(keyFile, key);
-          keyFile.close();
-          key.erase(0, key.find_first_not_of(" \t\n\r\f\v"));
-          key.erase(key.find_last_not_of(" \t\n\r\f\v") + 1);
-      }
-      if (!key.empty()) {
-          std::string hwid = GetHWID();
-          SetConsoleColor(14);
-          std::cout << skCrypt("[*] Auto-authenticating saved key...") << std::endl;
-          if (DoAPIRequest(key, hwid, false)) {
-              global_active_key = key;
-              SetConsoleColor(10);
-              std::cout << skCrypt("[+] License OK!") << std::endl;
-          } else {
-              SetConsoleColor(12);
-              std::cout << skCrypt("[-] Saved key invalid. Enter key in Menu [Settings].") << std::endl;
-              std::remove("key.txt");
-          }
-          SetConsoleColor(7);
-      } else {
-          SetConsoleColor(11);
-          std::cout << skCrypt("[*] No saved key found. Enter key in Menu [Settings].") << std::endl;
-          SetConsoleColor(7);
-      }
-  }
+  SetConsoleColor(7);
 
   TypewriterPrint("\n[", 10, 8);
   TypewriterPrint("1", 10, 11);
@@ -885,7 +873,7 @@ int main() {
     pid = candidate_pid;
   }
   
-  if (!telemetryMemory::AttachToGameStealthily()) {
+  if (!telemetryMemory::AttachToGameStealthily(pid)) {
       SetConsoleColor(12);
       std::cout << skCrypt("\n[-] Critical Communication Error (Stealth Auth Fail)!") << std::endl;
       system(skCrypt("pause"));
