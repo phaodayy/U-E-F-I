@@ -265,62 +265,62 @@ void OverlayMenu::SetupStyle() {
     auto& style = ImGui::GetStyle();
     
     // --- Advanced Layout & Rounding ---
-    style.WindowRounding    = 18.0f;
-    style.ChildRounding     = 14.0f;
-    style.FrameRounding     = 10.0f;
+    style.WindowRounding    = 16.0f;
+    style.ChildRounding     = 12.0f;
+    style.FrameRounding     = 8.0f;
     style.PopupRounding     = 12.0f;
     style.ScrollbarRounding = 12.0f;
-    style.GrabRounding      = 10.0f;
-    style.TabRounding       = 10.0f;
+    style.GrabRounding      = 8.0f;
+    style.TabRounding       = 8.0f;
     
-    style.WindowBorderSize  = 0.0f; // Handled by custom drawing
+    style.WindowBorderSize  = 0.0f; 
     style.ChildBorderSize   = 0.0f; 
     style.FrameBorderSize   = 1.0f;
     
-    style.WindowPadding     = ImVec2(25, 25);
+    style.WindowPadding     = ImVec2(20, 20);
     style.FramePadding      = ImVec2(12, 6);
-    style.ItemSpacing       = ImVec2(14, 14);
-    style.ItemInnerSpacing  = ImVec2(10, 10);
+    style.ItemSpacing       = ImVec2(12, 12);
+    style.ItemInnerSpacing  = ImVec2(8, 8);
     
     style.WindowTitleAlign  = ImVec2(0.5f, 0.5f);
     
-    // --- Palette: Midnight Violet & Electric Indigo ---
+    // --- Palette: Deep Sea & Electric Cyan ---
     ImVec4* colors = style.Colors;
     
     // Core surfaces
-    colors[ImGuiCol_WindowBg]             = ImVec4(0.04f, 0.00f, 0.12f, 0.96f); // Midnight purple
-    colors[ImGuiCol_ChildBg]              = ImVec4(0.08f, 0.02f, 0.18f, 0.45f); // Soft indigo card
-    colors[ImGuiCol_PopupBg]              = ImVec4(0.06f, 0.02f, 0.14f, 1.00f);
-    colors[ImGuiCol_Border]               = ImVec4(0.48f, 0.17f, 0.90f, 0.30f); // Violet border
+    colors[ImGuiCol_WindowBg]             = ImVec4(0.02f, 0.01f, 0.05f, 0.90f); // Deep near-black blue
+    colors[ImGuiCol_ChildBg]              = ImVec4(0.05f, 0.10f, 0.20f, 0.35f); // Transparent blue card
+    colors[ImGuiCol_PopupBg]              = ImVec4(0.02f, 0.04f, 0.08f, 1.00f);
+    colors[ImGuiCol_Border]               = ImVec4(0.00f, 0.80f, 1.00f, 0.25f); // Electric Cyan border
     
     // Logic controls
-    colors[ImGuiCol_FrameBg]              = ImVec4(0.12f, 0.05f, 0.28f, 0.50f);
-    colors[ImGuiCol_FrameBgHovered]       = ImVec4(0.48f, 0.17f, 0.90f, 0.20f);
-    colors[ImGuiCol_FrameBgActive]        = ImVec4(0.48f, 0.17f, 0.90f, 0.35f);
+    colors[ImGuiCol_FrameBg]              = ImVec4(0.05f, 0.15f, 0.25f, 0.50f);
+    colors[ImGuiCol_FrameBgHovered]       = ImVec4(0.00f, 0.80f, 1.00f, 0.15f);
+    colors[ImGuiCol_FrameBgActive]        = ImVec4(0.00f, 0.80f, 1.00f, 0.30f);
     
     // Title & Headers
-    colors[ImGuiCol_TitleBg]              = ImVec4(0.04f, 0.00f, 0.12f, 1.00f);
-    colors[ImGuiCol_TitleBgActive]        = ImVec4(0.06f, 0.02f, 0.18f, 1.00f);
+    colors[ImGuiCol_TitleBg]              = ImVec4(0.02f, 0.01f, 0.05f, 1.00f);
+    colors[ImGuiCol_TitleBgActive]        = ImVec4(0.04f, 0.08f, 0.15f, 1.00f);
     
     // Selection highlight
-    colors[ImGuiCol_Header]               = ImVec4(0.48f, 0.17f, 0.90f, 0.30f);
-    colors[ImGuiCol_HeaderHovered]        = ImVec4(0.48f, 0.17f, 0.90f, 0.50f);
-    colors[ImGuiCol_HeaderActive]         = ImVec4(0.48f, 0.17f, 0.90f, 0.70f);
+    colors[ImGuiCol_Header]               = ImVec4(0.00f, 0.80f, 1.00f, 0.25f);
+    colors[ImGuiCol_HeaderHovered]        = ImVec4(0.00f, 0.80f, 1.00f, 0.40f);
+    colors[ImGuiCol_HeaderActive]         = ImVec4(0.00f, 0.80f, 1.00f, 0.60f);
     
-    // Buttons (Cyberpunk Purple)
-    colors[ImGuiCol_Button]               = ImVec4(0.48f, 0.17f, 0.90f, 0.15f);
-    colors[ImGuiCol_ButtonHovered]        = ImVec4(0.48f, 0.17f, 0.90f, 0.45f);
-    colors[ImGuiCol_ButtonActive]         = ImVec4(0.48f, 0.17f, 0.90f, 0.65f);
+    // Buttons (Cyber Cyan)
+    colors[ImGuiCol_Button]               = ImVec4(0.00f, 0.80f, 1.00f, 0.10f);
+    colors[ImGuiCol_ButtonHovered]        = ImVec4(0.00f, 0.80f, 1.00f, 0.35f);
+    colors[ImGuiCol_ButtonActive]         = ImVec4(0.00f, 0.80f, 1.00f, 0.55f);
     
-    colors[ImGuiCol_SliderGrab]           = ImVec4(0.48f, 0.17f, 0.90f, 0.80f);
-    colors[ImGuiCol_SliderGrabActive]     = ImVec4(0.60f, 0.25f, 1.00f, 1.00f);
+    colors[ImGuiCol_SliderGrab]           = ImVec4(0.00f, 0.80f, 1.00f, 0.70f);
+    colors[ImGuiCol_SliderGrabActive]     = ImVec4(0.20f, 0.90f, 1.00f, 1.00f);
     
-    colors[ImGuiCol_CheckMark]            = ImVec4(0.60f, 0.25f, 1.00f, 1.00f);
+    colors[ImGuiCol_CheckMark]            = ImVec4(0.00f, 0.80f, 1.00f, 1.00f);
     
-    colors[ImGuiCol_Text]                 = ImVec4(0.95f, 0.92f, 1.00f, 1.00f);
-    colors[ImGuiCol_TextDisabled]         = ImVec4(0.40f, 0.40f, 0.60f, 1.00f);
+    colors[ImGuiCol_Text]                 = ImVec4(0.90f, 0.95f, 1.00f, 1.00f);
+    colors[ImGuiCol_TextDisabled]         = ImVec4(0.40f, 0.50f, 0.60f, 1.00f);
     
-    colors[ImGuiCol_Separator]            = ImVec4(0.48f, 0.17f, 0.90f, 0.25f);
+    colors[ImGuiCol_Separator]            = ImVec4(0.00f, 0.80f, 1.00f, 0.20f);
 }
 
 ImU32 GetTeamColor(int teamID) {
@@ -1332,82 +1332,80 @@ void OverlayMenu::RenderFrame() {
 
             // --- PREMIUM STEALTH ENGINE BACKGROUND ---
             // 1. Shadow / Glow surrounding the whole window
-            drawList->AddRect(windowPos, ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y), IM_COL32(100, 30, 200, 50), 18.0f, 0, 5.0f);
+            drawList->AddRect(windowPos, ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y), IM_COL32(0, 200, 255, 40), 16.0f, 0, 8.0f);
             
-            // 2. Main Window Fill (Rich Deep Gradient)
+            // 2. Main Window Fill (Deep Blue Glass Gradient)
             drawList->AddRectFilledMultiColor(windowPos, ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y),
-                                             IM_COL32(10, 2, 25, 255),   // Top Left
-                                             IM_COL32(20, 5, 45, 255),   // Top Right
-                                             IM_COL32(10, 2, 25, 255),   // Bottom Right
-                                             IM_COL32(8, 0, 20, 255));   // Bottom Left
+                                             IM_COL32(5, 10, 20, 250),   // Top Left
+                                             IM_COL32(10, 30, 60, 250),  // Top Right
+                                             IM_COL32(5, 10, 25, 250),   // Bottom Right
+                                             IM_COL32(2, 5, 15, 250));   // Bottom Left
 
-            // 3. Subtle Hex/Grid Pattern background
-            for (float i = 0; i < windowSize.x; i += 40.0f) {
-                drawList->AddLine(ImVec2(windowPos.x + i, windowPos.y), ImVec2(windowPos.x + i, windowPos.y + windowSize.y), IM_COL32(200, 100, 255, 5), 1.0f);
+            // 3. Subtle Cyber Grid background
+            for (float i = 0; i < windowSize.x; i += 50.0f) {
+                drawList->AddLine(ImVec2(windowPos.x + i, windowPos.y), ImVec2(windowPos.x + i, windowPos.y + windowSize.y), IM_COL32(0, 180, 255, 8), 1.0f);
             }
-            for (float i = 0; i < windowSize.y; i += 40.0f) {
-                drawList->AddLine(ImVec2(windowPos.x, windowPos.y + i), ImVec2(windowPos.x + windowSize.x, windowPos.y + i), IM_COL32(200, 100, 255, 5), 1.0f);
+            for (float i = 0; i < windowSize.y; i += 50.0f) {
+                drawList->AddLine(ImVec2(windowPos.x, windowPos.y + i), ImVec2(windowPos.x + windowSize.x, windowPos.y + i), IM_COL32(0, 180, 255, 8), 1.0f);
             }
             
-            // 4. Vibrant Outer Border (Electric Violet)
-            drawList->AddRect(windowPos, ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y), IM_COL32(150, 60, 255, 60), 18.0f, 0, 1.5f);
+            // 4. Vibrant Outer Border (Cyan Glow)
+            drawList->AddRect(windowPos, ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y), IM_COL32(0, 200, 255, 80), 16.0f, 0, 1.5f);
 
             // Helpers for consistent premium UI components
             auto BeginGlassCard = [&](const char* id, const char* label, ImVec2 size) {
                 ImVec2 pos = ImGui::GetCursorScreenPos();
-                drawList->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(30, 10, 60, 80), 12.0f);
-                drawList->AddRect(pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(200, 100, 255, 25), 12.0f);
-                // Top Highlight
-                drawList->AddLine(ImVec2(pos.x + 15, pos.y), ImVec2(pos.x + size.x - 15, pos.y), IM_COL32(200, 100, 255, 100), 2.0f);
+                // Card Background
+                drawList->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(15, 30, 60, 100), 12.0f);
+                // Card Inner Glow Border
+                drawList->AddRect(pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(0, 180, 255, 30), 12.0f, 0, 1.0f);
+                
+                // Top Highlight Bar
+                drawList->AddLine(ImVec2(pos.x + 20, pos.y), ImVec2(pos.x + size.x - 20, pos.y), IM_COL32(0, 200, 255, 120), 2.0f);
                 
                 ImGui::BeginChild(id, size, false, ImGuiWindowFlags_NoBackground);
-                ImGui::SetCursorPos(ImVec2(10, 5));
-                ImGui::TextColored(ImVec4(0.7f, 0.4f, 1.0f, 1.0f), label);
+                ImGui::SetCursorPos(ImVec2(12, 8));
+                ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), label);
                 ImGui::Separator();
                 ImGui::Spacing();
             };
 
             // Top Bar
             ImGui::SetCursorPos(ImVec2(0, 0));
-            ImGui::BeginChild(skCrypt("##TopBar"), ImVec2(windowSize.x, 55), false, ImGuiWindowFlags_NoBackground);
-            ImGui::SetCursorPos(ImVec2(25, 18));
+            ImGui::BeginChild(skCrypt("##TopBar"), ImVec2(windowSize.x, 60), false, ImGuiWindowFlags_NoBackground);
+            
+            // Top Bar Background with separator
+            drawList->AddRectFilled(windowPos, ImVec2(windowPos.x + windowSize.x, windowPos.y + 60), IM_COL32(10, 20, 40, 100), 16.0f, ImDrawFlags_RoundCornersTop);
+            drawList->AddLine(ImVec2(windowPos.x, windowPos.y + 60), ImVec2(windowPos.x + windowSize.x, windowPos.y + 60), IM_COL32(0, 200, 255, 60), 1.0f);
+
+            ImGui::SetCursorPos(ImVec2(25, 20));
             
             // Logo / Name
-            ImGui::TextColored(ImVec4(0.8f, 0.2f, 1.0f, 1.0f), skCrypt("GZ"));
+            ImGui::TextColored(ImVec4(0.0f, 0.9f, 1.0f, 1.0f), skCrypt("GZ"));
             ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), skCrypt("|"));
+            ImGui::TextColored(ImVec4(0.4f, 0.5f, 0.7f, 1.0f), skCrypt("|"));
             ImGui::SameLine();
             ImGui::Text(Lang.MainTelemetry);
             
             // Safe Badge
             ImGui::SameLine(180);
-            ImGui::SetCursorPosY(18);
-            ImGui::TextColored(ImVec4(0.0f, 0.9f, 0.5f, 1.0f), skCrypt("● "));
+            ImGui::SetCursorPosY(20);
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.6f, 1.0f), skCrypt("● "));
             ImGui::SameLine(0, 2);
             ImGui::Text(Lang.SafeStatus);
             
-            ImGui::SetCursorPosY(15);
-            
-            // Center Title
-            const char* tabTitles[] = { Lang.TabVisuals, Lang.Tabprecision_calibration, Lang.TabLoot, Lang.TabSettings, Lang.TabRadar };
-            ImVec2 titleSize = ImGui::CalcTextSize(tabTitles[g_Menu.active_tab]);
-            ImGui::SameLine((windowSize.x - titleSize.x) / 2.0f);
-            ImGui::SetCursorPosY(15);
-            ImGui::TextColored(ImVec4(0.6f, 0.3f, 1.0f, 1.0f), tabTitles[g_Menu.active_tab]);
-            
             // Right Buttons
-            ImGui::SameLine(windowSize.x - 70);
-            ImGui::SetCursorPosY(12);
+            ImGui::SameLine(windowSize.x - 80);
+            ImGui::SetCursorPosY(18);
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0,0,0,0));
-            if (ImGui::Button(skCrypt("\xE2\x80\x94"), ImVec2(24, 24))) { /* min */ }
-            ImGui::SameLine();
-            if (ImGui::Button(skCrypt("\xE2\x9C\x95"), ImVec2(24, 24))) { showmenu = false; }
+            if (ImGui::Button(skCrypt("—"), ImVec2(28, 28))) { /* min */ }
+            ImGui::SameLine(0, 10);
+            if (ImGui::Button(skCrypt("✕"), ImVec2(28, 28))) { showmenu = false; }
             ImGui::PopStyleColor();
             
             ImGui::EndChild(); // TopBar
-            
-            // Content Card Effect
-            ImGui::SetCursorPos(ImVec2(15, 55));
+
+            ImGui::SetCursorPos(ImVec2(15, 70));
             ImGui::BeginChild(skCrypt("##MainContent"), ImVec2(windowSize.x - 30, windowSize.y - 120), false, ImGuiWindowFlags_NoScrollbar);
             
             // --- HIỂN THỊ (VISUALS) TAB --- (NOW INDEX 0)
@@ -1628,8 +1626,8 @@ void OverlayMenu::RenderFrame() {
             
             ImVec2 railPos = ImGui::GetWindowPos();
             ImVec2 railSize = ImGui::GetWindowSize();
-            drawList->AddRectFilled(railPos, ImVec2(railPos.x + railSize.x, railPos.y + railSize.y), IM_COL32(40, 20, 80, 80), 22.0f);
-            drawList->AddRect(railPos, ImVec2(railPos.x + railSize.x, railPos.y + railSize.y), IM_COL32(150, 80, 255, 50), 22.0f);
+            drawList->AddRectFilled(railPos, ImVec2(railPos.x + railSize.x, railPos.y + railSize.y), IM_COL32(20, 40, 80, 100), 22.0f);
+            drawList->AddRect(railPos, ImVec2(railPos.x + railSize.x, railPos.y + railSize.y), IM_COL32(0, 200, 255, 60), 22.0f);
 
             float totalWidth = (110.0f * 5.0f) + (10.0f * 4.0f);
             ImGui::SetCursorPosX((railSize.x - totalWidth) / 2.0f);
@@ -1642,16 +1640,16 @@ void OverlayMenu::RenderFrame() {
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.48f, 0.17f, 0.90f, 0.15f));
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.48f, 0.17f, 0.90f, 0.30f));
                 
-                if (active) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.3f, 1.0f, 1.0f));
-                else ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.7f, 1.0f));
+                if (active) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.9f, 1.0f, 1.0f));
+                else ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.6f, 0.8f, 1.0f));
                 
                 if (ImGui::Button(label, ImVec2(110, 40))) active_tab = id;
                 
                 if (active) {
                     // Refined Underglow
                     for(int i=1; i<=4; i++)
-                        drawList->AddRectFilled(ImVec2(cursorPos.x + 30 - i, cursorPos.y + 36), ImVec2(cursorPos.x + 80 + i, cursorPos.y + 39), IM_COL32(150, 60, 255, 40/i), 2.0f);
-                    drawList->AddRectFilled(ImVec2(cursorPos.x + 35, cursorPos.y + 36), ImVec2(cursorPos.x + 75, cursorPos.y + 38), IM_COL32(180, 100, 255, 255), 2.0f);
+                        drawList->AddRectFilled(ImVec2(cursorPos.x + 30 - i, cursorPos.y + 36), ImVec2(cursorPos.x + 80 + i, cursorPos.y + 39), IM_COL32(0, 180, 255, 60/i), 2.0f);
+                    drawList->AddRectFilled(ImVec2(cursorPos.x + 35, cursorPos.y + 36), ImVec2(cursorPos.x + 75, cursorPos.y + 38), IM_COL32(0, 220, 255, 255), 2.0f);
                 }
                 
                 ImGui::PopStyleColor(4);
