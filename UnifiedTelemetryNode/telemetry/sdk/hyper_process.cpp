@@ -220,6 +220,98 @@ namespace
 
         return g_PsInitialSystemProcess != 0;
     }
+
+    typedef struct _KLDR_DATA_TABLE_ENTRY_LOCAL
+    {
+        LIST_ENTRY InLoadOrderLinks;
+        PVOID ExceptionTable;
+        ULONG ExceptionTableSize;
+        PVOID GpValue;
+        PVOID NonPagedDebugInfo;
+        PVOID DllBase;
+        PVOID EntryPoint;
+        ULONG SizeOfImage;
+        UNICODE_STRING FullDllName;
+        UNICODE_STRING BaseDllName;
+    } KLDR_DATA_TABLE_ENTRY_LOCAL;
+
+}
+
+std::uint64_t telemetryHyperProcess::GetKernelModuleBase(const char* module_name)
+{
+    if (!ResolvePsInitialSystemProcess()) return 0;
+
+    // 1. Dùng NtQuerySystemInformation lấy ntoskrnl base (đã làm trong Resolve)
+    // Nhưng để "Pure Hypervisor" walk, mình sẽ lấy module list từ ntoskrnl
+    
+    // Tìm RVA của PsLoadedModuleList
+    ULONG bytes_needed = 0;
+    const auto ntdll = GetModuleHandleA(skCrypt("ntdll.dll"));
+    const auto nt_query_system_information = reinterpret_cast<NtQuerySystemInformation_t>(GetProcAddress(ntdll, skCrypt("NtQuerySystemInformation")));
+    
+    nt_query_system_information(kSystemModuleInformationClass, nullptr, 0, &bytes_needed);
+    auto buffer = std::make_unique<std::uint8_t[]>(bytes_needed);
+    nt_query_system_information(kSystemModuleInformationClass, buffer.get(), bytes_needed, &bytes_needed);
+    
+    const auto* modules_list = reinterpret_cast<const RTL_PROCESS_MODULES_LOCAL*>(buffer.get());
+    const auto& ntoskrnl = modules_list->Modules[0];
+    const auto kernel_base = reinterpret_cast<std::uint64_t>(ntoskrnl.ImageBase);
+    const auto image_path = ResolveKernelImagePath(reinterpret_cast<const char*>(ntoskrnl.FullPathName));
+
+    HMODULE local_ntoskrnl = LoadLibraryExA(image_path.c_str(), nullptr, DONT_RESOLVE_DLL_REFERENCES);
+    if (!local_ntoskrnl) return 0;
+
+    auto GetExportRVA = [](HMODULE module, const std::string& name) -> std::uintptr_t {
+        auto* base = reinterpret_cast<std::uint8_t*>(module);
+        auto* dos = reinterpret_cast<PIMAGE_DOS_HEADER>(base);
+        auto* nt = reinterpret_cast<PIMAGE_NT_HEADERS>(base + dos->e_lfanew);
+        auto* export_dir = reinterpret_cast<PIMAGE_EXPORT_DIRECTORY>(base + nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress);
+        auto* names = reinterpret_cast<std::uint32_t*>(base + export_dir->AddressOfNames);
+        auto* ordinals = reinterpret_cast<std::uint16_t*>(base + export_dir->AddressOfNameOrdinals);
+        auto* functions = reinterpret_cast<std::uint32_t*>(base + export_dir->AddressOfFunctions);
+        for (std::uint32_t i = 0; i < export_dir->NumberOfNames; i++) {
+            if (name == reinterpret_cast<const char*>(base + names[i])) return functions[ordinals[i]];
+        }
+        return 0;
+    };
+
+    uintptr_t list_rva = GetExportRVA(local_ntoskrnl, skCrypt("PsLoadedModuleList"));
+    FreeLibrary(local_ntoskrnl);
+
+    if (list_rva == 0) return 0;
+
+    uint64_t list_head_addr = kernel_base + list_rva;
+    LIST_ENTRY list_head;
+    if (telemetryHyperCall::ReadGuestVirtualMemory(&list_head, list_head_addr, g_CurrentCr3, sizeof(LIST_ENTRY)) != sizeof(LIST_ENTRY))
+        return 0;
+
+    uint64_t current_link = reinterpret_cast<uint64_t>(list_head.Flink);
+    int safety_limit = 512;
+
+    while (current_link != list_head_addr && safety_limit-- > 0)
+    {
+        KLDR_DATA_TABLE_ENTRY_LOCAL entry;
+        if (telemetryHyperCall::ReadGuestVirtualMemory(&entry, current_link, g_CurrentCr3, sizeof(KLDR_DATA_TABLE_ENTRY_LOCAL)) == sizeof(KLDR_DATA_TABLE_ENTRY_LOCAL))
+        {
+            wchar_t base_name_buf[256] = { 0 };
+            uint32_t name_len = (entry.BaseDllName.Length < 510) ? entry.BaseDllName.Length : 510;
+            
+            if (telemetryHyperCall::ReadGuestVirtualMemory(base_name_buf, reinterpret_cast<uint64_t>(entry.BaseDllName.Buffer), g_CurrentCr3, name_len) > 0)
+            {
+                char current_module_name[256] = { 0 };
+                for (uint32_t i = 0; i < name_len / 2; i++) current_module_name[i] = (char)base_name_buf[i];
+
+                if (_stricmp(current_module_name, module_name) == 0)
+                {
+                    return reinterpret_cast<uint64_t>(entry.DllBase);
+                }
+            }
+            current_link = reinterpret_cast<uint64_t>(entry.InLoadOrderLinks.Flink);
+        }
+        else break;
+    }
+
+    return 0;
 }
 
 bool telemetryHyperProcess::Initialize()

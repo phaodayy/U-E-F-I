@@ -9,15 +9,12 @@
 
 #include "../hyper_process.hpp"
 #include "../memory.hpp"
+#include "../../../protec/skCrypt.h"
 
 typedef void* VMMDLL_SCATTER_HANDLE;
 
 #define VMMDLL_FLAG_NOCACHE 0
 #define MEM_READ_CACHED 0
-
-#include <Psapi.h>
-#pragma comment(lib, "psapi.lib")
-#include "../../../protec/skCrypt.h"
 
 class c_keys {
 public:
@@ -34,21 +31,13 @@ public:
         uint64_t rva = reinterpret_cast<uint64_t>(proc) - reinterpret_cast<uint64_t>(hMod);
         FreeLibrary(hMod);
         
-        LPVOID drivers[1024];
-        DWORD cbNeeded;
-        if (EnumDeviceDrivers(drivers, sizeof(drivers), &cbNeeded)) {
-            int count = cbNeeded / sizeof(LPVOID);
-            for (int i = 0; i < count; i++) {
-                char baseName[256];
-                if (GetDeviceDriverBaseNameA(drivers[i], baseName, sizeof(baseName))) {
-                    if (strstr(baseName, skCrypt("win32kbase"))) {
-                        gafAsyncKeyStateExport = reinterpret_cast<uint64_t>(drivers[i]) + rva;
-                        use_kernel_polling = true;
-                        return true;
-                    }
-                }
-            }
+        uint64_t kernel_base = telemetryHyperProcess::GetKernelModuleBase(skCrypt("win32kbase.sys"));
+        if (kernel_base != 0) {
+            gafAsyncKeyStateExport = kernel_base + rva;
+            use_kernel_polling = true;
+            return true;
         }
+
         return false;
     }
 

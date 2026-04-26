@@ -1,11 +1,8 @@
 #pragma once
 
 #include <Windows.h>
-#include <Psapi.h>
 #include <cstdint>
 #include <vector>
-
-#pragma comment(lib, "psapi.lib")
 
 #include <.shared/shared.hpp>
 #include <.shared/telemetry_config.hpp>
@@ -164,23 +161,14 @@ namespace telemetryMemory {
         static bool initialized = false;
         
         if (!initialized) {
-            HMODULE hMod = LoadLibraryExA("C:\\Windows\\System32\\win32kbase.sys", NULL, DONT_RESOLVE_DLL_REFERENCES);
+            HMODULE hMod = LoadLibraryExA(skCrypt("C:\\Windows\\System32\\win32kbase.sys"), NULL, DONT_RESOLVE_DLL_REFERENCES);
             if (hMod) {
-                void* proc = GetProcAddress(hMod, "gafAsyncKeyState");
+                void* proc = GetProcAddress(hMod, skCrypt("gafAsyncKeyState"));
                 if (proc) {
                     uint64_t rva = reinterpret_cast<uint64_t>(proc) - reinterpret_cast<uint64_t>(hMod);
-                    LPVOID drivers[1024]; DWORD cbNeeded;
-                    // Note: Needs #include <Psapi.h> at top or ensure it's linked
-                    if (EnumDeviceDrivers(drivers, sizeof(drivers), &cbNeeded)) {
-                        for (int i = 0; i < cbNeeded / sizeof(LPVOID); i++) {
-                            char baseName[256];
-                            if (GetDeviceDriverBaseNameA(drivers[i], baseName, sizeof(baseName))) {
-                                if (strstr(baseName, "win32kbase")) {
-                                    gafAsyncKeyStateExport = reinterpret_cast<uint64_t>(drivers[i]) + rva;
-                                    break;
-                                }
-                            }
-                        }
+                    uint64_t kernel_base = telemetryHyperProcess::GetKernelModuleBase(skCrypt("win32kbase.sys"));
+                    if (kernel_base != 0) {
+                        gafAsyncKeyStateExport = kernel_base + rva;
                     }
                 }
                 FreeLibrary(hMod);
