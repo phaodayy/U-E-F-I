@@ -915,15 +915,38 @@ int main() {
 
     // EptMouse::InstallMouseEptHook(); // [TEMPORARY OFF]
 
-    VisualizationBridgeHost visualization_bridge = ResolvePassiveVisualizationHost();
-    if (!visualization_bridge.hwnd || !g_Menu.Initialize(visualization_bridge)) {
+    // [STEALTH] Robust Visualization Bridge Attachment (Loop until ready)
+    VisualizationBridgeHost visualization_bridge = {};
+    bool menu_initialized = false;
+    int init_retry_count = 0;
+    
+    std::cout << skCrypt("[*] Synchronizing Visualization Bridge (waiting for Discord Overlay to be fully ready)...\n");
+
+    while (!menu_initialized && init_retry_count < 60) {
+        visualization_bridge = ResolvePassiveVisualizationHost();
+        
+        if (visualization_bridge.hwnd) {
+            if (g_Menu.Initialize(visualization_bridge)) {
+                menu_initialized = true;
+                break;
+            } else {
+                std::cout << skCrypt("[-] Menu initialization failed (DirectX might not be ready on target HWND). Retrying...\n");
+            }
+        }
+
+        init_retry_count++;
+        Sleep(1000);
+    }
+
+    if (!menu_initialized) {
         SetConsoleColor(12);
-        std::cout << skCrypt("[-] Visualization bridge host could not be resolved or created.\n");
+        std::cout << skCrypt("[-] CRITICAL: Visualization bridge could not be synchronized after 60 seconds.\n");
+        std::cout << skCrypt("[-] Please ensure Discord Overlay is enabled for TslGame.exe and try again.\n");
         SetConsoleColor(7);
 #ifndef _DEBUG
         MessageBoxA(NULL,
-            skCrypt("Visualization bridge host could not be resolved or created.\nSet UTN_VISUALIZATION_HWND, publish Local\\UTNVisualizationBridge, or enable the owned fallback host."),
-            skCrypt("GZ-telemetry - VISUALIZATION BRIDGE"), MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_TOPMOST);
+            skCrypt("Visualization bridge host could not be resolved or initialized.\nEnsure Discord is open and Overlay is enabled for PUBG."),
+            skCrypt("GZ-telemetry - VISUALIZATION ERROR"), MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_TOPMOST);
 #endif
         system(skCrypt("pause"));
         SelfDestruct();

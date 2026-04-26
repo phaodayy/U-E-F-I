@@ -84,7 +84,9 @@ inline VisualizationBridgeHost FromDiscordFallback() {
     std::cout << skCrypt("[!] Make sure Discord overlay is ENABLED and PUBG is in BORDERLESS mode.\n");
 
     HWND overlay = nullptr;
+    int attempt = 0;
     while (!overlay) {
+        attempt++;
         // [HYPERVISOR] Bước 1: Quét EPROCESS từ không gian nhân (Kernel) để lấy PIDs của Discord
         std::vector<uint32_t> discord_pids = telemetryHyperProcess::FindAllPidsByGhostWalk(skCrypt("Discord"));
         
@@ -95,21 +97,36 @@ inline VisualizationBridgeHost FromDiscordFallback() {
                 DWORD pid = 0;
                 GetWindowThreadProcessId(hwnd, &pid);
                 
-                bool is_discord = false;
+                bool is_discord_pid = false;
                 for (uint32_t d_pid : discord_pids) {
                     if (pid == d_pid) {
-                        is_discord = true;
+                        is_discord_pid = true;
                         break;
                     }
                 }
                 
-                if (is_discord) {
-                    char className[256];
+                if (is_discord_pid) {
+                    char className[256] = {0};
+                    char windowName[256] = {0};
                     GetClassNameA(hwnd, className, sizeof(className));
+                    GetWindowTextA(hwnd, windowName, sizeof(windowName));
+
+                    // [STEALTH] Discord Overlay cụ thể thường có Class này nhưng tên cửa sổ khác biệt với App chính.
+                    // Thông thường nó là "Discord Overlay" hoặc rỗng nhưng có thuộc tính TopMost/Layered/Transparent.
                     if (strcmp(className, skCrypt("Chrome_WidgetWin_1")) == 0) {
-                        // Tìm thấy đúng cửa sổ Overlay của Discord!
-                        overlay = hwnd;
-                        break;
+                        // Tránh lấy nhầm cửa sổ Discord chính (thường có tiêu đề là "Discord" hoặc "Discord | ...")
+                        if (strstr(windowName, skCrypt("Discord Overlay")) != nullptr || (windowName[0] == '\0' && IsWindowVisible(hwnd))) {
+                             // Kiểm tra thêm kích thước: Cửa sổ overlay thường phủ toàn màn hình hoặc bằng độ phân giải game.
+                             RECT rc;
+                             GetWindowRect(hwnd, &rc);
+                             int width = rc.right - rc.left;
+                             int height = rc.bottom - rc.top;
+
+                             if (width > 100 && height > 100) {
+                                overlay = hwnd;
+                                break;
+                             }
+                        }
                     }
                 }
                 hwnd = GetNextWindow(hwnd, GW_HWNDNEXT);
@@ -117,6 +134,9 @@ inline VisualizationBridgeHost FromDiscordFallback() {
         }
 
         if (!overlay) {
+            if (attempt % 5 == 0) {
+                std::cout << skCrypt("[*] Still waiting for Game Overlay to link... (Attempt ") << attempt << ")\n";
+            }
             Sleep(1000);
         }
     }
