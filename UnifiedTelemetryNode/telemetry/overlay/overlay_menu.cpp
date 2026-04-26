@@ -1317,13 +1317,14 @@ void OverlayMenu::RenderFrame() {
             Translation::CurrentLanguage = language;
             auto Lang = Translation::Get();
             
-            ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(1420, 800), ImGuiCond_Once);
+            ImGui::SetNextWindowPos(ImVec2(ScreenWidth * 0.5f, ScreenHeight * 0.5f), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
             
             // Custom window styling for the new design
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
             ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.0f);
             
-            ImGui::Begin(skCrypt("##overlay_new"), &showmenu, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground);
+            ImGui::Begin(skCrypt("##overlay_new"), &showmenu, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoResize);
             
             ImVec2 windowPos = ImGui::GetWindowPos();
             ImVec2 windowSize = ImGui::GetWindowSize();
@@ -1459,7 +1460,7 @@ void OverlayMenu::RenderFrame() {
                 ImGui::SetColumnWidth(2, totalWidth / 3.0f);
                 
                 // Column 1: Config
-                BeginGlassCard(skCrypt("##AimCol1"), Lang.HeaderSystemConfig, ImVec2(240, 0));
+                BeginGlassCard(skCrypt("##AimCol1"), Lang.HeaderSystemConfig, ImVec2(totalWidth / 3.0f - 20, 0));
                 
                 ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), Lang.DetectedAttach); // Mapping for "Current Method"
                 ImGui::Text(skCrypt("Hyper-V Stealth Bridge"));
@@ -1471,7 +1472,7 @@ void OverlayMenu::RenderFrame() {
 
                 ImGui::NextColumn();                
                 // Column 2: Settings
-                BeginGlassCard(skCrypt("##AimCol2"), Lang.HeaderPrecisionSettings, ImVec2(240, 0));
+                BeginGlassCard(skCrypt("##AimCol2"), Lang.HeaderPrecisionSettings, ImVec2(totalWidth / 3.0f - 20, 0));
                 ImGui::Checkbox(Lang.AimEnabled, &g_Menu.aim_master_enabled);
                 
                 AimConfig* pCfg = &g_Menu.aim_configs[8]; // GLOBAL
@@ -1493,7 +1494,7 @@ void OverlayMenu::RenderFrame() {
                 ImGui::NextColumn();
                 
                 // Column 3: Logic
-                BeginGlassCard(skCrypt("##AimCol3"), Lang.HeaderAimStructure, ImVec2(0, 0));
+                BeginGlassCard(skCrypt("##AimCol3"), Lang.HeaderAimStructure, ImVec2(totalWidth / 3.0f - 20, 0));
                 ImGui::TextColored(ImVec4(0.8f, 0.2f, 1.0f, 1.0f), Lang.AimBone);
                 ImGui::Spacing();
                 ImGui::TextWrapped(Lang.MacroSoon); // Stub for description
@@ -1540,7 +1541,7 @@ void OverlayMenu::RenderFrame() {
                 // Col 1
                 BeginGlassCard(skCrypt("##SetCol1"), Lang.HeaderSystemCore, ImVec2(250, 0));
                 int currentLang = g_Menu.language ? 1 : 0;
-                if (ImGui::Combo(Lang.Language, &currentLang, U8("English\0Tiếng Việt\0"))) g_Menu.language = (currentLang == 1);
+                if (ImGui::Combo(Lang.Language, &currentLang, (const char*)u8"English\0Tiếng Việt\0")) g_Menu.language = (currentLang == 1);
                 
                 ImGui::Spacing();
                 ImGui::TextColored(ImVec4(0.8f, 0.2f, 1.0f, 1.0f), skCrypt("REGISTRATION"));
