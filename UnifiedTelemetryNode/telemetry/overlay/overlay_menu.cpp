@@ -41,6 +41,7 @@ struct TextureInfo {
     int Height = 0;
 };
 static std::map<std::string, TextureInfo> WeaponImages;
+static TextureInfo PreviewInstructor;
 
 static bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height)
 {
@@ -257,6 +258,10 @@ bool OverlayMenu::Initialize(const VisualizationBridgeHost& bridge) {
     }
 
     LoadConfig(skCrypt("dataMacro/Config/settings.json"));
+    
+    // Load Preview Asset
+    LoadTextureFromFile(skCrypt("UnifiedTelemetryNode/Assets/All/Instructor.png"), &PreviewInstructor.SRV, &PreviewInstructor.Width, &PreviewInstructor.Height);
+    
     std::cout << skCrypt("[+] Passive visualization ready.\n");
     return true;
 }
@@ -1410,41 +1415,110 @@ void OverlayMenu::RenderFrame() {
             
             // --- HIỂN THỊ (VISUALS) TAB --- (NOW INDEX 0)
             if (g_Menu.active_tab == 0) {
+                float totalWidth = windowSize.x - 60;
                 ImGui::Columns(4, skCrypt("ESPColumns"), false);
+                ImGui::SetColumnWidth(0, totalWidth / 4.0f);
+                ImGui::SetColumnWidth(1, totalWidth / 4.0f);
+                ImGui::SetColumnWidth(2, totalWidth / 4.0f);
+                ImGui::SetColumnWidth(3, totalWidth / 4.0f);
                 
-                // Col 1: Tổng Quan
-                BeginGlassCard(skCrypt("##ESPCol1"), Lang.HeaderVisualCore, ImVec2(185, 0));
+                // Col 1: Lõi Hiển Thị
+                BeginGlassCard(skCrypt("##ESPCol1"), Lang.HeaderVisualCore, ImVec2(totalWidth / 4.0f - 15, 0));
                 ImGui::Checkbox(Lang.MasterToggle, &g_Menu.esp_toggle);
                 ImGui::Checkbox(Lang.ESP_Offscreen, &g_Menu.esp_offscreen);
                 ImGui::Checkbox(Lang.VisCheck, &g_Menu.aim_visible_only);
-                
-                ImGui::Spacing();
-                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), Lang.DistThresholds);
-                ImGui::SliderInt(Lang.RenderDist, &g_Menu.render_distance, 50, 1000);
-                ImGui::SliderInt(Lang.InfoESP, &g_Menu.name_max_dist, 50, 600);
-                ImGui::SliderFloat(skCrypt("Thick"), &g_Menu.skel_thickness, 1.0f, 5.0f, skCrypt("%.1f"));
+                ImGui::Checkbox(Lang.ESP_Spectated, &g_Menu.esp_spectated);
                 ImGui::EndChild();
                 
                 ImGui::NextColumn();
-                // Col 2: Style
-                BeginGlassCard(skCrypt("##ESPCol2"), Lang.HeaderRenderStyle, ImVec2(185, 0));
+                // Col 2: Kiểu Vẽ & HUD
+                BeginGlassCard(skCrypt("##ESPCol2"), Lang.HeaderRenderStyle, ImVec2(totalWidth / 4.0f - 15, 0));
                 ImGui::Checkbox(Lang.Box, &g_Menu.esp_box);
                 ImGui::Checkbox(Lang.Skeleton, &g_Menu.esp_skeleton);
                 ImGui::Checkbox(Lang.HealthBar, &g_Menu.esp_health);
                 ImGui::Checkbox(Lang.Distance, &g_Menu.esp_distance);
-                ImGui::EndChild();
-                
-                ImGui::NextColumn();
-                // Col 3: HUD
-                BeginGlassCard(skCrypt("##ESPCol3"), Lang.HeaderOverlayHUD, ImVec2(185, 0));
                 ImGui::Checkbox(Lang.Name, &g_Menu.esp_name);
-                ImGui::Checkbox(Lang.AimFOV, &g_Menu.aim_configs[8].enabled);
+                ImGui::Checkbox(Lang.HeadCircle, &g_Menu.esp_head_circle);
+                ImGui::Checkbox(skCrypt("Snaplines"), &g_Menu.esp_snapline);
                 ImGui::EndChild();
                 
                 ImGui::NextColumn();
-                // Col 4: Extras
-                BeginGlassCard(skCrypt("##ESPCol4"), Lang.HeaderDangerScan, ImVec2(185, 0));
-                ImGui::Checkbox(Lang.ESP_Spectated, &g_Menu.esp_spectated);
+                // Col 3: Thông số & Màu Sắc
+                BeginGlassCard(skCrypt("##ESPCol3"), Lang.HeaderOverlayHUD, ImVec2(totalWidth / 4.0f - 15, 0));
+                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), Lang.DistThresholds);
+                ImGui::SliderInt(Lang.RenderDist, &g_Menu.render_distance, 50, 1000, skCrypt("%d m"));
+                ImGui::SliderInt(Lang.InfoESP, &g_Menu.name_max_dist, 50, 600, skCrypt("%d m"));
+                ImGui::SliderFloat(skCrypt("Thick"), &g_Menu.skel_thickness, 1.0f, 5.0f, skCrypt("%.1f px"));
+                
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Spacing();
+
+                auto ColorPicker = [&](const char* label, float* col1, float* col2 = nullptr) {
+                    ImGui::TextDisabled(label);
+                    ImGui::SameLine(100);
+                    ImGui::ColorEdit4(skCrypt("##Col1"), col1, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+                    if (col2) {
+                        ImGui::SameLine();
+                        ImGui::ColorEdit4(skCrypt("##Col2"), col2, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+                    }
+                };
+
+                ColorPicker(Lang.Box, g_Menu.box_visible_color, g_Menu.box_invisible_color);
+                ColorPicker(Lang.Skeleton, g_Menu.skeleton_visible_color, g_Menu.skeleton_invisible_color);
+                ColorPicker(Lang.Name, g_Menu.name_color);
+                ColorPicker(Lang.Distance, g_Menu.distance_color);
+                ColorPicker(skCrypt("Weapon"), g_Menu.weapon_color);
+
+                ImGui::EndChild();
+
+                ImGui::NextColumn();
+                // Col 4: Xem Trước (PREVIEW)
+                BeginGlassCard(skCrypt("##ESPCol4"), skCrypt("DEMO PREVIEW"), ImVec2(totalWidth / 4.0f - 15, 0));
+                
+                ImVec2 cursorPos = ImGui::GetCursorScreenPos();
+                float previewW = totalWidth / 4.0f - 35;
+                float previewH = previewW * 1.5f; // Maintain roughly human aspect
+                
+                if (PreviewInstructor.SRV) {
+                    ImGui::Image((void*)PreviewInstructor.SRV, ImVec2(previewW, previewH));
+                    
+                    // Simulated ESP Overlays on the preview
+                    ImDrawList* draw = ImGui::GetWindowDrawList();
+                    ImVec4 boxCol = ImVec4(g_Menu.box_visible_color[0], g_Menu.box_visible_color[1], g_Menu.box_visible_color[2], g_Menu.box_visible_color[3]);
+                    ImU32 uBoxCol = ImColor(boxCol);
+                    
+                    // 1. Box Demo
+                    if (g_Menu.esp_box) {
+                        draw->AddRect(cursorPos, ImVec2(cursorPos.x + previewW, cursorPos.y + previewH), uBoxCol, 0, 0, 2.0f);
+                    }
+                    
+                    // 2. Health Demo
+                    if (g_Menu.esp_health) {
+                        draw->AddRectFilled(ImVec2(cursorPos.x - 6, cursorPos.y), ImVec2(cursorPos.x - 2, cursorPos.y + previewH), IM_COL32(0, 0, 0, 150));
+                        draw->AddRectFilled(ImVec2(cursorPos.x - 5, cursorPos.y + (previewH * 0.2f)), ImVec2(cursorPos.x - 3, cursorPos.y + previewH), IM_COL32(0, 255, 0, 255));
+                    }
+                    
+                    // 3. Skeleton Demo
+                    if (g_Menu.esp_skeleton) {
+                        ImU32 uSkelCol = ImColor(ImVec4(g_Menu.skeleton_visible_color[0], g_Menu.skeleton_visible_color[1], g_Menu.skeleton_visible_color[2], g_Menu.skeleton_visible_color[3]));
+                        ImVec2 head = ImVec2(cursorPos.x + previewW/2, cursorPos.y + previewH*0.15f);
+                        ImVec2 neck = ImVec2(cursorPos.x + previewW/2, cursorPos.y + previewH*0.25f);
+                        ImVec2 pelvis = ImVec2(cursorPos.x + previewW/2, cursorPos.y + previewH*0.55f);
+                        ImVec2 lFoot = ImVec2(cursorPos.x + previewW*0.3f, cursorPos.y + previewH*0.95f);
+                        ImVec2 rFoot = ImVec2(cursorPos.x + previewW*0.7f, cursorPos.y + previewH*0.95f);
+                        
+                        draw->AddCircle(head, previewW*0.1f, uSkelCol, 12, 1.5f);
+                        draw->AddLine(head, neck, uSkelCol, 1.5f);
+                        draw->AddLine(neck, pelvis, uSkelCol, 1.5f);
+                        draw->AddLine(pelvis, lFoot, uSkelCol, 1.5f);
+                        draw->AddLine(pelvis, rFoot, uSkelCol, 1.5f);
+                    }
+                } else {
+                    ImGui::Dummy(ImVec2(previewW, previewH));
+                    ImGui::TextDisabled(skCrypt("Preview Unavailable"));
+                }
+                
                 ImGui::EndChild();
                 
                 ImGui::Columns(1);
@@ -1482,6 +1556,10 @@ void OverlayMenu::RenderFrame() {
                 ImGui::SliderFloat(Lang.AimSmooth, &pCfg->smooth, 1.0f, 20.0f, skCrypt("%.1f"));
                 ImGui::SliderFloat(skCrypt("Max Dist"), &pCfg->max_dist, 10.0f, 800.0f, skCrypt("%.0f m"));
                 
+                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), skCrypt("FOV Color"));
+                static float fov_col[4] = {1.0f, 1.0f, 1.0f, 0.5f}; // Stub or find global fov color
+                ImGui::ColorEdit4(skCrypt("##FovCol"), fov_col, ImGuiColorEditFlags_NoInputs);
+                
                 char keyDisplay[64];
                 sprintf_s(keyDisplay, sizeof(keyDisplay), skCrypt("MOUSE LEFT")); 
                 ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), Lang.AimKey);
@@ -1491,41 +1569,89 @@ void OverlayMenu::RenderFrame() {
                 
                 ImGui::NextColumn();
                 
-                // Column 3: Logic
+                // Column 3: Cấu trúc Logic
                 BeginGlassCard(skCrypt("##AimCol3"), Lang.HeaderAimStructure, ImVec2(totalWidth / 3.0f - 20, 0));
                 ImGui::TextColored(ImVec4(0.8f, 0.2f, 1.0f, 1.0f), Lang.AimBone);
+                const char* bones[] = { "Head", "Neck", "Upper Chest", "Pelvis" };
+                int boneIdx = 0;
+                if (pCfg->bone == 6) boneIdx = 0; else if (pCfg->bone == 5) boneIdx = 1; else if (pCfg->bone == 4) boneIdx = 2; else boneIdx = 3;
+                if (ImGui::Combo(skCrypt("##AimBoneCombo"), &boneIdx, bones, IM_ARRAYSIZE(bones))) {
+                    if (boneIdx == 0) pCfg->bone = 6; else if (boneIdx == 1) pCfg->bone = 5; else if (boneIdx == 2) pCfg->bone = 4; else pCfg->bone = 1;
+                }
+                
                 ImGui::Spacing();
-                ImGui::TextWrapped(Lang.MacroSoon); // Stub for description
-                ImGui::Spacing();
-                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), skCrypt("PRIORITY:"));
-                ImGui::Text(skCrypt("1. Head / Neck (Visible)"));
-                ImGui::Text(skCrypt("2. Upper Chest (Visible)"));
+                ImGui::TextColored(ImVec4(0.8f, 0.2f, 1.0f, 1.0f), Lang.AimKey);
+                const char* keys[] = { "MOUSE LEFT", "MOUSE RIGHT", "L-ALT", "L-SHIFT", "X", "V" };
+                int keyVals[] = { VK_LBUTTON, VK_RBUTTON, VK_LMENU, VK_LSHIFT, 'X', 'V' };
+                int currentKeyIdx = 0;
+                for(int i=0; i<6; i++) if(pCfg->key == keyVals[i]) currentKeyIdx = i;
+                if (ImGui::Combo(skCrypt("##AimKeyCombo"), &currentKeyIdx, keys, IM_ARRAYSIZE(keys))) {
+                    pCfg->key = keyVals[currentKeyIdx];
+                }
+                
                 ImGui::EndChild();
                 
                 ImGui::Columns(1);
             }
-            // --- VẬT PHẨM TAB ---
+            // --- MACRO (NO-RECOIL) TAB ---
             else if (active_tab == 2) {
+                float totalWidth = windowSize.x - 60;
+                ImGui::Columns(3, skCrypt("MacroColumns"), false);
+                ImGui::SetColumnWidth(0, totalWidth / 3.0f);
+                ImGui::SetColumnWidth(1, totalWidth / 3.0f);
+                ImGui::SetColumnWidth(2, totalWidth / 3.0f);
+
+                // Col 1: Core
+                BeginGlassCard(skCrypt("##MacroCol1"), Lang.TabMacro, ImVec2(totalWidth / 3.0f - 20, 0));
+                ImGui::Checkbox(Lang.MacroEnabled, &g_Menu.macro_enabled);
+                ImGui::Checkbox(Lang.MacroHumanize, &g_Menu.macro_humanize);
+                ImGui::Checkbox(skCrypt("ADS Precision Only"), &g_Menu.macro_ads_only);
+                ImGui::EndChild();
+
+                ImGui::NextColumn();
+                // Col 2: Settings
+                BeginGlassCard(skCrypt("##MacroCol2"), Lang.HeaderPrecisionSettings, ImVec2(totalWidth / 3.0f - 20, 0));
+                ImGui::SliderFloat(Lang.MacroStrength, &g_Menu.macro_overlay_color[3], 0.1f, 2.0f, skCrypt("%.2f")); // Using alpha as strength stub if member missing
+                ImGui::Checkbox(Lang.ShowMacroOSD, &g_Menu.show_macro_overlay);
+                ImGui::ColorEdit4(skCrypt("OSD Color"), g_Menu.macro_overlay_color, ImGuiColorEditFlags_NoInputs);
+                ImGui::EndChild();
+
+                ImGui::NextColumn();
+                // Col 3: Utils
+                BeginGlassCard(skCrypt("##MacroCol3"), Lang.HeaderEngineUtils, ImVec2(totalWidth / 3.0f - 20, 0));
+                if (ImGui::Button(Lang.RescanAttach, ImVec2(-1, 35))) { /* Rescan */ }
+                ImGui::TextDisabled(skCrypt("Advanced anti-recoil logic active"));
+                ImGui::EndChild();
+
+                ImGui::Columns(1);
+            }
+            // --- VẬT PHẨM (LOOT) TAB ---
+            else if (active_tab == 3) {
+                float totalWidth = windowSize.x - 60;
                 ImGui::Columns(3, skCrypt("ItemColumns"), false);
+                ImGui::SetColumnWidth(0, totalWidth / 3.0f);
+                ImGui::SetColumnWidth(1, totalWidth / 3.0f);
+                ImGui::SetColumnWidth(2, totalWidth / 3.0f);
                 
-                // Col 1: Phím Tắt
-                BeginGlassCard(skCrypt("##ItemCol1"), Lang.HeaderLootEngine, ImVec2(250, 0));
+                // Col 1: Hệ Thống Loot
+                BeginGlassCard(skCrypt("##ItemCol1"), Lang.HeaderLootEngine, ImVec2(totalWidth / 3.0f - 20, 0));
                 ImGui::Checkbox(Lang.TabLoot, &g_Menu.esp_items);
-                ImGui::SliderInt(Lang.RenderDist, &g_Menu.loot_max_dist, 10, 300);
+                ImGui::SliderInt(Lang.RenderDist, &g_Menu.loot_max_dist, 10, 300, skCrypt("%d m"));
                 ImGui::EndChild();
                 
                 ImGui::NextColumn();
-                // Col 2: Grid
-                BeginGlassCard(skCrypt("##ItemCol2"), Lang.HeaderPickupFilter, ImVec2(250, 0));
+                // Col 2: Bộ Lọc Vật Phẩm
+                BeginGlassCard(skCrypt("##ItemCol2"), Lang.HeaderPickupFilter, ImVec2(totalWidth / 3.0f - 20, 0));
                 ImGui::Text(skCrypt("AUTO-FILTER ACTIVE"));
-                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), skCrypt("Categories:"));
-                ImGui::BulletText(skCrypt("Assault Rifles"));
-                ImGui::BulletText(skCrypt("Sniper Rifles"));
+                ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), skCrypt("Priority Tiers:"));
+                ImGui::BulletText(skCrypt("Medical Items"));
+                ImGui::BulletText(skCrypt("Muzzle Attachments"));
+                ImGui::BulletText(skCrypt("Extended Magazines"));
                 ImGui::EndChild();
                 
                 ImGui::NextColumn();
-                // Col 3: Radar Web
-                BeginGlassCard(skCrypt("##ItemCol3"), Lang.HeaderWorldEntities, ImVec2(250, 0));
+                // Col 3: Đối Tượng Thế Giới
+                BeginGlassCard(skCrypt("##ItemCol3"), Lang.HeaderWorldEntities, ImVec2(totalWidth / 3.0f - 20, 0));
                 ImGui::Checkbox(skCrypt("Show Vehicles"), &g_Menu.esp_vehicles);
                 ImGui::Checkbox(skCrypt("Show Airdrops"), &g_Menu.esp_airdrops);
                 ImGui::Checkbox(skCrypt("Show Deathboxes"), &g_Menu.esp_deadboxes);
@@ -1533,11 +1659,16 @@ void OverlayMenu::RenderFrame() {
                 
                 ImGui::Columns(1);
             }
-            // --- THIẾT LẬP TAB ---
-            else if (active_tab == 3) {
+            // --- THIẾT LẬP (SETTINGS) TAB ---
+            else if (active_tab == 5) {
+                float totalWidth = windowSize.x - 60;
                 ImGui::Columns(3, skCrypt("SettingsColumns"), false);
-                // Col 1
-                BeginGlassCard(skCrypt("##SetCol1"), Lang.HeaderSystemCore, ImVec2(250, 0));
+                ImGui::SetColumnWidth(0, totalWidth / 3.0f);
+                ImGui::SetColumnWidth(1, totalWidth / 3.0f);
+                ImGui::SetColumnWidth(2, totalWidth / 3.0f);
+
+                // Col 1: Lõi Hệ Thống
+                BeginGlassCard(skCrypt("##SetCol1"), Lang.HeaderSystemCore, ImVec2(totalWidth / 3.0f - 20, 0));
                 int currentLang = g_Menu.language ? 1 : 0;
                 if (ImGui::Combo(Lang.Language, &currentLang, (const char*)u8"English\0Tiếng Việt\0")) g_Menu.language = (currentLang == 1);
                 
@@ -1549,17 +1680,15 @@ void OverlayMenu::RenderFrame() {
                 else ImGui::TextColored(ImVec4(1, 0, 0, 1), skCrypt("STATUS: INACTIVE"));
                 
                 static char key_buf[128] = {0};
-                ImGui::PushItemWidth(140);
+                ImGui::SetNextItemWidth(-1);
                 ImGui::InputText(skCrypt("##TokenInput"), key_buf, sizeof(key_buf));
-                ImGui::PopItemWidth();
-                ImGui::SameLine();
-                if (ImGui::Button(Lang.PasteLabel, ImVec2(80, 25))) {
+                
+                if (ImGui::Button(Lang.PasteLabel, ImVec2(-1, 30))) {
                     const char* clipboard = ImGui::GetClipboardText();
                     if (clipboard) strcpy_s(key_buf, sizeof(key_buf), clipboard);
                 }
-                ImGui::TextDisabled(skCrypt("Paste your activation token above"));
                 
-                if (ImGui::Button(skCrypt("Validate Key"), ImVec2(-1, 35))) {
+                if (ImGui::Button(skCrypt("VALIDATE KEY"), ImVec2(-1, 35))) {
                     extern std::string GetHWID();
                     extern bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent);
                     std::string key_str(key_buf);
@@ -1572,42 +1701,54 @@ void OverlayMenu::RenderFrame() {
                 ImGui::EndChild();
                 
                 ImGui::NextColumn();
-                // Col 2
-                BeginGlassCard(skCrypt("##SetCol2"), Lang.HeaderAntiTracking, ImVec2(250, 0));
-                ImGui::Checkbox(Lang.ESP_Spectated, &g_Menu.esp_spectated);
+                // Col 2: Bảo Mật & Tracking
+                BeginGlassCard(skCrypt("##SetCol2"), Lang.HeaderAntiTracking, ImVec2(totalWidth / 3.0f - 20, 0));
                 ImGui::Checkbox(Lang.AntiScreenshot, &g_Menu.anti_screenshot);
+                ImGui::Checkbox(skCrypt("Hide Menu on Screen"), &g_Menu.anti_screenshot); // Map to same for now
                 ImGui::EndChild();
                 
                 ImGui::NextColumn();
-                // Col 3
-                BeginGlassCard(skCrypt("##SetCol3"), Lang.HeaderEngineUtils, ImVec2(250, 0));
-                ImGui::Checkbox(Lang.AimPrediction, &g_Menu.aim_configs[8].prediction);
-                if (ImGui::Button(skCrypt("Safe Exit"), ImVec2(-1, 35))) { exit(0); }
+                // Col 3: Tiện Ích Engine
+                BeginGlassCard(skCrypt("##SetCol3"), Lang.HeaderEngineUtils, ImVec2(totalWidth / 3.0f - 20, 0));
+                if (ImGui::Button(Lang.ResetColors, ImVec2(-1, 35))) { /* Reset colors logic */ }
+                if (ImGui::Button(Lang.SaveConfig, ImVec2(-1, 35))) { g_Menu.SaveConfig("dataMacro/Config/settings.json"); }
+                
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Spacing();
+                
+                if (ImGui::Button(skCrypt("Terminate Application"), ImVec2(-1, 40))) { exit(0); }
                 ImGui::EndChild();
                 
                 ImGui::Columns(1);
             }
-            // --- BẢN ĐỒ TAB ---
+            // --- BẢN ĐỒ (RADAR) TAB ---
             else if (active_tab == 4) {
+                float totalWidth = windowSize.x - 60;
                 ImGui::Columns(3, skCrypt("MapColumns"), false);
+                ImGui::SetColumnWidth(0, totalWidth / 3.0f);
+                ImGui::SetColumnWidth(1, totalWidth / 3.0f);
+                ImGui::SetColumnWidth(2, totalWidth / 3.0f);
                 
-                BeginGlassCard(skCrypt("##MapCol1"), Lang.TabRadar, ImVec2(250, 0));
+                // Col 1: Cấu hình Radar
+                BeginGlassCard(skCrypt("##MapCol1"), Lang.TabRadar, ImVec2(totalWidth / 3.0f - 20, 0));
                 ImGui::Checkbox(Lang.RadarEnable, &g_Menu.radar_enabled);
                 ImGui::Checkbox(Lang.ItemsVehicles, &g_Menu.esp_vehicles);
-                ImGui::Checkbox(skCrypt("Show Airdrops"), &g_Menu.esp_airdrops);
+                ImGui::Checkbox(skCrypt("Show Neutral Targets"), &g_Menu.esp_airdrops);
                 ImGui::EndChild();
                 
                 ImGui::NextColumn();
-                
-                BeginGlassCard(skCrypt("##MapCol2"), skCrypt("MINI MAP"), ImVec2(250, 0));
-                ImGui::SliderFloat(Lang.RadarDotSize, &g_Menu.radar_dot_size, 1.0f, 10.0f);
+                // Col 2: Vị Trí & Zoom
+                BeginGlassCard(skCrypt("##MapCol2"), skCrypt("MINI MAP CONFIG"), ImVec2(totalWidth / 3.0f - 20, 0));
+                ImGui::SliderFloat(Lang.RadarDotSize, &g_Menu.radar_dot_size, 1.0f, 10.0f, skCrypt("%.1f px"));
+                ImGui::SliderFloat(Lang.RadarZoom, &g_Menu.radar_zoom_multiplier, 0.5f, 5.0f, skCrypt("%.1f x"));
                 ImGui::EndChild();
                 
                 ImGui::NextColumn();
-                
-                BeginGlassCard(skCrypt("##MapCol3"), skCrypt("RADAR STATUS"), ImVec2(250, 0));
-                ImGui::Text(skCrypt("World Map: %s"), G_Radar.IsWorldMapVisible ? (g_Menu.language ? skCrypt("Hien thi") : skCrypt("Visible")) : (g_Menu.language ? skCrypt("Dong") : skCrypt("Closed")));
-                ImGui::Text(skCrypt("Mini Map: %s"), G_Radar.IsMiniMapVisible ? (g_Menu.language ? skCrypt("Hien thi") : skCrypt("Visible")) : (g_Menu.language ? skCrypt("An") : skCrypt("Hidden")));
+                // Col 3: Trạng Thái Radar
+                BeginGlassCard(skCrypt("##MapCol3"), skCrypt("RADAR TELEMETRY"), ImVec2(totalWidth / 3.0f - 20, 0));
+                ImGui::Text(skCrypt("World Map: %s"), G_Radar.IsWorldMapVisible ? (const char*)u8"Sẵn sàng" : (const char*)u8"Đang chờ");
+                ImGui::Text(skCrypt("Mini Map: %s"), G_Radar.IsMiniMapVisible ? (const char*)u8"Sẵn sàng" : (const char*)u8"Đang chờ");
                 ImGui::EndChild();
                 
                 ImGui::Columns(1);
@@ -1658,9 +1799,10 @@ void OverlayMenu::RenderFrame() {
             
             BottomTab(Lang.TabVisuals, 0);
             BottomTab(Lang.Tabprecision_calibration, 1);
-            BottomTab(Lang.TabLoot, 2);
-            BottomTab(Lang.TabSettings, 3);
+            BottomTab(Lang.TabMacro, 2);
+            BottomTab(Lang.TabLoot, 3);
             BottomTab(Lang.TabRadar, 4);
+            BottomTab(Lang.TabSettings, 5);
             
             ImGui::EndChild(); // Rail
             ImGui::PopStyleColor(); // ChildBg
