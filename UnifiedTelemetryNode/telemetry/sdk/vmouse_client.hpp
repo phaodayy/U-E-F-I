@@ -15,8 +15,14 @@ inline bool Initialize() {
     return true;
 }
 
-// Move mouse by (dx, dy) pixels. Humanized micro-steps algorithm.
-inline bool Move(int dx, int dy) {
+// Move mouse by (dx, dy) pixels with button flags. Humanized micro-steps algorithm.
+inline bool Move(int dx, int dy, unsigned short flags = 0) {
+    // If movement is zero, just send the flags (click)
+    if (dx == 0 && dy == 0) {
+        telemetryHyperCall::InjectMouseMovement(0, 0, flags);
+        return true;
+    }
+
     // Dựa theo phân tích Heuristics V4: Split thành các packet ngẫu nhiên, không để max 127
     while (dx != 0 || dy != 0) {
         long step_x = 0;
@@ -38,7 +44,9 @@ inline bool Move(int dx, int dy) {
         }
         
         // Gửi trực tiếp xuống Ring -1 (Evasion CP)
-        telemetryHyperCall::InjectMouseMovement(step_x, step_y);
+        // We only send flags in the FIRST packet of a movement chain or alone.
+        telemetryHyperCall::InjectMouseMovement(step_x, step_y, flags);
+        flags = 0; // Clear flags for subsequent steps
         
         dx -= step_x;
         dy -= step_y;

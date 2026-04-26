@@ -63,6 +63,7 @@ typedef struct _telemetry_SYSTEM_PROCESS_INFORMATION {
 #include "overlay/overlay_menu.hpp"
 #include "overlay/discord_overlay.h"
 #include "sdk/netease_comm.hpp"
+#include "sdk/EptMouseSetup.hpp"
 
 #include "sdk/Utils/WinSha256.h"
 #include "sdk/Utils/WinCrypto.h"
@@ -667,8 +668,7 @@ int main() {
       std::cout << "[!] Tool is already running.\n";
 #else
       MessageBoxA(NULL, 
-          skCrypt("Tool is already running! Please wait or proceed to game.\n")
-          skCrypt("Tool dang chay! Vui long doi hoac tien hanh vao game."), 
+          skCrypt("Tool is already running! Please wait or proceed to game.\nTool dang chay! Vui long doi hoac tien hanh vao game."), 
           skCrypt("GZ-telemetry - ALREADY RUNNING"), MB_OK | MB_ICONWARNING | MB_SYSTEMMODAL | MB_TOPMOST);
 #endif
       if (hMutex) CloseHandle(hMutex);
@@ -758,9 +758,7 @@ int main() {
     SetConsoleColor(7);
 #else
     MessageBoxA(NULL, 
-        skCrypt("CRITICAL ERROR: Hypervisor connection failed!\nLoi nghiem trong: Khong the ket noi Hypervisor!\n\n")
-        skCrypt("Please run 'GZ-Loader' as Administrator first, then reopen this tool.\n")
-        skCrypt("Vui long chay 'GZ-Loader' bang quyen Admin truoc, sau do mo lai Tool nay."), 
+        skCrypt("CRITICAL ERROR: Hypervisor connection failed!\nLoi nghiem trong: Khong the ket noi Hypervisor!\n\nPlease run 'GZ-Loader' as Administrator first, then reopen this tool.\nVui long chay 'GZ-Loader' bang quyen Admin truoc, sau do mo lai Tool nay."), 
         skCrypt("GZ-telemetry - HYPERVISOR ERROR"), MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_TOPMOST);
 #endif
     return 1;
@@ -845,9 +843,9 @@ int main() {
   
     MacroEngine::Initialize();
 
-    // Mouse input via kernel driver MouseClassServiceCallback
-    std::cout << skCrypt("[+] Mouse: Kernel callback active.") << std::endl;
+    // EptMouse::InstallMouseEptHook(); // [TEMPORARY OFF]
 
+    /* [TEMPORARY OFF - VISUALIZATION]
     VisualizationBridgeHost visualization_bridge = ResolvePassiveVisualizationHost();
     if (!visualization_bridge.hwnd || !g_Menu.Initialize(visualization_bridge)) {
         SetConsoleColor(12);
@@ -855,12 +853,12 @@ int main() {
         SetConsoleColor(7);
 #ifndef _DEBUG
         MessageBoxA(NULL,
-            skCrypt("Visualization bridge host could not be resolved or created.\n")
-            skCrypt("Set UTN_VISUALIZATION_HWND, publish Local\\UTNVisualizationBridge, or enable the owned fallback host."),
+            skCrypt("Visualization bridge host could not be resolved or created.\nSet UTN_VISUALIZATION_HWND, publish Local\\UTNVisualizationBridge, or enable the owned fallback host."),
             skCrypt("GZ-telemetry - VISUALIZATION BRIDGE"), MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_TOPMOST);
 #endif
         return 1;
     }
+    */
     // [ANTI-DUMP] Safe Erasing DOS headers (Now compatible with DirectX)
     protec::erase_pe_header();
     

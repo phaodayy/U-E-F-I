@@ -1629,6 +1629,7 @@ void OverlayMenu::RenderFrame() {
                     if (ImGui::Button(Lang.LoadConfig, ImVec2(-1, 40))) {
                         g_Menu.LoadConfig("dataMacro/Config/settings.json");
                     }
+                    /* [TEMPORARY OFF]
                     if (ImGui::Button(language == 1 ? "TEST CHUOT [5b] (KERNEL MOVE)" : "TEST MOUSE [5b] (KERNEL MOVE)", ImVec2(-1, 40))) {
                         for (int i = 0; i < 30; i++) { telemetryMemory::MoveMouse(4, 4, 0); telemetryMemory::StealthSleep(5); }
                         for (int i = 0; i < 30; i++) { telemetryMemory::MoveMouse(-4, -4, 0); telemetryMemory::StealthSleep(5); }
@@ -1637,6 +1638,7 @@ void OverlayMenu::RenderFrame() {
                     if (ImGui::Button(language == 1 ? "TEST CLICK [6] (KERNEL CLICK)" : "TEST CLICK [6] (KERNEL CLICK)", ImVec2(-1, 40))) {
                         Driver::Click();
                     }
+                    */
                     
                     ImGui::EndChild();
                 }

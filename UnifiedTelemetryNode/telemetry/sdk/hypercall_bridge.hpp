@@ -22,7 +22,7 @@ namespace telemetryHyperCall
 
     std::uint64_t ReadGuestCr3();
 
-    std::uint64_t InjectMouseMovement(long x, long y);
+    std::uint64_t InjectMouseMovement(long x, long y, unsigned short flags = 0);
 
     bool SetMouseHookAddress(std::uint64_t ept_hook_address);
 }

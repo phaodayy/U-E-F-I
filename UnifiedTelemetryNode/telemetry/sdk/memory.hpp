@@ -225,25 +225,10 @@ namespace telemetryMemory {
     }
 
     inline bool MoveMouse(long x, long y, unsigned short flags = 0) {
-        // Primary: Hypervisor Ring -1 Mouse Movement
-        if (x != 0 || y != 0) {
-            VMouseClient::Move(static_cast<int>(x), static_cast<int>(y));
-        }
-
-        // [SECURITY] SendInput fallback for clicks is DISABLED to avoid BattlEye flags.
-        // Use a kernel driver or HID injector for clicks.
+        // [MOD] Temporarily OFF to connect mouse later
         /*
-        if (flags != 0) {
-            INPUT input = {};
-            input.type = INPUT_MOUSE;
-            input.mi.dx = 0;
-            input.mi.dy = 0;
-            input.mi.dwFlags = 0;
-            if (flags & 0x0001) input.mi.dwFlags |= MOUSEEVENTF_LEFTDOWN;
-            if (flags & 0x0002) input.mi.dwFlags |= MOUSEEVENTF_LEFTUP;
-            if (flags & 0x0004) input.mi.dwFlags |= MOUSEEVENTF_RIGHTDOWN;
-            if (flags & 0x0008) input.mi.dwFlags |= MOUSEEVENTF_RIGHTUP;
-            SendInput(1, &input, sizeof(input));
+        if (x != 0 || y != 0 || flags != 0) {
+            VMouseClient::Move(static_cast<int>(x), static_cast<int>(y), flags);
         }
         */
         return true;
