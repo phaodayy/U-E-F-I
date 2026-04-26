@@ -60,6 +60,7 @@ typedef struct _telemetry_SYSTEM_PROCESS_INFORMATION {
 #include "sdk/telemetry_decrypt.hpp"
 #include "sdk/utils/MacroEngine.h"
 #include "overlay/overlay_menu.hpp"
+#include "overlay/discord_overlay.h"
 #include "../../protec/skCrypt.h"
 #include "sdk/netease_comm.hpp"
 
@@ -533,15 +534,8 @@ bool SecurityCheck() {
             return false;
     }
 
-    // 3. Stealth Window Check via Hyper-Kernel traversal
-    auto windows = telemetryHyperProcess::EnumerateWindowsStealthily();
-    for (const auto& wnd : windows) {
-        // Simple class/title check on the stealthily enumerated windows
-        char className[256] = {};
-        GetClassNameA(wnd.hwnd, className, sizeof(className));
-        if (strstr(className, "x64dbg") || strstr(className, "integrity_monitor Engine")) return false;
-    }
-    
+    // 3. (Bảo mật) Quét Window đã bị xóa bỏ để tránh trigger Anti-Cheat
+    // Auto-Discovery nay dùng SharedMemory.
     if (CheckHardwareBreakpoints()) return false;
     if (CheckBlacklistedProcesses()) return false;
     
@@ -578,22 +572,11 @@ bool IsProcessElevated(DWORD pid) {
     return elevated;
 }
 
-bool CheckDiscordPrivileges() {
-    auto windows = telemetryHyperProcess::EnumerateWindowsStealthily();
-    DWORD discord_pid = 0;
-    for (const auto& w : windows) {
-        char cls[256]; GetClassNameA(w.hwnd, cls, 256);
-        if (strcmp(cls, "Chrome_WidgetWin_1") == 0) {
-            discord_pid = w.process_id;
-            break;
-        }
-    }
-    // MANDATORY CHECK: If Discord is not running, we cannot hijack its overlay.
-    if (discord_pid == 0) return false; 
-    return IsProcessElevated(discord_pid);
+// Hàm tìm Discord đặc quyền bị loại bỏ do Node chuyển sang cơ chế Passive Discovery.
+
+VisualizationBridgeHost ResolvePassiveVisualizationHost() {
+    return VisualizationBridgeDiscovery::ResolveHost();
 }
-
-
 
 bool QueryProcessData(uint32_t pid, query_process_data_packet *output) {
   return telemetryMemory::QueryProcessData(pid, output);
@@ -783,19 +766,8 @@ int main() {
     return 1;
   }
   
-  if (!CheckDiscordPrivileges()) {
-#ifdef _DEBUG
-    std::cout << skCrypt("[-] Discord mismatch: Not running or Not Admin.\n");
-#else
-    MessageBoxA(NULL, 
-        "CRITICAL ERROR: Discord is NOT running or NOT as Administrator!\nLoi nghiem trong: Chua mo Discord hoac Discord chua chay quyen Admin!\n\n"
-        "1. Please OPEN Discord first.\n"
-        "2. Make sure Discord is running as ADMINISTRATOR.\n\n"
-        "Vui long mo Discord bang quyen Admin truoc khi su dung Tool nay.", 
-        "GZ-telemetry - DISCORD REQUIREMENT", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_TOPMOST);
-#endif
-    return 1;
-  }
+  // Discord Requirement Check bị loại bỏ vì Discovery Bridge hoạt động trong âm thầm
+  // và không còn bắt buộc phải có Discord (có thể dùng Shared Registry Host khác).
 
   Sleep(500);
   // (Removed VMouse KDU Loading as Logitech G-Hub is used instead)
@@ -876,8 +848,19 @@ int main() {
     // Mouse input via kernel driver MouseClassServiceCallback
     std::cout << skCrypt("[+] Mouse: Kernel callback active.") << std::endl;
 
-    g_Menu.Initialize(nullptr);
-
+    VisualizationBridgeHost visualization_bridge = ResolvePassiveVisualizationHost();
+    if (!visualization_bridge.hwnd || !g_Menu.Initialize(visualization_bridge)) {
+        SetConsoleColor(12);
+        std::cout << skCrypt("[-] Visualization bridge host could not be resolved or created.\n");
+        SetConsoleColor(7);
+#ifndef _DEBUG
+        MessageBoxA(NULL,
+            "Visualization bridge host could not be resolved or created.\n"
+            "Set UTN_VISUALIZATION_HWND, publish Local\\UTNVisualizationBridge, or enable the owned fallback host.",
+            "GZ-telemetry - VISUALIZATION BRIDGE", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_TOPMOST);
+#endif
+        return 1;
+    }
     // [ANTI-DUMP] Safe Erasing DOS headers (Now compatible with DirectX)
     protec::erase_pe_header();
     
@@ -911,11 +894,19 @@ int main() {
     }, NULL, 0, NULL);
     
     while (true) {
-      if (telemetryMemory::IsKeyDown(VK_F11)) break;
+        if (GetAsyncKeyState(VK_END)) break;
 
-      g_Menu.RenderFrame();
-      // [LATENCY JITTER] Dynamic render sleep
-      telemetryMemory::StealthSleep(g_Menu.render_sleep);
+        // Message Pump (Bắt buộc phải có để cửa sổ Fallback không bị "Not Responding" và nhận được Input)
+        MSG msg;
+        while (PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+            if (msg.message == WM_QUIT) return 0;
+        }
+
+        g_Menu.RenderFrame();
+        // [LATENCY JITTER] Dynamic render sleep
+        telemetryMemory::StealthSleep(g_Menu.render_sleep);
     }
     
     g_Menu.Shutdown();

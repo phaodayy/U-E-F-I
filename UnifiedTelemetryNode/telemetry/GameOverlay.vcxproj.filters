@@ -66,6 +66,9 @@
     <ClInclude Include="overlay\overlay_menu.hpp">
       <Filter>Overlay</Filter>
     </ClInclude>
+    <ClInclude Include="overlay\discord_overlay.h">
+      <Filter>Overlay</Filter>
+    </ClInclude>
     <ClInclude Include="imgui\imgui.h">
       <Filter>ImGui</Filter>
     </ClInclude>

@@ -15,6 +15,15 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
 
 #include "../sdk/Common/Constant.h"
 
+struct VisualizationBridgeHost {
+    HWND hwnd = nullptr;
+    IDXGISwapChain* swap_chain = nullptr;
+    ID3D11Device* device = nullptr;
+    ID3D11DeviceContext* context = nullptr;
+    bool clear_before_render = false;
+    bool present_after_render = false;
+};
+
 struct AimConfig {
     bool enabled = true;
     float fov = 10.0f;
@@ -30,11 +39,10 @@ class OverlayMenu {
 public:
   bool CreateDeviceD3D(HWND hWnd);
   void CleanupDeviceD3D();
-  void CreateRenderTarget();
+  bool CreateRenderTarget();
   void CleanupRenderTarget();
 
   HWND target_hwnd = NULL;
-  static HWND FindOverlayForGame(HWND game_hwnd);
 
   float ScreenWidth = (float)GetSystemMetrics(SM_CXSCREEN);
   float ScreenHeight = (float)GetSystemMetrics(SM_CYSCREEN);
@@ -124,8 +132,7 @@ public:
   bool show_radar_center = false;
   bool anti_screenshot = true;
 
-  void Initialize(HWND game_hwnd = nullptr);
-  void SetClickable(bool state);
+  bool Initialize(const VisualizationBridgeHost& bridge);
   void SetupStyle();
   void UpdateAntiScreenshot();
   void RenderFrame();

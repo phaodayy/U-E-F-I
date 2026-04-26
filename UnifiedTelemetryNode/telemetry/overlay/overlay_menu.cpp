@@ -28,6 +28,8 @@ static ID3D11Device* g_pd3dDevice = nullptr;
 static ID3D11DeviceContext* g_pd3dDeviceContext = nullptr;
 static IDXGISwapChain* g_pSwapChain = nullptr;
 static ID3D11RenderTargetView* g_mainRenderTargetView = nullptr;
+static bool g_clearBeforeRender = true;
+static bool g_presentAfterRender = true;
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../sdk/Utils/stb_image.h"
@@ -118,18 +120,6 @@ extern std::vector<ItemData> CachedItems;
 
 OverlayMenu g_Menu;
 
-// --- UTILS FROM VALORANT ---
-
-void OverlayMenu::SetClickable(bool state) {
-    if (!target_hwnd) return;
-    LONG_PTR flags = telemetryHyperProcess::GetWindowStyleStealthily(target_hwnd);
-    LONG_PTR new_flags = state ? (flags & ~WS_EX_TRANSPARENT) : (flags | WS_EX_TRANSPARENT);
-    
-    if (new_flags != flags) {
-        telemetryHyperProcess::SetWindowStyleStealthily(target_hwnd, new_flags);
-    }
-}
-
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
     if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
         return true;
@@ -155,8 +145,9 @@ bool OverlayMenu::CreateDeviceD3D(HWND hWnd) {
     const D3D_FEATURE_LEVEL featureLevelArray[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0 };
     HRESULT res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, nullptr, &g_pd3dDeviceContext);
     if (res != S_OK) return false;
-    CreateRenderTarget();
-    return true;
+    g_clearBeforeRender = true;
+    g_presentAfterRender = true;
+    return CreateRenderTarget();
 }
 
 void OverlayMenu::CleanupDeviceD3D() {
@@ -164,115 +155,79 @@ void OverlayMenu::CleanupDeviceD3D() {
     if (g_pSwapChain) { g_pSwapChain->Release(); g_pSwapChain = nullptr; }
     if (g_pd3dDeviceContext) { g_pd3dDeviceContext->Release(); g_pd3dDeviceContext = nullptr; }
     if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = nullptr; }
+    g_clearBeforeRender = true;
+    g_presentAfterRender = true;
 }
 
-void OverlayMenu::CreateRenderTarget() {
-    ID3D11Texture2D* pBackBuffer;
-    g_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
-    g_pd3dDevice->CreateRenderTargetView(pBackBuffer, nullptr, &g_mainRenderTargetView);
+bool OverlayMenu::CreateRenderTarget() {
+    if (!g_pSwapChain || !g_pd3dDevice) return false;
+
+    ID3D11Texture2D* pBackBuffer = nullptr;
+    if (FAILED(g_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer))) || !pBackBuffer) return false;
+
+    HRESULT hr = g_pd3dDevice->CreateRenderTargetView(pBackBuffer, nullptr, &g_mainRenderTargetView);
     pBackBuffer->Release();
+    return SUCCEEDED(hr) && g_mainRenderTargetView != nullptr;
 }
 
 void OverlayMenu::CleanupRenderTarget() {
     if (g_mainRenderTargetView) { g_mainRenderTargetView->Release(); g_mainRenderTargetView = nullptr; }
 }
 
-HWND OverlayMenu::FindOverlayForGame(HWND target_view) {
-    RECT target_rect = {};
-    POINT pos_tl = {0, 0};
-    POINT pos_br = {0, 0};
-    bool has_target = false;
+static bool AcquireBridgeD3D(const VisualizationBridgeHost& bridge) {
+    if (!bridge.swap_chain) return false;
 
-    if (target_view && IsWindow(target_view) && GetClientRect(target_view, &target_rect)) {
-        pos_tl = {target_rect.left, target_rect.top};
-        pos_br = {target_rect.right, target_rect.bottom};
-        ClientToScreen(target_view, &pos_tl);
-        ClientToScreen(target_view, &pos_br);
-        has_target = true;
+    g_pSwapChain = bridge.swap_chain;
+    g_pSwapChain->AddRef();
+
+    if (bridge.device) {
+        g_pd3dDevice = bridge.device;
+        g_pd3dDevice->AddRef();
+    } else if (FAILED(g_pSwapChain->GetDevice(__uuidof(ID3D11Device), reinterpret_cast<void**>(&g_pd3dDevice)))) {
+        return false;
     }
-    
-    HWND best_candidate = NULL;
-    long max_overlap = 0;
-    
-    // STEALTH: Use kernel-side window enumeration via Hypercall
-    auto windows = telemetryHyperProcess::EnumerateWindowsStealthily();
 
-    for (const auto& wnd_data : windows) {
-        // STYLE CHECK: Read directly from kernel memory struct earlier
-        LONG_PTR ex_style = wnd_data.ex_style;
-
-        if ((ex_style & WS_EX_TOPMOST) && (ex_style & WS_EX_LAYERED)) {
-            HWND current = wnd_data.hwnd;
-            
-            if (current == target_view) continue;
-
-            const RECT& r = wnd_data.rect;
-            
-            // If it's very small, skip
-            if ((r.right - r.left) < 100 || (r.bottom - r.top) < 100) continue;
-
-            if (!has_target) {
-                best_candidate = current;
-                break;
-            }
-
-            long over_l = (std::max)((long)r.left, pos_tl.x);
-            long over_t = (std::max)((long)r.top, pos_tl.y);
-            long over_r = (std::min)((long)r.right, pos_br.x);
-            long over_b = (std::min)((long)r.bottom, pos_br.y);
-            
-            long width = over_r - over_l;
-            long height = over_b - over_t;
-
-            if (width > 0 && height > 0) {
-                long area = width * height;
-                if (area > max_overlap) {
-                    max_overlap = area;
-                    best_candidate = current;
-                }
-            }
-        }
+    if (bridge.context) {
+        g_pd3dDeviceContext = bridge.context;
+        g_pd3dDeviceContext->AddRef();
+    } else {
+        g_pd3dDevice->GetImmediateContext(&g_pd3dDeviceContext);
     }
-    return best_candidate;
+
+    g_clearBeforeRender = bridge.clear_before_render;
+    g_presentAfterRender = bridge.present_after_render;
+    return g_pd3dDevice && g_pd3dDeviceContext;
 }
 
-void OverlayMenu::Initialize(HWND game_hwnd) {
-    std::cout << skCrypt("[*] Searching for stealth overlay window...\n");
-    
-    // Retry for up to 10 seconds to give Discord/NVIDIA time to activate
-    for (int i = 0; i < 10; i++) {
-        target_hwnd = FindOverlayForGame(game_hwnd);
-        if (target_hwnd) break;
-        
-        if (i % 2 == 0) std::cout << skCrypt("[.] Still waiting for Overlay (Discord/NVIDIA/Medal)...\n");
-        Sleep(1000);
+bool OverlayMenu::Initialize(const VisualizationBridgeHost& bridge) {
+    target_hwnd = bridge.hwnd;
+    if (!target_hwnd || !IsWindow(target_hwnd)) {
+        target_hwnd = nullptr;
+        std::cout << skCrypt("[-] Passive visualization host is not available.\n");
+        std::cout << skCrypt("[-] Provide a valid bridge-owned HWND; window discovery and style mutation are disabled.\n");
+        return false;
     }
 
-    if (!target_hwnd) {
-        std::cout << skCrypt("[-] FATAL: No suitable stealth overlay found.\n");
-        std::cout << skCrypt("[-] Please ensure Discord Overlay or NVIDIA Overlay is ENABLED for telemetry.\n");
-        Sleep(5000);
-        exit(0); 
-    } else {
-        char cls[256] = {0};
-        GetClassNameA(target_hwnd, cls, 256);
-        DWORD target_pid = 0;
-        GetWindowThreadProcessId(target_hwnd, &target_pid);
-        
-        std::cout << skCrypt("[+] Hijacking Stealth Window: [") << cls << skCrypt("] (PID: ") << target_pid << skCrypt(")\n");
-        if (strcmp(cls, skCrypt("Chrome_WidgetWin_1")) == 0) std::cout << skCrypt("[*] Found Discord/Overlay target.\n");
-        else if (strcmp(cls, skCrypt("CEF-OSC-WIDGET")) == 0) std::cout << skCrypt("[*] Found NVIDIA Overlay target.\n");
+    char cls[256] = {0};
+    DWORD target_pid = 0;
+    GetClassNameA(target_hwnd, cls, 256);
+    GetWindowThreadProcessId(target_hwnd, &target_pid);
+    std::cout << skCrypt("[+] Passive visualization host attached: [") << cls << skCrypt("] (PID: ") << target_pid << skCrypt(")\n");
+
+    if (target_pid == GetCurrentProcessId()) {
+        MARGINS margin = { -1 };
+        DwmExtendFrameIntoClientArea(target_hwnd, &margin);
     }
 
-    // HIDDEN: SetWindowLong and SetLayeredWindowAttributes removed to avoid IOC detection.
-    // We only use windows that ALREADY have the correct styles.
-
-    MARGINS margin = { -1 };
-    DwmExtendFrameIntoClientArea(target_hwnd, &margin);
-
-    UpdateAntiScreenshot();
-
-    if (!CreateDeviceD3D(target_hwnd)) return;
+    if (bridge.swap_chain) {
+        if (!AcquireBridgeD3D(bridge) || !CreateRenderTarget()) {
+            CleanupDeviceD3D();
+            return false;
+        }
+        std::cout << skCrypt("[+] Bridge renderer using host-provided swap chain.\n");
+    } else if (!CreateDeviceD3D(target_hwnd)) {
+        return false;
+    }
 
     ImGui::CreateContext();
     SetupStyle();
@@ -295,8 +250,8 @@ void OverlayMenu::Initialize(HWND game_hwnd) {
     }
 
     LoadConfig(skCrypt("dataMacro/Config/settings.json"));
-    SetClickable(showmenu);
-    std::cout << skCrypt("[+] Overlay Hijack ready.\n");
+    std::cout << skCrypt("[+] Passive visualization ready.\n");
+    return true;
 }
 
 void OverlayMenu::SetupStyle() {
@@ -486,10 +441,6 @@ void OverlayMenu::RenderFrame() {
         bool f5_current = telemetryMemory::IsKeyDown(VK_F5);
         if (f5_current && !f5_down) {
             showmenu = !showmenu;
-            SetClickable(showmenu);
-            if (showmenu) {
-                SetForegroundWindow(target_hwnd);
-            }
         }
         f5_down = f5_current;
 
@@ -1711,10 +1662,24 @@ void OverlayMenu::RenderFrame() {
 
         ImGui::Render();
         const float clear_color[4] = { 0, 0, 0, 0 };
+        if (!g_pd3dDeviceContext || !g_mainRenderTargetView) return;
+
+        ID3D11RenderTargetView* previous_render_target = nullptr;
+        ID3D11DepthStencilView* previous_depth_stencil = nullptr;
+        g_pd3dDeviceContext->OMGetRenderTargets(1, &previous_render_target, &previous_depth_stencil);
+
         g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, nullptr);
-        g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color);
+        if (g_clearBeforeRender) {
+            g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color);
+        }
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
-        g_pSwapChain->Present(1, 0);
+        g_pd3dDeviceContext->OMSetRenderTargets(1, &previous_render_target, previous_depth_stencil);
+        if (previous_render_target) previous_render_target->Release();
+        if (previous_depth_stencil) previous_depth_stencil->Release();
+
+        if (g_presentAfterRender && g_pSwapChain) {
+            g_pSwapChain->Present(1, 0);
+        }
 
     } catch (...) {}
 }
@@ -1727,24 +1692,8 @@ void OverlayMenu::Shutdown() {
 }
 
 void OverlayMenu::UpdateAntiScreenshot() {
-    // HIDDEN/WARNING: Calling SetWindowDisplayAffinity on a hijacked window (Discord/NVIDIA)
-    // is a major IOC. Anti-integrity_monitors will detect that the window property was changed by a 3rd party.
-    // We disable this for maximum stealth when using external hijacks.
-
-    /*
-    if (!target_hwnd) return;
-    
-    DWORD affinity = anti_screenshot ? 0x00000011 : 0x00000000;
-
-    typedef BOOL(WINAPI* pSWDA)(HWND, DWORD);
-    HMODULE user32 = GetModuleHandleA(skCrypt("user32.dll"));
-    if (user32) {
-        auto swda = (pSWDA)GetProcAddress(user32, skCrypt("SetWindowDisplayAffinity"));
-        if (swda) {
-            swda(target_hwnd, affinity);
-        }
-    }
-    */
+    // Passive visualization does not modify display-affinity or extended
+    // window styles. Screenshot/privacy policy belongs to the owning bridge.
 }
 
 void OverlayMenu::Doprecision_calibration() {

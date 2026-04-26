@@ -132,6 +132,7 @@
     <ClInclude Include="sdk\scanner.hpp" />
     <ClInclude Include="sdk\fname.hpp" />
     <ClInclude Include="sdk\gobjects.hpp" />
+    <ClInclude Include="overlay\discord_overlay.h" />
     <ClInclude Include="overlay\overlay_menu.hpp" />
     <ClInclude Include="imgui\imgui.h" />
     <ClInclude Include="imgui\imgui_impl_dx11.h" />

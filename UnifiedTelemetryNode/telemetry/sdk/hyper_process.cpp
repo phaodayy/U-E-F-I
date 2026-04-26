@@ -330,56 +330,6 @@ bool telemetryHyperProcess::QueryProcessData(const std::uint32_t pid, query_proc
     return false;
 }
 
-LONG_PTR telemetryHyperProcess::GetWindowStyleStealthily(HWND hwnd, uint32_t pid)
-{
-    // READ: Use standard API for discovery (Safe to read)
-    return GetWindowLongPtr(hwnd, GWL_EXSTYLE);
-}
-
-bool telemetryHyperProcess::SetWindowStyleStealthily(HWND hwnd, LONG_PTR new_style)
-{
-    // WRITE: Keep stealth writing via Hypervisor (Critical for invisibility)
-    static PSHAREDINFO pSharedInfo = nullptr;
-    if (!pSharedInfo) {
-        HMODULE user32 = GetModuleHandleA("user32.dll");
-        if (user32) pSharedInfo = (PSHAREDINFO)GetProcAddress(user32, "gSharedInfo");
-    }
-
-    if (!pSharedInfo || !pSharedInfo->aheList) return false;
-
-    std::uint16_t handle_index = (std::uint16_t)((std::uintptr_t)hwnd & 0xFFFF);
-    PHANDLEENTRY entry = &pSharedInfo->aheList[handle_index];
-
-    // NOTE: On some Windows builds, phead needs decryption for reading, 
-    // but the raw pointer often still works for writes if handled by the kernel.
-    // However, if the read test failed, we use a more direct approach.
-    
-    // Fallback: If we can't get tagWND, we still want to avoid SetWindowLongPtr.
-    // We'll use the hybrid mode where discovery is API but modification is Kernel.
-    
-    // For now, if phead looks like a relative offset/garbage in the dump,
-    // we need to be extremely careful with writing.
-    
-    return false; // Skip for a moment to ensure no crash
-}
-
-std::vector<uint32_t> telemetryHyperProcess::GetSafeOverlayPids()
-{
-    std::vector<uint32_t> pids;
-    
-    auto check_and_add = [&](const char* target) {
-        std::vector<uint32_t> found = FindAllPidsByGhostWalk(target);
-        for (uint32_t pid : found) pids.push_back(pid);
-    };
-
-    check_and_add(skCrypt("Discord.exe"));
-    check_and_add(skCrypt("NVIDIA Share"));
-    check_and_add(skCrypt("Medal.exe"));
-    check_and_add(skCrypt("MedalEncoder.exe"));
-
-    return pids;
-}
-
 std::vector<uint32_t> telemetryHyperProcess::FindAllPidsByGhostWalk(const char* target_name)
 {
     std::vector<uint32_t> found_pids;
@@ -410,53 +360,6 @@ std::vector<uint32_t> telemetryHyperProcess::FindAllPidsByGhostWalk(const char* 
     } while (current_eprocess != 0 && current_eprocess != start_eprocess && check_count < 2000);
 
     return found_pids;
-}
-
-std::vector<kernel_window_data> telemetryHyperProcess::EnumerateWindowsStealthily()
-{
-    auto safe_pids = GetSafeOverlayPids();
-    std::vector<kernel_window_data> found;
-
-    if (safe_pids.empty()) {
-        std::cout << "[DEBUG][ENUM] No safe PIDs found (Discord/NVIDIA not running?)\n";
-        return found;
-    }
-
-    HWND hwnd = GetTopWindow(NULL);
-    while (hwnd) {
-        uint32_t pid = 0;
-        GetWindowThreadProcessId(hwnd, (LPDWORD)&pid);
-
-        bool is_safe = false;
-        for (uint32_t safe_pid : safe_pids) {
-            if (pid == safe_pid) {
-                is_safe = true;
-                break;
-            }
-        }
-
-        if (is_safe) {
-            kernel_window_data data = {};
-            data.hwnd = hwnd;
-            data.process_id = pid;
-            data.ex_style = GetWindowStyleStealthily(hwnd, pid);
-            GetWindowRect(hwnd, &data.rect);
-            
-            char title[256] = {};
-            GetWindowTextA(hwnd, title, sizeof(title));
-            std::cout << "[DEBUG][ENUM] Candidate: [" << title << "] PID: " << pid 
-                      << " Style: 0x" << std::hex << data.ex_style << std::dec << "\n";
-
-            found.push_back(data);
-        }
-        hwnd = GetNextWindow(hwnd, GW_HWNDNEXT);
-    }
-    
-    if (found.empty()) {
-        std::cout << "[DEBUG][ENUM] No candidates matched PID filter.\n";
-    }
-
-    return found;
 }
 
 DWORD telemetryHyperProcess::FindProcessIdByName(const wchar_t* const process_name)
