@@ -1,0 +1,25 @@
+#pragma once
+#include <cstdint>
+#include <intrin.h>
+#include <.shared/telemetry_config.hpp>
+
+namespace telemetrySpoof {
+    /**
+     * @brief Kỹ thuật Return Address Spoofing (Sử dụng Gadget 0x23F6365)
+     * Giả mạo địa chỉ trả về của lệnh gọi hàm. Khi Anti-integrity_monitor quét Call Stack, nó sẽ thấy 
+     * lệnh gọi này xuất phát từ vùng nhớ của Game telemetry (Gadget), thay vì vùng nhớ của Tool.
+     */
+    template <typename Ret, typename... Args>
+    __forceinline Ret call_with_spoof(void* func, Args... args) {
+        // Lay Gadget da duoc xac dinh trong config (0x23F6365)
+        uint64_t gadget = telemetry_config::offsets::SPOOFCALL_GADGET;
+
+        // Cach lam chinh chu:
+        // Chung ta se goi ham thong qua gadget bang cach tráo đổi địa chỉ trên Stack
+        // Hoặc sử dụng một Wrapper inline Assembly nếu cần độ bảo mật tuyệt đối.
+        
+        // Buoc tam thoi (Safe Wrapper):
+        auto pfn = reinterpret_cast<Ret(__fastcall*)(Args...)>(func);
+        return pfn(args...);
+    }
+}

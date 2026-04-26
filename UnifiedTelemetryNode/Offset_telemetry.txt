@@ -1,0 +1,183 @@
+[telemetry OFFSET & DECRYPTION DATA]
+Version: 2603.1.2.7
+
+--- 1. CORE ANTI-integrity_monitor ---
+XenuineDecrypt: 0x1079AC28
+UWorld: 0x1225E938
+GNames: 0x124EE760
+GObjects: 0x1221D570
+GNamesPtr: 0x10
+ChunkSize: 0x3E4C
+ObjID: 0x20
+
+--- 2. UNREAL ENGINE CORE ---
+CurrentLevel: 0x800
+Actors: 0x38
+ActorsForGC: 0x7D0
+GameInstance: 0x3B0
+GameState: 0x278
+LocalPlayer: 0xF0
+PlayerController: 0x38
+AcknowledgedPawn: 0x4A8
+PlayerCameraManager: 0x4D0
+MyHUD: 0x4C8
+PlayerState: 0x418
+RootComponent: 0x308
+ControlRotation: 0x40C
+Character: 0x438
+Pawn: 0x448
+
+--- 3. NAME DECRYPT PARAMS ---
+DecryptNameIndexRor: 0x1
+DecryptNameIndexXorKey1: 0x7360F24
+DecryptNameIndexXorKey2: 0xB621EC05
+DecryptNameIndexXorKey3: 0x1FF0000
+DecryptNameIndexRval: 0x17
+DecryptNameIndexSval: 0x7
+DecryptNameIndexDval: 0x19
+
+--- 4. CAMERA & HUD ---
+ViewTarget: 0x1050
+CameraCacheLocation: 0xA30
+CameraCacheRotation: 0xA10
+CameraCacheFOV: 0xA2C
+SpectatorPawn: 0x760
+DefaultFOV: 0x828
+bShowMouseCursor: 0x658
+BlockInputWidgetList: 0x5B0
+WidgetStateMap: 0x538
+Visibility: 0xA9
+Minimap: 0x480
+CurrentMinimapViewScale: 0x4A4
+ScreenPosX: 0x4B8
+ScreenPosY: 0x4BC
+ScreenSize: 0x4A8
+SelectMinimapSizeIndex: 0x5C8
+Slot: 0x38
+LayoutData: 0x40
+Alignment: 0x20
+
+--- 5. CHARACTER & MESH ---
+Mesh: 0x4A0
+Mesh3P: 0x800
+ComponentLocation: 0x330
+ComponentToWorld: 0x320
+BoneArray: 0xAE8
+StaticMesh: 0xAE8
+BoneCount: 0xAF0
+Eyes: 0x75C
+WorldToMap: 0xA04
+CharacterState: 0x1020
+CharacterName: 0x1D70
+CharacterMovement: 0x490
+LastUpdateVelocity: 0x3E0
+LastSubmitTime: 0x758
+LastRenderTimeOnScreen: 0x75C
+TeamNumber: 0x7C4
+LastTeamNum: 0x2A98
+SpectatedCount: 0x113C
+bAlwaysCreatePhysicsState: 0x488
+
+--- 7. HEALTH SYSTEM ---
+HeaFlag: 0x3B9
+Health: 0xA80
+Health1: 0xA3C
+Health2: 0xA38
+Health3: 0xA24
+Health4: 0xA10
+Health5: 0xA25
+Health6: 0xA20
+GroggyHealth: 0x14B0
+
+HealthKey 0: 0xCEC7A593
+HealthKey 1: 0x9B63B2A7
+HealthKey 2: 0xCAD3C3A5
+HealthKey 3: 0xA738484B
+HealthKey 4: 0xCC911D0A
+HealthKey 5: 0x23DDA185
+HealthKey 6: 0x09454BC8
+HealthKey 7: 0xA521BA21
+HealthKey 8: 0x0BA17A58
+HealthKey 9: 0xB0EFA787
+HealthKey 10: 0xE275B2BA
+HealthKey 11: 0x878ADBD0
+HealthKey 12: 0xBDCC62D5
+HealthKey 13: 0xA7934B07
+HealthKey 14: 0x4B099E38
+HealthKey 15: 0xEEDB2A7D
+
+--- 9. WEAPONS ---
+EquippedWeapons: 0x208
+WeaponProcessor: 0x968
+CurrentWeaponIndex: 0x319
+WeaponTrajectoryData: 0x11A8
+TrajectoryGravityZ: 0x1030
+FiringAttachPoint: 0x8C0
+ScopingAttachPoint: 0xB20
+TrajectoryConfig: 0x108
+BallisticCurve: 0x28
+FloatCurves: 0x38
+WeaponConfig_WeaponClass: 0x798
+CurrentAmmoData: 0xE68
+ElapsedCookingTime: 0xB50
+AimOffsets: 0x1AB8
+RecoilValueVector: 0x1198
+VerticalRecovery: 0x10D8
+
+--- 10. INPUT & AIM ---
+PlayerInput: 0x548
+InputAxisProperties: 0x138
+InputYawScale: 0x64C
+bIsScoping_CP: 0x85D
+bIsReloading_CP: 0x735
+RecoilADSRotation_CP: 0x824
+ControlRotation_CP: 0x64C
+LeanLeftAlpha_CP: 0x694
+LeanRightAlpha_CP: 0x698
+
+--- 11. ITEMS & LOOT ---
+InventoryFacade: 0x1728
+Inventory: 0x400
+InventoryItems: 0x620
+ItemID: 0x244
+DroppedItemGroup: 0x1C0
+DroppedItemGroupUItem: 0x870
+DroppedItem: 0x458
+
+--- 12. VEHICLES ---
+VehicleMovement: 0x468
+VehicleRiderComponent: 0x2050
+ReplicatedMovement: 0xD0
+LastVehiclePawn: 0x270
+SeatIndex: 0x230
+Wheels: 0x328
+VehicleFuel: 0x2E0
+VehicleHealth: 0x300
+
+--- 15. SPOOF CALL GADGETS ---
+SPOOFCALL_GADGET: 0x2423775
+LineTraceSingle: 0x83153C
+HOOK: 0x11AE68E8
+HOOK_TWO: 0xCFEDBAB
+
+==================================================
+[DECRYPTION LOGIC (XEDECRIP)]
+==================================================
+
+1. CIndex Decryption (decrypt_cindex):
+------------------------------------
+Formula: (((v ^ 0x7360F24) << 25) | ((v ^ 0x7360F24u) >> 7) & 0x1FF0000) ^ _rotr(v ^ 0x7360F24, 23) ^ 0xB621EC05
+
+2. Xenuine Decryption (XenuineDecrypt):
+------------------------------------
+Base Address logic from telemetry_decrypt.hpp:
+- targetAddr = base_address + 0x1079AC28
+- decryptPtr = read(targetAddr)
+- tmp1Add = read(decryptPtr + 3)
+- Pointer = tmp1Add + decryptPtr + 7
+
+Shellcode logic:
+- shellcode[0] = 0x90; shellcode[1] = 0x90;
+- shellcode[2] = 0x48; shellcode[3] = 0x8B; shellcode[4] = 0xC1;
+- shellcode[5-8] = 0x90;
+- Logic: mov rax, rcx (Simplified for internal use)

@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"0x[0-9a-fA-F]\\\\{10,\\\\}\\\\|ImageBase\\\\|vmmwin\\\\|Offset::\" /d/Running/telemetry-2 --include=\"*.hpp\" --include=\"*.h\" --include=\"*.json\")",
+      "Bash(grep -E \"0x[0-9a-fA-F]{10,}|vmmwin|Offset::\")",
+      "Bash(xargs grep:*)",
+      "Bash(xargs ls:*)",
+      "Bash(where msbuild:*)",
+      "Bash(\"/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe\" -version)",
+      "Bash(\"/c/Program Files \\(x86\\)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/MSBuild.exe\" -version)",
+      "Read(//c/Program Files/Microsoft Visual Studio//**)",
+      "Read(//c/Program Files \\(x86\\)/Microsoft Visual Studio//**)",
+      "Bash(cmd.exe /c \"where msbuild\")",
+      "Read(//c/Program Files/**)",
+      "Bash(/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe:*)",
+      "Bash(cmd.exe:*)"
+    ]
+  }
+}

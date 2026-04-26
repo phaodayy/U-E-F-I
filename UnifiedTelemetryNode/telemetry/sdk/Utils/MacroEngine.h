@@ -1,0 +1,1238 @@
+#pragma once
+#include <algorithm>
+#include <cctype>
+#include <cmath>
+#include <filesystem>
+#include <fstream>
+#include <limits>
+#include <nlohmann/json.hpp>
+#include <string>
+#include <unordered_map>
+#include <vector>
+#include "../context.hpp"
+#include "../fname.hpp"
+#include "../memory.hpp"
+#include "../offsets.hpp"
+#include "../telemetry_decrypt.hpp"
+#include "Driver.h"
+#include "Utils.h"
+#include "../Common/Data.h"
+
+using json = nlohmann::json;
+namespace fs = std::filesystem;
+
+enum WeaponCategory
+{
+    CAT_AR, CAT_SR, CAT_DMR, CAT_SMG, CAT_LMG, CAT_SG, CAT_PT, CAT_OTHER, CAT_NONE
+};
+
+class MacroEngine
+{
+public:
+    static inline json current_gun_data;
+    static inline json global_config;
+    static inline std::string current_weapon_name = "";
+    static inline WeaponCategory current_category = CAT_NONE;
+    static inline int bullet_index = 0;
+    static inline ULONGLONG last_fire_time = 0;
+
+    static inline int current_scope = 0;
+    static inline int current_muzzle = 0;
+    static inline int current_grip = 0;
+
+    static inline float global_multiplier = 1.0f;
+    static inline bool macro_enabled = false;
+    static inline bool macro_humanize = true;
+    static inline bool ads_only = true;
+    static inline int macro_mode = 1;
+    static inline float res_scale_x = 1.0f;
+    static inline float res_scale_y = 1.0f;
+
+    // Runtime knobs to avoid fixed hardcoded behavior.
+    static inline int recoil_reset_ms = 300;
+    static inline int pull_delay_ms = 9;
+    static inline int pull_delay_jitter_ms = 2;
+    static inline int x_jitter_range = 1;
+    static inline float humanize_y_min = 0.95f;
+    static inline float humanize_y_max = 1.05f;
+    static inline float angle_to_pixel_x = 20.0f;
+    static inline float angle_to_pixel_y = 20.0f;
+    static inline float yaw_gain = 0.40f;
+    static inline float pitch_gain = 1.00f;
+    static inline float angle_deadzone = 0.01f;
+    static inline float ar_max_step_x = 50.0f;
+    static inline float ar_max_step_y = 50.0f;
+    static inline float sr_max_step_x = 10.0f;
+    static inline float sr_max_step_y = 10.0f;
+    static inline float dmr_max_step_x = 15.0f;
+    static inline float dmr_max_step_y = 15.0f;
+    static inline bool ar_trigger_enabled = false;
+    static inline bool sr_trigger_enabled = false;
+    static inline bool dmr_trigger_enabled = false;
+    static inline bool sg_trigger_enabled = false;
+    static inline float ar_trigger_fov = 2.5f;
+    static inline float sr_trigger_fov = 1.5f;
+    static inline float dmr_trigger_fov = 2.0f;
+    static inline float sg_trigger_fov = 4.0f;
+    static inline int trigger_delay_ms = 120;
+    static inline int sr_autoshot_delay1 = 50;
+    static inline int sr_autoshot_delay2 = 1200;
+    static inline float ar_base_smoothing = 1.0f;
+    static inline float sr_base_smoothing = 1.2f;
+    static inline float dmr_base_smoothing = 1.1f;
+    static inline float max_smooth_increase = 0.25f;
+    static inline float smooth_fov = 10.0f;
+
+    static inline uint64_t sr_sequence_start = 0;
+
+    struct AngleRotation
+    {
+        float Pitch;
+        float Yaw;
+        float Roll;
+    };
+
+    static inline bool angle_anchor_valid = false;
+    static inline float angle_anchor_yaw = 0.0f;
+    static inline float angle_anchor_pitch = 0.0f;
+    static inline float angle_moved_x = 0.0f;
+    static inline float angle_moved_y = 0.0f;
+    static inline bool trigger_firing = false;
+
+    static inline std::string external_base_path = "";
+    static inline bool prefer_external_data = true;
+
+    static inline bool has_config_write_time = false;
+    static inline fs::file_time_type config_write_time = {};
+    static inline ULONGLONG last_config_check_tick = 0;
+
+    static inline std::unordered_map<std::string, fs::file_time_type> weapon_write_times;
+    static inline ULONGLONG last_weapon_check_tick = 0;
+
+    static bool FileExists(const std::string& path)
+    {
+        std::ifstream f(path.c_str());
+        return f.good();
+    }
+
+    static std::string EnsureTrailingSlash(std::string path)
+    {
+        if (!path.empty() && path.back() != '\\' && path.back() != '/')
+        {
+            path.push_back('\\');
+        }
+        return path;
+    }
+
+    static std::string GetExecutableDir()
+    {
+        char exePath[MAX_PATH] = {};
+        GetModuleFileNameA(nullptr, exePath, MAX_PATH);
+
+        std::string dir = exePath;
+        const size_t pos = dir.find_last_of("\\/");
+        if (pos != std::string::npos)
+        {
+            dir = dir.substr(0, pos + 1);
+        }
+        return EnsureTrailingSlash(dir);
+    }
+
+    static std::string ResolveExternalBasePath()
+    {
+        const std::string exeDir = GetExecutableDir();
+        std::vector<std::string> candidates;
+        candidates.reserve(4);
+
+        candidates.push_back(exeDir);
+
+        std::string exeParent = exeDir;
+        if (!exeParent.empty() && (exeParent.back() == '\\' || exeParent.back() == '/'))
+        {
+            exeParent.pop_back();
+        }
+        const size_t ppos = exeParent.find_last_of("\\/");
+        if (ppos != std::string::npos)
+        {
+            candidates.push_back(EnsureTrailingSlash(exeParent.substr(0, ppos + 1)));
+        }
+
+        try
+        {
+            candidates.push_back(EnsureTrailingSlash(fs::current_path().string()));
+        }
+        catch (...)
+        {
+        }
+
+        for (const std::string& base : candidates)
+        {
+            const std::string cfgPath = base + "dataMacro\\Config\\macro_config.json";
+            const std::string gunDir = base + "dataMacro\\GunData\\";
+            if (FileExists(cfgPath) || fs::exists(gunDir))
+            {
+                return base;
+            }
+        }
+
+        return exeDir;
+    }
+
+    static std::string ReadTextFileSafe(const std::string& path)
+    {
+        try
+        {
+            return Utils::ReadConfigFile(path);
+        }
+        catch (...)
+        {
+            return "";
+        }
+    }
+
+    static int ReadIntConfig(const json& src, const char* key, const int defaultValue, const int minValue, const int maxValue)
+    {
+        try
+        {
+            if (!src.contains(key))
+            {
+                return defaultValue;
+            }
+
+            const int val = src[key].get<int>();
+            return std::clamp(val, minValue, maxValue);
+        }
+        catch (...)
+        {
+            return defaultValue;
+        }
+    }
+
+    static float ReadFloatConfig(const json& src, const char* key, const float defaultValue, const float minValue, const float maxValue)
+    {
+        try
+        {
+            if (!src.contains(key))
+            {
+                return defaultValue;
+            }
+
+            const float val = src[key].get<float>();
+            return std::clamp(val, minValue, maxValue);
+        }
+        catch (...)
+        {
+            return defaultValue;
+        }
+    }
+
+    static std::string ConfigPath()
+    {
+        return external_base_path + "dataMacro\\Config\\macro_config.json";
+    }
+
+    static std::string WeaponPath(const std::string& weapon)
+    {
+        return external_base_path + "dataMacro\\GunData\\" + weapon + ".json";
+    }
+
+    static void RefreshResolutionScale()
+    {
+        const int currentX = GetSystemMetrics(SM_CXSCREEN);
+        const int currentY = GetSystemMetrics(SM_CYSCREEN);
+
+        int configX = currentX;
+        int configY = currentY;
+
+        if (!global_config.is_null() && global_config.contains("resolution"))
+        {
+            try
+            {
+                if (global_config["resolution"].is_string())
+                {
+                    std::string resStr = global_config["resolution"].get<std::string>();
+                    std::transform(resStr.begin(), resStr.end(), resStr.begin(), [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+                    if (resStr != "auto")
+                    {
+                        const size_t xPos = resStr.find('x');
+                        if (xPos != std::string::npos)
+                        {
+                            configX = std::stoi(resStr.substr(0, xPos));
+                            configY = std::stoi(resStr.substr(xPos + 1));
+                        }
+                    }
+                }
+                else if (global_config["resolution"].is_object())
+                {
+                    const auto& r = global_config["resolution"];
+                    if (r.contains("x"))
+                    {
+                        configX = r["x"].get<int>();
+                    }
+                    if (r.contains("y"))
+                    {
+                        configY = r["y"].get<int>();
+                    }
+                }
+            }
+            catch (...)
+            {
+                configX = currentX;
+                configY = currentY;
+            }
+        }
+
+        if (configX <= 0 || configY <= 0)
+        {
+            configX = currentX;
+            configY = currentY;
+        }
+
+        res_scale_x = static_cast<float>(currentX) / static_cast<float>(configX);
+        res_scale_y = static_cast<float>(currentY) / static_cast<float>(configY);
+    }
+
+    static void ApplyRuntimeConfig()
+    {
+        recoil_reset_ms = 300;
+        pull_delay_ms = 9;
+        pull_delay_jitter_ms = 2;
+        x_jitter_range = 1;
+        humanize_y_min = 0.95f;
+        humanize_y_max = 1.05f;
+        angle_to_pixel_x = 20.0f;
+        angle_to_pixel_y = 20.0f;
+        yaw_gain = 0.40f;
+        pitch_gain = 1.00f;
+        angle_deadzone = 0.01f;
+        macro_mode = 1;
+        prefer_external_data = true;
+
+        if (global_config.is_null() || !global_config.contains("runtime") || !global_config["runtime"].is_object())
+        {
+            return;
+        }
+
+        const auto& runtime = global_config["runtime"];
+        recoil_reset_ms = ReadIntConfig(runtime, "recoil_reset_ms", recoil_reset_ms, 50, 2000);
+        pull_delay_ms = ReadIntConfig(runtime, "pull_delay_ms", pull_delay_ms, 0, 50);
+        pull_delay_jitter_ms = ReadIntConfig(runtime, "pull_delay_jitter_ms", pull_delay_jitter_ms, 0, 50);
+        x_jitter_range = ReadIntConfig(runtime, "x_jitter_range", x_jitter_range, 0, 12);
+        humanize_y_min = ReadFloatConfig(runtime, "humanize_y_min", humanize_y_min, 0.10f, 3.0f);
+        humanize_y_max = ReadFloatConfig(runtime, "humanize_y_max", humanize_y_max, 0.10f, 3.0f);
+        angle_to_pixel_x = ReadFloatConfig(runtime, "angle_to_pixel_x", angle_to_pixel_x, 0.1f, 200.0f);
+        angle_to_pixel_y = ReadFloatConfig(runtime, "angle_to_pixel_y", angle_to_pixel_y, 0.1f, 200.0f);
+        yaw_gain = ReadFloatConfig(runtime, "yaw_gain", yaw_gain, 0.01f, 10.0f);
+        pitch_gain = ReadFloatConfig(runtime, "pitch_gain", pitch_gain, 0.01f, 10.0f);
+        angle_deadzone = ReadFloatConfig(runtime, "angle_deadzone", angle_deadzone, 0.0f, 1.5f);
+        ar_max_step_x = ReadFloatConfig(runtime, "ar_max_step_x", ar_max_step_x, 0.1f, 500.0f);
+        ar_max_step_y = ReadFloatConfig(runtime, "ar_max_step_y", ar_max_step_y, 0.1f, 500.0f);
+        sr_max_step_x = ReadFloatConfig(runtime, "sr_max_step_x", sr_max_step_x, 0.1f, 500.0f);
+        sr_max_step_y = ReadFloatConfig(runtime, "sr_max_step_y", sr_max_step_y, 0.1f, 500.0f);
+        dmr_max_step_x = ReadFloatConfig(runtime, "dmr_max_step_x", dmr_max_step_x, 0.1f, 500.0f);
+        dmr_max_step_y = ReadFloatConfig(runtime, "dmr_max_step_y", dmr_max_step_y, 0.1f, 500.0f);
+        
+        ar_trigger_fov = ReadFloatConfig(runtime, "ar_trigger_fov", ar_trigger_fov, 0.1f, 50.0f);
+        sr_trigger_fov = ReadFloatConfig(runtime, "sr_trigger_fov", sr_trigger_fov, 0.1f, 50.0f);
+        dmr_trigger_fov = ReadFloatConfig(runtime, "dmr_trigger_fov", dmr_trigger_fov, 0.1f, 50.0f);
+        sg_trigger_fov = ReadFloatConfig(runtime, "sg_trigger_fov", sg_trigger_fov, 0.1f, 50.0f);
+
+        trigger_delay_ms = ReadIntConfig(runtime, "trigger_delay_ms", trigger_delay_ms, 0, 5000);
+        sr_autoshot_delay1 = ReadIntConfig(runtime, "sr_autoshot_delay1", sr_autoshot_delay1, 0, 1000);
+        sr_autoshot_delay2 = ReadIntConfig(runtime, "sr_autoshot_delay2", sr_autoshot_delay2, 0, 5000);
+        
+        ar_base_smoothing = ReadFloatConfig(runtime, "ar_base_smoothing", ar_base_smoothing, 1.0f, 50.0f);
+        sr_base_smoothing = ReadFloatConfig(runtime, "sr_base_smoothing", sr_base_smoothing, 1.0f, 50.0f);
+        dmr_base_smoothing = ReadFloatConfig(runtime, "dmr_base_smoothing", dmr_base_smoothing, 1.0f, 50.0f);
+        max_smooth_increase = ReadFloatConfig(runtime, "max_smooth_increase", max_smooth_increase, 0.0f, 20.0f);
+        smooth_fov = ReadFloatConfig(runtime, "smooth_fov", smooth_fov, 0.0f, 100.0f);
+
+        if (runtime.contains("ar_trigger_enabled")) try { ar_trigger_enabled = runtime["ar_trigger_enabled"].get<bool>(); } catch (...) {}
+        if (runtime.contains("sr_trigger_enabled")) try { sr_trigger_enabled = runtime["sr_trigger_enabled"].get<bool>(); } catch (...) {}
+        if (runtime.contains("dmr_trigger_enabled")) try { dmr_trigger_enabled = runtime["dmr_trigger_enabled"].get<bool>(); } catch (...) {}
+        if (runtime.contains("sg_trigger_enabled")) try { sg_trigger_enabled = runtime["sg_trigger_enabled"].get<bool>(); } catch (...) {}
+
+        macro_mode = ReadIntConfig(runtime, "macro_mode", macro_mode, 1, 2);
+
+        if (humanize_y_min > humanize_y_max)
+        {
+            std::swap(humanize_y_min, humanize_y_max);
+        }
+
+        if (runtime.contains("prefer_external_data"))
+        {
+            try
+            {
+                prefer_external_data = runtime["prefer_external_data"].get<bool>();
+            }
+            catch (...)
+            {
+            }
+        }
+    }
+
+    static void LoadGlobalConfig(const bool forceReload = false)
+    {
+        const std::string cfgPath = ConfigPath();
+        std::string configText = "";
+        bool loadedExternal = false;
+
+        if (prefer_external_data)
+        {
+            configText = ReadTextFileSafe(cfgPath);
+            loadedExternal = !configText.empty();
+        }
+
+        if (configText.empty() && !forceReload)
+        {
+            return;
+        }
+
+        try
+        {
+            global_config = configText.empty() ? json::object() : json::parse(configText);
+        }
+        catch (...)
+        {
+            global_config = json::object();
+        }
+
+        RefreshResolutionScale();
+        ApplyRuntimeConfig();
+
+        if (loadedExternal)
+        {
+            try
+            {
+                config_write_time = fs::last_write_time(cfgPath);
+                has_config_write_time = true;
+            }
+            catch (...)
+            {
+                has_config_write_time = false;
+            }
+        }
+        else
+        {
+            has_config_write_time = false;
+        }
+    }
+
+    static void TryHotReloadConfig()
+    {
+        const ULONGLONG now = GetTickCount64();
+        if (now - last_config_check_tick < 500)
+        {
+            return;
+        }
+        last_config_check_tick = now;
+
+        if (!prefer_external_data)
+        {
+            return;
+        }
+
+        const std::string cfgPath = ConfigPath();
+        if (!FileExists(cfgPath))
+        {
+            return;
+        }
+
+        try
+        {
+            const auto currentWrite = fs::last_write_time(cfgPath);
+            if (!has_config_write_time || currentWrite != config_write_time)
+            {
+                LoadGlobalConfig(true);
+            }
+        }
+        catch (...)
+        {
+        }
+    }
+
+    static void Initialize()
+    {
+        external_base_path = ResolveExternalBasePath();
+        weapon_write_times.clear();
+        has_config_write_time = false;
+        LoadGlobalConfig(true);
+    }
+
+    static std::string NormalizeWeaponName(const std::string& raw)
+    {
+        std::string name = raw;
+        if (name.find("Weap") == 0) name.erase(0, 4);
+        if (name.find("Item_Weapon_") == 0) name.erase(0, 12);
+        if (name.find("_C") != std::string::npos) name.erase(name.find("_C"));
+
+        if (name == "HK416") return "m416";
+        if (name == "BerylM762") return "m762";
+        if (name == "AK47") return "akm";
+        if (name == "SCAR-L") return "scar-l";
+        if (name == "FNFal") return "slr";
+        if (name == "G36C") return "g36c";
+        if (name == "Mk14") return "mk14";
+        if (name == "M249") return "m249";
+        if (name == "UMP") return "ump45";
+        if (name == "Vector") return "vector";
+        if (name == "Uzi") return "uzi";
+        if (name == "Thompson") return "tommygun";
+        if (name == "BizonPP19") return "pp19";
+        std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+        return name;
+    }
+
+    static WeaponCategory GetCategoryByName(const std::string& name)
+    {
+        if (name == "m416" || name == "m762" || name == "akm" || name == "scar-l" || name == "g36c" || name == "aug" || name == "qbz" || name == "k2" || name == "ace32" || name == "famas") return CAT_AR;
+        if (name == "slr" || name == "sks" || name == "mk14" || name == "qbu" || name == "mini14" || name == "vss" || name == "mk12" || name == "dragunov") return CAT_DMR;
+        if (name == "kar98k" || name == "m24" || name == "awm" || name == "mosin" || name == "lynx" || name == "win94") return CAT_SR;
+        if (name == "ump45" || name == "vector" || name == "uzi" || name == "tommygun" || name == "pp19" || name == "mp5k" || name == "p90" || name == "js9") return CAT_SMG;
+        if (name == "m249" || name == "dp28" || name == "mg3") return CAT_LMG;
+        if (name == "s12k" || name == "s1897" || name == "s686" || name == "dbs" || name == "o12") return CAT_SG;
+        if (name == "p18c" || name == "p1911" || name == "p92" || name == "r1895" || name == "r45" || name == "deagle" || name == "skorpion") return CAT_PT;
+        return CAT_NONE;
+    }
+
+    struct ActiveProfile
+    {
+        bool enabled = true;
+        float multiplier = 1.0f;
+        int resetMs = 300;
+        int delayMs = 9;
+        int delayJitterMs = 2;
+        int xJitterRange = 1;
+        float humanizeMin = 0.95f;
+        float humanizeMax = 1.05f;
+        float angleToPixelX = 20.0f;
+        float angleToPixelY = 20.0f;
+        float yawGain = 0.40f;
+        float pitchGain = 1.00f;
+        float deadzone = 0.01f;
+        float arMaxStepX = 50.0f, arMaxStepY = 50.0f;
+        float srMaxStepX = 10.0f, srMaxStepY = 10.0f;
+        float dmrMaxStepX = 15.0f, dmrMaxStepY = 15.0f;
+        bool arTriggerEnabled = false;
+        bool srTriggerEnabled = false;
+        bool dmrTriggerEnabled = false;
+        bool sgTriggerEnabled = false;
+        float arTriggerFov = 2.5f;
+        float srTriggerFov = 1.5f;
+        float dmrTriggerFov = 2.0f;
+        float sgTriggerFov = 4.0f;
+        int triggerDelayMs = 120;
+        int srDelay1 = 50, srDelay2 = 1200;
+        float arBaseSmoothing = 1.0f;
+        float srBaseSmoothing = 1.2f;
+        float dmrBaseSmoothing = 1.1f;
+        float maxSmoothIncrease = 0.25f;
+        float smoothFov = 10.0f;
+    };
+
+    static std::string CategoryKey(const WeaponCategory category)
+    {
+        switch (category)
+        {
+        case CAT_AR: return "AR";
+        case CAT_SR: return "SR";
+        case CAT_DMR: return "DMR";
+        case CAT_SMG: return "SMG";
+        case CAT_LMG: return "LMG";
+        case CAT_SG: return "SG";
+        case CAT_PT: return "PT";
+        default: return "OTHER";
+        }
+    }
+
+    static void ApplyProfileFields(ActiveProfile& out, const json& src)
+    {
+        if (!src.is_object())
+        {
+            return;
+        }
+
+        if (src.contains("enabled"))
+        {
+            try { out.enabled = src["enabled"].get<bool>(); } catch (...) {}
+        }
+
+        out.multiplier = ReadFloatConfig(src, "multiplier", out.multiplier, 0.01f, 10.0f);
+        out.resetMs = ReadIntConfig(src, "reset_ms", out.resetMs, 50, 2000);
+        out.delayMs = ReadIntConfig(src, "delay_ms", out.delayMs, 0, 60);
+        out.delayJitterMs = ReadIntConfig(src, "delay_jitter_ms", out.delayJitterMs, 0, 60);
+        
+        out.arMaxStepX = ReadFloatConfig(src, "ar_max_step_x", out.arMaxStepX, 0.1f, 500.0f);
+        out.arMaxStepY = ReadFloatConfig(src, "ar_max_step_y", out.arMaxStepY, 0.1f, 500.0f);
+        out.srMaxStepX = ReadFloatConfig(src, "sr_max_step_x", out.srMaxStepX, 0.1f, 500.0f);
+        out.srMaxStepY = ReadFloatConfig(src, "sr_max_step_y", out.srMaxStepY, 0.1f, 500.0f);
+        out.dmrMaxStepX = ReadFloatConfig(src, "dmr_max_step_x", out.dmrMaxStepX, 0.1f, 500.0f);
+        out.dmrMaxStepY = ReadFloatConfig(src, "dmr_max_step_y", out.dmrMaxStepY, 0.1f, 500.0f);
+
+        out.arTriggerFov = ReadFloatConfig(src, "ar_trigger_fov", out.arTriggerFov, 0.1f, 50.0f);
+        out.srTriggerFov = ReadFloatConfig(src, "sr_trigger_fov", out.srTriggerFov, 0.1f, 50.0f);
+        out.dmrTriggerFov = ReadFloatConfig(src, "dmr_trigger_fov", out.dmrTriggerFov, 0.1f, 50.0f);
+        out.sgTriggerFov = ReadFloatConfig(src, "sg_trigger_fov", out.sgTriggerFov, 0.1f, 50.0f);
+        out.triggerDelayMs = ReadIntConfig(src, "trigger_delay_ms", out.triggerDelayMs, 0, 5000);
+        out.srDelay1 = ReadIntConfig(src, "sr_autoshot_delay1", out.srDelay1, 0, 1000);
+        out.srDelay2 = ReadIntConfig(src, "sr_autoshot_delay2", out.srDelay2, 0, 5000);
+
+        out.arBaseSmoothing = ReadFloatConfig(src, "ar_base_smoothing", out.arBaseSmoothing, 1.0f, 50.0f);
+        out.srBaseSmoothing = ReadFloatConfig(src, "sr_base_smoothing", out.srBaseSmoothing, 1.0f, 50.0f);
+        out.dmrBaseSmoothing = ReadFloatConfig(src, "dmr_base_smoothing", out.dmrBaseSmoothing, 1.0f, 50.0f);
+        out.maxSmoothIncrease = ReadFloatConfig(src, "max_smooth_increase", out.maxSmoothIncrease, 0.0f, 20.0f);
+        out.smoothFov = ReadFloatConfig(src, "smooth_fov", out.smoothFov, 0.0f, 100.0f);
+
+        if (src.contains("ar_trigger_enabled")) try { out.arTriggerEnabled = src["ar_trigger_enabled"].get<bool>(); } catch (...) {}
+        if (src.contains("sr_trigger_enabled")) try { out.srTriggerEnabled = src["sr_trigger_enabled"].get<bool>(); } catch (...) {}
+        if (src.contains("dmr_trigger_enabled")) try { out.dmrTriggerEnabled = src["dmr_trigger_enabled"].get<bool>(); } catch (...) {}
+        if (src.contains("sg_trigger_enabled")) try { out.sgTriggerEnabled = src["sg_trigger_enabled"].get<bool>(); } catch (...) {}
+        out.xJitterRange = ReadIntConfig(src, "x_jitter", out.xJitterRange, 0, 16);
+        out.humanizeMin = ReadFloatConfig(src, "humanize_min", out.humanizeMin, 0.1f, 3.0f);
+        out.humanizeMax = ReadFloatConfig(src, "humanize_max", out.humanizeMax, 0.1f, 3.0f);
+        out.angleToPixelX = ReadFloatConfig(src, "angle_to_pixel_x", out.angleToPixelX, 0.1f, 200.0f);
+        out.angleToPixelY = ReadFloatConfig(src, "angle_to_pixel_y", out.angleToPixelY, 0.1f, 200.0f);
+        out.yawGain = ReadFloatConfig(src, "yaw_gain", out.yawGain, 0.01f, 10.0f);
+        out.pitchGain = ReadFloatConfig(src, "pitch_gain", out.pitchGain, 0.01f, 10.0f);
+        out.deadzone = ReadFloatConfig(src, "angle_deadzone", out.deadzone, 0.0f, 1.5f);
+
+        if (out.humanizeMin > out.humanizeMax)
+        {
+            std::swap(out.humanizeMin, out.humanizeMax);
+        }
+    }
+
+    static ActiveProfile GetActiveProfile()
+    {
+        ActiveProfile profile;
+        profile.enabled = true;
+        profile.multiplier = global_multiplier;
+        profile.resetMs = recoil_reset_ms;
+        profile.delayMs = pull_delay_ms;
+        profile.delayJitterMs = pull_delay_jitter_ms;
+        profile.xJitterRange = x_jitter_range;
+        profile.humanizeMin = humanize_y_min;
+        profile.humanizeMax = humanize_y_max;
+        profile.angleToPixelX = angle_to_pixel_x;
+        profile.angleToPixelY = angle_to_pixel_y;
+        profile.yawGain = yaw_gain;
+        profile.pitchGain = pitch_gain;
+        profile.deadzone = angle_deadzone;
+        profile.arMaxStepX = ar_max_step_x;
+        profile.arMaxStepY = ar_max_step_y;
+        profile.srMaxStepX = sr_max_step_x;
+        profile.srMaxStepY = sr_max_step_y;
+        profile.dmrMaxStepX = dmr_max_step_x;
+        profile.dmrMaxStepY = dmr_max_step_y;
+        
+        profile.arTriggerEnabled = ar_trigger_enabled;
+        profile.srTriggerEnabled = sr_trigger_enabled;
+        profile.dmrTriggerEnabled = dmr_trigger_enabled;
+        profile.sgTriggerEnabled = sg_trigger_enabled;
+        profile.arTriggerFov = ar_trigger_fov;
+        profile.srTriggerFov = sr_trigger_fov;
+        profile.dmrTriggerFov = dmr_trigger_fov;
+        profile.sgTriggerFov = sg_trigger_fov;
+        profile.triggerDelayMs = trigger_delay_ms;
+        profile.srDelay1 = sr_autoshot_delay1;
+        profile.srDelay2 = sr_autoshot_delay2;
+        
+        profile.arBaseSmoothing = ar_base_smoothing;
+        profile.srBaseSmoothing = sr_base_smoothing;
+        profile.dmrBaseSmoothing = dmr_base_smoothing;
+        profile.maxSmoothIncrease = max_smooth_increase;
+        profile.smoothFov = smooth_fov;
+
+        if (global_config.is_null() || !global_config.contains("category_profiles") || !global_config["category_profiles"].is_object())
+        {
+            return profile;
+        }
+
+        const auto& allProfiles = global_config["category_profiles"];
+        const std::string key = CategoryKey(current_category);
+
+        const json* selected = nullptr;
+        if (allProfiles.contains(key) && allProfiles[key].is_object())
+        {
+            selected = &allProfiles[key];
+        }
+        else if (allProfiles.contains("default") && allProfiles["default"].is_object())
+        {
+            selected = &allProfiles["default"];
+        }
+
+        if (selected == nullptr)
+        {
+            return profile;
+        }
+
+        const json* modeNode = selected;
+        if (selected->contains("mode1") || selected->contains("mode2"))
+        {
+            if (macro_mode == 2 && selected->contains("mode2"))
+            {
+                modeNode = &(*selected)["mode2"];
+            }
+            else if (selected->contains("mode1"))
+            {
+                modeNode = &(*selected)["mode1"];
+            }
+        }
+
+        ApplyProfileFields(profile, *selected);
+        if (modeNode != selected)
+        {
+            ApplyProfileFields(profile, *modeNode);
+        }
+        return profile;
+    }
+
+    static void LoadWeaponData(const std::string& weapon)
+    {
+        const std::string weaponFile = weapon + ".json";
+        const std::string weaponPath = WeaponPath(weapon);
+        std::string content = "";
+
+        if (prefer_external_data)
+        {
+            content = ReadTextFileSafe(weaponPath);
+        }
+
+        if (content.empty())
+        {
+            current_gun_data = json();
+            return;
+        }
+
+        try
+        {
+            current_gun_data = json::parse(content);
+        }
+        catch (...)
+        {
+            current_gun_data = json();
+        }
+
+        if (prefer_external_data && FileExists(weaponPath))
+        {
+            try
+            {
+                weapon_write_times[weapon] = fs::last_write_time(weaponPath);
+            }
+            catch (...)
+            {
+            }
+        }
+    }
+
+    static void TryHotReloadCurrentWeapon()
+    {
+        if (!prefer_external_data || current_weapon_name.empty() || current_weapon_name == "None")
+        {
+            return;
+        }
+
+        const ULONGLONG now = GetTickCount64();
+        if (now - last_weapon_check_tick < 350)
+        {
+            return;
+        }
+        last_weapon_check_tick = now;
+
+        const std::string weaponPath = WeaponPath(current_weapon_name);
+        if (!FileExists(weaponPath))
+        {
+            return;
+        }
+
+        try
+        {
+            const auto currentWrite = fs::last_write_time(weaponPath);
+            const auto it = weapon_write_times.find(current_weapon_name);
+            if (it == weapon_write_times.end() || currentWrite != it->second)
+            {
+                LoadWeaponData(current_weapon_name);
+            }
+        }
+        catch (...)
+        {
+        }
+    }
+
+    static void ClassifyAttachment(const std::string& name)
+    {
+        if (name.find("Dot") != std::string::npos || name.find("RedDot") != std::string::npos || name.find("Aimpoint") != std::string::npos) current_scope = 1;
+        else if (name.find("Holo") != std::string::npos) current_scope = 2;
+        else if (name.find("2x") != std::string::npos || name.find("Scope2x") != std::string::npos) current_scope = 3;
+        else if (name.find("3x") != std::string::npos || name.find("Scope3x") != std::string::npos) current_scope = 4;
+        else if (name.find("4x") != std::string::npos || name.find("ACOG") != std::string::npos || name.find("Scope4x") != std::string::npos) current_scope = 5;
+        else if (name.find("6x") != std::string::npos || name.find("Scope6x") != std::string::npos) current_scope = 6;
+        else if (name.find("8x") != std::string::npos || name.find("Scope8x") != std::string::npos || name.find("CQBSS") != std::string::npos) current_scope = 7;
+        else if (name.find("15x") != std::string::npos) current_scope = 8;
+
+        if (name.find("Compensator") != std::string::npos) current_muzzle = 4;
+        else if (name.find("FlashHider") != std::string::npos) current_muzzle = 1;
+        else if (name.find("Suppressor") != std::string::npos || name.find("Silencer") != std::string::npos) current_muzzle = 2;
+
+        if (name.find("Angled") != std::string::npos) current_grip = 2;
+        else if (name.find("Half") != std::string::npos || name.find("HalfGrip") != std::string::npos) current_grip = 3;
+        else if (name.find("Light") != std::string::npos || name.find("LightGrip") != std::string::npos) current_grip = 4;
+        else if (name.find("Thumb") != std::string::npos || name.find("ThumbGrip") != std::string::npos) current_grip = 1;
+        else if (name.find("Vertical") != std::string::npos || name.find("Foregrip") != std::string::npos) current_grip = 1;
+    }
+
+    static void UpdateAttachments(const uint64_t weapon)
+    {
+        current_scope = 0;
+        current_muzzle = 0;
+        current_grip = 0;
+
+        if (!weapon) return;
+
+        const uint64_t attachedBase = telemetryMemory::Read<uint64_t>(weapon + telemetry_config::offsets::AttachedItems);
+        const int attachedCount = telemetryMemory::Read<int>(weapon + telemetry_config::offsets::AttachedItems + 0x8);
+        if (attachedBase > 0x10000 && attachedCount > 0 && attachedCount <= 10)
+        {
+            for (int i = 0; i < attachedCount; ++i)
+            {
+                const uint64_t attachItem = telemetryMemory::Read<uint64_t>(attachedBase + (i * 8));
+                if (attachItem < 0x10000) continue;
+
+                uint64_t itemTableRow = telemetryMemory::Read<uint64_t>(attachItem + telemetry_config::offsets::WeaponAttachmentData);
+                if (itemTableRow < 0x10000)
+                {
+                    itemTableRow = telemetryMemory::Read<uint64_t>(attachItem + telemetry_config::offsets::ItemTable);
+                }
+                if (itemTableRow < 0x10000) continue;
+
+                const uint32_t itemID = telemetryMemory::Read<uint32_t>(itemTableRow + telemetry_config::offsets::ItemID);
+                if (!itemID) continue;
+
+                const std::string name = FNameUtils::GetNameFast(itemID);
+                if (!name.empty() && name.find("Attach") != std::string::npos)
+                {
+                    ClassifyAttachment(name);
+                }
+            }
+        }
+    }
+
+    static float GetSensMultiplier()
+    {
+        if (global_config.is_null() || !global_config.contains("sensitivity"))
+        {
+            return 1.0f;
+        }
+
+        auto& sens = global_config["sensitivity"];
+        std::string key = "none";
+        switch (current_scope)
+        {
+        case 1: key = "reddot"; break;
+        case 2: key = "holosight"; break;
+        case 3: key = "2x"; break;
+        case 4: key = "3x"; break;
+        case 5: key = "4x"; break;
+        case 6: key = "6x"; break;
+        case 7: key = "8x"; break;
+        case 8: key = "15x"; break;
+        default: break;
+        }
+
+        float baseSens = 1.0f;
+        if (sens.contains(key))
+        {
+            try
+            {
+                baseSens = sens[key].get<float>();
+            }
+            catch (...)
+            {
+            }
+        }
+
+        if (telemetryMemory::IsKeyDown(VK_SHIFT) && sens.contains("shift"))
+        {
+            try
+            {
+                baseSens *= sens["shift"].get<float>();
+            }
+            catch (...)
+            {
+            }
+        }
+        return baseSens;
+    }
+
+    static void ForceScan()
+    {
+        TryHotReloadConfig();
+
+        if (!G_LocalPawn) return;
+
+        const uint64_t weaponProc = telemetryMemory::Read<uint64_t>(G_LocalPawn + telemetry_config::offsets::WeaponProcessor);
+        if (!weaponProc) return;
+
+        const uint8_t currentIdx = telemetryMemory::Read<uint8_t>(weaponProc + telemetry_config::offsets::CurrentWeaponIndex);
+        if (currentIdx >= 3)
+        {
+            current_weapon_name = "None";
+            current_gun_data = json();
+            return;
+        }
+
+        const uint64_t equippedAddr = telemetryMemory::Read<uint64_t>(weaponProc + telemetry_config::offsets::EquippedWeapons);
+        const uint64_t weapon = telemetryMemory::Read<uint64_t>(equippedAddr + (currentIdx * 8));
+        if (!weapon)
+        {
+            current_weapon_name = "None";
+            current_gun_data = json();
+            return;
+        }
+
+        const uint32_t objID = telemetry_config::decrypt_cindex(telemetryMemory::Read<uint32_t>(weapon + telemetry_config::offsets::ObjID));
+        const std::string rawWeap = FNameUtils::GetNameFast(objID);
+        const std::string normalized = NormalizeWeaponName(rawWeap);
+
+        if (normalized != current_weapon_name || current_scope == 0)
+        {
+            LoadWeaponData(normalized);
+            current_weapon_name = normalized;
+            current_category = GetCategoryByName(normalized);
+            UpdateAttachments(weapon);
+            bullet_index = 0;
+        }
+    }
+
+    static float NormalizeAngle(float value)
+    {
+        while (value > 180.0f) value -= 360.0f;
+        while (value < -180.0f) value += 360.0f;
+        return value;
+    }
+
+    static void ResetAngleState()
+    {
+        angle_anchor_valid = false;
+        angle_anchor_yaw = 0.0f;
+        angle_anchor_pitch = 0.0f;
+        angle_moved_x = 0.0f;
+        angle_moved_y = 0.0f;
+        bullet_index = 0;
+    }
+
+    static void Update()
+    {
+        if (!G_LocalPawn || !macro_enabled)
+        {
+            if (trigger_firing) { Driver::Up(); trigger_firing = false; }
+            return;
+        }
+
+        TryHotReloadConfig();
+        TryHotReloadCurrentWeapon();
+
+        const uint64_t weaponProc = telemetryMemory::Read<uint64_t>(G_LocalPawn + telemetry_config::offsets::WeaponProcessor);
+        if (!weaponProc) {
+            if (trigger_firing) { Driver::Up(); trigger_firing = false; }
+            return;
+        }
+
+        const uint8_t currentIdx = telemetryMemory::Read<uint8_t>(weaponProc + telemetry_config::offsets::CurrentWeaponIndex);
+        if (currentIdx >= 3) {
+            if (trigger_firing) { Driver::Up(); trigger_firing = false; }
+            return;
+        }
+
+        const uint64_t equippedAddr = telemetryMemory::Read<uint64_t>(weaponProc + telemetry_config::offsets::EquippedWeapons);
+        const uint64_t weapon = telemetryMemory::Read<uint64_t>(equippedAddr + (currentIdx * 8));
+        if (!weapon) {
+            if (trigger_firing) { Driver::Up(); trigger_firing = false; }
+            return;
+        }
+
+        const uint32_t objID = telemetry_config::decrypt_cindex(telemetryMemory::Read<uint32_t>(weapon + telemetry_config::offsets::ObjID));
+        const std::string rawWeap = FNameUtils::GetNameFast(objID);
+        const std::string normalized = NormalizeWeaponName(rawWeap);
+
+        if (normalized != current_weapon_name)
+        {
+            LoadWeaponData(normalized);
+            current_weapon_name = normalized;
+            current_category = GetCategoryByName(normalized);
+            bullet_index = 0;
+            UpdateAttachments(weapon);
+        }
+
+        static ULONGLONG lastAttachmentTick = 0;
+        const ULONGLONG now = GetTickCount64();
+        if (now - lastAttachmentTick > 250)
+        {
+            UpdateAttachments(weapon);
+            lastAttachmentTick = now;
+        }
+
+        CURSORINFO ci = { sizeof(CURSORINFO) };
+        bool hasCursor = false;
+        if (GetCursorInfo(&ci))
+        {
+            hasCursor = (ci.flags & CURSOR_SHOWING) != 0;
+        }
+
+        const uint64_t mesh = telemetryMemory::Read<uint64_t>(G_LocalPawn + telemetry_config::offsets::Mesh);
+        const uint64_t anim = mesh ? telemetryMemory::Read<uint64_t>(mesh + telemetry_config::offsets::AnimScriptInstance) : 0;
+
+        // --- PAOD Context Acquisition ---
+        float currentFOV = 80.0f;
+        const uint64_t cameraManager = telemetryMemory::Read<uint64_t>(G_PlayerController + telemetry_config::offsets::PlayerCameraManager);
+        if (cameraManager) {
+            currentFOV = telemetryMemory::Read<float>(cameraManager + telemetry_config::offsets::CameraCacheFOV);
+        }
+        if (currentFOV < 10.0f || currentFOV > 170.0f) currentFOV = 80.0f;
+
+        bool isInVehicle = false;
+        const uint64_t riderComp = telemetryMemory::Read<uint64_t>(G_LocalPawn + telemetry_config::offsets::VehicleRiderComponent);
+        if (riderComp) {
+            int seatIdx = telemetryMemory::Read<int>(riderComp + telemetry_config::offsets::SeatIndex);
+            if (seatIdx != -1) isInVehicle = true;
+        }
+
+        bool isReloading = anim ? telemetryMemory::Read<bool>(anim + telemetry_config::offsets::bIsReloading_CP) : false;
+        uint8_t characterState = telemetryMemory::Read<uint8_t>(G_LocalPawn + telemetry_config::offsets::CharacterState);
+        bool isSwimming = (characterState == 4); // Standard UE4 Swim state
+
+        bool isScoping = true;
+        if (ads_only)
+        {
+            isScoping = anim ? telemetryMemory::Read<bool>(anim + telemetry_config::offsets::bIsScoping_CP) : false;
+        }
+
+        const bool manualFire = telemetryMemory::IsKeyDown(VK_LBUTTON);
+        const bool fireHeld = (manualFire || trigger_firing) &&
+            isScoping &&
+            !hasCursor &&
+            !isReloading &&
+            !telemetryMemory::IsKeyDown(VK_TAB) &&
+            !telemetryMemory::IsKeyDown(VK_ESCAPE);
+
+        const ActiveProfile profile = GetActiveProfile();
+        bool isSR = (current_category == CAT_SR);
+        bool isDMR = (current_category == CAT_DMR);
+        bool isSG = (current_category == CAT_SG);
+        bool isAR = (current_category == CAT_AR || current_category == CAT_SMG || current_category == CAT_LMG);
+
+        // --- PAOD Execution Block (Recoil & Aim Move) ---
+        if (fireHeld)
+        {
+            if (!profile.enabled || !anim)
+            {
+                ResetAngleState();
+                return;
+            }
+
+            if (now - last_fire_time > static_cast<ULONGLONG>((std::max)(profile.resetMs, 0)))
+            {
+                ResetAngleState();
+            }
+            last_fire_time = now;
+
+            const AngleRotation recoilRot = telemetryMemory::Read<AngleRotation>(anim + telemetry_config::offsets::RecoilADSRotation_CP);
+            if (!std::isfinite(recoilRot.Yaw) || !std::isfinite(recoilRot.Pitch))
+            {
+                ResetAngleState();
+                return;
+            }
+
+            if (!angle_anchor_valid)
+            {
+                angle_anchor_valid = true;
+                angle_anchor_yaw = recoilRot.Yaw;
+                angle_anchor_pitch = recoilRot.Pitch;
+                angle_moved_x = 0.0f;
+                angle_moved_y = 0.0f;
+                return;
+            }
+
+            const float yawOff = NormalizeAngle(recoilRot.Yaw - angle_anchor_yaw);
+            const float pitchOff = NormalizeAngle(recoilRot.Pitch - angle_anchor_pitch);
+
+            if (std::fabs(yawOff) <= profile.deadzone && std::fabs(pitchOff) <= profile.deadzone)
+            {
+                angle_anchor_yaw = recoilRot.Yaw;
+                angle_anchor_pitch = recoilRot.Pitch;
+                angle_moved_x = 0.0f;
+                angle_moved_y = 0.0f;
+                return;
+            }
+
+            float p_m = 1.0f;
+            if (characterState == 1 && current_gun_data.contains("c")) p_m = current_gun_data["c"].get<float>();
+            else if (characterState == 2 && current_gun_data.contains("z")) p_m = current_gun_data["z"].get<float>();
+
+            const float sens = GetSensMultiplier();
+            const float targetX = -yawOff * profile.angleToPixelX * profile.yawGain * sens * profile.multiplier * res_scale_x;
+            const float targetY = -pitchOff * profile.angleToPixelY * profile.pitchGain * sens * profile.multiplier * res_scale_y * p_m;
+
+            float moveX = targetX - angle_moved_x;
+            float moveY = targetY - angle_moved_y;
+
+            if (macro_humanize)
+            {
+                const int rnd = rand() % 1001;
+                const float ratio = static_cast<float>(rnd) / 1000.0f;
+                const float yFactor = profile.humanizeMin + ((profile.humanizeMax - profile.humanizeMin) * ratio);
+                moveY *= yFactor;
+                if (profile.xJitterRange > 0) {
+                    const int jitter = (rand() % (profile.xJitterRange * 2 + 1)) - profile.xJitterRange;
+                    moveX += static_cast<float>(jitter);
+                }
+            }
+
+            // --- 1:1 PAOD Sequence (Logic order corrected: Smoothing -> SingleStep Clamp) ---
+            
+            // Step 1: Smoothing (Visuals.cpp:2927) - Applied BEFORE clamping
+            float totalDeltaSize = std::sqrt(moveX * moveX + moveY * moveY);
+            float baseSmoothing = isSR ? profile.srBaseSmoothing : (isDMR ? profile.dmrBaseSmoothing : profile.arBaseSmoothing);
+            
+            baseSmoothing += (static_cast<float>(rand() % 101 - 50) / 1000.0f); // [-0.05, 0.05] randomization
+            float baseFOV = profile.smoothFov + (static_cast<float>(rand() % 101 - 50) / 50.0f); 
+            float maxIncrease = baseSmoothing * profile.maxSmoothIncrease;
+
+            if (totalDeltaSize <= baseFOV && totalDeltaSize > 0.01f)
+            {
+                float scale = 1.0f - (totalDeltaSize / baseFOV);
+                float dynamicSmoothing = baseSmoothing + (maxIncrease * scale);
+                dynamicSmoothing = (std::max)(dynamicSmoothing, baseSmoothing);
+
+                if (dynamicSmoothing > 1.01f)
+                {
+                    moveX /= dynamicSmoothing;
+                    moveY /= dynamicSmoothing;
+                }
+            }
+
+            // Step 2: SingleStep limit (Visuals.cpp:2981) - Final clamp
+            float MovePerTimeX = isSR ? profile.srMaxStepX : (isDMR ? profile.dmrMaxStepX : profile.arMaxStepX);
+            float MovePerTimeY = isSR ? profile.srMaxStepY : (isDMR ? profile.dmrMaxStepY : profile.arMaxStepY);
+            
+            float fovRatio = 80.0f / (currentFOV > 0.0f ? currentFOV : 80.0f);
+            MovePerTimeX *= fovRatio;
+            MovePerTimeY *= fovRatio;
+
+            if (isInVehicle) {
+                MovePerTimeX *= 2.0f; 
+                MovePerTimeY *= 2.0f;
+            }
+
+            moveX = std::clamp(moveX, -MovePerTimeX, MovePerTimeX);
+            moveY = std::clamp(moveY, -MovePerTimeY, MovePerTimeY);
+
+            const long outX = static_cast<long>(std::llround(moveX));
+            const long outY = static_cast<long>(std::llround(moveY));
+            if (outX != 0 || outY != 0)
+            {
+                Driver::Move(outX, outY);
+                angle_moved_x += static_cast<float>(outX);
+                angle_moved_y += static_cast<float>(outY);
+            }
+
+            int sleepMs = (std::max)(profile.delayMs, 0);
+            if (macro_humanize && profile.delayJitterMs > 0) sleepMs += (rand() % (profile.delayJitterMs + 1));
+            if (sleepMs > 0) telemetryMemory::StealthSleep(sleepMs);
+        }
+        else
+        {
+            ResetAngleState();
+        }
+
+        // --- 3. Independent Trigger Pipeline (PAOD Visuals.cpp:7140) ---
+        static bool lastTriggerToggleState = false;
+        bool currentTriggerToggleState = GameData.Keyboard.IsKeyDown(GameData.Config.Macro.AutoShotKey);
+        if (currentTriggerToggleState && !lastTriggerToggleState) {
+            GameData.Config.Macro.AutoShotEnabled = !GameData.Config.Macro.AutoShotEnabled;
+        }
+        lastTriggerToggleState = currentTriggerToggleState;
+
+        bool weaponTriggerEnabled = isSR ? profile.srTriggerEnabled : (isDMR ? profile.dmrTriggerEnabled : (isSG ? profile.sgTriggerEnabled : profile.arTriggerEnabled));
+        bool triggerActive = weaponTriggerEnabled && GameData.Config.Macro.AutoShotEnabled;
+        
+        bool isTargetVisible = GameData.precision_calibration.TargetPlayerInfo.IsVisible;
+
+        if (triggerActive && GameData.precision_calibration.Target != 0 && isScoping && !isReloading && !isSwimming && isTargetVisible)
+        {
+                auto skeleton = GameData.precision_calibration.TargetPlayerInfo.Skeleton;
+                if (skeleton != nullptr)
+                {
+                    float centerX = (float)GameData.Config.Overlay.ScreenWidth / 2.0f;
+                    float centerY = (float)GameData.Config.Overlay.ScreenHeight / 2.0f;
+                    float triggerFov = isSR ? profile.srTriggerFov : (isDMR ? profile.dmrTriggerFov : (isSG ? profile.sgTriggerFov : profile.arTriggerFov));
+                    
+                    // PAOD Multi-Bone Hit Check (Visuals.cpp:7170)
+                    bool anyBoneInFOV = false;
+                    float minDistance = 9999.0f;
+                    
+                    static const int triggerBones[] = { 10, 5, 4, 1, 3 }; // Head, Neck, Spine_03 (Chest), Pelvis, Spine_02
+                    for (int b : triggerBones) {
+                        FVector2D sPos = skeleton->ScreenBones[b];
+                        if (sPos.X <= 0.0f && sPos.Y <= 0.0f) continue;
+                        
+                        float dist = std::sqrt(std::pow(sPos.X - centerX, 2.0f) + std::pow(sPos.Y - centerY, 2.0f));
+                        if (dist <= triggerFov) {
+                            anyBoneInFOV = true;
+                            if (dist < minDistance) minDistance = dist;
+                        }
+                    }
+
+                    // PAOD Branching Trigger Execution (Visuals.cpp:7140)
+                    if (isSR) {
+                        // SR Bolt-Action Sequence Gate (Visuals.cpp:7517)
+                        if (sr_sequence_start == 0) sr_sequence_start = now;
+                        bool passDelay1 = (now - sr_sequence_start >= (uint64_t)profile.srDelay1);
+                        bool passDelay2 = (now - sr_sequence_start > (uint64_t)profile.srDelay2);
+
+                        if (passDelay1 && passDelay2 && anyBoneInFOV) {
+                            Driver::Click();
+                            sr_sequence_start = now; 
+                        }
+                    } else if (isDMR) {
+                        // DMR Semi-Auto Logic
+                        static uint64_t lastDMRTick = 0;
+                        if (anyBoneInFOV && (now - lastDMRTick > (uint64_t)profile.triggerDelayMs)) {
+                            Driver::Click();
+                            lastDMRTick = now;
+                        }
+                    } else if (isSG) {
+                        // Shotgun Pulse Logic (Single pulse per sighting)
+                        static uint64_t lastSGTick = 0;
+                        if (anyBoneInFOV && (now - lastSGTick > 250)) {
+                            Driver::Click();
+                            lastSGTick = now;
+                        }
+                    } else {
+                        // AR / SMG Stateful Firing (Pulse hold logic)
+                        if (anyBoneInFOV && !manualFire) {
+                            if (!trigger_firing) {
+                                Driver::Down();
+                                trigger_firing = true;
+                            }
+                        } else {
+                            if (trigger_firing) {
+                                Driver::Up();
+                                trigger_firing = false;
+                            }
+                        }
+                    }
+                }
+        } 
+        else 
+        {
+            // Clean up trigger state if conditions not met
+            if (trigger_firing) {
+                Driver::Up();
+                trigger_firing = false;
+            }
+            sr_sequence_start = 0;
+        }
+    }
+};

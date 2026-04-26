@@ -1,0 +1,2460 @@
+{
+  "precision_calibration": {
+    "AdjustableDistance": false,
+    "AutoConnect": true,
+    "COM": 0,
+    "ConfigIndex": 0,
+    "Configs": {
+      "0": {
+        "Key": 113,
+        "Weapon": {
+          "AR": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.699999988079071,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": false,
+            "FOV": 119,
+            "FOVenable": false,
+            "FPS": 673,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 233,
+            "IsScopeandAim": true,
+            "LineTraceSingle": true,
+            "NoBulletNotAim": true,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 3,
+            "YSpeed": 3.0999999046325684,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "DMR": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 160,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": true,
+            "LineTraceSingle": true,
+            "NoBulletNotAim": true,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "Grenade": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "HG": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "LMG": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "Mortar": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "None": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "Other": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "PanzerFaust100M1": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "SG": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "SMG": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "SR": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 102,
+            "First": {
+              "Key": 160,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 275,
+            "IsScopeandAim": true,
+            "LineTraceSingle": true,
+            "NoBulletNotAim": true,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          }
+        }
+      },
+      "1": {
+        "Key": 114,
+        "Weapon": {
+          "AR": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "DMR": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "Grenade": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "HG": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "LMG": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "Mortar": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "None": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "Other": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "PanzerFaust100M1": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "SG": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "SMG": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          },
+          "SR": {
+            "AimAndShot": false,
+            "AimDistance": 800,
+            "AimSpeedMaxFactor": 0.6000000238418579,
+            "AimWheel": true,
+            "AimWheelBone": 3,
+            "AimWheelSpeed": 5,
+            "AutoSwitch": true,
+            "AutomaticShooting": false,
+            "AutomaticShootingFOV": 1,
+            "AutomaticShootingKey": {
+              "Key": 2
+            },
+            "AutomaticShootingTime": 1200,
+            "Delay1": 1200,
+            "DynamicFov": true,
+            "FOV": 360,
+            "FOVenable": false,
+            "FPS": 165,
+            "First": {
+              "Key": 2,
+              "Mode": 0
+            },
+            "Groggy": {
+              "Key": 17,
+              "Mode": 0
+            },
+            "HotkeyMerge": false,
+            "IgnoreGroggy": true,
+            "InitialValue": 1500,
+            "IsScopeandAim": false,
+            "LineTraceSingle": false,
+            "NoBulletNotAim": false,
+            "NoRecoil": true,
+            "OriginalRecoil": true,
+            "Prediction": true,
+            "PredictionMode": 0,
+            "RandomAim": false,
+            "RandomBodyPartCount": 5,
+            "RandomBodyParts": false,
+            "RandomBodyPartsList": {
+              "0": false,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false,
+              "7": false,
+              "8": false,
+              "9": false,
+              "10": false,
+              "11": false,
+              "12": false,
+              "13": false,
+              "14": false,
+              "15": false,
+              "16": false
+            },
+            "RandomFactor": 0.30000001192092896,
+            "RandomInterval": 500,
+            "RandomSpeed": 500,
+            "RecoilTime": 3,
+            "Second": {
+              "Key": 16,
+              "Mode": 0
+            },
+            "ShowFOV": false,
+            "Smooth": 1,
+            "SwitchingDelay": 0,
+            "Threshold": 3,
+            "VisibleCheck": true,
+            "Wheel": {
+              "Key": 20
+            },
+            "WheelFOV": 60,
+            "XSpeed": 5,
+            "YSpeed": 5,
+            "banjiAimDistance": 20,
+            "enable": true
+          }
+        }
+      }
+    },
+    "Controller": 1,
+    "Enable": true,
+    "FOVColor": {
+      "0": 255,
+      "1": 255,
+      "2": 255,
+      "3": 1
+    },
+    "Grenade": 2,
+    "GrenadePredict": false,
+    "IP": "192.168.2.188",
+    "LockMode": 0,
+    "Mortar": 2,
+    "Mortar2": 2,
+    "MortarPredict": false,
+    "PanzerFaust": false,
+    "PointColor": {
+      "0": 1,
+      "1": 0,
+      "2": 0,
+      "3": 1
+    },
+    "PointSize": 3,
+    "Port": "21148",
+    "ShowFOV": false,
+    "ShowPoint": false,
+    "ShowWheelFOV": false,
+    "UUID": "52df7019",
+    "WheelFOVColor": {
+      "0": 0.7215686440467834,
+      "1": 0.5254902243614197,
+      "2": 0.04313725605607033,
+      "3": 1
+    }
+  },
+  "AirDrop": {
+    "Color": {
+      "0": 1,
+      "1": 1,
+      "2": 1,
+      "3": 1
+    },
+    "DistanceMax": 1000,
+    "Enable": false,
+    "EnableKey": 116,
+    "FontSize": 14,
+    "ShowItems": true
+  },
+  "AutoRecoil": {
+    "Double Amplitude": 13,
+    "Double Latency": 1,
+    "Eight Times Amplitude": 25,
+    "Eight Times Delay": 1,
+    "Enabled": false,
+    "Four Times Delay": 1,
+    "Four Times The Amplitude": 20,
+    "Red Dot Amplitude": 11,
+    "Red Dot Delay": 1,
+    "Six Times Amplitude": 23,
+    "Six Times Delay": 1,
+    "Triple Amplitude": 15,
+    "Triple Delay": 1
+  },
+  "DeadBox": {
+    "Color": {
+      "0": 1,
+      "1": 1,
+      "2": 1,
+      "3": 1
+    },
+    "DistanceMax": 1000,
+    "Enable": false,
+    "EnableKey": 116,
+    "FontSize": 14,
+    "ShowItems": true
+  },
+  "Debug": {
+    "EnablePerformanceMonitor": false
+  },
+  "signal_overlay": {
+    "AimExpandInfo": true,
+    "Audience": true,
+    "Bone Visibility": true,
+    "Box Distance": 100,
+    "ClanName": true,
+    "Color": {
+      "AI": {
+        "Info": {
+          "0": 0,
+          "1": 1,
+          "2": 0,
+          "3": 1
+        },
+        "Skeleton": {
+          "0": 0,
+          "1": 1,
+          "2": 0,
+          "3": 1
+        }
+      },
+      "Blacklist": {
+        "Info": {
+          "0": 0.9686274528503418,
+          "1": 0.3960784375667572,
+          "2": 0.3960784375667572,
+          "3": 1
+        },
+        "Skeleton": {
+          "0": 0.9686274528503418,
+          "1": 0.3960784375667572,
+          "2": 0.3960784375667572,
+          "3": 1
+        }
+      },
+      "Dangerous": {
+        "Info": {
+          "0": 0.501960813999176,
+          "1": 0,
+          "2": 1,
+          "3": 1
+        },
+        "Skeleton": {
+          "0": 0.501960813999176,
+          "1": 0,
+          "2": 1,
+          "3": 1
+        }
+      },
+      "Default": {
+        "Info": {
+          "0": 0.8823529481887817,
+          "1": 0.8823529481887817,
+          "2": 0.8823529481887817,
+          "3": 1
+        },
+        "Skeleton": {
+          "0": 0.8823529481887817,
+          "1": 0.8823529481887817,
+          "2": 0.8823529481887817,
+          "3": 1
+        }
+      },
+      "Groggy": {
+        "Info": {
+          "0": 1,
+          "1": 1,
+          "2": 0,
+          "3": 1
+        },
+        "Skeleton": {
+          "0": 1,
+          "1": 1,
+          "2": 0,
+          "3": 1
+        }
+      },
+      "Info": {
+        "Skeleton": {
+          "0": 0,
+          "1": 1,
+          "2": 0,
+          "3": 1
+        }
+      },
+      "Partner": {
+        "Info": {
+          "0": 1,
+          "1": 0,
+          "2": 0.800000011920929,
+          "3": 1
+        },
+        "Skeleton": {
+          "0": 1,
+          "1": 0,
+          "2": 0.800000011920929,
+          "3": 1
+        }
+      },
+      "Ray": {
+        "Line": {
+          "0": 0.8823529481887817,
+          "1": 0,
+          "2": 0,
+          "3": 1
+        }
+      },
+      "Visible": {
+        "Info": {
+          "0": 0,
+          "1": 1,
+          "2": 0.9206347465515137,
+          "3": 1
+        },
+        "Skeleton": {
+          "0": 0,
+          "1": 1,
+          "2": 0.9206347465515137,
+          "3": 1
+        }
+      },
+      "Whitelist": {
+        "Info": {
+          "0": 0.30980393290519714,
+          "1": 0.47058823704719543,
+          "2": 1,
+          "3": 1
+        },
+        "Skeleton": {
+          "0": 0.30980393290519714,
+          "1": 0.47058823704719543,
+          "2": 1,
+          "3": 1
+        }
+      },
+      "aim": {
+        "Skeleton": {
+          "0": 1,
+          "1": 0,
+          "2": 0,
+          "3": 1
+        }
+      },
+      "xuetiaoyanse": {
+        "Skeleton": {
+          "0": 0,
+          "1": 1,
+          "2": 0,
+          "3": 1
+        }
+      }
+    },
+    "Damage Amount": false,
+    "Danger Warning": true,
+    "Data Switch": false,
+    "DataSwitchkey": 119,
+    "DeadBox": false,
+    "Dis": true,
+    "Display Frame": false,
+    "DistanceMax": 600,
+    "DistanceStyle": 1,
+    "Downed": true,
+    "Enable": true,
+    "FPP Rank": false,
+    "FocusMode": true,
+    "FocusModeKey": 192,
+    "FontSize": 14,
+    "Grade": true,
+    "Head Drawing": false,
+    "Health": false,
+    "HealthBarStyle": 0,
+    "HighModel": false,
+    "InfoDistanceMax": 315,
+    "KillCount": true,
+    "LockedHiddenBones": false,
+    "LowModel": true,
+    "MediumModel": false,
+    "Mouse": false,
+    "Nickname": true,
+    "Offline": true,
+    "Partner": true,
+    "PhysxLoadRadius": 400,
+    "PlayerLine": false,
+    "Playerskey": 121,
+    "Rank Ico": false,
+    "RayWidth": 2,
+    "ServerIP": "",
+    "ServerPIN": "",
+    "ServerPort": "",
+    "Show Teammates": 112,
+    "SkeletonWidth": 2,
+    "Stroke": true,
+    "StrokeSize": 1,
+    "TPP Rank": false,
+    "TargetedRay": false,
+    "TeamID": true,
+    "VisibleCheck": true,
+    "VisibleCheckRay": false,
+    "Weapon": true,
+    "WeaponDistanceMax": 0,
+    "healthBarAlpha": 0.10000000149011612,
+    "healthBarHeight": 6,
+    "healthBarPosition": 0,
+    "healthBarStyle": 0,
+    "healthBarWidth": 40,
+    "health_bar": true,
+    "suodingbianse": false
+  },
+  "Early": {
+    "DistanceMax": 200,
+    "Enable": false,
+    "FontSize": 14,
+    "ShowDistance": false
+  },
+  "Function": {
+    "ClearKey": 120
+  },
+  "Intelligent Display": {
+    "AccessoriesFilter": true,
+    "Adrenaline": 0,
+    "Bandage": 0,
+    "BlueZoneGrenade": 0,
+    "C4": 0,
+    "EnergyDrink": 5,
+    "FilterHelmets": true,
+    "FirstAidKit": 4,
+    "Flashbang": 0,
+    "Grenade": 4,
+    "HandheldWeaponFilter": true,
+    "ItemLimit": true,
+    "MedicalKit": 0,
+    "Molotov": 0,
+    "Painkiller": 5,
+    "SmokeGrenade": 4,
+    "StickyBomb": 0
+  },
+  "Item": {
+    "Combination": false,
+    "DistanceMax": 50,
+    "Enable": true,
+    "EnableKey": 112,
+    "FontSize": 13,
+    "GroupAColor": {
+      "0": 1,
+      "1": 1,
+      "2": 1,
+      "3": 1
+    },
+    "GroupAKey": 96,
+    "GroupBColor": {
+      "0": 1,
+      "1": 1,
+      "2": 1,
+      "3": 1
+    },
+    "GroupBKey": 97,
+    "GroupCColor": {
+      "0": 1,
+      "1": 1,
+      "2": 1,
+      "3": 1
+    },
+    "GroupCKey": 98,
+    "GroupDColor": {
+      "0": 1,
+      "1": 1,
+      "2": 1,
+      "3": 1
+    },
+    "GroupDKey": 99,
+    "Lists": null,
+    "RayColor": {
+      "0": 1,
+      "1": 1,
+      "2": 1,
+      "3": 1
+    },
+    "RayWidth": 2,
+    "Scene": 1,
+    "ShowDistance": true,
+    "ShowGroup": 0,
+    "ShowGroups": [],
+    "ShowIcon": false,
+    "ShowIconAndText": true,
+    "ShowRay": false,
+    "ThresholdX": 80,
+    "ThresholdY": 15
+  },
+  "Overlay": {
+    "Enable": true,
+    "Fusion mode": 45,
+    "SafeExit": 35,
+    "ShowMenu": 36,
+    "UseThread": true,
+    "VSync": false
+  },
+  "PlayerList": {
+    "RankMode": 0
+  },
+  "Project": {
+    "BarShowChareTime": false,
+    "ChareColor": {
+      "0": 1,
+      "1": 0,
+      "2": 0,
+      "3": 1
+    },
+    "ChareFontSize": 14,
+    "Color": {
+      "0": 1,
+      "1": 0,
+      "2": 0,
+      "3": 1
+    },
+    "DistanceMax": 100,
+    "Enable": true,
+    "Explosion Range": true,
+    "Explosion Timing": true,
+    "FontSize": 14,
+    "Grenade Prediction": false,
+    "Grenade Trajectory": true,
+    "GrenadeEnable": true,
+    "MortarShooting": true,
+    "TextShowChareTime": true,
+    "TrajectoryColor": {
+      "0": 1,
+      "1": 1,
+      "2": 0.501960813999176,
+      "3": 0.501960813999176
+    },
+    "TrajectorySize": 6,
+    "explosionrangeColor": {
+      "0": 1,
+      "1": 0,
+      "2": 0,
+      "3": 1
+    }
+  },
+  "Radar": {
+    "Enable": true,
+    "Main": {
+      "FontSize": 12,
+      "MapColor": {
+        "0": 0.250980406999588,
+        "1": 0.3019607961177826,
+        "2": 0.9254902005195618,
+        "3": 0.7450980544090271
+      },
+      "MapRoom": true,
+      "Map_size": 4,
+      "ShowAirDrop": true,
+      "ShowDeadBox": true,
+      "ShowPlayer": true,
+      "ShowVehicle": true
+    },
+    "Mini": {
+      "FontSize": 14,
+      "MapColor": {
+        "0": 0.250980406999588,
+        "1": 0.3019607961177826,
+        "2": 0.9254902005195618,
+        "3": 0.7450980544090271
+      },
+      "Map_size": 4,
+      "MiniMapRoom": true,
+      "ShowAirDrop": true,
+      "ShowDeadBox": true,
+      "ShowPlayer": true,
+      "ShowVehicle": true
+    }
+  },
+  "Recoil": {
+    "Delay": 0,
+    "Enable": false,
+    "RedDot": 50,
+    "x2": 50,
+    "x3": 50,
+    "x4": 50,
+    "x6": 50,
+    "x8": 50
+  },
+  "Theme": {
+    "Players": false,
+    "Switch Languages": 1
+  },
+  "Vehicle": {
+    "Color": {
+      "0": 0,
+      "1": 1,
+      "2": 0,
+      "3": 1
+    },
+    "DistanceMax": 600,
+    "Durability": true,
+    "Enable": true,
+    "EnableKey": 115,
+    "FontSize": 14,
+    "Fuelbarcolor": {
+      "0": 1,
+      "1": 0,
+      "2": 0,
+      "3": 1
+    },
+    "Health": true,
+    "Healthbarcolor": {
+      "0": 0,
+      "1": 1,
+      "2": 0,
+      "3": 1
+    },
+    "ShowIcon": false,
+    "ShowIconAndText": true
+  },
+  "WebRadar": {
+    "Server IP": "",
+    "Server PIN": "",
+    "Server Port": ""
+  }
+}
