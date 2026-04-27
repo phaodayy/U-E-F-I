@@ -117,22 +117,26 @@ std::uint64_t telemetryHyperCall::ReadGuestCr3()
     return MakeHypercall(hypercall_type_t::_hc_0x140, 0, 0, 0, 0);
 }
 
-std::uint64_t telemetryHyperCall::InjectMouseMovement(long x, long y, unsigned short flags)
-{
-    // Hybrid Protocol: Pack coords [Y|X] into RDX and flags into R8
-    // Also mirrors data in call_reserved_data (RCX) for maximum compatibility with all Hyper-reV sub-versions.
-    std::uint64_t packed_coords = (static_cast<std::uint64_t>(static_cast<std::uint32_t>(y)) << 32) | 
-                                   static_cast<std::uint64_t>(static_cast<std::uint32_t>(x));
+    /*
+    std::uint64_t telemetryHyperCall::InjectMouseMovement(long x, long y, unsigned short flags)
+    {
+        // Hybrid Protocol: Pack coords [Y|X] into RDX and flags into R8
+        // Also mirrors data in call_reserved_data (RCX) for maximum compatibility with all Hyper-reV sub-versions.
+        std::uint64_t packed_coords = (static_cast<std::uint64_t>(static_cast<std::uint32_t>(y)) << 32) | 
+                                       static_cast<std::uint64_t>(static_cast<std::uint32_t>(x));
 
-    std::uint64_t packed_rcx = (static_cast<std::uint64_t>(flags) << 32) | (static_cast<std::uint64_t>(y & 0xFFFF) << 16) | (x & 0xFFFF);
+        std::uint64_t packed_rcx = (static_cast<std::uint64_t>(flags) << 32) | (static_cast<std::uint64_t>(y & 0xFFFF) << 16) | (x & 0xFFFF);
 
-    return MakeHypercall(hypercall_type_t::_hc_0x220, packed_rcx, packed_coords, static_cast<std::uint64_t>(flags), 0);
-}
+        return MakeHypercall(hypercall_type_t::_hc_0x220, packed_rcx, packed_coords, static_cast<std::uint64_t>(flags), 0);
+    }
 
-bool telemetryHyperCall::SetMouseHookAddress(std::uint64_t ept_hook_address)
-{
-    return MakeHypercall(hypercall_type_t::_hc_0x230, 0, ept_hook_address, 0, 0) == 1;
-}
+    bool telemetryHyperCall::SetMouseHookAddress(std::uint64_t ept_hook_address)
+    {
+        return MakeHypercall(hypercall_type_t::_hc_0x230, 0, ept_hook_address, 0, 0) == 1;
+    }
+    */
+    std::uint64_t telemetryHyperCall::InjectMouseMovement(long x, long y, unsigned short flags) { return 0; }
+    bool telemetryHyperCall::SetMouseHookAddress(std::uint64_t addr) { return true; }
 
 bool telemetryHyperCall::ToggleProcessProtection(std::uint64_t eprocess_address, bool enable)
 {

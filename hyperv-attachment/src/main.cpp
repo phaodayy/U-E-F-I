@@ -331,6 +331,7 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
     {
         interrupts::process_nmi();
     }
+    /*
     else if (arch::is_breakpoint_exit(exit_reason) == 1 && g_mouse_shadow_page_va != 0)
     {
         const std::uint64_t rip = arch::get_guest_rip();
@@ -365,6 +366,7 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
             return do_vmexit_premature_return();
         }
     }
+    */
 
     return reinterpret_cast<vmexit_handler_t>(original_vmexit_handler)(a1, a2, a3, a4);
 }

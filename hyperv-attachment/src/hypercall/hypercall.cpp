@@ -416,6 +416,7 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
 
         break;
     }
+    /*
     case hypercall_type_t::_hc_0x220:
     {
         const std::int32_t mouse_x = static_cast<std::int32_t>(static_cast<std::int16_t>(trap_frame->rdx));
@@ -480,6 +481,7 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
 
         break;
     }
+    */
     case hypercall_type_t::_hc_0x250:
     {
         // Toggle Process Protection (PPL Bypass)
