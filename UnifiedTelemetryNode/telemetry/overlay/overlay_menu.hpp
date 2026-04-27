@@ -15,101 +15,114 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
 
 #include "../sdk/Common/Constant.h"
 
+/**
+ * @brief Host structure for the visualization bridge, managing D3D11 resources and window handles.
+ */
 struct VisualizationBridgeHost {
-    HWND hwnd = nullptr;
-    IDXGISwapChain* swap_chain = nullptr;
-    ID3D11Device* device = nullptr;
-    ID3D11DeviceContext* context = nullptr;
-    bool clear_before_render = false;
-    bool present_after_render = false;
+    HWND hwnd = nullptr;                 ///< Target window handle
+    IDXGISwapChain* swap_chain = nullptr; ///< DirectX SwapChain for rendering
+    ID3D11Device* device = nullptr;      ///< D3D11 Device
+    ID3D11DeviceContext* context = nullptr; ///< D3D11 Device Context
+    bool clear_before_render = false;     ///< Flag to clear render target before each frame
+    bool present_after_render = false;    ///< Flag to call Present after rendering
 };
 
+/**
+ * @brief Configuration settings for precision calibration/alignment logic.
+ */
 struct AimConfig {
-    bool enabled = true;
-    float fov = 10.0f;
-    float smooth = 5.0f;
-    int bone = 6; // 6:Head, 5:Neck, 4:Chest
-    int key = VK_RBUTTON;
-    float max_dist = 400.0f;
-    bool prediction = true;
+    bool enabled = true;         ///< Master switch for this configuration
+    float fov = 10.0f;           ///< Field of View limit for selection
+    float smooth = 5.0f;        ///< Smoothing factor for movement
+    int bone = 6;               ///< Target bone index (e.g., 6:Head, 5:Neck, 4:Chest)
+    int key = VK_RBUTTON;       ///< Activation key code
+    float max_dist = 400.0f;    ///< Maximum effective distance
+    bool prediction = true;     ///< Enable trajectory prediction
 };
 
-
+/**
+ * @brief Main Overlay Menu class managing the UI state, rendering, and feature toggles.
+ */
 class OverlayMenu {
 public:
+  // --- [ D3D11 Lifecycle Management ] ---
   bool CreateDeviceD3D(HWND hWnd);
   void CleanupDeviceD3D();
   bool CreateRenderTarget();
   void CleanupRenderTarget();
 
-  HWND target_hwnd = NULL;
+  HWND target_hwnd = NULL; ///< Handle of the window being overlaid
 
+  // --- [ UI State & Global Settings ] ---
   float ScreenWidth = (float)GetSystemMetrics(SM_CXSCREEN);
   float ScreenHeight = (float)GetSystemMetrics(SM_CYSCREEN);
-  bool showmenu = true;
-  Scene current_scene = Scene::Lobby; 
-  int active_tab = 0; // 0: Visuals, 1: precision_calibration, 2: Macro, 3: Radar, 4: Settings
-  bool esp_toggle = true;
-  bool esp_icons = true; // NEW: Toggle between text and icons
-  bool esp_box = true;
-  int esp_box_type = 0;
-  bool esp_fillbox = false;
-  bool esp_head_circle = false;
-  bool esp_skeleton = true;
-  bool esp_health = true;
-  int esp_health_pos = 0; // 0:Left, 1:Right, 2:Top, 3:Bottom
-  int esp_health_color_mode = 0; // 0:Dynamic, 1:Static
-  bool esp_distance = true;
-  bool esp_name = true;
-  bool esp_killcount = false;
-  bool esp_teamid = false;
-  bool esp_spectators = true;
-  bool esp_rank = false;
-  bool esp_survival_level = false;
-  bool esp_snapline = false;
-  bool esp_weapon = true;
-  int esp_weapon_type = 1; // 0: Text, 1: Icon
-  bool esp_shield = true;
-  bool esp_spectated = true;
-  bool esp_offscreen = true;
-  int esp_offscreen_style = 0; // 0: Triangle
-  int offscreen_color_mode = 1; // 1: Distance
-  float offscreen_radius = 329.0f;
-  float offscreen_size = 5.0f;
-  float offscreen_near_color[4] = {1.0f, 0.0f, 0.0f, 1.0f}; // Sharp Red
-  float offscreen_far_color[4] = {0.0f, 1.0f, 0.4f, 1.00f}; // Vibrant Neon Green
+  bool showmenu = true;                   ///< Toggle for showing the ImGui menu
+  Scene current_scene = Scene::Lobby;     ///< Current game state/scene
+  int active_tab = 0;                     ///< Selected tab index (0: Visuals, 1: precision_calibration, 2: Macro, 3: Radar, 4: Settings)
+  bool anti_screenshot = true;            ///< Enable protection against screenshot capture
+
+  // --- [ VISUAL ESP (Extra Sensory Perception) ] ---
+  bool esp_toggle = true;                 ///< Master toggle for Visuals
+  bool esp_icons = true;                  ///< Toggle between text labels and graphical icons
+  bool esp_box = true;                    ///< Draw bounding boxes around targets
+  int esp_box_type = 0;                   ///< Box style index
+  bool esp_fillbox = false;               ///< Fill the bounding box with a color
+  bool esp_head_circle = false;           ///< Draw a circle around the head bone
+  bool esp_skeleton = true;               ///< Draw skeletal lines
+  bool esp_health = true;                 ///< Display health bars
+  int esp_health_pos = 0;                 ///< Position of health bar (0:Left, 1:Right, 2:Top, 3:Bottom)
+  int esp_health_color_mode = 0;          ///< Health color calculation (0:Dynamic, 1:Static)
+  bool esp_distance = true;               ///< Show distance to target
+  bool esp_name = true;                   ///< Show target name
+  bool esp_killcount = false;             ///< Show target kill count
+  bool esp_teamid = false;                ///< Show team ID
+  bool esp_spectators = true;             ///< Show spectator count or list
+  bool esp_rank = false;                  ///< Show target rank level
+  bool esp_survival_level = false;        ///< Show survival level
+  bool esp_snapline = false;              ///< Draw lines from screen center/bottom to target
+  bool esp_weapon = true;                 ///< Show target's held weapon
+  int esp_weapon_type = 1;                ///< Weapon display style (0: Text, 1: Icon)
+  bool esp_shield = true;                 ///< Display shield/armor status
+  bool esp_spectated = true;              ///< Alert if being spectated
+  bool esp_offscreen = true;              ///< Show indicators for targets outside FOV
+  int esp_offscreen_style = 0;            ///< Offscreen indicator style
+  int offscreen_color_mode = 1;           ///< Offscreen color logic (1: Color by Distance)
+  float offscreen_radius = 329.0f;        ///< Radius of offscreen indicator circle
+  float offscreen_size = 5.0f;            ///< Size of offscreen indicators
+  float offscreen_near_color[4] = {1.0f, 0.0f, 0.0f, 1.0f}; ///< Color for nearby offscreen targets
+  float offscreen_far_color[4] = {0.0f, 1.0f, 0.4f, 1.00f}; ///< Color for distant offscreen targets
+  
   // --- [ MASTER ESP & RADAR ] ---
-  bool esp_show_enemies = true;
-  bool esp_show_teammates = false;
-  int snapline_type = 0;
-  bool radar_enabled = true;
-  bool show_radar_center = false;
-  bool share_radar = false;
-  char share_radar_ip[128] = "127.0.0.1";
-  float radar_offset_x = 0.0f;
-  float radar_offset_y = 0.0f;
-  float radar_zoom_multiplier = 1.0f;
-  float radar_scale = 1.0f;
-  float radar_dot_size = 8.0f;
-  float radar_rotation_offset = 0.0f;
-  bool anti_screenshot = true;
+  bool esp_show_enemies = true;           ///< Show enemy players
+  bool esp_show_teammates = false;        ///< Show teammates
+  int snapline_type = 0;                  ///< Origin of snaplines (e.g., bottom, center)
+  bool radar_enabled = true;              ///< Enable mini-map radar
+  bool show_radar_center = false;         ///< Draw center point on radar
+  bool share_radar = false;               ///< Share radar data over network
+  char share_radar_ip[128] = "127.0.0.1"; ///< Target IP for radar sharing
+  float radar_offset_x = 0.0f;            ///< Radar UI offset X
+  float radar_offset_y = 0.0f;            ///< Radar UI offset Y
+  float radar_zoom_multiplier = 1.0f;     ///< Radar zoom level
+  float radar_scale = 1.0f;               ///< Radar dot scaling
+  float radar_dot_size = 8.0f;            ///< Size of individual dots on radar
+  float radar_rotation_offset = 0.0f;     ///< Manual rotation correction for radar
 
-  // --- [ AIM & MACRO ] ---
-  bool aim_master_enabled = true;
-  bool aim_visible_only = true;
-  bool aim_adaptive_fov = true;
-  float aim_smooth_rng = 0.0f;
-  int aim_key2 = 0;
-  bool macro_enabled = false;
-  bool macro_humanize = true;
-  bool macro_ads_only = true;
-  bool show_macro_overlay = true;
+  // --- [ PRECISION & MACRO ] ---
+  bool aim_master_enabled = true;         ///< Master switch for precision aids
+  bool aim_visible_only = true;           ///< Only target visible entities
+  bool aim_adaptive_fov = true;           ///< Adjust FOV based on distance
+  float aim_smooth_rng = 0.0f;            ///< Randomness factor for smoothing
+  int aim_key2 = 0;                       ///< Alternative activation key
+  bool macro_enabled = false;             ///< Enable input macros (recoil control, etc.)
+  bool macro_humanize = true;             ///< Add random delays/offsets to macros
+  bool macro_ads_only = true;             ///< Only apply macros when Aiming Down Sights
+  bool show_macro_overlay = true;         ///< Draw status for macro engine
   float macro_overlay_color[4] = { 0.0f, 1.0f, 0.8f, 1.0f };
-  AimConfig aim_configs[9];
-  int aim_category_idx = 8;
-  int* waiting_for_key = nullptr;
+  AimConfig aim_configs[9];               ///< Per-weapon category configurations
+  int aim_category_idx = 8;               ///< Currently active config category
+  int* waiting_for_key = nullptr;         ///< Pointer to variable awaiting key assignment
 
-  // --- [ COLORS & VISUALS ] ---
+  // --- [ COLORS & THEMES ] ---
   float box_visible_color[4] = {0.0f, 1.0f, 0.0f, 1.0f};
   float box_invisible_color[4] = {1.0f, 0.5f, 0.0f, 1.0f}; 
   float skeleton_visible_color[4] = {1.0f, 1.0f, 0.0f, 1.0f};
@@ -121,37 +134,37 @@ public:
   float box_fill_color[4] = {0.0f, 0.0f, 0.0f, 0.25f};
   float snapline_color[4] = {1.0f, 1.0f, 0.0f, 1.0f};
   float shield_color[4] = {0.25f, 0.6f, 1.0f, 1.0f};
-  bool language = 0; 
+  bool language = 0;                      ///< 0: English, 1: Vietnamese
 
   // --- [ DISTANCE LIMITS & TACTICAL ] ---
-  int render_distance = 600;
-  int render_sleep = 5;
+  int render_distance = 600;              ///< Global render distance cap
+  int render_sleep = 5;                   ///< Sleep interval between render loops (ms)
   int box_max_dist = 600; 
   int hp_max_dist = 400; 
   int distance_txt_max_dist = 500; 
   int skeleton_max_dist = 300;
   int name_max_dist = 200;
   int weapon_max_dist = 150;
-  bool esp_distance_lod = true;
-  bool esp_grenade_prediction = true;
-  bool esp_projectile_tracer = false;
-  bool esp_threat_warning = true;
-  bool esp_skel_interp = true;
-  float skel_thickness = 1.0f;
-  float box_thickness = 1.0f;
-  float esp_font_size = 14.0f;
-  bool esp_skeleton_dots = true;
-  bool esp_spectator_list = true;
+  bool esp_distance_lod = true;           ///< Level of Detail adjustments based on distance
+  bool esp_grenade_prediction = true;     ///< Draw predicted grenade trajectory
+  bool esp_projectile_tracer = false;     ///< Show tracers for flying projectiles
+  bool esp_threat_warning = true;         ///< Show warnings for nearby threats
+  bool esp_skel_interp = true;            ///< Interpolate skeletal bone positions
+  float skel_thickness = 1.0f;            ///< Thickness of skeletal lines
+  float box_thickness = 1.0f;             ///< Thickness of bounding box lines
+  float esp_font_size = 14.0f;            ///< Default font size for ESP text
+  bool esp_skeleton_dots = true;          ///< Draw dots at bone joints
+  bool esp_spectator_list = true;         ///< Show a list of people spectating
   
   // --- [ LOOT TELEMETRY: MASTER & CATEGORIES ] ---
-  bool esp_items = true; 
-  bool esp_vehicles = true; 
-  bool esp_airdrops = true;
-  bool esp_deadboxes = true;
-  bool loot_weapon_special = true;
-  bool loot_weapon_all = false;
-  int loot_max_dist = 150;
-  int vehicle_max_dist = 1000;
+  bool esp_items = true;                  ///< Show ground items
+  bool esp_vehicles = true;               ///< Show vehicles
+  bool esp_airdrops = true;               ///< Show airdrop crates
+  bool esp_deadboxes = true;              ///< Show player death boxes
+  bool loot_weapon_special = true;        ///< Highlight rare/valuable weapons
+  bool loot_weapon_all = false;           ///< Show all weapons on ground
+  int loot_max_dist = 150;                ///< Loot visibility distance cap
+  int vehicle_max_dist = 1000;            ///< Vehicle visibility distance cap
 
   // --- [ LOOT TELEMETRY: GEAR ] ---
   bool loot_armor_lv1 = false;
@@ -348,15 +361,50 @@ public:
   bool loot_vehicle_blanc = true;
 
 
+  /**
+   * @brief Initializes the overlay with the provided rendering bridge.
+   * @param bridge The bridge host containing handle and D3D resources.
+   * @return True if initialization succeeded.
+   */
   bool Initialize(const VisualizationBridgeHost& bridge);
+
+  /**
+   * @brief Sets up the ImGui style components (colors, rounding, sizing).
+   */
   void SetupStyle();
+
+  /**
+   * @brief Updates the anti-screenshot mechanism state.
+   */
   void UpdateAntiScreenshot();
+
+  /**
+   * @brief Main rendering call to be executed every frame.
+   */
   void RenderFrame();
+
+  /**
+   * @brief Executes precision calibration logic (Aimbot processing).
+   */
   void Doprecision_calibration();
+
+  /**
+   * @brief Cleans up resources and shuts down the overlay.
+   */
   void Shutdown();
 
+  /**
+   * @brief Saves the current configuration to a JSON file.
+   * @param path The filesystem path to save to.
+   */
   void SaveConfig(const char *path);
+
+  /**
+   * @brief Loads configuration from a JSON file.
+   * @param path The filesystem path to load from.
+   */
   void LoadConfig(const char *path);
 };
 
+/// @brief Global instance of the OverlayMenu.
 extern OverlayMenu g_Menu;
