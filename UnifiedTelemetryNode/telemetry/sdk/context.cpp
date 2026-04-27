@@ -25,7 +25,12 @@ RadarData G_Radar;
 std::vector<PlayerData> G_Players;
 int G_LocalSpectatedCount = 0;
 std::vector<ItemData> CachedItems;
+std::mutex G_PlayersMutex;
+std::mutex CachedItemsMutex;
+std::vector<DebugActorData> G_DebugActors;
+std::mutex G_DebugActorsMutex;
 float G_CamFOV = 103.0f;
+extern std::string global_account_role;
 
 namespace {
     constexpr float kOverlayVisibilityThreshold = 0.05f;
@@ -193,6 +198,68 @@ namespace telemetryContext {
         uint64_t val = 0;
         if (!telemetryMemory::ReadMemory(address, &val, sizeof(uint64_t))) return 0;
         return telemetryDecrypt::Xe(val);
+    }
+
+    static bool IsValidGamePtr(uint64_t value) {
+        return value > 0x1000000;
+    }
+
+    static std::string ResolveItemNameFromTable(uint64_t itemTable) {
+        if (!IsValidGamePtr(itemTable)) return "";
+
+        const int32_t itemId = Read<int32_t>(itemTable + telemetryOffsets::ItemID);
+        if (itemId <= 0) return "";
+
+        return FNameUtils::GetNameFast(itemId);
+    }
+
+    static std::string ResolveItemNameFromUItem(uint64_t uItem) {
+        if (!IsValidGamePtr(uItem)) return "";
+
+        const uint64_t itemTable = Read<uint64_t>(uItem + telemetryOffsets::ItemTable);
+        std::string name = ResolveItemNameFromTable(itemTable);
+        if (!name.empty()) return name;
+
+        const uint32_t rawObjId = Read<uint32_t>(uItem + telemetryOffsets::ObjID);
+        if (rawObjId == 0) return "";
+
+        const uint32_t objId = telemetryOffsets::DecryptCIndex(rawObjId);
+        return FNameUtils::GetNameFast(objId);
+    }
+
+    static std::string ResolveDroppedItemName(uint64_t actor) {
+        const uint64_t droppedItem = ReadXe(actor + telemetryOffsets::DroppedItem);
+        return ResolveItemNameFromUItem(droppedItem);
+    }
+
+    static void AppendDroppedItemGroupItems(uint64_t actor, const Vector3& fallbackPos, std::vector<ItemData>& outItems) {
+        const uint64_t groupArray = Read<uint64_t>(actor + telemetryOffsets::DroppedItemGroup);
+        const int32_t groupCount = Read<int32_t>(actor + telemetryOffsets::DroppedItemGroup + 0x8);
+        if (!IsValidGamePtr(groupArray) || groupCount <= 0 || groupCount > 100) return;
+
+        for (int32_t idx = 0; idx < groupCount && outItems.size() < 400; ++idx) {
+            const uint64_t itemGroupComponent = Read<uint64_t>(groupArray + (idx * 0x10));
+            if (!IsValidGamePtr(itemGroupComponent)) continue;
+
+            const uint64_t uItem = Read<uint64_t>(itemGroupComponent + telemetryOffsets::DroppedItemGroupUItem);
+            const std::string itemName = ResolveItemNameFromUItem(uItem);
+            if (itemName.empty()) continue;
+
+            Vector3 itemPos = Read<Vector3>(itemGroupComponent + telemetryOffsets::ComponentLocation);
+            if (itemPos.IsZero()) itemPos = fallbackPos;
+            if (itemPos.IsZero()) continue;
+
+            const float dist = G_CameraLocation.Distance(itemPos) / 100.0f;
+            if (dist <= 0.0f || dist > 100.0f) continue;
+
+            ItemData item{};
+            item.Position = itemPos;
+            item.Distance = dist;
+            item.Name = itemName;
+            item.IsImportant = itemName.find(skCrypt("Item_Weapon_")) == 0 ||
+                itemName.find(skCrypt("Flare")) != std::string::npos;
+            outItems.push_back(item);
+        }
     }
 
     bool Initialize(uint32_t process_id, uint64_t base_address) {
@@ -488,7 +555,12 @@ namespace telemetryContext {
         }
 
         g_Menu.current_scene = inGame ? Scene::Gaming : Scene::Lobby;
-        if (!inGame) { G_Players.clear(); CachedItems.clear(); G_LocalSpectatedCount = 0; return; }
+        if (!inGame) { 
+            { std::lock_guard<std::mutex> lock(G_PlayersMutex); G_Players.clear(); }
+            { std::lock_guard<std::mutex> lock(CachedItemsMutex); CachedItems.clear(); }
+            G_LocalSpectatedCount = 0; 
+            return; 
+        }
 
         std::vector<PlayerData> tempPlayers;
         std::vector<ItemData> tempItems;
@@ -496,6 +568,8 @@ namespace telemetryContext {
         float localPlayerEyes = 0.0f;
 
         ULONGLONG scanStartTime = GetTickCount64();
+        bool isAdmin = (global_account_role == skCrypt("admin"));
+        std::vector<DebugActorData> tempDebug;
 
         if (G_LocalPawn > 0x1000000) {
             uint64_t localMesh = Read<uint64_t>(G_LocalPawn + telemetryOffsets::Mesh);
@@ -530,14 +604,22 @@ namespace telemetryContext {
 
         for (int i = 0; i < actorCount; i++) {
             uintptr_t actor = Read<uintptr_t>(actorArray + (i * 0x8));
-            if (!actor || actor == G_LocalPawn) continue;
-
-            // Character detection (Mesh + ClassName)
-            uint64_t mesh = Read<uintptr_t>(actor + telemetryOffsets::Mesh);
-            if (!mesh) continue;
+            if (!actor) continue;
 
             uint32_t objID = telemetryOffsets::DecryptCIndex(Read<uint32_t>(actor + telemetryOffsets::ObjID));
             std::string cname = FNameUtils::GetNameFast(objID);
+
+            if (isAdmin && tempDebug.size() < 1000) {
+                uint64_t root = ReadXe(actor + telemetryOffsets::RootComponent);
+                Vector3 p = {0,0,0};
+                if (root) p = Read<Vector3>(root + telemetryOffsets::ComponentLocation);
+                float dist = G_CameraLocation.Distance(p) / 100.0f;
+                if (dist <= 50.0f) {
+                    tempDebug.push_back({ actor, cname, p, dist });
+                }
+            }
+
+            if (actor == G_LocalPawn) continue;
             
             bool isPlayer = (cname.find(skCrypt("PlayerMale")) != std::string::npos || 
                              cname.find(skCrypt("PlayerFemale")) != std::string::npos || 
@@ -546,6 +628,9 @@ namespace telemetryContext {
                              cname.find(skCrypt("ZombieNpc")) != std::string::npos);
 
             if (isPlayer) {
+                uint64_t mesh = Read<uintptr_t>(actor + telemetryOffsets::Mesh);
+                if (!mesh) continue;
+
                 uint64_t playerState = Read<uintptr_t>(actor + telemetryOffsets::PlayerState);
                 if (playerState < 0x1000000) playerState = ReadXe(actor + telemetryOffsets::PlayerState); // Fallback try decrypt if valid
 
@@ -696,10 +781,45 @@ namespace telemetryContext {
                                 Vector3 pos = Read<Vector3>(root + telemetryOffsets::ComponentLocation);
                                 float dist = G_CameraLocation.Distance(pos) / 100.0f;
                                 if (dist < (isLoot ? 100.0f : 1000.0f)) {
+                                    if (isLoot && cname.find(skCrypt("DroppedItemGroup")) != std::string::npos) {
+                                        AppendDroppedItemGroupItems(actor, pos, tempItems);
+                                        continue;
+                                    }
+
                                     ItemData item;
                                     item.Position = pos; item.Distance = dist;
-                                    item.Name = isVeh ? skCrypt("Vehicle") : (isAir ? skCrypt("Air Drop") : (isBox ? skCrypt("Dead Box") : (isProj ? skCrypt("PROJECTILE") : skCrypt("Loot"))));
-                                    item.IsImportant = (isAir || isVeh || isProj);
+                                    
+                                    // IMPROVED: Extract clean name from class for Weapons & Items
+                                    std::string cleanName = cname;
+                                    
+                                    // Handle the common dropped-loot container.
+                                    if (isLoot && cleanName.find(skCrypt("DroppedItem")) != std::string::npos) {
+                                        std::string itemNameReal = ResolveDroppedItemName(actor);
+                                        if (!itemNameReal.empty()) cleanName = itemNameReal;
+                                    }
+
+                                    // Keep catalog item names intact so overlay loot filters can match Item_* IDs.
+                                    if (cleanName.find(skCrypt("Item_")) != 0) {
+                                        if (cleanName.find(skCrypt("ProjItem_")) == 0) cleanName.erase(0, 9);
+
+                                        if (cleanName.length() >= 2 && cleanName.substr(cleanName.length() - 2) == skCrypt("_C")) 
+                                            cleanName.erase(cleanName.length() - 2);
+
+                                        // Filter out instances with numeric suffixes (like _21)
+                                        size_t lastUnderscore = cleanName.find_last_of('_');
+                                        if (lastUnderscore != std::string::npos && lastUnderscore > 0) {
+                                            bool isNumSuffix = true;
+                                            for (size_t k = lastUnderscore + 1; k < cleanName.size(); k++) {
+                                                if (!isdigit(cleanName[k])) { isNumSuffix = false; break; }
+                                            }
+                                            if (isNumSuffix) cleanName = cleanName.substr(0, lastUnderscore);
+                                        }
+                                    }
+
+                                    if (cleanName == skCrypt("G36C") && !g_Menu.loot_weapon_g36c) continue;
+
+                                    item.Name = isVeh ? skCrypt("Vehicle") : (isAir ? skCrypt("Air Drop") : (isBox ? skCrypt("Dead Box") : (isProj ? skCrypt("PROJECTILE") : cleanName)));
+                                    item.IsImportant = (isAir || isVeh || isProj || cleanName.find(skCrypt("FlareGun")) != std::string::npos);
                                     tempItems.push_back(item);
                                 }
                             }
@@ -709,13 +829,24 @@ namespace telemetryContext {
             }
         }
 
-        // Final swap
-        G_Players = tempPlayers;
+        // Final swap with Mutex protection to prevent BSOD during Render
+        {
+            std::lock_guard<std::mutex> lock(G_PlayersMutex);
+            G_Players = std::move(tempPlayers);
+        }
+        
         G_LastScanTime = scanStartTime;
-        if (!tempItems.empty()) {
-            CachedItems = tempItems;
-            static ULONGLONG lastUpdate = 0;
-            lastUpdate = GetTickCount64();
+
+        if (isAdmin) {
+            std::lock_guard<std::mutex> lock(G_DebugActorsMutex);
+            G_DebugActors = std::move(tempDebug);
+        }
+
+        static ULONGLONG lastItemScan = 0;
+        if (!tempItems.empty() || (GetTickCount64() - lastItemScan > 5000)) {
+            std::lock_guard<std::mutex> lock(CachedItemsMutex);
+            CachedItems = std::move(tempItems);
+            lastItemScan = GetTickCount64();
         }
     }
     void UpdateCamera() {

@@ -28,6 +28,34 @@ extern const wchar_t* LOADER_REGISTER_PATH;
 
 extern void UploadActiveLoaderConfigAsync();
 
+void OverlayMenu::BeginGlassCard(const char* id, const char* title, ImVec2 size) {
+    ImVec2 pos = ImGui::GetCursorScreenPos();
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    // Card Background
+    drawList->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(15, 30, 60, 100), 12.0f);
+    // Card Inner Glow Border
+    drawList->AddRect(pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(0, 180, 255, 30), 12.0f, 0, 1.0f);
+    // Top Highlight Bar
+    drawList->AddLine(ImVec2(pos.x + 20, pos.y), ImVec2(pos.x + size.x - 20, pos.y), IM_COL32(0, 200, 255, 120), 2.0f);
+
+    ImGui::BeginChild(id, size, false, ImGuiWindowFlags_NoBackground);
+    ImGui::SetCursorPos(ImVec2(12, 8));
+    ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), title);
+    ImGui::Separator();
+    ImGui::Spacing();
+}
+
+void OverlayMenu::DrawDisplayOnlyOption(const char* label) {
+    auto Lang = Translation::Get();
+    bool previewEnabled = true;
+    ImGui::BeginDisabled(true);
+    ImGui::Checkbox(label, &previewEnabled);
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("%s", Lang.DisplayOnlyNote);
+    }
+}
+
 // DirectX 11 Globals
 static ID3D11Device* g_pd3dDevice = nullptr;
 static ID3D11DeviceContext* g_pd3dDeviceContext = nullptr;
@@ -40,12 +68,6 @@ static bool g_presentAfterRender = true;
 #include "../sdk/Utils/stb_image.h"
 #include <map>
 
-struct TextureInfo {
-    ID3D11ShaderResourceView* SRV = nullptr;
-    int Width = 0;
-    int Height = 0;
-};
-
 struct VividThreat {
     std::string Name;
     int Dist;
@@ -56,7 +78,34 @@ struct VividThreat {
 static std::map<std::string, TextureInfo> WeaponImages;
 static std::map<std::string, TextureInfo> VehicleIcons;
 static std::map<std::string, TextureInfo> ItemIcons;
-static TextureInfo PreviewInstructor;
+TextureInfo PreviewInstructor;
+
+static bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height);
+
+TextureInfo* GetPreviewIcon(std::string folder, std::string asset) {
+    std::string cacheKey = folder + skCrypt(":") + asset;
+    if (ItemIcons.find(cacheKey) != ItemIcons.end()) return &ItemIcons[cacheKey];
+
+    ID3D11ShaderResourceView* srv = nullptr;
+    int w = 0, h = 0;
+    std::string fileName = asset + skCrypt(".png");
+    std::string basePath = skCrypt("Assets/") + folder + skCrypt("/");
+    
+    // Check multiple path depths for flexibility
+    std::string p1 = basePath + fileName;
+    std::string p2 = skCrypt("../") + p1;
+    std::string p3 = skCrypt("../../") + p1;
+
+    if (LoadTextureFromFile(p1.c_str(), &srv, &w, &h) ||
+        LoadTextureFromFile(p2.c_str(), &srv, &w, &h) ||
+        LoadTextureFromFile(p3.c_str(), &srv, &w, &h)) {
+        ItemIcons[cacheKey] = {srv, w, h};
+        return &ItemIcons[cacheKey];
+    }
+
+    ItemIcons[cacheKey] = {nullptr, 0, 0};
+    return &ItemIcons[cacheKey];
+}
 
 static bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height)
 {
@@ -172,29 +221,7 @@ static TextureInfo* GetItemIcon(std::string name) {
     return &ItemIcons[name];
 }
 
-static TextureInfo* GetPreviewIcon(const char* folderName, const char* assetName) {
-    std::string cacheKey = std::string(folderName) + skCrypt(":") + std::string(assetName);
-    if (ItemIcons.find(cacheKey) != ItemIcons.end()) return &ItemIcons[cacheKey];
-
-    ID3D11ShaderResourceView* srv = nullptr;
-    int w = 0;
-    int h = 0;
-    std::string fileName = std::string(assetName) + skCrypt(".png");
-    std::string basePath = skCrypt("Assets/") + std::string(folderName) + skCrypt("/");
-    std::string path1 = basePath + fileName;
-    std::string path2 = skCrypt("../") + basePath + fileName;
-    std::string path3 = skCrypt("../../") + basePath + fileName;
-
-    if (LoadTextureFromFile(path1.c_str(), &srv, &w, &h) ||
-        LoadTextureFromFile(path2.c_str(), &srv, &w, &h) ||
-        LoadTextureFromFile(path3.c_str(), &srv, &w, &h)) {
-        ItemIcons[cacheKey] = {srv, w, h};
-        return &ItemIcons[cacheKey];
-    }
-
-    ItemIcons[cacheKey] = {nullptr, 0, 0};
-    return &ItemIcons[cacheKey];
-}
+// Old PreviewIcon logic merged into global GetPreviewIcon above.
 
 static TextureInfo* GetWeaponImage(std::string weaponName) {
     if (WeaponImages.find(weaponName) != WeaponImages.end()) {
@@ -716,7 +743,11 @@ void OverlayMenu::RenderFrame() {
             telemetryContext::UpdateCamera();
         }
 
-        std::vector<PlayerData> localPlayers = G_Players;
+        std::vector<PlayerData> localPlayers;
+        {
+            std::lock_guard<std::mutex> lock(G_PlayersMutex);
+            localPlayers = G_Players;
+        }
         if (esp_toggle && is_authenticated) telemetryContext::SyncLivePlayers(localPlayers);
 
         Vector2 local_feet_s;
@@ -1444,26 +1475,52 @@ void OverlayMenu::RenderFrame() {
 
         }
 
-        // --- 1.5. ITEM & VEHICLE RENDERING ---
+        // --- 1.5. ITEM & VEHICLE RENDERING (MERGED ENGINE) ---
         if (is_authenticated && esp_toggle) {
-            for (const auto& item : CachedItems) {
+            std::vector<ItemData> allLoot;
+            {
+                // Source 1: DMA Radar Items (Precise names from Items.h)
+                auto dmaItems = Data::GetItems();
+                for (const auto& pair : dmaItems) {
+                    ItemData d;
+                    d.Position = { pair.second.Location.X, pair.second.Location.Y, pair.second.Location.Z };
+                    d.Name = pair.second.Name;
+                    d.Distance = pair.second.Distance;
+                    d.IsImportant = (pair.second.ItemType == WeaponType::AR || pair.second.ItemType == WeaponType::SR || pair.second.ItemType == WeaponType::DMR);
+                    allLoot.push_back(d);
+                }
+                
+                // Source 2: Actor Cached Items (Vehicles, Projectiles, Generic)
+                {
+                    std::lock_guard<std::mutex> lock(CachedItemsMutex);
+                    for (const auto& actorItem : CachedItems) {
+                        bool duplicate = false;
+                        for (const auto& existing : allLoot) {
+                            if (existing.Position.Distance(actorItem.Position) < 30.0f) { duplicate = true; break; }
+                        }
+                        if (!duplicate) allLoot.push_back(actorItem);
+                    }
+                }
+            }
+
+            for (const auto& item : allLoot) {
                 if (item.Distance <= 0) continue;
 
                 bool should_draw = false;
                 ImU32 col = IM_COL32(200, 200, 200, 255); // Default Loot
 
-                if (item.Name == "Vehicle") {
-                    if (g_Menu.esp_vehicles && item.Distance < g_Menu.vehicle_max_dist) {
+                if (item.Name == skCrypt("Vehicle")) {
+                    if (g_Menu.esp_vehicles && item.Distance < 400.0f) { // Max 400m for vehicles (Requirement #3015)
                         should_draw = true; col = IM_COL32(0, 255, 255, 255);
                     }
-                } else if (item.Name == "Air Drop") {
+                } else if (item.Name == skCrypt("Air Drop")) {
                     if (g_Menu.esp_airdrops) { should_draw = true; col = IM_COL32(255, 50, 50, 255); }
                 } else if (item.Name == "Dead Box") {
                     if (g_Menu.esp_deadboxes && item.Distance < 200.0f) { should_draw = true; col = IM_COL32(255, 140, 0, 255); }
                 } else if (item.Name == "PROJECTILE") {
                     should_draw = true; col = IM_COL32(255, 0, 0, 255); // BRIGHT RED FOR DANGER
                 } else { // Generic items
-                    if (g_Menu.esp_items && item.Distance < g_Menu.loot_max_dist) {
+                    if (g_Menu.esp_items && item.Distance < 100.0f) { // Max 100m for items (Requirement #3015)
                         const std::string& id = item.Name; // e.g. Item_Weapon_AK47_C
 
                         // --- 1. WEAPONS: ASSAULT RIFLES ---
@@ -1537,7 +1594,38 @@ void OverlayMenu::RenderFrame() {
                         else if (id == skCrypt("Item_Ammo_Flare_C"))    { if(g_Menu.loot_ammo_flare) { should_draw = true; } }
                         else if (id == skCrypt("Item_Ammo_Mortar_C"))   { if(g_Menu.loot_ammo_mortar) { should_draw = true; } }
 
-                        // --- 6. THROWABLES: TACTICAL ---
+                        // --- 6. ATTACHMENTS: SCOPES ---
+                        else if (id.find(skCrypt("DotSight")) != std::string::npos) { if(g_Menu.loot_scope_reddot) { should_draw = true; } }
+                        else if (id.find(skCrypt("Holosight")) != std::string::npos) { if(g_Menu.loot_scope_holo) { should_draw = true; } }
+                        else if (id.find(skCrypt("Aimpoint")) != std::string::npos) { if(g_Menu.loot_scope_2x) { should_draw = true; } }
+                        else if (id.find(skCrypt("Scope3x")) != std::string::npos) { if(g_Menu.loot_scope_3x) { should_draw = true; } }
+                        else if (id.find(skCrypt("ACOG")) != std::string::npos) { if(g_Menu.loot_scope_4x) { should_draw = true; } }
+                        else if (id.find(skCrypt("Scope6x")) != std::string::npos) { if(g_Menu.loot_scope_6x) { should_draw = true; } }
+                        else if (id.find(skCrypt("CQBSS")) != std::string::npos) { if(g_Menu.loot_scope_8x) { should_draw = true; col = IM_COL32(255, 0, 255, 255); } }
+                        else if (id.find(skCrypt("PM2")) != std::string::npos) { if(g_Menu.loot_scope_15x) { should_draw = true; col = IM_COL32(255, 0, 255, 255); } }
+                        else if (id.find(skCrypt("Thermal")) != std::string::npos) { if(g_Menu.loot_scope_thermal) { should_draw = true; col = IM_COL32(255, 0, 255, 255); } }
+
+                        // --- 7. ATTACHMENTS: MUZZLES ---
+                        else if (id.find(skCrypt("Compensator")) != std::string::npos) { if(g_Menu.loot_muzzle_comp) { should_draw = true; } }
+                        else if (id.find(skCrypt("FlashHider")) != std::string::npos) { if(g_Menu.loot_muzzle_flash) { should_draw = true; } }
+                        else if (id.find(skCrypt("Suppressor")) != std::string::npos) { if(g_Menu.loot_muzzle_supp) { should_draw = true; col = IM_COL32(0, 255, 0, 255); } }
+                        else if (id.find(skCrypt("Choke")) != std::string::npos) { if(g_Menu.loot_muzzle_choke) { should_draw = true; } }
+
+                        // --- 8. ATTACHMENTS: GRIPS & STOCKS ---
+                        else if (id.find(skCrypt("Foregrip")) != std::string::npos) { if(g_Menu.loot_grip_vertical) { should_draw = true; } }
+                        else if (id.find(skCrypt("AngledForeGrip")) != std::string::npos) { if(g_Menu.loot_grip_angled) { should_draw = true; } }
+                        else if (id.find(skCrypt("HalfGrip")) != std::string::npos) { if(g_Menu.loot_grip_half) { should_draw = true; } }
+                        else if (id.find(skCrypt("ThumbGrip")) != std::string::npos) { if(g_Menu.loot_grip_thumb) { should_draw = true; } }
+                        else if (id.find(skCrypt("Lightweight")) != std::string::npos) { if(g_Menu.loot_grip_light) { should_draw = true; } }
+                        else if (id.find(skCrypt("Stock_AR_Heavy")) != std::string::npos) { if(g_Menu.loot_stock_heavy) { should_draw = true; } }
+                        else if (id.find(skCrypt("CheekPad")) != std::string::npos) { if(g_Menu.loot_stock_cheek) { should_draw = true; } }
+
+                        // --- 9. ATTACHMENTS: MAGAZINES ---
+                        else if (id.find(skCrypt("ExtendedQuickDraw")) != std::string::npos) { if(g_Menu.loot_mag_ext_quick) { should_draw = true; } }
+                        else if (id.find(skCrypt("Extended_")) != std::string::npos) { if(g_Menu.loot_mag_ext) { should_draw = true; } }
+                        else if (id.find(skCrypt("QuickDraw_")) != std::string::npos) { if(g_Menu.loot_mag_quick) { should_draw = true; } }
+
+                        // --- 10. THROWABLES & TACTICAL ---
                         else if (id == skCrypt("Item_Weapon_Grenade_C")) { if(g_Menu.loot_throw_frag) { should_draw = true; col = IM_COL32(255, 50, 50, 255); } }
                         else if (id == skCrypt("Item_Weapon_SmokeBomb_C")) { if(g_Menu.loot_throw_smoke) { should_draw = true; col = IM_COL32(200, 200, 200, 255); } }
                         else if (id == skCrypt("Item_Weapon_FlashBang_C")) { if(g_Menu.loot_throw_flash) { should_draw = true; } }
@@ -1547,16 +1635,16 @@ void OverlayMenu::RenderFrame() {
                         else if (id == skCrypt("Item_Weapon_BluezoneGrenade_C")) { if(g_Menu.loot_throw_bz) { should_draw = true; col = IM_COL32(0, 100, 255, 255); } }
                         else if (id == skCrypt("Item_Weapon_DecoyGrenade_C")) { if(g_Menu.loot_throw_decoy) { should_draw = true; } }
 
-                        // --- 7. GEAR: ARMOR & HELMETS & PACKS ---
+                        // --- 11. GEAR: ARMOR & HELMETS & PACKS ---
                         else if (id.find(skCrypt("Lv3")) != std::string::npos) { if(g_Menu.loot_armor_lv3 || g_Menu.loot_helmet_lv3 || g_Menu.loot_backpack_lv3) { should_draw = true; col = IM_COL32(255, 0, 255, 255); } }
                         else if (id.find(skCrypt("Lv2")) != std::string::npos) { if(g_Menu.loot_armor_lv2 || g_Menu.loot_helmet_lv2 || g_Menu.loot_backpack_lv2) { should_draw = true; col = IM_COL32(0, 200, 255, 255); } }
                         else if (id == skCrypt("Item_Back_BlueBlocker")) { if(g_Menu.loot_utility_jammer) { should_draw = true; col = IM_COL32(0, 255, 255, 255); } }
 
-                        // --- 8. RECOVERY: MEDS & BOOSTS ---
+                        // --- 12. RECOVERY: MEDS & BOOSTS ---
                         else if (id == skCrypt("Item_Heal_MedKit_C") || id == skCrypt("Item_Heal_FirstAid_C")) { if(g_Menu.loot_meds_healing) { should_draw = true; col = IM_COL32(100, 255, 100, 255); } }
                         else if (id.find(skCrypt("Item_Boost")) != std::string::npos) { if(g_Menu.loot_meds_boosts) { should_draw = true; col = IM_COL32(255, 255, 0, 255); } }
 
-                        // --- 9. SPECIAL: GHILLIE & KEYS ---
+                        // --- 13. SPECIAL: GHILLIE & KEYS & REPAIR ---
                         else if (id == skCrypt("Item_Ghillie_01_C")) { if(g_Menu.loot_ghillie_arctic) { should_draw = true; col = IM_COL32(255, 255, 255, 255); } }
                         else if (id == skCrypt("Item_Ghillie_02_C")) { if(g_Menu.loot_ghillie_desert) { should_draw = true; col = IM_COL32(255, 200, 100, 255); } }
                         else if (id == skCrypt("Item_Ghillie_03_C")) { if(g_Menu.loot_ghillie_jungle) { should_draw = true; col = IM_COL32(0, 255, 0, 255); } }
@@ -1564,8 +1652,9 @@ void OverlayMenu::RenderFrame() {
                         else if (id == skCrypt("Item_Ghillie_05_C")) { if(g_Menu.loot_ghillie_mossy)  { should_draw = true; } }
                         else if (id == skCrypt("Item_Ghillie_06_C")) { if(g_Menu.loot_ghillie_brown)  { should_draw = true; } }
                         else if (id.find(skCrypt("Key")) != std::string::npos || id.find(skCrypt("Keycard")) != std::string::npos) { if(g_Menu.loot_key_security || g_Menu.loot_key_secret) { should_draw = true; col = IM_COL32(255, 215, 0, 255); } }
+                        else if (id.find(skCrypt("Repair_Kit")) != std::string::npos) { if(g_Menu.loot_repair_armor || g_Menu.loot_repair_helmet) { should_draw = true; col = IM_COL32(0, 255, 0, 255); } }
 
-                        // --- 10. CATCH-ALL & IMPORTANT ---
+                        // --- 14. CATCH-ALL & IMPORTANT ---
                         else if (g_Menu.loot_weapon_all || item.IsImportant) should_draw = true;
                     }
                 }
@@ -1606,6 +1695,27 @@ void OverlayMenu::RenderFrame() {
                             draw->AddText(ImVec2(itemScreen.x - tsize.x/2, itemScreen.y), col, itemText);
                         }
                     }
+                }
+            }
+        }
+
+        // --- 1.4.1 ADMIN DEBUG ACTOR ESP (Draw Class Names at World Positions) ---
+        if (is_authenticated && g_Menu.debug_actor_esp) {
+            extern std::vector<DebugActorData> G_DebugActors;
+            extern std::mutex G_DebugActorsMutex;
+            std::lock_guard<std::mutex> lock(G_DebugActorsMutex);
+            for (const auto& actor : G_DebugActors) {
+                Vector2 screen;
+                if (telemetryContext::WorldToScreen(actor.Position, screen)) {
+                    char buf[256];
+                    sprintf_s(buf, skCrypt("[%s]\n0x%llX\n%.1fm"), actor.ClassName.c_str(), actor.Address, actor.Distance);
+                    
+                    // Draw a small dot at origin
+                    draw->AddCircleFilled(ImVec2(screen.x, screen.y), 2.5f, IM_COL32(255, 255, 0, 255));
+                    
+                    // Draw Multi-line info with shadows for readability
+                    draw->AddText(ImVec2(screen.x + 1, screen.y + 1), IM_COL32(0, 0, 0, 200), buf);
+                    draw->AddText(ImVec2(screen.x, screen.y), IM_COL32(255, 255, 0, 255), buf);
                 }
             }
         }
@@ -1767,33 +1877,8 @@ void OverlayMenu::RenderFrame() {
             // 4. Vibrant Outer Border (Cyan Glow)
             drawList->AddRect(windowPos, ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y), IM_COL32(0, 200, 255, 80), 16.0f, 0, 1.5f);
 
-            // Helpers for consistent premium UI components
-            auto BeginGlassCard = [&](const char* id, const char* label, ImVec2 size) {
-                ImVec2 pos = ImGui::GetCursorScreenPos();
-                // Card Background
-                drawList->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(15, 30, 60, 100), 12.0f);
-                // Card Inner Glow Border
-                drawList->AddRect(pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(0, 180, 255, 30), 12.0f, 0, 1.0f);
-
-                // Top Highlight Bar
-                drawList->AddLine(ImVec2(pos.x + 20, pos.y), ImVec2(pos.x + size.x - 20, pos.y), IM_COL32(0, 200, 255, 120), 2.0f);
-
-                ImGui::BeginChild(id, size, false, ImGuiWindowFlags_NoBackground);
-                ImGui::SetCursorPos(ImVec2(12, 8));
-                ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), label);
-                ImGui::Separator();
-                ImGui::Spacing();
-            };
-
-            auto DrawDisplayOnlyOption = [&](const char* label) {
-                bool previewEnabled = true;
-                ImGui::BeginDisabled(true);
-                ImGui::Checkbox(label, &previewEnabled);
-                ImGui::EndDisabled();
-                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-                    ImGui::SetTooltip("%s", Lang.DisplayOnlyNote);
-                }
-            };
+            // 4. Vibrant Outer Border (Cyan Glow)
+            drawList->AddRect(windowPos, ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y), IM_COL32(0, 200, 255, 80), 16.0f, 0, 1.5f);
 
             // Top Bar
             ImGui::SetCursorPos(ImVec2(0, 0));
@@ -1830,959 +1915,17 @@ void OverlayMenu::RenderFrame() {
 
             ImGui::EndChild(); // TopBar
 
-            // Increase gap between header and content: 70 -> 95 to prevent overlap with premium header
-            ImGui::SetCursorPos(ImVec2(20, 95));
-            ImGui::BeginChild(skCrypt("##MainContent"), ImVec2(windowSize.x - 40, windowSize.y - 170), false, ImGuiWindowFlags_None);
-
-            // --- HIá»‚N THá»Š (VISUALS) TAB --- (NOW INDEX 0)
-            if (g_Menu.active_tab == 0) {
-                float totalWidth = windowSize.x - 60;
-                ImGui::Columns(4, skCrypt("ESPColumns"), false);
-                ImGui::SetColumnWidth(0, totalWidth / 4.0f);
-                ImGui::SetColumnWidth(1, totalWidth / 4.0f);
-                ImGui::SetColumnWidth(2, totalWidth / 4.0f);
-                ImGui::SetColumnWidth(3, totalWidth / 4.0f);
-
-                // Col 1: LÃµi Hiá»ƒn Thá»‹
-                BeginGlassCard(skCrypt("##ESPCol1"), Lang.HeaderVisualCore, ImVec2(totalWidth / 4.0f - 15, 0));
-                ImGui::Checkbox(Lang.MasterToggle, &g_Menu.esp_toggle);
-                ImGui::Checkbox(Lang.ESP_Icons, &g_Menu.esp_icons);
-                ImGui::Checkbox(Lang.ESP_Offscreen, &g_Menu.esp_offscreen);
-                ImGui::Checkbox(Lang.VisCheck, &g_Menu.aim_visible_only);
-                ImGui::Checkbox(Lang.ESP_Spectated, &g_Menu.esp_spectated);
-                ImGui::Checkbox(Lang.ESP_SpectatorList, &g_Menu.esp_spectator_list);
-                ImGui::Separator();
-                DrawDisplayOnlyOption(Lang.ShowcaseVisualProfile);
-                DrawDisplayOnlyOption(Lang.ShowcaseRankLayout);
-                DrawDisplayOnlyOption(Lang.ShowcaseMarkerLayout);
-                DrawDisplayOnlyOption(Lang.ShowcaseEspThreatBands);
-                DrawDisplayOnlyOption(Lang.ShowcaseEspTeamColors);
-                ImGui::EndChild();
-
-                ImGui::NextColumn();
-                // Col 2: Kiá»ƒu Váº½ & HUD
-                BeginGlassCard(skCrypt("##ESPCol2"), Lang.HeaderRenderStyle, ImVec2(totalWidth / 4.0f - 15, 0));
-                ImGui::Checkbox(Lang.Box, &g_Menu.esp_box);
-                ImGui::SliderFloat(Lang.BoxThick, &g_Menu.box_thickness, 1.0f, 5.0f, skCrypt("%.1f px"));
-                ImGui::Checkbox(Lang.Skeleton, &g_Menu.esp_skeleton);
-                ImGui::Checkbox(Lang.ESP_SkeletonDots, &g_Menu.esp_skeleton_dots);
-                ImGui::Checkbox(Lang.HealthBar, &g_Menu.esp_health);
-                ImGui::Checkbox(Lang.Distance, &g_Menu.esp_distance);
-                ImGui::Checkbox(Lang.Name, &g_Menu.esp_name);
-                ImGui::Checkbox(Lang.TeamID, &g_Menu.esp_teamid);
-                ImGui::Checkbox(Lang.KillCount, &g_Menu.esp_killcount);
-                ImGui::Checkbox(Lang.Rank, &g_Menu.esp_rank);
-                ImGui::Checkbox(Lang.SurvivalLevel, &g_Menu.esp_survival_level);
-                ImGui::Checkbox(Lang.HeadCircle, &g_Menu.esp_head_circle);
-                ImGui::Checkbox(Lang.Snaplines, &g_Menu.esp_snapline);
-                ImGui::Separator();
-                DrawDisplayOnlyOption(Lang.ShowcaseEspNameplates);
-                ImGui::EndChild();
-
-                ImGui::NextColumn();
-                // Col 3: ThÃ´ng sá»‘ & MÃ u Sáº¯c
-                BeginGlassCard(skCrypt("##ESPCol3"), Lang.HeaderOverlayHUD, ImVec2(totalWidth / 4.0f - 15, 0));
-                ImGui::SliderFloat(Lang.FontSize, &g_Menu.esp_font_size, 8.0f, 24.0f, skCrypt("%.1f px"));
-                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), Lang.DistThresholds);
-                ImGui::SliderInt(Lang.RenderDist, &g_Menu.render_distance, 50, 1000, skCrypt("%d m"));
-                ImGui::SliderInt(Lang.InfoESP, &g_Menu.name_max_dist, 50, 600, skCrypt("%d m"));
-                ImGui::SliderFloat(skCrypt("Thick"), &g_Menu.skel_thickness, 1.0f, 5.0f, skCrypt("%.1f px"));
-
-                ImGui::Spacing();
-                ImGui::SetNextItemWidth(120);
-                const char* posItems[] = { Lang.PosLeft, Lang.PosRight, Lang.PosTop, Lang.PosBottom };
-                ImGui::Combo(Lang.HealthPos, &g_Menu.esp_health_pos, posItems, IM_ARRAYSIZE(posItems));
-
-                ImGui::SetNextItemWidth(120);
-                const char* modeItems[] = { Lang.ModeDynamic, Lang.ModeStatic };
-                ImGui::Combo(Lang.HealthMode, &g_Menu.esp_health_color_mode, modeItems, IM_ARRAYSIZE(modeItems));
-
-                ImGui::Spacing();
-                ImGui::Separator();
-                ImGui::Spacing();
-
-                auto ColorPicker = [&](const char* label, float* col1, float* col2 = nullptr) {
-                    ImGui::PushID(label);
-                    ImGui::TextDisabled(label);
-                    ImGui::SameLine(100);
-                    ImGui::ColorEdit4(skCrypt("##Col1"), col1, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
-                    if (col2) {
-                        ImGui::SameLine();
-                        ImGui::ColorEdit4(skCrypt("##Col2"), col2, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
-                    }
-                    ImGui::PopID();
-                };
-
-                ColorPicker(Lang.Box, g_Menu.box_visible_color, g_Menu.box_invisible_color);
-                ColorPicker(Lang.Skeleton, g_Menu.skeleton_visible_color, g_Menu.skeleton_invisible_color);
-                ColorPicker(Lang.Name, g_Menu.name_color);
-                ColorPicker(Lang.Distance, g_Menu.distance_color);
-                ColorPicker(Lang.Weapon, g_Menu.weapon_color);
-                ColorPicker(Lang.ColorHealth, g_Menu.health_color);
-
-                ImGui::EndChild();
-
-                ImGui::NextColumn();
-                // Col 4: Xem TrÆ°á»›c (PREVIEW)
-                BeginGlassCard(skCrypt("##ESPCol4"), Lang.PreviewPanel, ImVec2(totalWidth / 4.0f - 15, 0));
-
-                static bool bPreviewOccluded = false;
-                static int previewHealthPercent = 100; // Int slider for better control (stops snapping to 0/1)
-
-                ImGui::Checkbox(Lang.SimulateWall, &bPreviewOccluded);
-                ImGui::SameLine();
-                ImGui::SetNextItemWidth(100);
-                ImGui::SliderInt(skCrypt("##HP"), &previewHealthPercent, 0, 100, skCrypt("%d%% HP"));
-                ImGui::Spacing();
-
-                float previewHealthSim = (float)previewHealthPercent / 100.0f;
-
-                float cardW = totalWidth / 4.0f - 15;
-                float previewW = cardW * 0.75f;
-                float previewH = previewW * 2.1f;
-
-                // Centering logic
-                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (cardW - previewW) / 2.0f);
-                ImVec2 cursorPos = ImGui::GetCursorScreenPos();
-
-                if (PreviewInstructor.SRV) {
-                    ImGui::Image((void*)PreviewInstructor.SRV, ImVec2(previewW, previewH), ImVec2(0,0), ImVec2(1,1), bPreviewOccluded ? ImVec4(1,1,1,0.4f) : ImVec4(1,1,1,1.0f), ImVec4(0,0,0,0));
-
-                    ImDrawList* draw = ImGui::GetWindowDrawList();
-
-                    // --- Wall Simulation Effect ---
-                    if (bPreviewOccluded) {
-                        draw->AddRectFilled(ImVec2(cursorPos.x - 5, cursorPos.y + previewH * 0.2f),
-                                           ImVec2(cursorPos.x + previewW + 5, cursorPos.y + previewH * 0.8f),
-                                           IM_COL32(50, 50, 50, 180), 4.0f); // Semi-transparent wall
-                    }
-
-                    // 1. Box Demo
-                    if (g_Menu.esp_box) {
-                        float* targetCol = bPreviewOccluded ? g_Menu.box_invisible_color : g_Menu.box_visible_color;
-                        ImU32 uBoxCol = ImColor(ImVec4(targetCol[0], targetCol[1], targetCol[2], targetCol[3]));
-                        draw->AddRect(cursorPos, ImVec2(cursorPos.x + previewW, cursorPos.y + previewH), uBoxCol, 4.0f, 0, 2.0f);
-                    }
-
-                    // 2. Health Demo (Multi-Position & Multi-Color Mode)
-                    if (g_Menu.esp_health) {
-                        ImVec2 hpTop, hpBot;
-                        bool horizontal = false;
-
-                        // Position calculation
-                        switch (g_Menu.esp_health_pos) {
-                        case 1: // Right
-                            hpTop = ImVec2(cursorPos.x + previewW + 4, cursorPos.y);
-                            hpBot = ImVec2(cursorPos.x + previewW + 16, cursorPos.y + previewH);
-                            break;
-                        case 2: // Top
-                            hpTop = ImVec2(cursorPos.x, cursorPos.y - 16);
-                            hpBot = ImVec2(cursorPos.x + previewW, cursorPos.y - 4);
-                            horizontal = true;
-                            break;
-                        case 3: // Bottom
-                            hpTop = ImVec2(cursorPos.x, cursorPos.y + previewH + 4);
-                            hpBot = ImVec2(cursorPos.x + previewW, cursorPos.y + previewH + 16);
-                            horizontal = true;
-                            break;
-                        default: // 0: Left
-                            hpTop = ImVec2(cursorPos.x - 16, cursorPos.y);
-                            hpBot = ImVec2(cursorPos.x - 4, cursorPos.y + previewH);
-                            break;
-                        }
-
-                        // Background
-                        draw->AddRectFilled(hpTop, hpBot, IM_COL32(0, 0, 0, 180), 2.0f);
-
-                        // Color calculation
-                        ImU32 hpColor;
-                        if (g_Menu.esp_health_color_mode == 1) { // Static
-                             hpColor = ImColor(ImVec4(g_Menu.health_color[0], g_Menu.health_color[1], g_Menu.health_color[2], g_Menu.health_color[3]));
-                        } else { // Dynamic/Gradient
-                            hpColor = IM_COL32(0, 255, 100, 255);
-                            if (previewHealthSim < 0.3f) hpColor = IM_COL32(255, 50, 50, 255);
-                            else if (previewHealthSim < 0.6f) hpColor = IM_COL32(255, 200, 50, 255);
-                        }
-
-                        // Bar rendering
-                        if (!horizontal) {
-                            float hpHeight = (hpBot.y - hpTop.y - 2) * previewHealthSim;
-                            draw->AddRectFilled(ImVec2(hpTop.x + 1, hpBot.y - hpHeight - 1), ImVec2(hpBot.x - 1, hpBot.y - 1), hpColor, 2.0f);
-                            for (int i = 1; i < 5; i++) {
-                                float segY = hpTop.y + ((hpBot.y - hpTop.y) * i / 5.0f);
-                                draw->AddLine(ImVec2(hpTop.x, segY), ImVec2(hpBot.x, segY), IM_COL32(0, 0, 0, 255), 1.0f);
-                            }
-                        } else {
-                            float hpWidth = (hpBot.x - hpTop.x - 2) * previewHealthSim;
-                            draw->AddRectFilled(ImVec2(hpTop.x + 1, hpTop.y + 1), ImVec2(hpTop.x + 1 + hpWidth, hpBot.y - 1), hpColor, 2.0f);
-                            for (int i = 1; i < 5; i++) {
-                                float segX = hpTop.x + ((hpBot.x - hpTop.x) * i / 5.0f);
-                                draw->AddLine(ImVec2(segX, hpTop.y), ImVec2(segX, hpBot.y), IM_COL32(0, 0, 0, 255), 1.0f);
-                            }
-                        }
-                    }
-
-                    // 2.5 Rank Preview
-                    if (g_Menu.esp_rank) {
-                        const char* szRank = skCrypt("Diamond");
-                        ImU32 rsCol = IM_COL32(180, 100, 255, 255);
-                        ImVec2 rsSize = ImGui::CalcTextSize(szRank);
-                        draw->AddText(ImVec2(cursorPos.x + (previewW - rsSize.x) / 2.0f, cursorPos.y - rsSize.y - 22), rsCol, szRank);
-                    }
-
-                    // 4. Name & Distance Demo
-                    if (g_Menu.esp_name) {
-                        float* targetCol = g_Menu.name_color;
-                        ImU32 uNameCol = ImColor(ImVec4(targetCol[0], targetCol[1], targetCol[2], targetCol[3]));
-
-                        std::string pName = "";
-                        if (g_Menu.esp_teamid) pName += "[4] ";
-                        pName += skCrypt("GZ-Preview");
-                        if (g_Menu.esp_killcount) pName += " | K: 12";
-                        if (g_Menu.esp_survival_level) pName += " | Lv.50";
-
-                        ImVec2 textSize = ImGui::CalcTextSize(pName.c_str());
-                        draw->AddText(ImVec2(cursorPos.x + (previewW - textSize.x) / 2.0f, cursorPos.y - textSize.y - 5), uNameCol, pName.c_str());
-                    }
-
-                    if (g_Menu.esp_distance) {
-                        float* targetCol = g_Menu.distance_color;
-                        ImU32 uDistCol = ImColor(ImVec4(targetCol[0], targetCol[1], targetCol[2], targetCol[3]));
-                        char distBuf[32];
-                        sprintf_s(distBuf, skCrypt("[145m]"));
-                        ImVec2 textSize = ImGui::CalcTextSize(distBuf);
-                        draw->AddText(ImVec2(cursorPos.x + (previewW - textSize.x) / 2.0f, cursorPos.y + previewH + 5), uDistCol, distBuf);
-                    }
-
-                    // 5. Weapon Demo
-                    float* weaponColPtr = g_Menu.weapon_color;
-                    ImU32 uWeaponCol = ImColor(ImVec4(weaponColPtr[0], weaponColPtr[1], weaponColPtr[2], weaponColPtr[3]));
-                    const char* szWeapon = skCrypt("SCAR-L");
-                    ImVec2 wpnSize = ImGui::CalcTextSize(szWeapon);
-                    draw->AddText(ImVec2(cursorPos.x + (previewW - wpnSize.x) / 2.0f, cursorPos.y + previewH + 20), uWeaponCol, szWeapon);
-
-                    // 3. Skeleton Demo (PIXEL-PERFECT FROM USER COORDINATES)
-                    if (g_Menu.esp_skeleton) {
-                        float* targetCol = bPreviewOccluded ? g_Menu.skeleton_invisible_color : g_Menu.skeleton_visible_color;
-                        ImU32 uSkelCol = ImColor(ImVec4(targetCol[0], targetCol[1], targetCol[2], targetCol[3]));
-
-                        // Points mapping
-                        ImVec2 pHead = ImVec2(cursorPos.x + previewW * 0.469f, cursorPos.y + previewH * 0.105f); // Lowered head center further
-                        ImVec2 pNeck = ImVec2(cursorPos.x + previewW * 0.469f, cursorPos.y + previewH * 0.145f);
-                        ImVec2 pChest = ImVec2(cursorPos.x + previewW * 0.473f, cursorPos.y + previewH * 0.189f);
-                        ImVec2 pVaiP = ImVec2(cursorPos.x + previewW * 0.289f, cursorPos.y + previewH * 0.201f);
-                        ImVec2 pVaiT = ImVec2(cursorPos.x + previewW * 0.670f, cursorPos.y + previewH * 0.187f);
-                        ImVec2 pKhuP = ImVec2(cursorPos.x + previewW * 0.276f, cursorPos.y + previewH * 0.356f);
-                        ImVec2 pKhuT = ImVec2(cursorPos.x + previewW * 0.756f, cursorPos.y + previewH * 0.342f);
-                        ImVec2 pTayP = ImVec2(cursorPos.x + previewW * 0.145f, cursorPos.y + previewH * 0.483f);
-                        ImVec2 pTayT = ImVec2(cursorPos.x + previewW * 0.842f, cursorPos.y + previewH * 0.495f);
-                        ImVec2 pEo = ImVec2(cursorPos.x + previewW * 0.486f, cursorPos.y + previewH * 0.363f);
-                        ImVec2 pHipsCenter = ImVec2(cursorPos.x + previewW * 0.461f, cursorPos.y + previewH * 0.445f);
-                        ImVec2 pHongP = ImVec2(cursorPos.x + previewW * 0.313f, cursorPos.y + previewH * 0.459f);
-                        ImVec2 pHongT = ImVec2(cursorPos.x + previewW * 0.613f, cursorPos.y + previewH * 0.465f);
-                        ImVec2 pGoiP = ImVec2(cursorPos.x + previewW * 0.383f, cursorPos.y + previewH * 0.699f);
-                        ImVec2 pGoiT = ImVec2(cursorPos.x + previewW * 0.633f, cursorPos.y + previewH * 0.707f);
-                        ImVec2 pChnP = ImVec2(cursorPos.x + previewW * 0.420f, cursorPos.y + previewH * 0.914f);
-                        ImVec2 pChnT = ImVec2(cursorPos.x + previewW * 0.715f, cursorPos.y + previewH * 0.911f);
-
-                        // Draw Connections
-                        // pHead exclusively for the Head Circle feature as requested
-                        if (g_Menu.esp_head_circle) draw->AddCircle(pHead, previewW * 0.16f, uSkelCol, 16, 1.5f); // Doubled radius from baseline
-
-                        // Skeleton starts from pNeck (Chin/Neck) downwards
-                        draw->AddLine(pNeck, pChest, uSkelCol, 1.5f);
-                        draw->AddLine(pChest, pVaiP, uSkelCol, 1.5f);
-                        draw->AddLine(pChest, pVaiT, uSkelCol, 1.5f);
-                        draw->AddLine(pVaiP, pKhuP, uSkelCol, 1.5f);
-                        draw->AddLine(pKhuP, pTayP, uSkelCol, 1.5f);
-                        draw->AddLine(pVaiT, pKhuT, uSkelCol, 1.5f);
-                        draw->AddLine(pKhuT, pTayT, uSkelCol, 1.5f);
-                        draw->AddLine(pChest, pEo, uSkelCol, 1.5f);
-                        draw->AddLine(pEo, pHipsCenter, uSkelCol, 1.5f);
-                        draw->AddLine(pHipsCenter, pHongP, uSkelCol, 1.5f);
-                        draw->AddLine(pHipsCenter, pHongT, uSkelCol, 1.5f);
-                        draw->AddLine(pHongP, pGoiP, uSkelCol, 1.5f);
-                        draw->AddLine(pGoiP, pChnP, uSkelCol, 1.5f);
-                        draw->AddLine(pHongT, pGoiT, uSkelCol, 1.5f);
-                        draw->AddLine(pGoiT, pChnT, uSkelCol, 1.5f);
-                    }
-                } else {
-                    ImGui::Dummy(ImVec2(previewW, previewH));
-                    ImGui::TextDisabled(skCrypt("Loading Pixel-Perfect Preview..."));
-                }
-
-                ImGui::EndChild();
-
-                ImGui::Columns(1);
-            }
-            // --- Tá»° Äá»˜NG NGáº®M (AIM) TAB --- (NOW INDEX 1)
-            else if (g_Menu.active_tab == 1) {
-                float totalWidth = windowSize.x - 60;
-                ImGui::Columns(3, skCrypt("AimColumns"), false);
-                ImGui::SetColumnWidth(0, totalWidth / 3.0f);
-                ImGui::SetColumnWidth(1, totalWidth / 3.0f);
-                ImGui::SetColumnWidth(2, totalWidth / 3.0f);
-
-                // Column 1: Config
-                BeginGlassCard(skCrypt("##AimCol1"), Lang.HeaderSystemConfig, ImVec2(totalWidth / 3.0f - 20, 0));
-
-                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), Lang.CurrentMethod);
-                ImGui::TextDisabled(skCrypt("Telemetry Bridge Preview"));
-
-                ImGui::Spacing();
-                if (ImGui::Button(Lang.SaveConfig, ImVec2(-1, 35))) { g_Menu.SaveConfig("dataMacro/Config/settings.json"); UploadActiveLoaderConfigAsync(); }
-                if (ImGui::Button(Lang.CloseOverlay, ImVec2(-1, 35))) { showmenu = false; }
-                ImGui::Separator();
-                DrawDisplayOnlyOption(Lang.ShowcasePrecisionProfile);
-                DrawDisplayOnlyOption(Lang.ShowcaseControllerMatrix);
-                DrawDisplayOnlyOption(Lang.ShowcaseKeyPresets);
-                DrawDisplayOnlyOption(Lang.ShowcaseAimProfiles);
-                ImGui::EndChild();
-
-                ImGui::NextColumn();
-                // Column 2: Settings
-                BeginGlassCard(skCrypt("##AimCol2"), Lang.HeaderPrecisionSettings, ImVec2(totalWidth / 3.0f - 20, 0));
-                ImGui::Checkbox(Lang.AimEnabled, &g_Menu.aim_master_enabled);
-
-                AimConfig* pCfg = &g_Menu.aim_configs[8]; // GLOBAL
-                ImGui::Checkbox(Lang.AimPrediction, &pCfg->prediction);
-                ImGui::Checkbox(Lang.AimVisible, &g_Menu.aim_visible_only);
-
-                ImGui::Spacing();
-                ImGui::SliderFloat(Lang.AimFOV, &pCfg->fov, 1.0f, 100.0f, skCrypt("%.0f px"));
-                ImGui::SliderFloat(Lang.AimSmooth, &pCfg->smooth, 1.0f, 20.0f, skCrypt("%.1f"));
-                ImGui::SliderFloat(Lang.MaxDistance, &pCfg->max_dist, 10.0f, 800.0f, skCrypt("%.0f m"));
-
-                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), Lang.FovColor);
-                static float fov_col[4] = {1.0f, 1.0f, 1.0f, 0.5f}; // Stub or find global fov color
-                ImGui::ColorEdit4(skCrypt("##FovCol"), fov_col, ImGuiColorEditFlags_NoInputs);
-
-                char keyDisplay[64];
-                sprintf_s(keyDisplay, sizeof(keyDisplay), skCrypt("MOUSE LEFT"));
-                ImGui::Separator();
-                ImGui::SliderFloat(Lang.SmoothRNG, &g_Menu.aim_smooth_rng, 0.0f, 10.0f, skCrypt("%.1f"));
-
-                ImGui::Spacing();
-                ImGui::TextColored(ImVec4(0.8f, 0.2f, 1.0f, 1.0f), Lang.AimKey2);
-                const char* keys[] = { "NONE", "MOUSE LEFT", "MOUSE RIGHT", "L-ALT", "L-SHIFT", "X", "V" };
-                int keyVals[] = { 0, VK_LBUTTON, VK_RBUTTON, VK_LMENU, VK_LSHIFT, 'X', 'V' };
-                int key2Idx = 0;
-                for(int i=0; i<7; i++) if(g_Menu.aim_key2 == keyVals[i]) key2Idx = i;
-                if (ImGui::Combo(skCrypt("##AimKey2Combo"), &key2Idx, keys, IM_ARRAYSIZE(keys))) {
-                    g_Menu.aim_key2 = keyVals[key2Idx];
-                }
-
-                ImGui::EndChild();
-
-                ImGui::NextColumn();
-
-                // Column 3: Cáº¥u trÃºc Logic
-                BeginGlassCard(skCrypt("##AimCol3"), Lang.HeaderAimStructure, ImVec2(totalWidth / 3.0f - 20, 0));
-                ImGui::TextColored(ImVec4(0.8f, 0.2f, 1.0f, 1.0f), Lang.AimBone);
-                const char* bones[] = { "Head", "Neck", "Upper Chest", "Pelvis" };
-                int boneIdx = 0;
-                if (pCfg->bone == 6) boneIdx = 0; else if (pCfg->bone == 5) boneIdx = 1; else if (pCfg->bone == 4) boneIdx = 2; else boneIdx = 3;
-                if (ImGui::Combo(skCrypt("##AimBoneCombo"), &boneIdx, bones, IM_ARRAYSIZE(bones))) {
-                    if (boneIdx == 0) pCfg->bone = 6; else if (boneIdx == 1) pCfg->bone = 5; else if (boneIdx == 2) pCfg->bone = 4; else pCfg->bone = 1;
-                }
-
-                ImGui::Spacing();
-                ImGui::Separator();
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), Lang.HeaderTactical);
-                ImGui::Checkbox(Lang.GrenadeLine, &g_Menu.esp_grenade_prediction);
-                ImGui::Checkbox(Lang.Projectiles, &g_Menu.esp_projectile_tracer);
-                ImGui::Checkbox(Lang.ThreatWarning, &g_Menu.esp_threat_warning);
-                ImGui::Separator();
-                DrawDisplayOnlyOption(Lang.ShowcaseAimCurve);
-                DrawDisplayOnlyOption(Lang.ShowcaseAimPriority);
-
-                ImGui::EndChild();
-
-                ImGui::Columns(1);
-            }
-            // --- MACRO (NO-RECOIL) TAB ---
-            else if (active_tab == 2) {
-                float totalWidth = windowSize.x - 60;
-                ImGui::Columns(3, skCrypt("MacroColumns"), false);
-                ImGui::SetColumnWidth(0, totalWidth / 3.0f);
-                ImGui::SetColumnWidth(1, totalWidth / 3.0f);
-                ImGui::SetColumnWidth(2, totalWidth / 3.0f);
-
-                // Col 1: Core
-                BeginGlassCard(skCrypt("##MacroCol1"), Lang.TabMacro, ImVec2(totalWidth / 3.0f - 20, 0));
-                ImGui::Checkbox(Lang.MacroEnabled, &g_Menu.macro_enabled);
-                ImGui::Checkbox(Lang.MacroHumanize, &g_Menu.macro_humanize);
-                ImGui::Checkbox(Lang.AdsOnly, &g_Menu.macro_ads_only);
-                ImGui::Separator();
-                DrawDisplayOnlyOption(Lang.ShowcaseMacroWeaponProfiles);
-                ImGui::EndChild();
-
-                ImGui::NextColumn();
-                // Col 2: Settings
-                BeginGlassCard(skCrypt("##MacroCol2"), Lang.HeaderPrecisionSettings, ImVec2(totalWidth / 3.0f - 20, 0));
-                ImGui::SliderFloat(Lang.MacroStrength, &g_Menu.macro_overlay_color[3], 0.1f, 2.0f, skCrypt("%.2f")); // Using alpha as strength stub if member missing
-                ImGui::Checkbox(Lang.ShowMacroOSD, &g_Menu.show_macro_overlay);
-                ImGui::ColorEdit4(Lang.OsdColor, g_Menu.macro_overlay_color, ImGuiColorEditFlags_NoInputs);
-                ImGui::Separator();
-                DrawDisplayOnlyOption(Lang.ShowcaseMacroSensitivity);
-                DrawDisplayOnlyOption(Lang.ShowcaseMacroOverlayLayout);
-                ImGui::EndChild();
-
-                ImGui::NextColumn();
-                // Col 3: Utils
-                BeginGlassCard(skCrypt("##MacroCol3"), Lang.HeaderEngineUtils, ImVec2(totalWidth / 3.0f - 20, 0));
-                if (ImGui::Button(Lang.RescanAttach, ImVec2(-1, 35))) { /* Rescan */ }
-                ImGui::TextDisabled("%s", Lang.MacroStatusPreview);
-                DrawDisplayOnlyOption(Lang.ShowcaseInputProfile);
-                DrawDisplayOnlyOption(Lang.ShowcaseHotkeyMatrix);
-                ImGui::EndChild();
-
-                ImGui::Columns(1);
-            }
-            // --- Váº¬T PHáº¨M (LOOT) TAB ---
-            else if (active_tab == 3) {
-                float totalWidth = windowSize.x - 60;
-                ImGui::Columns(5, skCrypt("ItemColumns"), false);
-                struct VisualLootTile {
-                    const char* label;
-                    const char* folder;
-                    const char* asset;
-                    bool* enabled;
-                };
-
-                auto DrawVisualLootTile = [&](const VisualLootTile& item, const ImVec2& tileSize) {
-                    ImGui::PushID(item.asset);
-                    ImVec2 tileMin = ImGui::GetCursorScreenPos();
-                    ImVec2 tileMax(tileMin.x + tileSize.x, tileMin.y + tileSize.y);
-
-                    if (ImGui::InvisibleButton(skCrypt("##VisualLootTile"), tileSize)) {
-                        *item.enabled = !*item.enabled;
-                    }
-
-                    bool hovered = ImGui::IsItemHovered();
-                    ImDrawList* tileDraw = ImGui::GetWindowDrawList();
-                    ImU32 bg = *item.enabled ? IM_COL32(0, 150, 255, 55) : IM_COL32(12, 24, 45, 135);
-                    ImU32 border = *item.enabled ? IM_COL32(0, 210, 255, 190) : IM_COL32(80, 110, 150, 85);
-                    if (hovered) bg = IM_COL32(0, 190, 255, 75);
-
-                    tileDraw->AddRectFilled(tileMin, tileMax, bg, 8.0f);
-                    tileDraw->AddRect(tileMin, tileMax, border, 8.0f, 0, *item.enabled ? 1.6f : 1.0f);
-
-                    TextureInfo* icon = GetPreviewIcon(item.folder, item.asset);
-                    const float iconTargetSize = 38.0f;
-                    ImVec2 actualIconSize(iconTargetSize, iconTargetSize);
-
-                    if (icon && icon->SRV && icon->Width > 0 && icon->Height > 0) {
-                        float aspect = (float)icon->Width / (float)icon->Height;
-                        if (aspect > 1.0f) { // W > H
-                            actualIconSize.y = iconTargetSize / aspect;
-                        } else { // H > W
-                            actualIconSize.x = iconTargetSize * aspect;
-                        }
-
-                        ImVec2 iconMin(tileMin.x + (tileSize.x - actualIconSize.x) * 0.5f,
-                                      tileMin.y + 6.0f + (iconTargetSize - actualIconSize.y) * 0.5f);
-                        ImVec2 iconMax(iconMin.x + actualIconSize.x, iconMin.y + actualIconSize.y);
-                        tileDraw->AddImage((ImTextureID)icon->SRV, iconMin, iconMax);
-                    } else {
-                        ImVec2 iconMin(tileMin.x + (tileSize.x - iconTargetSize) * 0.5f, tileMin.y + 6.0f);
-                        ImVec2 iconMax(iconMin.x + iconTargetSize, iconMin.y + iconTargetSize);
-                        tileDraw->AddRect(iconMin, iconMax, IM_COL32(110, 140, 180, 170), 5.0f);
-                        tileDraw->AddText(ImVec2(iconMin.x + 13.0f, iconMin.y + 10.0f), IM_COL32(170, 200, 235, 220), skCrypt("?"));
-                    }
-
-                    ImVec4 textClip(tileMin.x + 5.0f, tileMin.y + 48.0f, tileMax.x - 5.0f, tileMax.y - 5.0f);
-                    tileDraw->AddText(ImGui::GetFont(), 12.0f, ImVec2(textClip.x, textClip.y),
-                                      IM_COL32(225, 238, 255, 235), item.label, nullptr, tileSize.x - 10.0f, &textClip);
-
-                    if (*item.enabled) {
-                        tileDraw->AddCircleFilled(ImVec2(tileMax.x - 12.0f, tileMin.y + 12.0f), 6.0f, IM_COL32(0, 220, 255, 230));
-                    }
-
-                    if (hovered) {
-                        ImGui::SetTooltip("%s", *item.enabled ? Lang.ItemCatalogSelected : Lang.ItemCatalogHint);
-                    }
-
-                    ImGui::PopID();
-                };
-
-                auto DrawVisualLootGrid = [&](const VisualLootTile* items, int count, int preferredPerRow = 3) {
-                    const float tileGap = 8.0f;
-                    const float tileHeight = 76.0f;
-                    int perRow = preferredPerRow;
-                    float available = ImGui::GetContentRegionAvail().x;
-
-                    // Standardize on 3 per row for better density as requested
-                    perRow = 3;
-
-                    float tileWidth = (available - (perRow - 1) * tileGap) / perRow;
-                    if (tileWidth > 96.0f) tileWidth = 96.0f;
-                    if (tileWidth < 68.0f) tileWidth = 68.0f;
-                    ImVec2 tileSize(tileWidth, tileHeight);
-
-                    for (int i = 0; i < count; ++i) {
-                        DrawVisualLootTile(items[i], tileSize);
-                        if ((i % perRow) != (perRow - 1) && i != count - 1) {
-                            ImGui::SameLine(0, tileGap);
-                        }
-                    }
-                };
-                ImGui::SetColumnWidth(0, totalWidth / 5.0f);
-                ImGui::SetColumnWidth(1, totalWidth / 5.0f);
-                ImGui::SetColumnWidth(2, totalWidth / 5.0f);
-                ImGui::SetColumnWidth(3, totalWidth / 5.0f);
-                ImGui::SetColumnWidth(4, totalWidth / 5.0f);
-
-                // Col 1: Há»‡ Thá»‘ng & Gear
-                BeginGlassCard(skCrypt("##ItemCol1"), Lang.HeaderLootEngine, ImVec2(totalWidth / 5.0f - 12, 0));
-                ImGui::Checkbox(Lang.TabLoot, &g_Menu.esp_items);
-                ImGui::SliderInt(Lang.RenderDist, &g_Menu.loot_max_dist, 10, 300, skCrypt("%d m"));
-                ImGui::Separator();
-                ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), Lang.HeaderGearFilter);
-                VisualLootTile gearTiles[] = {
-                    { Lang.HelmetLv1, skCrypt("Helmet"), skCrypt("Item_Head_E_01_Lv1_C"), &g_Menu.loot_helmet_lv1 },
-                    { Lang.HelmetLv2, skCrypt("Helmet"), skCrypt("Item_Head_F_01_Lv2_C"), &g_Menu.loot_helmet_lv2 },
-                    { Lang.HelmetLv3, skCrypt("Helmet"), skCrypt("Item_Head_G_01_Lv3_C"), &g_Menu.loot_helmet_lv3 },
-                    { Lang.ArmorLv1, skCrypt("Armor"), skCrypt("Item_Armor_E_01_Lv1_C"), &g_Menu.loot_armor_lv1 },
-                    { Lang.ArmorLv2, skCrypt("Armor"), skCrypt("Item_Armor_D_01_Lv2_C"), &g_Menu.loot_armor_lv2 },
-                    { Lang.ArmorLv3, skCrypt("Armor"), skCrypt("Item_Armor_C_01_Lv3_C"), &g_Menu.loot_armor_lv3 },
-                    { Lang.BackpackLv1, skCrypt("Backpack"), skCrypt("Item_Back_E_01_Lv1_C"), &g_Menu.loot_backpack_lv1 },
-                    { Lang.BackpackLv2, skCrypt("Backpack"), skCrypt("Item_Back_F_01_Lv2_C"), &g_Menu.loot_backpack_lv2 },
-                    { Lang.BackpackLv3, skCrypt("Backpack"), skCrypt("Item_Back_C_01_Lv3_C"), &g_Menu.loot_backpack_lv3 }
-                };
-                DrawVisualLootGrid(gearTiles, IM_ARRAYSIZE(gearTiles), 3);
-
-                ImGui::Separator();
-                ImGui::TextColored(ImVec4(1.0f, 0.4f, 1.0f, 1.0f), skCrypt("SPECIAL REPAIR & GHILLIE"));
-                VisualLootTile specialGearTiles[] = {
-                    { skCrypt("Rep:A"), skCrypt("Repair"), skCrypt("Armor_Repair_Kit_C"), &g_Menu.loot_repair_armor },
-                    { skCrypt("Rep:H"), skCrypt("Repair"), skCrypt("Helmet_Repair_Kit_C"), &g_Menu.loot_repair_helmet },
-                    { skCrypt("Rep:V"), skCrypt("Repair"), skCrypt("Vehicle_Repair_Kit_C"), &g_Menu.loot_repair_vehicle },
-                    { skCrypt("G:Arc"), skCrypt("Ghillie"), skCrypt("Item_Ghillie_01_C"), &g_Menu.loot_ghillie_arctic },
-                    { skCrypt("G:Des"), skCrypt("Ghillie"), skCrypt("Item_Ghillie_02_C"), &g_Menu.loot_ghillie_desert },
-                    { skCrypt("G:Jun"), skCrypt("Ghillie"), skCrypt("Item_Ghillie_03_C"), &g_Menu.loot_ghillie_jungle },
-                    { skCrypt("G:For"), skCrypt("Ghillie"), skCrypt("Item_Ghillie_04_C"), &g_Menu.loot_ghillie_forest },
-                    { skCrypt("G:Mos"), skCrypt("Ghillie"), skCrypt("Item_Ghillie_05_C"), &g_Menu.loot_ghillie_mossy },
-                    { skCrypt("G:Brn"), skCrypt("Ghillie"), skCrypt("Item_Ghillie_06_C"), &g_Menu.loot_ghillie_brown }
-                };
-                DrawVisualLootGrid(specialGearTiles, IM_ARRAYSIZE(specialGearTiles), 3);
-
-                ImGui::Separator();
-                ImGui::TextColored(ImVec4(1.0f, 0.4f, 1.0f, 1.0f), skCrypt("TACTICAL UTILITY"));
-                VisualLootTile tacticalTiles[] = {
-                    { skCrypt("Drone"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_Drone_C"), &g_Menu.loot_utility_drone },
-                    { skCrypt("Spot"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_Spotter_Scope_C"), &g_Menu.loot_utility_scope },
-                    { skCrypt("Jamr"), skCrypt("Backpack"), skCrypt("Item_Back_BlueBlocker"), &g_Menu.loot_utility_jammer },
-                    { skCrypt("BlueC"), skCrypt("Utility"), skCrypt("Item_Bluechip_C"), &g_Menu.loot_utility_bluechip },
-                    { skCrypt("Trans"), skCrypt("Utility"), skCrypt("Item_Revival_Transmitter_C"), &g_Menu.loot_utility_vtransmitter },
-                    { skCrypt("Shld"), skCrypt("Utility"), skCrypt("Item_BulletproofShield_C"), &g_Menu.loot_utility_shield }
-                };
-                DrawVisualLootGrid(tacticalTiles, IM_ARRAYSIZE(tacticalTiles), 3);
-                ImGui::EndChild();
-
-                ImGui::NextColumn();
-                // Col 2: Medicines & Attachments
-                BeginGlassCard(skCrypt("##ItemCol2"), Lang.HeaderHealFilter, ImVec2(totalWidth / 5.0f - 12, 0));
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), skCrypt("MEDICINES"));
-                VisualLootTile medTiles[] = {
-                    { Lang.Healing, skCrypt("Medicine"), skCrypt("Item_Heal_FirstAid_C"), &g_Menu.loot_meds_healing },
-                    { Lang.Boosters, skCrypt("Medicine"), skCrypt("Item_Boost_EnergyDrink_C"), &g_Menu.loot_meds_boosts }
-                };
-                DrawVisualLootGrid(medTiles, IM_ARRAYSIZE(medTiles), 2);
-                ImGui::Separator();
-
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), skCrypt("OPTICS (SCOPES)"));
-                VisualLootTile scopeTiles[] = {
-                    { skCrypt("RDS"), skCrypt("Attachment/Scope"), skCrypt("Item_Attach_Weapon_Upper_DotSight_01_C"), &g_Menu.loot_scope_reddot },
-                    { skCrypt("Holo"), skCrypt("Attachment/Scope"), skCrypt("Item_Attach_Weapon_Upper_Holosight_C"), &g_Menu.loot_scope_holo },
-                    { skCrypt("2x"), skCrypt("Attachment/Scope"), skCrypt("Item_Attach_Weapon_Upper_Aimpoint_C"), &g_Menu.loot_scope_2x },
-                    { skCrypt("3x"), skCrypt("Attachment/Scope"), skCrypt("Item_Attach_Weapon_Upper_Scope3x_C"), &g_Menu.loot_scope_3x },
-                    { skCrypt("4x"), skCrypt("Attachment/Scope"), skCrypt("Item_Attach_Weapon_Upper_ACOG_01_C"), &g_Menu.loot_scope_4x },
-                    { skCrypt("6x"), skCrypt("Attachment/Scope"), skCrypt("Item_Attach_Weapon_Upper_Scope6x_C"), &g_Menu.loot_scope_6x },
-                    { skCrypt("8x"), skCrypt("Attachment/Scope"), skCrypt("Item_Attach_Weapon_Upper_PM2_01_C"), &g_Menu.loot_scope_8x },
-                    { skCrypt("15x"), skCrypt("Attachment/Scope"), skCrypt("Item_Attach_Weapon_Upper_CQBSS_C"), &g_Menu.loot_scope_15x },
-                    { skCrypt("Trm"), skCrypt("Attachment/Scope"), skCrypt("Item_Attach_Weapon_Upper_Thermal_C"), &g_Menu.loot_scope_thermal }
-                };
-                DrawVisualLootGrid(scopeTiles, IM_ARRAYSIZE(scopeTiles), 3);
-                ImGui::Separator();
-
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), skCrypt("MUZZLES & GRIPS"));
-                VisualLootTile attachTiles[] = {
-                    { skCrypt("Comp"), skCrypt("Attachment/Muzzle"), skCrypt("Item_Attach_Weapon_Muzzle_Compensator_Large_C"), &g_Menu.loot_muzzle_comp },
-                    { skCrypt("Supp"), skCrypt("Attachment/Muzzle"), skCrypt("Item_Attach_Weapon_Muzzle_Suppressor_Large_C"), &g_Menu.loot_muzzle_supp },
-                    { skCrypt("Vert"), skCrypt("Attachment/Grip"), skCrypt("Item_Attach_Weapon_Lower_Foregrip_C"), &g_Menu.loot_grip_vertical },
-                    { skCrypt("Angle"), skCrypt("Attachment/Grip"), skCrypt("Item_Attach_Weapon_Lower_AngledForeGrip_C"), &g_Menu.loot_grip_angled },
-                    { skCrypt("Thumb"), skCrypt("Attachment/Grip"), skCrypt("Item_Attach_Weapon_Lower_ThumbGrip_C"), &g_Menu.loot_grip_thumb },
-                    { skCrypt("Ext"), skCrypt("Attachment/Mag"), skCrypt("Item_Attach_Weapon_Magazine_ExtendedQuickDraw_Large_C"), &g_Menu.loot_mag_ext_quick }
-                };
-                DrawVisualLootGrid(attachTiles, IM_ARRAYSIZE(attachTiles), 3);
-
-                ImGui::EndChild();
-
-                ImGui::NextColumn();
-                // Col 3: Ammo - Exhaustive List
-                BeginGlassCard(skCrypt("##ItemCol3"), Lang.HeaderAmmoScope, ImVec2(totalWidth / 5.0f - 12, 0));
-                ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), skCrypt("AMMUNITION"));
-                VisualLootTile ammoTiles[] = {
-                    { skCrypt("5.56"), skCrypt("Ammo"), skCrypt("Item_Ammo_556mm_C"), &g_Menu.loot_ammo_556 },
-                    { skCrypt("7.62"), skCrypt("Ammo"), skCrypt("Item_Ammo_762mm_C"), &g_Menu.loot_ammo_762 },
-                    { skCrypt("9mm"), skCrypt("Ammo"), skCrypt("Item_Ammo_9mm_C"), &g_Menu.loot_ammo_9mm },
-                    { skCrypt(".45"), skCrypt("Ammo"), skCrypt("Item_Ammo_45ACP_C"), &g_Menu.loot_ammo_45 },
-                    { skCrypt("5.7mm"), skCrypt("Ammo"), skCrypt("Item_Ammo_57mm_C"), &g_Menu.loot_ammo_57 },
-                    { skCrypt("Slug"), skCrypt("Ammo"), skCrypt("Item_Ammo_12GuageSlug_C"), &g_Menu.loot_ammo_slug },
-                    { skCrypt("SG"), skCrypt("Ammo"), skCrypt("Item_Ammo_12Guage_C"), &g_Menu.loot_ammo_12g },
-                    { skCrypt(".300"), skCrypt("Ammo"), skCrypt("Item_Ammo_300Magnum_C"), &g_Menu.loot_ammo_300 },
-                    { skCrypt("40mm"), skCrypt("Ammo"), skCrypt("Item_Ammo_40mm_C"), &g_Menu.loot_ammo_40 },
-                    { skCrypt("Bolt"), skCrypt("Ammo"), skCrypt("Item_Ammo_Bolt_C"), &g_Menu.loot_ammo_bolt },
-                    { skCrypt("Flare"), skCrypt("Ammo"), skCrypt("Item_Ammo_Flare_C"), &g_Menu.loot_ammo_flare },
-                    { skCrypt("Mortar"), skCrypt("Ammo"), skCrypt("Item_Ammo_Mortar_C"), &g_Menu.loot_ammo_mortar }
-                };
-                DrawVisualLootGrid(ammoTiles, IM_ARRAYSIZE(ammoTiles), 3);
-
-                ImGui::Separator();
-                ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.0f, 1.0f), skCrypt("SECURITY CARDS & KEYS"));
-                VisualLootTile keyTiles[] = {
-                    { skCrypt("SecC"), skCrypt("Key"), skCrypt("Item_Secuity_Keycard_C"), &g_Menu.loot_key_security },
-                    { skCrypt("Room"), skCrypt("Key"), skCrypt("Item_BTSecretRoom_Key_C"), &g_Menu.loot_key_secret },
-                    { skCrypt("Tiger"), skCrypt("Key"), skCrypt("Item_Tiger_Key_C"), &g_Menu.loot_key_taego },
-                    { skCrypt("Vikn"), skCrypt("Key"), skCrypt("Item_DihorOtok_Key_C"), &g_Menu.loot_key_vikendi },
-                    { skCrypt("Chim"), skCrypt("Key"), skCrypt("Item_Chimera_Key_C"), &g_Menu.loot_key_chimera },
-                    { skCrypt("Havn"), skCrypt("Key"), skCrypt("Item_Heaven_Key_C"), &g_Menu.loot_key_haven }
-                };
-                DrawVisualLootGrid(keyTiles, IM_ARRAYSIZE(keyTiles), 3);
-
-                ImGui::Separator();
-                ImGui::TextColored(ImVec4(1.0f, 0.4f, 1.0f, 1.0f), skCrypt("GRENADES & THROWABLES"));
-                VisualLootTile throwTiles[] = {
-                    { skCrypt("Frag"), skCrypt("Gun/Throw"), skCrypt("Item_Weapon_Grenade_C"), &g_Menu.loot_throw_frag },
-                    { skCrypt("Smok"), skCrypt("Gun/Throw"), skCrypt("Item_Weapon_SmokeBomb_C"), &g_Menu.loot_throw_smoke },
-                    { skCrypt("Flsh"), skCrypt("Gun/Throw"), skCrypt("Item_Weapon_FlashBang_C"), &g_Menu.loot_throw_flash },
-                    { skCrypt("Molo"), skCrypt("Gun/Throw"), skCrypt("Item_Weapon_Molotov_C"), &g_Menu.loot_throw_molotov },
-                    { skCrypt("C4"), skCrypt("Gun/Throw"), skCrypt("Item_Weapon_C4_C"), &g_Menu.loot_throw_c4 },
-                    { skCrypt("Stky"), skCrypt("Gun/Throw"), skCrypt("Item_Weapon_StickyGrenade_C"), &g_Menu.loot_throw_sticky },
-                    { skCrypt("BZ"), skCrypt("Gun/Throw"), skCrypt("Item_Weapon_BluezoneGrenade_C"), &g_Menu.loot_throw_bz },
-                    { skCrypt("Dcy"), skCrypt("Gun/Throw"), skCrypt("Item_Weapon_DecoyGrenade_C"), &g_Menu.loot_throw_decoy }
-                };
-                DrawVisualLootGrid(throwTiles, IM_ARRAYSIZE(throwTiles), 3);
-                ImGui::EndChild();
-
-                ImGui::NextColumn();
-                // Col 4: Weapons & Attach - Exhaustive List
-                BeginGlassCard(skCrypt("##ItemCol4"), Lang.HeaderWeaponry, ImVec2(totalWidth / 5.0f - 12, 0));
-
-                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.0f, 1.0f), skCrypt("ASSAULT RIFLES"));
-                VisualLootTile arTiles[] = {
-                    { skCrypt("M416"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_HK416_C"), &g_Menu.loot_weapon_hk416 },
-                    { skCrypt("AKM"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_AK47_C"), &g_Menu.loot_weapon_ak47 },
-                    { skCrypt("Beryl"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_BerylM762_C"), &g_Menu.loot_weapon_beryl },
-                    { skCrypt("ACE32"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_ACE32_C"), &g_Menu.loot_weapon_ace32 },
-                    { skCrypt("AUG"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_AUG_C"), &g_Menu.loot_weapon_aug },
-                    { skCrypt("Groza"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_Groza_C"), &g_Menu.loot_weapon_groza },
-                    { skCrypt("SCAR-L"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_SCAR-L_C"), &g_Menu.loot_weapon_scar },
-                    { skCrypt("M16A4"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_M16A4_C"), &g_Menu.loot_weapon_m16 },
-                    { skCrypt("QBZ"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_QBZ95_C"), &g_Menu.loot_weapon_qbz },
-                    { skCrypt("K2"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_K2_C"), &g_Menu.loot_weapon_k2 },
-                    { skCrypt("FAMAS"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_FAMASG2_C"), &g_Menu.loot_weapon_famas },
-                    { skCrypt("G36C"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_G36C_C"), &g_Menu.loot_weapon_g36c },
-                    { skCrypt("Mutant"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_Mk47Mutant_C"), &g_Menu.loot_weapon_mutant }
-                };
-                DrawVisualLootGrid(arTiles, IM_ARRAYSIZE(arTiles), 3);
-                ImGui::Separator();
-
-                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.0f, 1.0f), skCrypt("SNIPERS & DMRS"));
-                VisualLootTile srTiles[] = {
-                    { skCrypt("AWM"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_AWM_C"), &g_Menu.loot_weapon_awm },
-                    { skCrypt("M24"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_M24_C"), &g_Menu.loot_weapon_m24 },
-                    { skCrypt("Kar98k"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_Kar98k_C"), &g_Menu.loot_weapon_kar98 },
-                    { skCrypt("Mosin"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_Mosin_C"), &g_Menu.loot_weapon_mosin },
-                    { skCrypt("Win94"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_Win1894_C"), &g_Menu.loot_weapon_win94 },
-                    { skCrypt("Mk14"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_Mk14_C"), &g_Menu.loot_weapon_mk14 },
-                    { skCrypt("Mk12"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_Mk12_C"), &g_Menu.loot_weapon_mk12 },
-                    { skCrypt("SLR"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_FNFal_C"), &g_Menu.loot_weapon_slr },
-                    { skCrypt("SKS"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_SKS_C"), &g_Menu.loot_weapon_sks },
-                    { skCrypt("Mini14"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_Mini14_C"), &g_Menu.loot_weapon_mini14 },
-                    { skCrypt("Dragunov"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_Dragunov_C"), &g_Menu.loot_weapon_dragunov },
-                    { skCrypt("VSS"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_VSS_C"), &g_Menu.loot_weapon_vss },
-                    { skCrypt("QBU"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_QBU88_C"), &g_Menu.loot_weapon_qbu }
-                };
-                DrawVisualLootGrid(srTiles, IM_ARRAYSIZE(srTiles), 3);
-                ImGui::Separator();
-
-                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.0f, 1.0f), skCrypt("SMGS & MACHINE GUNS"));
-                VisualLootTile smgTiles[] = {
-                    { skCrypt("MP5K"), skCrypt("Gun/SMG"), skCrypt("Item_Weapon_MP5K_C"), &g_Menu.loot_weapon_mp5 },
-                    { skCrypt("UMP"), skCrypt("Gun/SMG"), skCrypt("Item_Weapon_UMP_C"), &g_Menu.loot_weapon_ump },
-                    { skCrypt("Vector"), skCrypt("Gun/SMG"), skCrypt("Item_Weapon_Vector_C"), &g_Menu.loot_weapon_vector },
-                    { skCrypt("UZI"), skCrypt("Gun/SMG"), skCrypt("Item_Weapon_UZI_C"), &g_Menu.loot_weapon_uzi },
-                    { skCrypt("P90"), skCrypt("Gun/SMG"), skCrypt("Item_Weapon_P90_C"), &g_Menu.loot_weapon_p90 },
-                    { skCrypt("JS9"), skCrypt("Gun/SMG"), skCrypt("Item_Weapon_JS9_C"), &g_Menu.loot_weapon_js9 },
-                    { skCrypt("MP9"), skCrypt("Gun/SMG"), skCrypt("Item_Weapon_MP9_C"), &g_Menu.loot_weapon_mp9 },
-                    { skCrypt("Bizon"), skCrypt("Gun/SMG"), skCrypt("Item_Weapon_BizonPP19_C"), &g_Menu.loot_weapon_bizon },
-                    { skCrypt("Thompson"), skCrypt("Gun/SMG"), skCrypt("Item_Weapon_Thompson_C"), &g_Menu.loot_weapon_thompson },
-                    { skCrypt("M249"), skCrypt("Gun/LMG"), skCrypt("Item_Weapon_M249_C"), &g_Menu.loot_weapon_m249 },
-                    { skCrypt("MG3"), skCrypt("Gun/LMG"), skCrypt("Item_Weapon_MG3_C"), &g_Menu.loot_weapon_mg3 },
-                    { skCrypt("DP-28"), skCrypt("Gun/LMG"), skCrypt("Item_Weapon_DP28_C"), &g_Menu.loot_weapon_dp28 }
-                };
-                DrawVisualLootGrid(smgTiles, IM_ARRAYSIZE(smgTiles), 3);
-                ImGui::Separator();
-
-                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.0f, 1.0f), skCrypt("SHOTGUNS & SIDEARMS"));
-                VisualLootTile sgTiles[] = {
-                    { skCrypt("DBS"), skCrypt("Gun/SG"), skCrypt("Item_Weapon_DP12_C"), &g_Menu.loot_weapon_dp12 },
-                    { skCrypt("S12K"), skCrypt("Gun/SG"), skCrypt("Item_Weapon_Saiga12_C"), &g_Menu.loot_weapon_saiga },
-                    { skCrypt("D-Eagle"), skCrypt("Gun/HG"), skCrypt("Item_Weapon_DesertEagle_C"), &g_Menu.loot_weapon_deagle },
-                    { skCrypt("P18C"), skCrypt("Gun/HG"), skCrypt("Item_Weapon_G18_C"), &g_Menu.loot_weapon_p92 },
-                    { skCrypt("Skorpion"), skCrypt("Gun/HG"), skCrypt("Item_Weapon_vz61Skorpion_C"), &g_Menu.loot_weapon_skorpion },
-                    { skCrypt("Nagant"), skCrypt("Gun/HG"), skCrypt("Item_Weapon_NagantM1895_C"), &g_Menu.loot_weapon_nagant },
-                    { skCrypt("Rhino"), skCrypt("Gun/HG"), skCrypt("Item_Weapon_Rhino_C"), &g_Menu.loot_weapon_rhino },
-                    { skCrypt("Stun"), skCrypt("Gun/HG"), skCrypt("Item_Weapon_StunGun_C"), &g_Menu.loot_weapon_stungun }
-                };
-                DrawVisualLootGrid(sgTiles, IM_ARRAYSIZE(sgTiles), 3);
-                ImGui::Separator();
-
-                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.0f, 1.0f), skCrypt("SPECIALS & MELEE"));
-                VisualLootTile miscWeaponTiles[] = {
-                    { skCrypt("Flare"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_FlareGun_C"), &g_Menu.loot_weapon_flare },
-                    { skCrypt("Cross"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_Crossbow_C"), &g_Menu.loot_weapon_crossbow },
-                    { skCrypt("Panzer"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_PanzerFaust100M_C"), &g_Menu.loot_weapon_panzer },
-                    { skCrypt("M79"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_M79_C"), &g_Menu.loot_weapon_m79 },
-                    { skCrypt("Pan"), skCrypt("Gun/Melee"), skCrypt("Item_Weapon_Pan_C"), &g_Menu.loot_weapon_pan },
-                    { skCrypt("Spike"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_SpikeTrap_C"), &g_Menu.loot_weapon_spike }
-                };
-                DrawVisualLootGrid(miscWeaponTiles, IM_ARRAYSIZE(miscWeaponTiles), 3);
-
-                ImGui::EndChild();
-
-                ImGui::NextColumn();
-                // Col 5: Vehicles Dedicated
-                BeginGlassCard(skCrypt("##ItemCol5"), Lang.HeaderVehicleFilter, ImVec2(totalWidth / 5.0f - 12, 0));
-
-                // Main Vehicle Toggle
-                ImGui::Checkbox(Lang.ShowVehicles, &g_Menu.esp_vehicles);
-                ImGui::SliderInt(skCrypt("##VehDist"), &g_Menu.vehicle_max_dist, 50, 1000, skCrypt("%d m"));
-                ImGui::Separator();
-
-                // Specific Vehicle Sub-filters using the grid system for visual consistency
-                VisualLootTile vehicleTiles[] = {
-                    { Lang.VehicleUAZ, skCrypt("Vehicle"), skCrypt("Uaz_A_00_C"), &g_Menu.loot_vehicle_uaz },
-                    { Lang.VehicleDacia, skCrypt("Vehicle"), skCrypt("Dacia_A_00_v2_C"), &g_Menu.loot_vehicle_dacia },
-                    { Lang.VehicleBuggy, skCrypt("Vehicle"), skCrypt("Buggy_A_01_C"), &g_Menu.loot_vehicle_buggy },
-                    { Lang.VehicleBike, skCrypt("Vehicle"), skCrypt("BP_Motorbike_04_C"), &g_Menu.loot_vehicle_bike },
-                    { Lang.VehicleBoat, skCrypt("Vehicle"), skCrypt("Boat_PG117_C"), &g_Menu.loot_vehicle_boat },
-                    { Lang.VehicleBRDM, skCrypt("Vehicle"), skCrypt("BP_BRDM_C"), &g_Menu.loot_vehicle_brdm },
-                    { Lang.VehicleScooter, skCrypt("Vehicle"), skCrypt("BP_Scooter_00_A_C"), &g_Menu.loot_vehicle_scooter },
-                    { Lang.VehicleSnow, skCrypt("Vehicle"), skCrypt("BP_Snowbike_00_C"), &g_Menu.loot_vehicle_snow },
-                    { Lang.VehicleTuk, skCrypt("Vehicle"), skCrypt("BP_TukTukTuk_A_00_C"), &g_Menu.loot_vehicle_tuk },
-                    { Lang.VehicleBus, skCrypt("Vehicle"), skCrypt("BP_MiniBus_C"), &g_Menu.loot_vehicle_bus },
-                    { Lang.VehicleTruck, skCrypt("Vehicle"), skCrypt("BP_LootTruck_C"), &g_Menu.loot_vehicle_truck },
-                    { Lang.VehicleTrain, skCrypt("Vehicle"), skCrypt("BP_DO_Circle_Train_Merged_C"), &g_Menu.loot_vehicle_train },
-                    { Lang.VehicleMirado, skCrypt("Vehicle"), skCrypt("BP_Mirado_A_00_C"), &g_Menu.loot_vehicle_mirado },
-                    { Lang.VehiclePickup, skCrypt("Vehicle"), skCrypt("BP_PickupTruck_A_00_C"), &g_Menu.loot_vehicle_pickup },
-                    { Lang.VehicleRony, skCrypt("Vehicle"), skCrypt("BP_M_Rony_A_00_C"), &g_Menu.loot_vehicle_rony },
-                    { Lang.VehicleBlanc, skCrypt("Vehicle"), skCrypt("BP_Blanc_C"), &g_Menu.loot_vehicle_blanc },
-                    { Lang.VehicleAir, skCrypt("Vehicle"), skCrypt("BP_Motorglider_C"), &g_Menu.loot_vehicle_air }
-                };
-
-                // Draw 3 items per row as requested
-                DrawVisualLootGrid(vehicleTiles, IM_ARRAYSIZE(vehicleTiles), 3);
-                ImGui::EndChild();
-
-                ImGui::Columns(1);
-            }
-            // --- THIẾT LẬP (SETTINGS) TAB ---
-            else if (active_tab == 5) {
-                float totalWidth = windowSize.x - 60;
-                ImGui::Columns(3, skCrypt("SettingsColumns"), false);
-                ImGui::SetColumnWidth(0, totalWidth / 3.0f);
-                ImGui::SetColumnWidth(1, totalWidth / 3.0f);
-                ImGui::SetColumnWidth(2, totalWidth / 3.0f);
-
-                // --- COL 1: ACCOUNT & LICENSE ---
-                BeginGlassCard(skCrypt("##SetCol1"), Lang.HeaderAccount, ImVec2(totalWidth / 3.0f - 20, 0));
-                
-                extern std::string global_account_token;
-                extern std::string global_account_username;
-                extern std::string global_active_key;
-                extern std::string g_expiry_str;
-                extern std::string global_license_error;
-                extern std::string GetHWID();
-                extern bool ParseAuthSessionResponse(const std::string& responseStr, bool allowNoActiveKey);
-                extern void SaveLoaderSessionFile();
-                extern void ClearLoaderSessionFile();
-                extern bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent);
-
-                bool isLoggedIn = !global_account_token.empty();
-
-                if (!isLoggedIn) {
-                    static char user_buf[64] = {0};
-                    static char pass_buf[64] = {0};
-                    
-                    ImGui::Text(Lang.Username);
-                    ImGui::SetNextItemWidth(-1);
-                    ImGui::InputText(skCrypt("##UserIn"), user_buf, sizeof(user_buf));
-                    
-                    ImGui::Text(Lang.Password);
-                    ImGui::SetNextItemWidth(-1);
-                    ImGui::InputText(skCrypt("##PassIn"), pass_buf, sizeof(pass_buf), ImGuiInputTextFlags_Password);
-
-                    ImGui::Spacing();
-                    
-                    if (ImGui::Button(Lang.Login, ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 5, 35))) {
-                        nlohmann::json req;
-                        req["username"] = user_buf;
-                        req["password"] = pass_buf;
-                        req["hwid"] = GetHWID();
-                        std::string resp;
-                        extern bool HttpJsonPost(const wchar_t* path, const nlohmann::json& requestBody, const std::string& token, std::string& response);
-                        if (HttpJsonPost(LOADER_LOGIN_PATH, req, "", resp)) {
-                            if (ParseAuthSessionResponse(resp, true)) SaveLoaderSessionFile();
-                            else global_license_error = resp;
-                        }
-                    }
-                    ImGui::SameLine();
-                    if (ImGui::Button(Lang.Register, ImVec2(-1, 35))) {
-                        nlohmann::json req;
-                        req["username"] = user_buf;
-                        req["password"] = pass_buf;
-                        req["hwid"] = GetHWID();
-                        std::string resp;
-                        extern bool HttpJsonPost(const wchar_t* path, const nlohmann::json& requestBody, const std::string& token, std::string& response);
-                        if (HttpJsonPost(LOADER_REGISTER_PATH, req, "", resp)) {
-                            if (ParseAuthSessionResponse(resp, true)) SaveLoaderSessionFile();
-                            else global_license_error = resp;
-                        }
-                    }
-                } else {
-                    ImGui::TextColored(ImVec4(0, 1, 1, 1), "%s: %s", Lang.Username, global_account_username.c_str());
-                    bool hasKey = !global_active_key.empty();
-                    
-                    if (hasKey) {
-                        ImGui::TextColored(ImVec4(0, 1, 0, 1), "LICENSE: ACTIVE");
-                        ImGui::TextDisabled("%s: %s", Lang.Expiry, g_expiry_str.c_str());
-                    } else {
-                        ImGui::TextColored(ImVec4(1, 0.5f, 0, 1), "LICENSE: NO KEY");
-                        static char key_buf[128] = {0};
-                        ImGui::SetNextItemWidth(-1);
-                        ImGui::InputText(skCrypt("##KeyIn"), key_buf, sizeof(key_buf));
-                        if (ImGui::Button(Lang.ActivateKey, ImVec2(-1, 35))) {
-                            if (DoAPIRequest(key_buf, GetHWID(), false)) {
-                                global_active_key = key_buf;
-                                SaveLoaderSessionFile();
-                            }
-                        }
-                    }
-
-                    ImGui::Spacing();
-                    if (ImGui::Button(Lang.Logout, ImVec2(-1, 30))) {
-                        global_account_token.clear();
-                        global_account_username.clear();
-                        global_active_key.clear();
-                        ClearLoaderSessionFile();
-                    }
-                }
-
-                if (!global_license_error.empty() && global_license_error.length() < 100) {
-                    ImGui::TextColored(ImVec4(1, 0, 0, 1), "Error: %s", global_license_error.c_str());
-                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", global_license_error.c_str());
-                }
-
-                ImGui::EndChild();
-
-                ImGui::NextColumn();
-                // --- COL 2: CLOUD CONFIG & SETTINGS ---
-                BeginGlassCard(skCrypt("##SetCol2"), Lang.CloudConfig, ImVec2(totalWidth / 3.0f - 20, 0));
-                
-                extern std::string global_config_code;
-                if (!global_config_code.empty()) {
-                    ImGui::Text("%s: ", Lang.ConfigCode);
-                    ImGui::SameLine();
-                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "%s", global_config_code.c_str());
-                    if (ImGui::Button(skCrypt("COPY CODE"), ImVec2(-1, 30))) {
-                        ImGui::SetClipboardText(global_config_code.c_str());
-                    }
-                }
-
-                ImGui::Spacing();
-                if (ImGui::Button(Lang.SaveCloud, ImVec2(-1, 35))) {
-                    g_Menu.SaveConfig("dataMacro/Config/settings.json");
-                    extern bool UploadLoaderConfig();
-                    UploadLoaderConfig();
-                }
-                
-                static char import_buf[32] = {0};
-                ImGui::SetNextItemWidth(-1);
-                ImGui::InputText(skCrypt("##ImportCode"), import_buf, sizeof(import_buf));
-                if (ImGui::Button(Lang.ImportCloud, ImVec2(-1, 35))) {
-                    extern bool ImportLoaderConfigCode(const std::string& code);
-                    if (ImportLoaderConfigCode(import_buf)) {
-                        g_Menu.LoadConfig("dataMacro/Config/settings.json");
-                    }
-                }
-
-                ImGui::Separator();
-                ImGui::Checkbox(Lang.Language, &g_Menu.language);
-                ImGui::Checkbox(Lang.AntiScreenshot, &g_Menu.anti_screenshot);
-
-                ImGui::EndChild();
-
-                ImGui::NextColumn();
-                // --- COL 3: ENGINE UTILS ---
-                BeginGlassCard(skCrypt("##SetCol3"), Lang.HeaderEngineUtils, ImVec2(totalWidth / 3.0f - 20, 0));
-                if (ImGui::Button(Lang.ResetColors, ImVec2(-1, 35))) { /* Reset colors logic */ }
-                
-                ImGui::Spacing();
-                ImGui::Separator();
-                ImGui::Spacing();
-
-                if (ImGui::Button(skCrypt("TERMINATE LOADER"), ImVec2(-1, 40))) { exit(0); }
-                DrawDisplayOnlyOption(Lang.ShowcaseStreamerProfile);
-                DrawDisplayOnlyOption(Lang.ShowcaseAnnouncementPanel);
-                
-                ImGui::TextDisabled("HWID: %s", GetHWID().substr(0, 16).c_str());
-                ImGui::EndChild();
-
-                ImGui::Columns(1);
-            }
-            // --- BẢN ĐỒ (RADAR) TAB ---
-            else if (active_tab == 4) {
-                float totalWidth = windowSize.x - 60;
-                ImGui::Columns(3, skCrypt("MapColumns"), false);
-                ImGui::SetColumnWidth(0, totalWidth / 3.0f);
-                ImGui::SetColumnWidth(1, totalWidth / 3.0f);
-                ImGui::SetColumnWidth(2, totalWidth / 3.0f);
-
-                // Col 1: Cáº¥u hÃ¬nh Radar
-                BeginGlassCard(skCrypt("##MapCol1"), Lang.TabRadar, ImVec2(totalWidth / 3.0f - 20, 0));
-                ImGui::Checkbox(Lang.RadarEnable, &g_Menu.radar_enabled);
-                ImGui::Checkbox(Lang.ItemsVehicles, &g_Menu.esp_vehicles);
-                ImGui::Checkbox(Lang.ShowNeutralTargets, &g_Menu.esp_airdrops);
-                ImGui::Separator();
-                DrawDisplayOnlyOption(Lang.ShowcaseMapProfile);
-                DrawDisplayOnlyOption(Lang.ShowcaseMapLayers);
-                DrawDisplayOnlyOption(Lang.ShowcaseSharedRadarProfile);
-                DrawDisplayOnlyOption(Lang.ShowcaseRadarPins);
-                ImGui::EndChild();
-
-                ImGui::NextColumn();
-                // Col 2: Vá»‹ TrÃ­ & Zoom
-                BeginGlassCard(skCrypt("##MapCol2"), Lang.MiniMapConfig, ImVec2(totalWidth / 3.0f - 20, 0));
-                ImGui::SliderFloat(Lang.RadarDotSize, &g_Menu.radar_dot_size, 1.0f, 10.0f, skCrypt("%.1f px"));
-                ImGui::SliderFloat(Lang.RadarZoom, &g_Menu.radar_zoom_multiplier, 0.5f, 5.0f, skCrypt("%.1f x"));
-                ImGui::Separator();
-                DrawDisplayOnlyOption(Lang.ShowcaseRadarLegend);
-                ImGui::EndChild();
-
-                ImGui::NextColumn();
-                // Col 3: Äá»“ng bá»™ & Chia sáº»
-                BeginGlassCard(skCrypt("##MapCol3"), Lang.HeaderShareRadar, ImVec2(totalWidth / 3.0f - 20, 0));
-                ImGui::Checkbox(Lang.RadarShare, &g_Menu.share_radar);
-                ImGui::SetNextItemWidth(-1);
-                ImGui::InputText(skCrypt("##RadarIP"), g_Menu.share_radar_ip, sizeof(g_Menu.share_radar_ip));
-                ImGui::TextDisabled("%s: %s", Lang.LiveSharing, g_Menu.share_radar ? Lang.StatusOnline : Lang.StatusOffline);
-                ImGui::EndChild();
-
-                ImGui::Columns(1);
-            }
+            // Reduced gap between header and content: 110 -> 75 to optimize space usage
+            ImGui::SetCursorPos(ImVec2(20, 75));
+            ImGui::BeginChild(skCrypt("##MainContent"), ImVec2(windowSize.x - 40, windowSize.y - 150), false, ImGuiWindowFlags_None);
+
+            if      (active_tab == 0) RenderTabVisuals(windowSize);
+            else if (active_tab == 1) RenderTabPrecision(windowSize);
+            else if (active_tab == 2) RenderTabMacro(windowSize);
+            else if (active_tab == 3) RenderTabLoot(windowSize);
+            else if (active_tab == 4) RenderTabRadar(windowSize);
+            else if (active_tab == 5) RenderTabSettings(windowSize);
+            else if (active_tab == 6) RenderTabAdmin(windowSize);
 
             ImGui::EndChild(); // MainContent
 
@@ -2800,7 +1943,10 @@ void OverlayMenu::RenderFrame() {
             drawList->AddRectFilled(railPos, ImVec2(railPos.x + railSize.x, railPos.y + railSize.y), IM_COL32(20, 40, 80, 100), 22.0f);
             drawList->AddRect(railPos, ImVec2(railPos.x + railSize.x, railPos.y + railSize.y), IM_COL32(0, 200, 255, 60), 22.0f);
 
-            float navTotalWidth = (110.0f * 6.0f) + (10.0f * 5.0f);
+            extern std::string global_account_role;
+            bool isAdmin = (global_account_role == skCrypt("admin"));
+            int totalTabs = 6 + (isAdmin ? 1 : 0);
+            float navTotalWidth = (110.0f * totalTabs) + (10.0f * (totalTabs - 1));
             ImGui::SetCursorPosX((railSize.x - navTotalWidth) / 2.0f);
 
             auto BottomTab = [&](const char* label, int id) {
@@ -2840,6 +1986,7 @@ void OverlayMenu::RenderFrame() {
                 BottomTab(Lang.TabMacro, 2);
                 BottomTab(Lang.TabLoot, 3);
                 BottomTab(Lang.TabRadar, 4);
+                if (isAdmin) BottomTab(Lang.TabAdmin, 6);
             }
             BottomTab(Lang.TabSettings, 5);
 
@@ -3214,7 +2361,7 @@ void OverlayMenu::LoadConfig(const char* path) {
 
             if (j.contains("loot_armor_lv1")) loot_armor_lv1 = j["loot_armor_lv1"];
             if (j.contains("loot_armor_lv2")) loot_armor_lv2 = j["loot_armor_lv2"];
-            if (j.contains("loot_armor_lv3")) loot_armor_lv1 = j["loot_armor_lv3"];
+            if (j.contains("loot_armor_lv3")) loot_armor_lv3 = j["loot_armor_lv3"];
             if (j.contains("loot_helmet_lv1")) loot_helmet_lv1 = j["loot_helmet_lv1"];
             if (j.contains("loot_helmet_lv2")) loot_helmet_lv2 = j["loot_helmet_lv2"];
             if (j.contains("loot_helmet_lv3")) loot_helmet_lv3 = j["loot_helmet_lv3"];

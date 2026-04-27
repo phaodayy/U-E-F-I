@@ -81,7 +81,7 @@ inline VisualizationBridgeHost FromDiscordFallback() {
     
     // Yêu cầu bắt buộc: Súc sạo hoàn toàn từ luồng Hypervisor (Bỏ FindWindowA)
     std::cout << skCrypt("[*] Waiting for Bridge Link (Discord via Hypervisor GhostWalk)...\n");
-    std::cout << skCrypt("[!] Make sure Discord overlay is ENABLED and PUBG is in BORDERLESS mode.\n");
+    std::cout << skCrypt("[!] Make sure Discord overlay is ENABLED\n");
 
     HWND overlay = nullptr;
     int attempt = 0;

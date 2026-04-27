@@ -81,9 +81,22 @@ struct ItemData {
     bool IsImportant;
 };
 
+#include <mutex>
+
 extern std::vector<PlayerData> G_Players;
+extern std::mutex G_PlayersMutex; // Mutex for G_Players
 extern int G_LocalSpectatedCount;
 extern std::vector<ItemData> CachedItems;
+extern std::mutex CachedItemsMutex; // Mutex for CachedItems
+struct DebugActorData {
+    uint64_t Address;
+    std::string ClassName;
+    Vector3 Position;
+    float Distance;
+};
+
+extern std::vector<DebugActorData> G_DebugActors;
+extern std::mutex G_DebugActorsMutex;
 extern float G_CamFOV;
 
 namespace telemetryContext {

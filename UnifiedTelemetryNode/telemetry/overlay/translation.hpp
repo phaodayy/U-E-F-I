@@ -258,6 +258,7 @@ namespace Translation {
         const char* SaveCloud;
         const char* ImportCloud;
         const char* CloudConfig;
+        const char* TabAdmin;
     };
 
 
@@ -528,6 +529,7 @@ namespace Translation {
         s.SaveCloud = (const char*)u8"Lưu Đám Mây";
         s.ImportCloud = (const char*)u8"Import Đám Mây";
         s.CloudConfig = (const char*)u8"Cấu hình Đám Mây";
+        s.TabAdmin = (const char*)u8"[?] Admin";
 
             s.HealthMode = (const char*)u8"Kiểu màu máu";
             s.ModeDynamic = (const char*)u8"Động (Máu %)";
@@ -999,6 +1001,7 @@ namespace Translation {
             s.SaveCloud = skCrypt("Cloud Sync");
             s.ImportCloud = skCrypt("Cloud Import");
             s.CloudConfig = skCrypt("Cloud Configuration");
+            s.TabAdmin = skCrypt("Admin");
 
         }
 

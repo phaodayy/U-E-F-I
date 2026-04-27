@@ -110,6 +110,13 @@
     <ClCompile Include="sdk\context.cpp" />
     <ClCompile Include="sdk\fname_utils.cpp" />
     <ClCompile Include="overlay\overlay_menu.cpp" />
+    <ClCompile Include="overlay\tabs\tab_visuals.cpp" />
+    <ClCompile Include="overlay\tabs\tab_precision.cpp" />
+    <ClCompile Include="overlay\tabs\tab_macro.cpp" />
+    <ClCompile Include="overlay\tabs\tab_loot.cpp" />
+    <ClCompile Include="overlay\tabs\tab_radar.cpp" />
+    <ClCompile Include="overlay\tabs\tab_settings.cpp" />
+    <ClCompile Include="overlay\tabs\tab_admin.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_draw.cpp" />
     <ClCompile Include="imgui\imgui_tables.cpp" />

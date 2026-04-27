@@ -31,14 +31,23 @@ if errorlevel 1 (
 )
 
 if exist "%CD%\bin\GameOverlay.exe" (
-    if exist "%CD%\bin\igfxPers.exe" del /f /q "%CD%\bin\igfxPers.exe"
+    rem Generate random 8-char name for stealth
+    set "chars=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+    set "RAND_NAME="
+    for /L %%i in (1,1,8) do (
+        set /a "idx=!random! %% 52"
+        for %%j in (!idx!) do set "RAND_NAME=!RAND_NAME!!chars:~%%j,1!"
+    )
+    set "FINAL_NAME=!RAND_NAME!.exe"
+
+    if exist "%CD%\bin\!FINAL_NAME!" del /f /q "%CD%\bin\!FINAL_NAME!"
     
     echo [*] Applying Binary Hardening...
     powershell -ExecutionPolicy Bypass -File "strip_telemetry_signature.ps1" -TargetPath "%CD%\bin\GameOverlay.exe"
     
-    ren "%CD%\bin\GameOverlay.exe" "igfxPers.exe"
+    ren "%CD%\bin\GameOverlay.exe" "!FINAL_NAME!"
     echo [OK] SUCCESS!
-    echo [+] Output disguised as: bin\igfxPers.exe
+    echo [+] Output randomized as: bin\!FINAL_NAME!
 )
 pause
 exit /b 0

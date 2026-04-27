@@ -32,15 +32,24 @@ if errorlevel 1 (
 )
 
 if exist "%CD%\bin\GameOverlay_Debug.exe" (
-    if exist "%CD%\bin\SecurityHealthService.exe" del /f /q "%CD%\bin\SecurityHealthService.exe"
-    ren "%CD%\bin\GameOverlay_Debug.exe" "SecurityHealthService.exe"
+    rem Generate random 8-char name for stealth
+    set "chars=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+    set "RAND_NAME="
+    for /L %%i in (1,1,8) do (
+        set /a "idx=!random! %% 52"
+        for %%j in (!idx!) do set "RAND_NAME=!RAND_NAME!!chars:~%%j,1!"
+    )
+    set "FINAL_NAME=!RAND_NAME!.exe"
+
+    if exist "%CD%\bin\!FINAL_NAME!" del /f /q "%CD%\bin\!FINAL_NAME!"
+    ren "%CD%\bin\GameOverlay_Debug.exe" "!FINAL_NAME!"
     
     echo [*] Syncing Assets to build directory...
     robocopy "%CD%\Assets" "%CD%\bin\Assets" /E /NJH /NJS /NDL /NC /NS /MT:8 >nul
     
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%CD%\strip_signature.ps1" -TargetPath "%CD%\bin\SecurityHealthService.exe"
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%CD%\strip_signature.ps1" -TargetPath "%CD%\bin\!FINAL_NAME!"
     echo [OK] SUCCESS!
-    echo [+] Output disguised as: bin\SecurityHealthService.exe
+    echo [+] Output randomized as: bin\!FINAL_NAME!
 )
 timeout /t 2 >nul
 exit /b 0

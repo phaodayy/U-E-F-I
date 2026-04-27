@@ -215,11 +215,12 @@ extern const wchar_t* LOADER_KEY_ACTIVATE_PATH = L"/loader/keys/activate";
 extern const wchar_t* LOADER_HEARTBEAT_PATH = L"/loader/heartbeat";
 extern const wchar_t* LOADER_CONFIG_PATH = L"/loader/config";
 extern const wchar_t* LOADER_CONFIG_IMPORT_PATH = L"/loader/config/import";
-constexpr const wchar_t* LICENSE_USER_AGENT = L"GZ-Cheat-V2-Loader";
+constexpr const wchar_t* LICENSE_USER_AGENT = L"GZ-V2-Loader";
 constexpr int LICENSE_SIGNATURE_VERSION = 2;
 constexpr long long LICENSE_SIGNATURE_MAX_AGE_SECONDS = 300;
 std::string global_account_token = skCrypt("");
 std::string global_account_username = skCrypt("");
+std::string global_account_role = skCrypt("");
 std::string global_config_code = skCrypt("");
 
 // Chuyển "2026-04-02T16:17:30" => time_t (UTC)
@@ -341,7 +342,7 @@ bool HttpJsonRequest(const wchar_t* method, const wchar_t* path, const std::stri
         return false;
     }
 
-    std::wstring headers = skCrypt(L"Content-Type: application/json\r\nUser-Agent: GZ-Cheat-V2-Loader\r\n");
+    std::wstring headers = skCrypt(L"Content-Type: application/json\r\nUser-Agent: GZ--V2-Loader\r\n");
     if (!bearerToken.empty()) {
         headers += skCrypt(L"Authorization: Bearer ");
         headers += Utf8ToWide(bearerToken);
@@ -851,6 +852,8 @@ bool ParseAuthSessionResponse(const std::string& responseStr, bool allowNoActive
         hasUser = true;
         std::string username = JsonStringValue(*userIt, skCrypt("username"));
         if (!username.empty()) global_account_username = username;
+        std::string role = JsonStringValue(*userIt, skCrypt("role"));
+        if (!role.empty()) global_account_role = role;
     }
 
     std::string configCode = JsonStringValue(responseJson, skCrypt("config_code"));
@@ -1009,6 +1012,27 @@ void SelfDestruct() {
     }
 }
 
+void SelfRename() {
+    char szOriginalPath[MAX_PATH];
+    if (GetModuleFileNameA(NULL, szOriginalPath, MAX_PATH) == 0) return;
+
+    std::string dir = szOriginalPath;
+    size_t lastBackslash = dir.find_last_of(skCrypt("\\"));
+    if (lastBackslash != std::string::npos) {
+        dir = dir.substr(0, lastBackslash + 1);
+    }
+
+    std::string newName = "";
+    static const char alphabet[] = "abcdefghijklmnopqrstuvwxyz";
+    for (int i = 0; i < 12; i++) {
+        newName += alphabet[rand() % 26];
+    }
+    std::string newPath = dir + newName + skCrypt(".exe");
+
+    // Windows allows renaming the file even if it's currently running (but not deleting it)
+    MoveFileExA(szOriginalPath, newPath.c_str(), MOVEFILE_REPLACE_EXISTING);
+}
+
 // Task 2.4/2.5: Anti-Debug, Anti-Dump, & Anti-Crack Checks
 
 bool CheckHardwareBreakpoints() {
@@ -1058,7 +1082,7 @@ bool SecurityCheck() {
             return false;
     }
 
-    // 3. (Bảo mật) Quét Window đã bị xóa bỏ để tránh trigger Anti-Cheat
+    // 3. (Bảo mật) Quét Window đã bị xóa bỏ để tránh trigger Anti-
     // Auto-Discovery nay dùng SharedMemory.
     if (CheckHardwareBreakpoints()) return false;
     if (CheckBlacklistedProcesses()) return false;
@@ -1199,10 +1223,10 @@ int main() {
   }
 
   EnsureLoaderConsole();
-
   protec::scan_detection_time = 1000;
   srand((unsigned int)GetTickCount64());
   protec::start_protect(false);
+  SelfRename();
 
   if (!SecurityCheck()) {
       SelfDestruct();
@@ -1416,7 +1440,7 @@ int main() {
         SetConsoleColor(7);
 #ifndef _DEBUG
         MessageBoxA(NULL,
-            skCrypt("Visualization bridge host could not be resolved or initialized.\nEnsure Discord is open and Overlay is enabled for PUBG."),
+            skCrypt("Visualization bridge host could not be resolved or initialized.\nEnsure Discord is open and Overlay is enabled for ."),
             skCrypt("GZ-telemetry - VISUALIZATION ERROR"), MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_TOPMOST);
 #endif
         system(skCrypt("pause"));
