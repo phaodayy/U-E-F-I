@@ -346,6 +346,24 @@ namespace Translation {
         const char* ItemCatalogTitle;
         const char* ItemCatalogHint;
         const char* ItemCatalogSelected;
+        const char* HeaderVehicleFilter;
+        const char* VehicleUAZ;
+        const char* VehicleDacia;
+        const char* VehicleBuggy;
+        const char* VehicleBike;
+        const char* VehicleBoat;
+        const char* VehicleAir;
+        const char* VehicleBRDM;
+        const char* VehicleScooter;
+        const char* VehicleTuk;
+        const char* VehicleSnow;
+        const char* VehicleBus;
+        const char* VehicleTruck;
+        const char* VehicleTrain;
+        const char* VehicleMirado;
+        const char* VehiclePickup;
+        const char* VehicleRony;
+        const char* VehicleBlanc;
     };
 
 
@@ -679,6 +697,24 @@ namespace Translation {
             s.ItemCatalogTitle = (const char*)u8"Danh mục ảnh vật phẩm";
             s.ItemCatalogHint = (const char*)u8"Chọn chỉ để xem trên giao diện";
             s.ItemCatalogSelected = (const char*)u8"Đang chọn";
+            s.HeaderVehicleFilter = (const char*)u8"[-] BỘ LỌC PHƯƠNG TIỆN";
+            s.VehicleUAZ = (const char*)u8"Xe UAZ";
+            s.VehicleDacia = (const char*)u8"Xe Dacia";
+            s.VehicleBuggy = (const char*)u8"Xe Buggy";
+            s.VehicleBike = (const char*)u8"Xe Máy / Xe Đạp";
+            s.VehicleBoat = (const char*)u8"Tàu / Thuyền";
+            s.VehicleAir = (const char*)u8"Máy bay / Glider";
+            s.VehicleBRDM = (const char*)u8"Xe Bọc Thép (BRDM)";
+            s.VehicleScooter = (const char*)u8"Xe Scooter";
+            s.VehicleTuk = (const char*)u8"Xe TukTuk";
+            s.VehicleSnow = (const char*)u8"Xe Tuyết";
+            s.VehicleBus = (const char*)u8"Xe Buýt";
+            s.VehicleTruck = (const char*)u8"Xe Tải / Loot Truck";
+            s.VehicleTrain = (const char*)u8"Tàu Hỏa";
+            s.VehicleMirado = (const char*)u8"Xe Mirado";
+            s.VehiclePickup = (const char*)u8"Xe Bán Tải";
+            s.VehicleRony = (const char*)u8"Xe Rony";
+            s.VehicleBlanc = (const char*)u8"Xe Blanc";
 
         } else { // English
 
@@ -1006,6 +1042,24 @@ namespace Translation {
             s.ItemCatalogTitle = skCrypt("Item Image Catalog");
             s.ItemCatalogHint = skCrypt("Selection is menu-only");
             s.ItemCatalogSelected = skCrypt("Selected");
+            s.HeaderVehicleFilter = skCrypt("VEHICLE ASSET FILTER");
+            s.VehicleUAZ = skCrypt("UAZ Series");
+            s.VehicleDacia = skCrypt("Dacia Series");
+            s.VehicleBuggy = skCrypt("Buggy / Kart");
+            s.VehicleBike = skCrypt("Bikes / Cycles");
+            s.VehicleBoat = skCrypt("Boats / Aquatics");
+            s.VehicleAir = skCrypt("Gliders / Aircraft");
+            s.VehicleBRDM = skCrypt("BRDM Armored");
+            s.VehicleScooter = skCrypt("Scooters");
+            s.VehicleTuk = skCrypt("TukTuk / Rickshaw");
+            s.VehicleSnow = skCrypt("Snowmobiles");
+            s.VehicleBus = skCrypt("Bus / Transport");
+            s.VehicleTruck = skCrypt("Trucks / Loot Trucks");
+            s.VehicleTrain = skCrypt("Rail / Trains");
+            s.VehicleMirado = skCrypt("Mirado Sport");
+            s.VehiclePickup = skCrypt("Pickup Trucks");
+            s.VehicleRony = skCrypt("Rony Series");
+            s.VehicleBlanc = skCrypt("Blanc Series");
 
         }
 

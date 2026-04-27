@@ -2093,7 +2093,7 @@ void OverlayMenu::RenderFrame() {
             // --- VẬT PHẨM (LOOT) TAB ---
             else if (active_tab == 3) {
                 float totalWidth = windowSize.x - 60;
-                ImGui::Columns(4, skCrypt("ItemColumns"), false);
+                ImGui::Columns(5, skCrypt("ItemColumns"), false);
                 struct VisualLootTile {
                     const char* label;
                     const char* folder;
@@ -2120,12 +2120,24 @@ void OverlayMenu::RenderFrame() {
                     tileDraw->AddRect(tileMin, tileMax, border, 8.0f, 0, *item.enabled ? 1.6f : 1.0f);
 
                     TextureInfo* icon = GetPreviewIcon(item.folder, item.asset);
-                    const float iconSize = 38.0f;
-                    ImVec2 iconMin(tileMin.x + (tileSize.x - iconSize) * 0.5f, tileMin.y + 6.0f);
-                    ImVec2 iconMax(iconMin.x + iconSize, iconMin.y + iconSize);
-                    if (icon && icon->SRV) {
+                    const float iconTargetSize = 38.0f;
+                    ImVec2 actualIconSize(iconTargetSize, iconTargetSize);
+
+                    if (icon && icon->SRV && icon->Width > 0 && icon->Height > 0) {
+                        float aspect = (float)icon->Width / (float)icon->Height;
+                        if (aspect > 1.0f) { // W > H
+                            actualIconSize.y = iconTargetSize / aspect;
+                        } else { // H > W
+                            actualIconSize.x = iconTargetSize * aspect;
+                        }
+                        
+                        ImVec2 iconMin(tileMin.x + (tileSize.x - actualIconSize.x) * 0.5f, 
+                                      tileMin.y + 6.0f + (iconTargetSize - actualIconSize.y) * 0.5f);
+                        ImVec2 iconMax(iconMin.x + actualIconSize.x, iconMin.y + actualIconSize.y);
                         tileDraw->AddImage((ImTextureID)icon->SRV, iconMin, iconMax);
                     } else {
+                        ImVec2 iconMin(tileMin.x + (tileSize.x - iconTargetSize) * 0.5f, tileMin.y + 6.0f);
+                        ImVec2 iconMax(iconMin.x + iconTargetSize, iconMin.y + iconTargetSize);
                         tileDraw->AddRect(iconMin, iconMax, IM_COL32(110, 140, 180, 170), 5.0f);
                         tileDraw->AddText(ImVec2(iconMin.x + 13.0f, iconMin.y + 10.0f), IM_COL32(170, 200, 235, 220), skCrypt("?"));
                     }
@@ -2150,13 +2162,13 @@ void OverlayMenu::RenderFrame() {
                     const float tileHeight = 76.0f;
                     int perRow = preferredPerRow;
                     float available = ImGui::GetContentRegionAvail().x;
-                    while (perRow > 1 && (perRow * 82.0f + (perRow - 1) * tileGap) > available) {
-                        --perRow;
-                    }
+                    
+                    // Standardize on 3 per row for better density as requested
+                    perRow = 3; 
 
                     float tileWidth = (available - (perRow - 1) * tileGap) / perRow;
                     if (tileWidth > 96.0f) tileWidth = 96.0f;
-                    if (tileWidth < 72.0f) tileWidth = 72.0f;
+                    if (tileWidth < 68.0f) tileWidth = 68.0f;
                     ImVec2 tileSize(tileWidth, tileHeight);
 
                     for (int i = 0; i < count; ++i) {
@@ -2166,13 +2178,14 @@ void OverlayMenu::RenderFrame() {
                         }
                     }
                 };
-                ImGui::SetColumnWidth(0, totalWidth / 4.0f);
-                ImGui::SetColumnWidth(1, totalWidth / 4.0f);
-                ImGui::SetColumnWidth(2, totalWidth / 4.0f);
-                ImGui::SetColumnWidth(3, totalWidth / 4.0f);
+                ImGui::SetColumnWidth(0, totalWidth / 5.0f);
+                ImGui::SetColumnWidth(1, totalWidth / 5.0f);
+                ImGui::SetColumnWidth(2, totalWidth / 5.0f);
+                ImGui::SetColumnWidth(3, totalWidth / 5.0f);
+                ImGui::SetColumnWidth(4, totalWidth / 5.0f);
                 
                 // Col 1: Hệ Thống & Gear
-                BeginGlassCard(skCrypt("##ItemCol1"), Lang.HeaderLootEngine, ImVec2(totalWidth / 4.0f - 15, 0));
+                BeginGlassCard(skCrypt("##ItemCol1"), Lang.HeaderLootEngine, ImVec2(totalWidth / 5.0f - 12, 0));
                 ImGui::Checkbox(Lang.TabLoot, &g_Menu.esp_items);
                 ImGui::SliderInt(Lang.RenderDist, &g_Menu.loot_max_dist, 10, 300, skCrypt("%d m"));
                 ImGui::Separator();
@@ -2190,20 +2203,19 @@ void OverlayMenu::RenderFrame() {
                 
                 ImGui::NextColumn();
                 // Col 2: Medicines & Loot
-                BeginGlassCard(skCrypt("##ItemCol2"), Lang.HeaderHealFilter, ImVec2(totalWidth / 4.0f - 15, 0));
+                BeginGlassCard(skCrypt("##ItemCol2"), Lang.HeaderHealFilter, ImVec2(totalWidth / 5.0f - 12, 0));
                 VisualLootTile worldTiles[] = {
                     { Lang.Healing, skCrypt("All"), skCrypt("Item_Heal_FirstAid_C"), &g_Menu.loot_meds_healing },
                     { Lang.Boosters, skCrypt("All"), skCrypt("Item_Boost_EnergyDrink_C"), &g_Menu.loot_meds_boosts },
-                    { Lang.ShowVehicles, skCrypt("Vehicle"), skCrypt("Uaz_A_00_C"), &g_Menu.esp_vehicles },
                     { Lang.ShowAirdrops, skCrypt("Map"), skCrypt("Carapackage_RedBox_C"), &g_Menu.esp_airdrops },
                     { Lang.ShowDeathboxes, skCrypt("Map"), skCrypt("dead"), &g_Menu.esp_deadboxes }
                 };
-                DrawVisualLootGrid(worldTiles, IM_ARRAYSIZE(worldTiles), 3);
+                DrawVisualLootGrid(worldTiles, IM_ARRAYSIZE(worldTiles), 2);
                 ImGui::EndChild();
                 
                 ImGui::NextColumn();
                 // Col 3: Ammo & Scopes
-                BeginGlassCard(skCrypt("##ItemCol3"), Lang.HeaderAmmoScope, ImVec2(totalWidth / 4.0f - 15, 0));
+                BeginGlassCard(skCrypt("##ItemCol3"), Lang.HeaderAmmoScope, ImVec2(totalWidth / 5.0f - 12, 0));
                 VisualLootTile ammoScopeTiles[] = {
                     { Lang.AmmoAll, skCrypt("All"), skCrypt("Item_Ammo_556mm_C"), &g_Menu.loot_ammo_all },
                     { Lang.AmmoHigh, skCrypt("All"), skCrypt("Item_Ammo_762mm_C"), &g_Menu.loot_ammo_high },
@@ -2215,7 +2227,7 @@ void OverlayMenu::RenderFrame() {
 
                 ImGui::NextColumn();
                 // Col 4: Weapons & Attach
-                BeginGlassCard(skCrypt("##ItemCol4"), Lang.HeaderWeaponry, ImVec2(totalWidth / 4.0f - 15, 0));
+                BeginGlassCard(skCrypt("##ItemCol4"), Lang.HeaderWeaponry, ImVec2(totalWidth / 5.0f - 12, 0));
                 VisualLootTile weaponTiles[] = {
                     { Lang.SpecialWeapons, skCrypt("All"), skCrypt("Item_Weapon_AWM_C"), &g_Menu.loot_weapon_special },
                     { Lang.AllWeapons, skCrypt("All"), skCrypt("Item_Weapon_HK416_C"), &g_Menu.loot_weapon_all },
@@ -2223,6 +2235,41 @@ void OverlayMenu::RenderFrame() {
                     { Lang.ExtendedMags, skCrypt("All"), skCrypt("Item_Attach_Weapon_Magazine_ExtendedQuickDraw_Large_C"), &g_Menu.loot_attach_mag }
                 };
                 DrawVisualLootGrid(weaponTiles, IM_ARRAYSIZE(weaponTiles), 2);
+                ImGui::EndChild();
+
+                ImGui::NextColumn();
+                // Col 5: Vehicles Dedicated
+                BeginGlassCard(skCrypt("##ItemCol5"), Lang.HeaderVehicleFilter, ImVec2(totalWidth / 5.0f - 12, 0));
+                
+                // Main Vehicle Toggle
+                ImGui::Checkbox(Lang.ShowVehicles, &g_Menu.esp_vehicles);
+                ImGui::SliderInt(skCrypt("##VehDist"), &g_Menu.vehicle_max_dist, 50, 1000, skCrypt("%d m"));
+                ImGui::Separator();
+                
+                // Specific Vehicle Sub-filters using the grid system for visual consistency
+                VisualLootTile vehicleTiles[] = {
+                    { Lang.VehicleUAZ, skCrypt("Vehicle"), skCrypt("Uaz_A_00_C"), &g_Menu.loot_vehicle_uaz },
+                    { Lang.VehicleDacia, skCrypt("Vehicle"), skCrypt("Dacia_A_00_v2_C"), &g_Menu.loot_vehicle_dacia },
+                    { Lang.VehicleBuggy, skCrypt("Vehicle"), skCrypt("Buggy_A_01_C"), &g_Menu.loot_vehicle_buggy },
+                    { Lang.VehicleBike, skCrypt("Vehicle"), skCrypt("BP_Motorbike_04_C"), &g_Menu.loot_vehicle_bike },
+                    { Lang.VehicleBoat, skCrypt("Vehicle"), skCrypt("Boat_PG117_C"), &g_Menu.loot_vehicle_boat },
+                    { Lang.VehicleBRDM, skCrypt("Vehicle"), skCrypt("BP_BRDM_C"), &g_Menu.loot_vehicle_brdm },
+                    { Lang.VehicleScooter, skCrypt("Vehicle"), skCrypt("BP_Scooter_00_A_C"), &g_Menu.loot_vehicle_scooter },
+                    { Lang.VehicleSnow, skCrypt("Vehicle"), skCrypt("BP_Snowmobile_00_C"), &g_Menu.loot_vehicle_snow },
+                    { Lang.VehicleTuk, skCrypt("Vehicle"), skCrypt("BP_TukTukTuk_A_00_C"), &g_Menu.loot_vehicle_tuk },
+                    { Lang.VehicleBus, skCrypt("Vehicle"), skCrypt("BP_MiniBus_C"), &g_Menu.loot_vehicle_bus },
+                    { Lang.VehicleTruck, skCrypt("Vehicle"), skCrypt("BP_LootTruck_C"), &g_Menu.loot_vehicle_truck },
+                    { Lang.VehicleTrain, skCrypt("Vehicle"), skCrypt("BP_DO_Circle_Train_Merged_C"), &g_Menu.loot_vehicle_train },
+                    { Lang.VehicleMirado, skCrypt("Vehicle"), skCrypt("BP_Mirado_A_00_C"), &g_Menu.loot_vehicle_mirado },
+                    { Lang.VehiclePickup, skCrypt("Vehicle"), skCrypt("BP_PickupTruck_A_00_C"), &g_Menu.loot_vehicle_pickup },
+                    { Lang.VehicleRony, skCrypt("Vehicle"), skCrypt("BP_M_Rony_A_00_C"), &g_Menu.loot_vehicle_rony },
+                    { Lang.VehicleBlanc, skCrypt("Vehicle"), skCrypt("BP_Blanc_C"), &g_Menu.loot_vehicle_blanc },
+                    { Lang.VehicleAir, skCrypt("Vehicle"), skCrypt("BP_Motorglider_C"), &g_Menu.loot_vehicle_air }
+                };
+                
+                // Draw 3 items per row as requested
+                DrawVisualLootGrid(vehicleTiles, IM_ARRAYSIZE(vehicleTiles), 3);
+                
                 ImGui::EndChild();
                 
                 ImGui::Columns(1);
@@ -2501,6 +2548,23 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["loot_attach_muzzle"] = loot_attach_muzzle;
         j["loot_weapon_special"] = loot_weapon_special;
         j["loot_weapon_all"] = loot_weapon_all;
+        j["loot_vehicle_uaz"] = loot_vehicle_uaz;
+        j["loot_vehicle_dacia"] = loot_vehicle_dacia;
+        j["loot_vehicle_buggy"] = loot_vehicle_buggy;
+        j["loot_vehicle_bike"] = loot_vehicle_bike;
+        j["loot_vehicle_boat"] = loot_vehicle_boat;
+        j["loot_vehicle_air"] = loot_vehicle_air;
+        j["loot_vehicle_brdm"] = loot_vehicle_brdm;
+        j["loot_vehicle_scooter"] = loot_vehicle_scooter;
+        j["loot_vehicle_tuk"] = loot_vehicle_tuk;
+        j["loot_vehicle_snow"] = loot_vehicle_snow;
+        j["loot_vehicle_bus"] = loot_vehicle_bus;
+        j["loot_vehicle_truck"] = loot_vehicle_truck;
+        j["loot_vehicle_train"] = loot_vehicle_train;
+        j["loot_vehicle_mirado"] = loot_vehicle_mirado;
+        j["loot_vehicle_pickup"] = loot_vehicle_pickup;
+        j["loot_vehicle_rony"] = loot_vehicle_rony;
+        j["loot_vehicle_blanc"] = loot_vehicle_blanc;
 
         j["esp_distance_lod"] = esp_distance_lod;
         j["skeleton_max_dist"] = skeleton_max_dist;
@@ -2663,6 +2727,23 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("loot_attach_muzzle")) loot_attach_muzzle = j["loot_attach_muzzle"];
             if (j.contains("loot_weapon_special")) loot_weapon_special = j["loot_weapon_special"];
             if (j.contains("loot_weapon_all")) loot_weapon_all = j["loot_weapon_all"];
+            if (j.contains("loot_vehicle_uaz")) loot_vehicle_uaz = j["loot_vehicle_uaz"];
+            if (j.contains("loot_vehicle_dacia")) loot_vehicle_dacia = j["loot_vehicle_dacia"];
+            if (j.contains("loot_vehicle_buggy")) loot_vehicle_buggy = j["loot_vehicle_buggy"];
+            if (j.contains("loot_vehicle_bike")) loot_vehicle_bike = j["loot_vehicle_bike"];
+            if (j.contains("loot_vehicle_boat")) loot_vehicle_boat = j["loot_vehicle_boat"];
+            if (j.contains("loot_vehicle_air")) loot_vehicle_air = j["loot_vehicle_air"];
+            if (j.contains("loot_vehicle_brdm")) loot_vehicle_brdm = j["loot_vehicle_brdm"];
+            if (j.contains("loot_vehicle_scooter")) loot_vehicle_scooter = j["loot_vehicle_scooter"];
+            if (j.contains("loot_vehicle_tuk")) loot_vehicle_tuk = j["loot_vehicle_tuk"];
+            if (j.contains("loot_vehicle_snow")) loot_vehicle_snow = j["loot_vehicle_snow"];
+            if (j.contains("loot_vehicle_bus")) loot_vehicle_bus = j["loot_vehicle_bus"];
+            if (j.contains("loot_vehicle_truck")) loot_vehicle_truck = j["loot_vehicle_truck"];
+            if (j.contains("loot_vehicle_train")) loot_vehicle_train = j["loot_vehicle_train"];
+            if (j.contains("loot_vehicle_mirado")) loot_vehicle_mirado = j["loot_vehicle_mirado"];
+            if (j.contains("loot_vehicle_pickup")) loot_vehicle_pickup = j["loot_vehicle_pickup"];
+            if (j.contains("loot_vehicle_rony")) loot_vehicle_rony = j["loot_vehicle_rony"];
+            if (j.contains("loot_vehicle_blanc")) loot_vehicle_blanc = j["loot_vehicle_blanc"];
 
             if (j.contains("esp_distance_lod")) esp_distance_lod = j["esp_distance_lod"];
             if (j.contains("skeleton_max_dist")) skeleton_max_dist = j["skeleton_max_dist"];

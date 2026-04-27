@@ -168,6 +168,23 @@ public:
   bool loot_attach_muzzle = true;
   bool loot_weapon_special = true;
   bool loot_weapon_all = false;
+  bool loot_vehicle_uaz = true;
+  bool loot_vehicle_dacia = true;
+  bool loot_vehicle_buggy = true;
+  bool loot_vehicle_bike = true;
+  bool loot_vehicle_boat = true;
+  bool loot_vehicle_air = true; 
+  bool loot_vehicle_brdm = true;
+  bool loot_vehicle_scooter = true;
+  bool loot_vehicle_tuk = true;
+  bool loot_vehicle_snow = true;
+  bool loot_vehicle_bus = true;
+  bool loot_vehicle_truck = true;
+  bool loot_vehicle_train = true;
+  bool loot_vehicle_mirado = true;
+  bool loot_vehicle_pickup = true;
+  bool loot_vehicle_rony = true;
+  bool loot_vehicle_blanc = true;
 
   bool Initialize(const VisualizationBridgeHost& bridge);
   void SetupStyle();
