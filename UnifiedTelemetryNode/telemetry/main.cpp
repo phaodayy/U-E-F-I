@@ -20,6 +20,7 @@
 #include <iomanip>
 #include <sstream>
 #include <ctime>
+#include "../nlohmann/json.hpp"
 
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "psapi.lib")
@@ -202,6 +203,13 @@ time_t g_expiry_time = 0;
 uint64_t g_remaining_seconds = 0;
 uint64_t g_last_tick_count = 0;
 
+constexpr const wchar_t* LICENSE_API_HOST = L"licensing-backend.donghiem114.workers.dev";
+constexpr const wchar_t* LICENSE_ACTIVATE_PATH = L"/public/activate";
+constexpr const wchar_t* LICENSE_HEARTBEAT_PATH = L"/public/heartbeat";
+constexpr const wchar_t* LICENSE_USER_AGENT = L"GZ-Cheat-V2-Loader";
+constexpr int LICENSE_SIGNATURE_VERSION = 2;
+constexpr long long LICENSE_SIGNATURE_MAX_AGE_SECONDS = 300;
+
 // Chuyển "2026-04-02T16:17:30" => time_t (UTC)
 time_t ParseISO8601(const std::string& timestamp) {
     if (timestamp.empty()) return 0;
@@ -236,20 +244,135 @@ void SelectLanguage() {
     g_is_vietnamese = true;
 }
 
+std::string GenerateSecureNonce(size_t byteCount = 32) {
+    std::vector<BYTE> bytes(byteCount);
+    HCRYPTPROV hCryptProv = 0;
+    bool ok = false;
+
+    if (CryptAcquireContextA(&hCryptProv, NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
+        ok = CryptGenRandom(hCryptProv, (DWORD)bytes.size(), bytes.data()) == TRUE;
+        CryptReleaseContext(hCryptProv, 0);
+    }
+
+    if (!ok) {
+        LARGE_INTEGER perf;
+        QueryPerformanceCounter(&perf);
+        uint64_t seed = (uint64_t)perf.QuadPart ^ GetTickCount64() ^ ((uint64_t)GetCurrentProcessId() << 32);
+        for (size_t i = 0; i < bytes.size(); ++i) {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            bytes[i] = (BYTE)(seed & 0xFF);
+        }
+    }
+
+    std::ostringstream oss;
+    oss << std::hex << std::setfill('0');
+    for (BYTE b : bytes) {
+        oss << std::setw(2) << (int)b;
+    }
+    return oss.str();
+}
+
+std::string JsonStringValue(const nlohmann::json& json, const char* field) {
+    auto it = json.find(field);
+    return it != json.end() && it->is_string() ? it->get<std::string>() : skCrypt("");
+}
+
+long long JsonInt64Value(const nlohmann::json& json, const char* field) {
+    auto it = json.find(field);
+    if (it == json.end()) return 0;
+    if (it->is_number_integer()) return it->get<long long>();
+    if (it->is_number_unsigned()) return (long long)it->get<unsigned long long>();
+    return 0;
+}
+
+bool ValidateSignedLicensePayload(
+    const nlohmann::json& responseJson,
+    const std::string& expectedAction,
+    const std::string& expectedStatus,
+    const std::string& expectedKey,
+    const std::string& expectedHwid,
+    const std::string& expectedNonce,
+    std::string& signedStatus,
+    std::string& signedExpiry,
+    std::string& signedTimestamp,
+    std::string& error
+) {
+    std::string signedPayload = JsonStringValue(responseJson, "signed_payload");
+    std::string serverSignature = JsonStringValue(responseJson, "signature");
+
+    if (signedPayload.empty() || serverSignature.empty()) {
+        error = skCrypt("SIGNED_PAYLOAD_MISSING");
+        return false;
+    }
+
+    if (!Crypto::VerifyRSASignature(RSA_PUBLIC_KEY, signedPayload, serverSignature)) {
+        error = skCrypt("SIGNATURE_INVALID");
+        return false;
+    }
+
+    nlohmann::json payloadJson = nlohmann::json::parse(signedPayload, nullptr, false);
+    if (payloadJson.is_discarded() || !payloadJson.is_object()) {
+        error = skCrypt("SIGNED_PAYLOAD_INVALID_JSON");
+        return false;
+    }
+
+    if (JsonInt64Value(payloadJson, "v") != LICENSE_SIGNATURE_VERSION) {
+        error = skCrypt("SIGNED_PAYLOAD_VERSION_MISMATCH");
+        return false;
+    }
+
+    signedStatus = JsonStringValue(payloadJson, "status");
+    signedExpiry = JsonStringValue(payloadJson, "expiry");
+    signedTimestamp = JsonStringValue(payloadJson, "timestamp");
+
+    if (JsonStringValue(payloadJson, "action") != expectedAction ||
+        signedStatus != expectedStatus ||
+        JsonStringValue(payloadJson, "key") != expectedKey ||
+        JsonStringValue(payloadJson, "hwid") != expectedHwid ||
+        JsonStringValue(payloadJson, "nonce") != expectedNonce) {
+        error = skCrypt("SIGNED_PAYLOAD_FIELD_MISMATCH");
+        return false;
+    }
+
+    if (JsonStringValue(responseJson, "status") != signedStatus) {
+        error = skCrypt("RESPONSE_STATUS_MISMATCH");
+        return false;
+    }
+
+    long long issuedAt = JsonInt64Value(payloadJson, "issued_at");
+    long long now = (long long)time(nullptr);
+    long long age = now > issuedAt ? now - issuedAt : issuedAt - now;
+    if (issuedAt <= 0 || age > LICENSE_SIGNATURE_MAX_AGE_SECONDS) {
+        error = skCrypt("SIGNED_PAYLOAD_EXPIRED");
+        return false;
+    }
+
+    return true;
+}
+
 bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) {
     global_license_error = "";
-    HINTERNET hSession = WinHttpOpen(skCrypt(L"Mozilla/5.0"), WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    const wchar_t* endpointPath = silent ? LICENSE_HEARTBEAT_PATH : LICENSE_ACTIVATE_PATH;
+
+    HINTERNET hSession = WinHttpOpen(LICENSE_USER_AGENT, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     if (!hSession) { if (!silent) global_license_error = skCrypt("WINHTTP_OPEN_FAIL"); return false; }
 
-    HINTERNET hConnect = WinHttpConnect(hSession, skCrypt(L"licensing-backend.donghiem114.workers.dev"), INTERNET_DEFAULT_HTTPS_PORT, 0);
+    HINTERNET hConnect = WinHttpConnect(hSession, LICENSE_API_HOST, INTERNET_DEFAULT_HTTPS_PORT, 0);
     if (!hConnect) { WinHttpCloseHandle(hSession); return false; }
 
-    HINTERNET hRequest = WinHttpOpenRequest(hConnect, skCrypt(L"POST"), skCrypt(L"/public/activate"), NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+    HINTERNET hRequest = WinHttpOpenRequest(hConnect, skCrypt(L"POST"), endpointPath, NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
     if (!hRequest) { WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false; }
 
-    std::string nonce = skCrypt("0");
-    std::string body = skCrypt("{\"key\":\"") + key + skCrypt("\",\"hwid\":\"") + hwid + skCrypt("\",\"nonce\":\"") + nonce + skCrypt("\"}");
-    std::wstring headers = skCrypt(L"Content-Type: application/json\r\nJWT_SECRET_KEY: MIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHCuqB3nW1bZHqKr8oY74k44pxwhs3xObnHCYxNks2QDqqbxSSR0NFiXH3aqce0ithBBNeT7hE+RHwMSLbLpIgFsv3yfEZLXs4x3k5XKh5q7U+p7dLt3kzf9jwn9Y+NAXCjnV9kO2IT6JnhvsH5OahTDzVflm9EGJdmN6YBaF4b9AgMBAAE=\r\n");
+    std::string nonce = GenerateSecureNonce();
+    nlohmann::json requestJson;
+    requestJson["key"] = key;
+    requestJson["hwid"] = hwid;
+    requestJson["nonce"] = nonce;
+    requestJson["signature_version"] = LICENSE_SIGNATURE_VERSION;
+    std::string body = requestJson.dump();
+    std::wstring headers = skCrypt(L"Content-Type: application/json\r\nUser-Agent: GZ-Cheat-V2-Loader\r\nJWT_SECRET_KEY: MIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHCuqB3nW1bZHqKr8oY74k44pxwhs3xObnHCYxNks2QDqqbxSSR0NFiXH3aqce0ithBBNeT7hE+RHwMSLbLpIgFsv3yfEZLXs4x3k5XKh5q7U+p7dLt3kzf9jwn9Y+NAXCjnV9kO2IT6JnhvsH5OahTDzVflm9EGJdmN6YBaF4b9AgMBAAE=\r\n");
 
     bool bResults = WinHttpSendRequest(hRequest, headers.c_str(), -1, (LPVOID)body.c_str(), (DWORD)body.length(), (DWORD)body.length(), 0);
     
@@ -287,19 +410,22 @@ bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) 
         return false;
     }
 
-    auto ParseJsonField = [](const std::string& json, const std::string& key_field) -> std::string {
-        std::string target = skCrypt("\"") + key_field + skCrypt("\":");
-        size_t pos = json.find(target);
-        if (pos == std::string::npos) return skCrypt("");
-        pos += target.length();
-        while(pos < json.length() && (json[pos] == ' ' || json[pos] == '\"')) pos++;
-        size_t end = pos;
-        while(end < json.length() && json[end] != '\"' && json[end] != ',' && json[end] != '}') end++;
-        return json.substr(pos, end - pos);
-    };
+    nlohmann::json responseJson = nlohmann::json::parse(responseStr, nullptr, false);
+    if (responseJson.is_discarded() || !responseJson.is_object()) {
+        if (!silent) {
+            SetConsoleColor(12);
+            std::string err = g_is_vietnamese ? skCrypt("Phan hoi may chu khong hop le.") : skCrypt("Invalid server response.");
+            std::cout << "[-] " << err << std::endl;
+            global_license_error = err;
+            SetConsoleColor(7);
+        }
+        return false;
+    }
 
-    std::string status = ParseJsonField(responseStr, skCrypt("status"));
-    if (status == skCrypt("ACTIVATED")) {
+    std::string status = JsonStringValue(responseJson, "status");
+    const std::string expectedAction = silent ? skCrypt("heartbeat") : skCrypt("activate");
+    const std::string expectedStatus = silent ? skCrypt("OK") : skCrypt("ACTIVATED");
+    if (status == expectedStatus) {
         if (!silent) {
             // std::cout << "[DEBUG] Status: " << status << std::endl;
             // std::cout << "[DEBUG] HWID: " << hwid << std::endl;
@@ -309,23 +435,38 @@ bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) 
         // --- BƯỚC KHÓA BẢO MẬT CUỐI CÙNG (RSA SIGNATURE VERIFICATION) ---
         
         // 1. Tìm signature từ server
-        std::string serverSignature = ParseJsonField(responseStr, skCrypt("signature"));
+        std::string signedStatus;
+        std::string signedExpiry;
+        std::string signedTimestamp;
+        std::string verifyError;
         
         // 2. Tìm timestamp từ server để khớp hash
-        std::string timestamp = ParseJsonField(responseStr, skCrypt("timestamp"));
+        bool signedPayloadOk = ValidateSignedLicensePayload(
+            responseJson,
+            expectedAction,
+            expectedStatus,
+            key,
+            hwid,
+            nonce,
+            signedStatus,
+            signedExpiry,
+            signedTimestamp,
+            verifyError);
 
         // 3. XÁC MINH CHỮ KÝ RSA + TÍNH TOÀN VẸN (BINARY INTEGRITY)
         // Dữ liệu cần xác minh: "key:hwid:timestamp:nonce"
-        std::string dataToVerify = key + skCrypt(":") + hwid + skCrypt(":") + timestamp + skCrypt(":") + nonce;
+        
         
         // if (!silent) std::cout << "[DEBUG] DataToVerify: " << dataToVerify << std::endl;
 
         // Thêm hash binary vào chuỗi xác thực để server kiểm tra (nếu backend hỗ trợ)
         // Hiện tại ta chỉ Verify signature của server.
-        if (serverSignature.empty() || !Crypto::VerifyRSASignature(RSA_PUBLIC_KEY, dataToVerify, serverSignature)) {
+        if (!signedPayloadOk) {
             if (!silent) {
                 SetConsoleColor(12);
                 std::string err = g_is_vietnamese ? skCrypt("Xac thuc toan ven that bai! SERVER GIA.") : skCrypt("Integrity check failed! FAKE SERVER.");
+                err += skCrypt(" ");
+                err += verifyError;
                 std::cout << "[-] " << err << std::endl;
                 global_license_error = err;
                 SetConsoleColor(7);
@@ -337,9 +478,13 @@ bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) 
         // Kiểm tra hash định kỳ so với giá trị nhúng ở server (Phần này Admin cần cấu hình ở Worker)
         // if (serverExpectedHash != localBinaryHash) { ... return false; }
 
+        if (silent) {
+            return true;
+        }
+
         if (!silent) {
-            std::string expiry = ParseJsonField(responseStr, skCrypt("expiry"));
-            std::string server_time = ParseJsonField(responseStr, skCrypt("timestamp"));
+            std::string expiry = signedExpiry;
+            std::string server_time = signedTimestamp;
 
             if (!expiry.empty() && !server_time.empty()) {
                 time_t exp_t = ParseISO8601(expiry);
@@ -380,29 +525,74 @@ bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) 
         }
         return true;
     } else if (responseStr.find(skCrypt("HWID_MISMATCH")) != std::string::npos) {
+        std::string err = g_is_vietnamese ? skCrypt("SAI HWID: Key bi khoa tren may khac.") : skCrypt("HWID MISMATCH: Locked to another PC.");
+        global_license_error = err;
         if (!silent) {
             SetConsoleColor(12);
-            std::string err = g_is_vietnamese ? skCrypt("SAI HWID: Key bi khoa tren may khac.") : skCrypt("HWID MISMATCH: Locked to another PC.");
             std::cout << "[-] " << err << std::endl;
-            global_license_error = err;
             SetConsoleColor(7);
         }
         return false;
     } else if (responseStr.find(skCrypt("EXPIRED")) != std::string::npos) {
+        std::string err = g_is_vietnamese ? skCrypt("KEY HET HAN: Vui long gia han.") : skCrypt("LICENSE EXPIRED: Please renew.");
+        global_license_error = err;
         if (!silent) {
             SetConsoleColor(12);
-            std::string err = g_is_vietnamese ? skCrypt("KEY HET HAN: Vui long gia han.") : skCrypt("LICENSE EXPIRED: Please renew.");
             std::cout << "[-] " << err << std::endl;
-            global_license_error = err;
             SetConsoleColor(7);
         }
         return false;
     } else if (responseStr.find(skCrypt("BANNED")) != std::string::npos) {
+        std::string err = g_is_vietnamese ? skCrypt("BAN BI BAN: Thiet bi nay bi cam vinh vien!") : skCrypt("YOU ARE BANNED: Permanently restricted!");
+        global_license_error = err;
         if (!silent) {
             SetConsoleColor(12);
-            std::string err = g_is_vietnamese ? skCrypt("BAN BI BAN: Thiet bi nay bi cam vinh vien!") : skCrypt("YOU ARE BANNED: Permanently restricted!");
             std::cout << "[-] " << err << std::endl;
-            global_license_error = err;
+            SetConsoleColor(7);
+        }
+        return false;
+    } else if (responseStr.find(skCrypt("INVALID_API_KEY")) != std::string::npos) {
+        std::string err = g_is_vietnamese ? skCrypt("API SECRET SAI: Vui long cap nhat loader.") : skCrypt("INVALID API SECRET: Please update loader.");
+        global_license_error = err;
+        if (!silent) {
+            SetConsoleColor(12);
+            std::cout << "[-] " << err << std::endl;
+            SetConsoleColor(7);
+        }
+        return false;
+    } else if (responseStr.find(skCrypt("AUTH_NOT_CONFIGURED")) != std::string::npos) {
+        std::string err = g_is_vietnamese ? skCrypt("SERVER CHUA CAU HINH API SECRET.") : skCrypt("SERVER API SECRET IS NOT CONFIGURED.");
+        global_license_error = err;
+        if (!silent) {
+            SetConsoleColor(12);
+            std::cout << "[-] " << err << std::endl;
+            SetConsoleColor(7);
+        }
+        return false;
+    } else if (responseStr.find(skCrypt("STATUS_REVOKED")) != std::string::npos) {
+        std::string err = g_is_vietnamese ? skCrypt("KEY DA BI THU HOI.") : skCrypt("LICENSE REVOKED.");
+        global_license_error = err;
+        if (!silent) {
+            SetConsoleColor(12);
+            std::cout << "[-] " << err << std::endl;
+            SetConsoleColor(7);
+        }
+        return false;
+    } else if (responseStr.find(skCrypt("REPLAY_DETECTED")) != std::string::npos || responseStr.find(skCrypt("INVALID_NONCE")) != std::string::npos) {
+        std::string err = g_is_vietnamese ? skCrypt("LOI BAO MAT NONCE: Vui long khoi dong lai loader.") : skCrypt("NONCE SECURITY ERROR: Please restart loader.");
+        global_license_error = err;
+        if (!silent) {
+            SetConsoleColor(12);
+            std::cout << "[-] " << err << std::endl;
+            SetConsoleColor(7);
+        }
+        return false;
+    } else if (responseStr.find(skCrypt("PRODUCT_LOCKED")) != std::string::npos) {
+        std::string err = g_is_vietnamese ? skCrypt("SAN PHAM HOAC GOI KEY DANG BI KHOA.") : skCrypt("PRODUCT OR KEY TYPE IS LOCKED.");
+        global_license_error = err;
+        if (!silent) {
+            SetConsoleColor(12);
+            std::cout << "[-] " << err << std::endl;
             SetConsoleColor(7);
         }
         return false;
@@ -504,7 +694,14 @@ void LicenseHeartbeatLoop() {
         // 2. Kiểm tra mạng định kỳ (đề phòng Admin thu hồi Key) - 10 phút/lần
         if ((current_tick - last_net_check_tick) >= (600 * 1000)) {
             if (!global_active_key.empty()) {
-                DoAPIRequest(global_active_key, hwid, true);
+                bool heartbeatOk = DoAPIRequest(global_active_key, hwid, true);
+                if (!heartbeatOk && !global_license_error.empty()) {
+                    SetConsoleColor(12);
+                    std::cout << (g_is_vietnamese ? skCrypt("\n\n[!!!] LICENSE KHONG CON HOP LE: ") : skCrypt("\n\n[!!!] LICENSE IS NO LONGER VALID: ")) << global_license_error << std::endl;
+                    SetConsoleColor(7);
+                    Sleep(5000);
+                    exit(1);
+                }
             }
             last_net_check_tick = current_tick;
         }
