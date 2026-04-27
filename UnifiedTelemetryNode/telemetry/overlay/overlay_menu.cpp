@@ -2191,12 +2191,15 @@ void OverlayMenu::RenderFrame() {
                 ImGui::Separator();
                 ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), Lang.HeaderGearFilter);
                 VisualLootTile gearTiles[] = {
-                    { Lang.HelmetLv1, skCrypt("All"), skCrypt("Item_Head_E_01_Lv1_C"), &g_Menu.loot_helmet_lv1 },
-                    { Lang.HelmetLv2, skCrypt("All"), skCrypt("Item_Head_F_01_Lv2_C"), &g_Menu.loot_helmet_lv2 },
-                    { Lang.HelmetLv3, skCrypt("All"), skCrypt("Item_Head_G_01_Lv3_C"), &g_Menu.loot_helmet_lv3 },
-                    { Lang.ArmorLv1, skCrypt("All"), skCrypt("Item_Armor_E_01_Lv1_C"), &g_Menu.loot_armor_lv1 },
-                    { Lang.ArmorLv2, skCrypt("All"), skCrypt("Item_Armor_D_01_Lv2_C"), &g_Menu.loot_armor_lv2 },
-                    { Lang.ArmorLv3, skCrypt("All"), skCrypt("Item_Armor_C_01_Lv3_C"), &g_Menu.loot_armor_lv3 }
+                    { Lang.HelmetLv1, skCrypt("Helmet"), skCrypt("Item_Head_E_01_Lv1_C"), &g_Menu.loot_helmet_lv1 },
+                    { Lang.HelmetLv2, skCrypt("Helmet"), skCrypt("Item_Head_F_01_Lv2_C"), &g_Menu.loot_helmet_lv2 },
+                    { Lang.HelmetLv3, skCrypt("Helmet"), skCrypt("Item_Head_G_01_Lv3_C"), &g_Menu.loot_helmet_lv3 },
+                    { Lang.ArmorLv1, skCrypt("Armor"), skCrypt("Item_Armor_E_01_Lv1_C"), &g_Menu.loot_armor_lv1 },
+                    { Lang.ArmorLv2, skCrypt("Armor"), skCrypt("Item_Armor_D_01_Lv2_C"), &g_Menu.loot_armor_lv2 },
+                    { Lang.ArmorLv3, skCrypt("Armor"), skCrypt("Item_Armor_C_01_Lv3_C"), &g_Menu.loot_armor_lv3 },
+                    { Lang.BackpackLv1, skCrypt("Backpack"), skCrypt("Item_Back_E_01_Lv1_C"), &g_Menu.loot_backpack_lv1 },
+                    { Lang.BackpackLv2, skCrypt("Backpack"), skCrypt("Item_Back_F_01_Lv2_C"), &g_Menu.loot_backpack_lv2 },
+                    { Lang.BackpackLv3, skCrypt("Backpack"), skCrypt("Item_Back_C_01_Lv3_C"), &g_Menu.loot_backpack_lv3 }
                 };
                 DrawVisualLootGrid(gearTiles, IM_ARRAYSIZE(gearTiles), 3);
                 ImGui::EndChild();
@@ -2205,36 +2208,94 @@ void OverlayMenu::RenderFrame() {
                 // Col 2: Medicines & Loot
                 BeginGlassCard(skCrypt("##ItemCol2"), Lang.HeaderHealFilter, ImVec2(totalWidth / 5.0f - 12, 0));
                 VisualLootTile worldTiles[] = {
-                    { Lang.Healing, skCrypt("All"), skCrypt("Item_Heal_FirstAid_C"), &g_Menu.loot_meds_healing },
-                    { Lang.Boosters, skCrypt("All"), skCrypt("Item_Boost_EnergyDrink_C"), &g_Menu.loot_meds_boosts },
+                    { Lang.Healing, skCrypt("Medicine"), skCrypt("Item_Heal_FirstAid_C"), &g_Menu.loot_meds_healing },
+                    { Lang.Boosters, skCrypt("Medicine"), skCrypt("Item_Boost_EnergyDrink_C"), &g_Menu.loot_meds_boosts },
+                    { Lang.GhillieSuits, skCrypt("Ghillie"), skCrypt("Item_Ghillie_01_C"), &g_Menu.loot_ghillie },
+                    { Lang.RepairKits, skCrypt("Repair"), skCrypt("Armor_Repair_Kit_C"), &g_Menu.loot_repair },
+                    { Lang.SurvivalUtility, skCrypt("Utility"), skCrypt("Item_JerryCan_C"), &g_Menu.loot_utility },
                     { Lang.ShowAirdrops, skCrypt("Map"), skCrypt("Carapackage_RedBox_C"), &g_Menu.esp_airdrops },
                     { Lang.ShowDeathboxes, skCrypt("Map"), skCrypt("dead"), &g_Menu.esp_deadboxes }
                 };
-                DrawVisualLootGrid(worldTiles, IM_ARRAYSIZE(worldTiles), 2);
+                DrawVisualLootGrid(worldTiles, IM_ARRAYSIZE(worldTiles), 3);
                 ImGui::EndChild();
                 
                 ImGui::NextColumn();
                 // Col 3: Ammo & Scopes
                 BeginGlassCard(skCrypt("##ItemCol3"), Lang.HeaderAmmoScope, ImVec2(totalWidth / 5.0f - 12, 0));
                 VisualLootTile ammoScopeTiles[] = {
-                    { Lang.AmmoAll, skCrypt("All"), skCrypt("Item_Ammo_556mm_C"), &g_Menu.loot_ammo_all },
-                    { Lang.AmmoHigh, skCrypt("All"), skCrypt("Item_Ammo_762mm_C"), &g_Menu.loot_ammo_high },
-                    { Lang.ScopeAll, skCrypt("All"), skCrypt("Item_Attach_Weapon_Upper_DotSight_01_C"), &g_Menu.loot_scopes_all },
-                    { Lang.ScopeHigh, skCrypt("All"), skCrypt("Item_Attach_Weapon_Upper_Scope6x_C"), &g_Menu.loot_scopes_high }
+                    { Lang.AmmoAll, skCrypt("Ammo"), skCrypt("Item_Ammo_556mm_C"), &g_Menu.loot_ammo_all },
+                    { Lang.AmmoHigh, skCrypt("Ammo"), skCrypt("Item_Ammo_762mm_C"), &g_Menu.loot_ammo_high },
+                    { Lang.ScopeAll, skCrypt("Attachment/Scope"), skCrypt("Item_Attach_Weapon_Upper_DotSight_01_C"), &g_Menu.loot_attach_scope_all },
+                    { Lang.ScopeHigh, skCrypt("Attachment/Scope"), skCrypt("Item_Attach_Weapon_Upper_Scope6x_C"), &g_Menu.loot_attach_scope_high },
+                    { Lang.Grips, skCrypt("Attachment/Grip"), skCrypt("Item_Attach_Weapon_Lower_Foregrip_C"), &g_Menu.loot_attach_grip },
+                    { Lang.Stocks, skCrypt("Attachment/Stock"), skCrypt("Item_Attach_Weapon_Stock_AR_Composite_C"), &g_Menu.loot_attach_stock }
                 };
-                DrawVisualLootGrid(ammoScopeTiles, IM_ARRAYSIZE(ammoScopeTiles), 2);
+                DrawVisualLootGrid(ammoScopeTiles, IM_ARRAYSIZE(ammoScopeTiles), 3);
                 ImGui::EndChild();
 
                 ImGui::NextColumn();
-                // Col 4: Weapons & Attach
+                // Col 4: Weapons & Attach - Exhaustive List
                 BeginGlassCard(skCrypt("##ItemCol4"), Lang.HeaderWeaponry, ImVec2(totalWidth / 5.0f - 12, 0));
-                VisualLootTile weaponTiles[] = {
-                    { Lang.SpecialWeapons, skCrypt("All"), skCrypt("Item_Weapon_AWM_C"), &g_Menu.loot_weapon_special },
-                    { Lang.AllWeapons, skCrypt("All"), skCrypt("Item_Weapon_HK416_C"), &g_Menu.loot_weapon_all },
-                    { Lang.MuzzleAccess, skCrypt("All"), skCrypt("Item_Attach_Weapon_Muzzle_Compensator_Large_C"), &g_Menu.loot_attach_muzzle },
-                    { Lang.ExtendedMags, skCrypt("All"), skCrypt("Item_Attach_Weapon_Magazine_ExtendedQuickDraw_Large_C"), &g_Menu.loot_attach_mag }
+                
+                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.0f, 1.0f), skCrypt("ASSAULT RIFLES"));
+                VisualLootTile arTiles[] = {
+                    { skCrypt("M416"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_HK416_C"), &g_Menu.loot_weapon_hk416 },
+                    { skCrypt("AKM"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_AK47_C"), &g_Menu.loot_weapon_ak47 },
+                    { skCrypt("Beryl"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_BerylM762_C"), &g_Menu.loot_weapon_beryl },
+                    { skCrypt("ACE32"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_ACE32_C"), &g_Menu.loot_weapon_ace32 },
+                    { skCrypt("AUG"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_AUG_C"), &g_Menu.loot_weapon_aug },
+                    { skCrypt("Groza"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_Groza_C"), &g_Menu.loot_weapon_groza },
+                    { skCrypt("SCAR-L"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_SCAR-L_C"), &g_Menu.loot_weapon_scar },
+                    { skCrypt("M16A4"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_M16A4_C"), &g_Menu.loot_weapon_m16 },
+                    { skCrypt("QBZ"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_QBZ95_C"), &g_Menu.loot_weapon_qbz },
+                    { skCrypt("K2"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_K2_C"), &g_Menu.loot_weapon_k2 },
+                    { skCrypt("FAMAS"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_FAMASG2_C"), &g_Menu.loot_weapon_famas }
                 };
-                DrawVisualLootGrid(weaponTiles, IM_ARRAYSIZE(weaponTiles), 2);
+                DrawVisualLootGrid(arTiles, IM_ARRAYSIZE(arTiles), 3);
+                ImGui::Separator();
+
+                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.0f, 1.0f), skCrypt("SNIPERS & DMRS"));
+                VisualLootTile srTiles[] = {
+                    { skCrypt("AWM"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_AWM_C"), &g_Menu.loot_weapon_awm },
+                    { skCrypt("M24"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_M24_C"), &g_Menu.loot_weapon_m24 },
+                    { skCrypt("Kar98k"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_Kar98k_C"), &g_Menu.loot_weapon_kar98 },
+                    { skCrypt("Mk14"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_Mk14_C"), &g_Menu.loot_weapon_mk14 },
+                    { skCrypt("Mk12"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_Mk12_C"), &g_Menu.loot_weapon_mk12 },
+                    { skCrypt("SLR"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_FNFal_C"), &g_Menu.loot_weapon_slr },
+                    { skCrypt("SKS"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_SKS_C"), &g_Menu.loot_weapon_sks },
+                    { skCrypt("Mini14"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_Mini14_C"), &g_Menu.loot_weapon_mini14 },
+                    { skCrypt("Dragunov"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_Dragunov_C"), &g_Menu.loot_weapon_dragunov },
+                    { skCrypt("VSS"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_VSS_C"), &g_Menu.loot_weapon_vss }
+                };
+                DrawVisualLootGrid(srTiles, IM_ARRAYSIZE(srTiles), 3);
+                ImGui::Separator();
+
+                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.0f, 1.0f), skCrypt("SMGS & MACHINE GUNS"));
+                VisualLootTile smgTiles[] = {
+                    { skCrypt("MP5K"), skCrypt("Gun/SMG"), skCrypt("Item_Weapon_MP5K_C"), &g_Menu.loot_weapon_mp5 },
+                    { skCrypt("UMP"), skCrypt("Gun/SMG"), skCrypt("Item_Weapon_UMP_C"), &g_Menu.loot_weapon_ump },
+                    { skCrypt("Vector"), skCrypt("Gun/SMG"), skCrypt("Item_Weapon_Vector_C"), &g_Menu.loot_weapon_vector },
+                    { skCrypt("UZI"), skCrypt("Gun/SMG"), skCrypt("Item_Weapon_UZI_C"), &g_Menu.loot_weapon_uzi },
+                    { skCrypt("P90"), skCrypt("Gun/SMG"), skCrypt("Item_Weapon_P90_C"), &g_Menu.loot_weapon_p90 },
+                    { skCrypt("M249"), skCrypt("Gun/LMG"), skCrypt("Item_Weapon_M249_C"), &g_Menu.loot_weapon_m249 },
+                    { skCrypt("MG3"), skCrypt("Gun/LMG"), skCrypt("Item_Weapon_MG3_C"), &g_Menu.loot_weapon_mg3 },
+                    { skCrypt("DP-28"), skCrypt("Gun/LMG"), skCrypt("Item_Weapon_DP28_C"), &g_Menu.loot_weapon_dp28 }
+                };
+                DrawVisualLootGrid(smgTiles, IM_ARRAYSIZE(smgTiles), 3);
+                ImGui::Separator();
+
+                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.0f, 1.0f), skCrypt("SHOTGUNS & SIDEARMS"));
+                VisualLootTile sgTiles[] = {
+                    { skCrypt("DBS"), skCrypt("Gun/SG"), skCrypt("Item_Weapon_DP12_C"), &g_Menu.loot_weapon_dp12 },
+                    { skCrypt("S12K"), skCrypt("Gun/SG"), skCrypt("Item_Weapon_Saiga12_C"), &g_Menu.loot_weapon_saiga },
+                    { skCrypt("D-Eagle"), skCrypt("Gun/HG"), skCrypt("Item_Weapon_DesertEagle_C"), &g_Menu.loot_weapon_deagle },
+                    { skCrypt("P18C"), skCrypt("Gun/HG"), skCrypt("Item_Weapon_G18_C"), &g_Menu.loot_weapon_p92 },
+                    { skCrypt("Skorpion"), skCrypt("Gun/HG"), skCrypt("Item_Weapon_vz61Skorpion_C"), &g_Menu.loot_weapon_skorpion },
+                    { skCrypt("Pan"), skCrypt("Gun/Melee"), skCrypt("Item_Weapon_Pan_C"), &g_Menu.loot_weapon_pan },
+                    { skCrypt("Flare"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_FlareGun_C"), &g_Menu.loot_weapon_flare }
+                };
+                DrawVisualLootGrid(sgTiles, IM_ARRAYSIZE(sgTiles), 3);
+                
                 ImGui::EndChild();
 
                 ImGui::NextColumn();
@@ -2251,20 +2312,20 @@ void OverlayMenu::RenderFrame() {
                     { Lang.VehicleUAZ, skCrypt("Vehicle"), skCrypt("Uaz_A_00_C"), &g_Menu.loot_vehicle_uaz },
                     { Lang.VehicleDacia, skCrypt("Vehicle"), skCrypt("Dacia_A_00_v2_C"), &g_Menu.loot_vehicle_dacia },
                     { Lang.VehicleBuggy, skCrypt("Vehicle"), skCrypt("Buggy_A_01_C"), &g_Menu.loot_vehicle_buggy },
-                    { Lang.VehicleBike, skCrypt("Vehicle"), skCrypt("BP_Motorbike_04_C"), &g_Menu.loot_vehicle_bike },
+                    { Lang.VehicleBike, skCrypt("Gun/Special"), skCrypt("BP_Motorbike_04_C"), &g_Menu.loot_vehicle_bike },
                     { Lang.VehicleBoat, skCrypt("Vehicle"), skCrypt("Boat_PG117_C"), &g_Menu.loot_vehicle_boat },
-                    { Lang.VehicleBRDM, skCrypt("Vehicle"), skCrypt("BP_BRDM_C"), &g_Menu.loot_vehicle_brdm },
-                    { Lang.VehicleScooter, skCrypt("Vehicle"), skCrypt("BP_Scooter_00_A_C"), &g_Menu.loot_vehicle_scooter },
-                    { Lang.VehicleSnow, skCrypt("Vehicle"), skCrypt("BP_Snowmobile_00_C"), &g_Menu.loot_vehicle_snow },
-                    { Lang.VehicleTuk, skCrypt("Vehicle"), skCrypt("BP_TukTukTuk_A_00_C"), &g_Menu.loot_vehicle_tuk },
-                    { Lang.VehicleBus, skCrypt("Vehicle"), skCrypt("BP_MiniBus_C"), &g_Menu.loot_vehicle_bus },
-                    { Lang.VehicleTruck, skCrypt("Vehicle"), skCrypt("BP_LootTruck_C"), &g_Menu.loot_vehicle_truck },
-                    { Lang.VehicleTrain, skCrypt("Vehicle"), skCrypt("BP_DO_Circle_Train_Merged_C"), &g_Menu.loot_vehicle_train },
-                    { Lang.VehicleMirado, skCrypt("Vehicle"), skCrypt("BP_Mirado_A_00_C"), &g_Menu.loot_vehicle_mirado },
-                    { Lang.VehiclePickup, skCrypt("Vehicle"), skCrypt("BP_PickupTruck_A_00_C"), &g_Menu.loot_vehicle_pickup },
-                    { Lang.VehicleRony, skCrypt("Vehicle"), skCrypt("BP_M_Rony_A_00_C"), &g_Menu.loot_vehicle_rony },
-                    { Lang.VehicleBlanc, skCrypt("Vehicle"), skCrypt("BP_Blanc_C"), &g_Menu.loot_vehicle_blanc },
-                    { Lang.VehicleAir, skCrypt("Vehicle"), skCrypt("BP_Motorglider_C"), &g_Menu.loot_vehicle_air }
+                    { Lang.VehicleBRDM, skCrypt("Gun/Special"), skCrypt("BP_BRDM_C"), &g_Menu.loot_vehicle_brdm },
+                    { Lang.VehicleScooter, skCrypt("Gun/Special"), skCrypt("BP_Scooter_00_A_C"), &g_Menu.loot_vehicle_scooter },
+                    { Lang.VehicleSnow, skCrypt("Gun/Special"), skCrypt("BP_Snowmobile_00_C"), &g_Menu.loot_vehicle_snow },
+                    { Lang.VehicleTuk, skCrypt("Gun/Special"), skCrypt("BP_TukTukTuk_A_00_C"), &g_Menu.loot_vehicle_tuk },
+                    { Lang.VehicleBus, skCrypt("Gun/Special"), skCrypt("BP_MiniBus_C"), &g_Menu.loot_vehicle_bus },
+                    { Lang.VehicleTruck, skCrypt("Gun/Special"), skCrypt("BP_LootTruck_C"), &g_Menu.loot_vehicle_truck },
+                    { Lang.VehicleTrain, skCrypt("Gun/Special"), skCrypt("BP_DO_Circle_Train_Merged_C"), &g_Menu.loot_vehicle_train },
+                    { Lang.VehicleMirado, skCrypt("Gun/Special"), skCrypt("BP_Mirado_A_00_C"), &g_Menu.loot_vehicle_mirado },
+                    { Lang.VehiclePickup, skCrypt("Gun/Special"), skCrypt("BP_PickupTruck_A_00_C"), &g_Menu.loot_vehicle_pickup },
+                    { Lang.VehicleRony, skCrypt("Gun/Special"), skCrypt("BP_M_Rony_A_00_C"), &g_Menu.loot_vehicle_rony },
+                    { Lang.VehicleBlanc, skCrypt("Gun/Special"), skCrypt("BP_Blanc_C"), &g_Menu.loot_vehicle_blanc },
+                    { Lang.VehicleAir, skCrypt("Gun/Special"), skCrypt("BP_Motorglider_C"), &g_Menu.loot_vehicle_air }
                 };
                 
                 // Draw 3 items per row as requested
@@ -2548,6 +2609,42 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["loot_attach_muzzle"] = loot_attach_muzzle;
         j["loot_weapon_special"] = loot_weapon_special;
         j["loot_weapon_all"] = loot_weapon_all;
+        j["loot_backpack_lv1"] = loot_backpack_lv1;
+        j["loot_backpack_lv2"] = loot_backpack_lv2;
+        j["loot_backpack_lv3"] = loot_backpack_lv3;
+        j["loot_ghillie"] = loot_ghillie;
+        j["loot_utility"] = loot_utility;
+        j["loot_repair"] = loot_repair;
+        j["loot_attach_grip"] = loot_attach_grip;
+        j["loot_attach_stock"] = loot_attach_stock;
+        j["loot_attach_scope_all"] = loot_attach_scope_all;
+        j["loot_attach_scope_high"] = loot_attach_scope_high;
+        
+        // Weapon-specific booleans
+        j["lw_ace32"] = loot_weapon_ace32; j["lw_ak47"] = loot_weapon_ak47;
+        j["lw_aug"] = loot_weapon_aug; j["lw_beryl"] = loot_weapon_beryl;
+        j["lw_g36c"] = loot_weapon_g36c; j["lw_groza"] = loot_weapon_groza;
+        j["lw_hk416"] = loot_weapon_hk416; j["lw_k2"] = loot_weapon_k2;
+        j["lw_m16"] = loot_weapon_m16; j["lw_mutant"] = loot_weapon_mutant;
+        j["lw_qbz"] = loot_weapon_qbz; j["lw_scar"] = loot_weapon_scar;
+        j["lw_famas"] = loot_weapon_famas; j["lw_awm"] = loot_weapon_awm;
+        j["lw_kar98"] = loot_weapon_kar98; j["lw_m24"] = loot_weapon_m24;
+        j["lw_mosin"] = loot_weapon_mosin; j["lw_win94"] = loot_weapon_win94;
+        j["lw_dragunov"] = loot_weapon_dragunov; j["lw_mini14"] = loot_weapon_mini14;
+        j["lw_mk12"] = loot_weapon_mk12; j["lw_mk14"] = loot_weapon_mk14;
+        j["lw_qbu"] = loot_weapon_qbu; j["lw_sks"] = loot_weapon_sks;
+        j["lw_vss"] = loot_weapon_vss; j["lw_slr"] = loot_weapon_slr;
+        j["lw_bizon"] = loot_weapon_bizon; j["lw_mp5"] = loot_weapon_mp5;
+        j["lw_mp9"] = loot_weapon_mp9; j["lw_p90"] = loot_weapon_p90;
+        j["lw_thompson"] = loot_weapon_thompson; j["lw_ump"] = loot_weapon_ump;
+        j["lw_uzi"] = loot_weapon_uzi; j["lw_vector"] = loot_weapon_vector;
+        j["lw_js9"] = loot_weapon_js9; j["lw_dp28"] = loot_weapon_dp28;
+        j["lw_m249"] = loot_weapon_m249; j["lw_mg3"] = loot_weapon_mg3;
+        j["lw_dp12"] = loot_weapon_dp12; j["lw_saiga"] = loot_weapon_saiga;
+        j["lw_deagle"] = loot_weapon_deagle; j["lw_m1911"] = loot_weapon_m1911;
+        j["lw_p92"] = loot_weapon_p92; j["lw_skorpion"] = loot_weapon_skorpion;
+        j["lw_pan"] = loot_weapon_pan; j["lw_flare"] = loot_weapon_flare;
+
         j["loot_vehicle_uaz"] = loot_vehicle_uaz;
         j["loot_vehicle_dacia"] = loot_vehicle_dacia;
         j["loot_vehicle_buggy"] = loot_vehicle_buggy;
@@ -2727,6 +2824,65 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("loot_attach_muzzle")) loot_attach_muzzle = j["loot_attach_muzzle"];
             if (j.contains("loot_weapon_special")) loot_weapon_special = j["loot_weapon_special"];
             if (j.contains("loot_weapon_all")) loot_weapon_all = j["loot_weapon_all"];
+            if (j.contains("loot_backpack_lv1")) loot_backpack_lv1 = j["loot_backpack_lv1"];
+            if (j.contains("loot_backpack_lv2")) loot_backpack_lv2 = j["loot_backpack_lv2"];
+            if (j.contains("loot_backpack_lv3")) loot_backpack_lv3 = j["loot_backpack_lv3"];
+            if (j.contains("loot_ghillie")) loot_ghillie = j["loot_ghillie"];
+            if (j.contains("loot_utility")) loot_utility = j["loot_utility"];
+            if (j.contains("loot_repair")) loot_repair = j["loot_repair"];
+            if (j.contains("loot_attach_grip")) loot_attach_grip = j["loot_attach_grip"];
+            if (j.contains("loot_attach_stock")) loot_attach_stock = j["loot_attach_stock"];
+            if (j.contains("loot_attach_scope_all")) loot_attach_scope_all = j["loot_attach_scope_all"];
+            if (j.contains("loot_attach_scope_high")) loot_attach_scope_high = j["loot_attach_scope_high"];
+
+            // Weapon-specific booleans
+            if (j.contains("lw_ace32")) loot_weapon_ace32 = j["lw_ace32"];
+            if (j.contains("lw_ak47")) loot_weapon_ak47 = j["lw_ak47"];
+            if (j.contains("lw_aug")) loot_weapon_aug = j["lw_aug"];
+            if (j.contains("lw_beryl")) loot_weapon_beryl = j["lw_beryl"];
+            if (j.contains("lw_g36c")) loot_weapon_g36c = j["lw_g36c"];
+            if (j.contains("lw_groza")) loot_weapon_groza = j["lw_groza"];
+            if (j.contains("lw_hk416")) loot_weapon_hk416 = j["lw_hk416"];
+            if (j.contains("lw_k2")) loot_weapon_k2 = j["lw_k2"];
+            if (j.contains("lw_m16")) loot_weapon_m16 = j["lw_m16"];
+            if (j.contains("lw_mutant")) loot_weapon_mutant = j["lw_mutant"];
+            if (j.contains("lw_qbz")) loot_weapon_qbz = j["lw_qbz"];
+            if (j.contains("lw_scar")) loot_weapon_scar = j["lw_scar"];
+            if (j.contains("lw_famas")) loot_weapon_famas = j["lw_famas"];
+            if (j.contains("lw_awm")) loot_weapon_awm = j["lw_awm"];
+            if (j.contains("lw_kar98")) loot_weapon_kar98 = j["lw_kar98"];
+            if (j.contains("lw_m24")) loot_weapon_m24 = j["lw_m24"];
+            if (j.contains("lw_mosin")) loot_weapon_mosin = j["lw_mosin"];
+            if (j.contains("lw_win94")) loot_weapon_win94 = j["lw_win94"];
+            if (j.contains("lw_dragunov")) loot_weapon_dragunov = j["lw_dragunov"];
+            if (j.contains("lw_mini14")) loot_weapon_mini14 = j["lw_mini14"];
+            if (j.contains("lw_mk12")) loot_weapon_mk12 = j["lw_mk12"];
+            if (j.contains("lw_mk14")) loot_weapon_mk14 = j["lw_mk14"];
+            if (j.contains("lw_qbu")) loot_weapon_qbu = j["lw_qbu"];
+            if (j.contains("lw_sks")) loot_weapon_sks = j["lw_sks"];
+            if (j.contains("lw_vss")) loot_weapon_vss = j["lw_vss"];
+            if (j.contains("lw_slr")) loot_weapon_slr = j["lw_slr"];
+            if (j.contains("lw_bizon")) loot_weapon_bizon = j["lw_bizon"];
+            if (j.contains("lw_mp5")) loot_weapon_mp5 = j["lw_mp5"];
+            if (j.contains("lw_mp9")) loot_weapon_mp9 = j["lw_mp9"];
+            if (j.contains("lw_p90")) loot_weapon_p90 = j["lw_p90"];
+            if (j.contains("lw_thompson")) loot_weapon_thompson = j["lw_thompson"];
+            if (j.contains("lw_ump")) loot_weapon_ump = j["lw_ump"];
+            if (j.contains("lw_uzi")) loot_weapon_uzi = j["lw_uzi"];
+            if (j.contains("lw_vector")) loot_weapon_vector = j["lw_vector"];
+            if (j.contains("lw_js9")) loot_weapon_js9 = j["lw_js9"];
+            if (j.contains("lw_dp28")) loot_weapon_dp28 = j["lw_dp28"];
+            if (j.contains("lw_m249")) loot_weapon_m249 = j["lw_m249"];
+            if (j.contains("lw_mg3")) loot_weapon_mg3 = j["lw_mg3"];
+            if (j.contains("lw_dp12")) loot_weapon_dp12 = j["lw_dp12"];
+            if (j.contains("lw_saiga")) loot_weapon_saiga = j["lw_saiga"];
+            if (j.contains("lw_deagle")) loot_weapon_deagle = j["lw_deagle"];
+            if (j.contains("lw_m1911")) loot_weapon_m1911 = j["lw_m1911"];
+            if (j.contains("lw_p92")) loot_weapon_p92 = j["lw_p92"];
+            if (j.contains("lw_skorpion")) loot_weapon_skorpion = j["lw_skorpion"];
+            if (j.contains("lw_pan")) loot_weapon_pan = j["lw_pan"];
+            if (j.contains("lw_flare")) loot_weapon_flare = j["lw_flare"];
+
             if (j.contains("loot_vehicle_uaz")) loot_vehicle_uaz = j["loot_vehicle_uaz"];
             if (j.contains("loot_vehicle_dacia")) loot_vehicle_dacia = j["loot_vehicle_dacia"];
             if (j.contains("loot_vehicle_buggy")) loot_vehicle_buggy = j["loot_vehicle_buggy"];

@@ -364,6 +364,16 @@ namespace Translation {
         const char* VehiclePickup;
         const char* VehicleRony;
         const char* VehicleBlanc;
+        const char* BackpackLv1;
+        const char* BackpackLv2;
+        const char* BackpackLv3;
+        const char* GhillieSuits;
+        const char* SurvivalUtility;
+        const char* RepairKits;
+        const char* Grips;
+        const char* Stocks;
+        const char* HeaderAttachments;
+        const char* HeaderSurvival;
     };
 
 
@@ -697,6 +707,16 @@ namespace Translation {
             s.ItemCatalogTitle = (const char*)u8"Danh mục ảnh vật phẩm";
             s.ItemCatalogHint = (const char*)u8"Chọn chỉ để xem trên giao diện";
             s.ItemCatalogSelected = (const char*)u8"Đang chọn";
+            s.BackpackLv1 = (const char*)u8"Balo 1";
+            s.BackpackLv2 = (const char*)u8"Balo 2";
+            s.BackpackLv3 = (const char*)u8"Balo 3";
+            s.GhillieSuits = (const char*)u8"Đồ ngụy trang";
+            s.SurvivalUtility = (const char*)u8"Dụng cụ sinh tồn";
+            s.RepairKits = (const char*)u8"Bộ sửa chữa";
+            s.Grips = (const char*)u8"Tay cầm";
+            s.Stocks = (const char*)u8"Báng súng";
+            s.HeaderAttachments = (const char*)u8"[-] PHỤ KIỆN KHÁC";
+            s.HeaderSurvival = (const char*)u8"[-] SINH TỒN & TIỆN ÍCH";
             s.HeaderVehicleFilter = (const char*)u8"[-] BỘ LỌC PHƯƠNG TIỆN";
             s.VehicleUAZ = (const char*)u8"Xe UAZ";
             s.VehicleDacia = (const char*)u8"Xe Dacia";
@@ -1042,6 +1062,16 @@ namespace Translation {
             s.ItemCatalogTitle = skCrypt("Item Image Catalog");
             s.ItemCatalogHint = skCrypt("Selection is menu-only");
             s.ItemCatalogSelected = skCrypt("Selected");
+            s.BackpackLv1 = skCrypt("Backpack Level 1");
+            s.BackpackLv2 = skCrypt("Backpack Level 2");
+            s.BackpackLv3 = skCrypt("Backpack Level 3");
+            s.GhillieSuits = skCrypt("Ghillie Suits");
+            s.SurvivalUtility = skCrypt("Survival Gear");
+            s.RepairKits = skCrypt("Repair Kits");
+            s.Grips = skCrypt("Foregrips");
+            s.Stocks = skCrypt("Stocks / Pads");
+            s.HeaderAttachments = skCrypt("ADDITIONAL ATTACHMENTS");
+            s.HeaderSurvival = skCrypt("SURVIVAL & UTILITY");
             s.HeaderVehicleFilter = skCrypt("VEHICLE ASSET FILTER");
             s.VehicleUAZ = skCrypt("UAZ Series");
             s.VehicleDacia = skCrypt("Dacia Series");
