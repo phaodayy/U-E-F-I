@@ -1613,6 +1613,16 @@ void OverlayMenu::RenderFrame() {
                 ImGui::Spacing();
             };
 
+            auto DrawDisplayOnlyOption = [&](const char* label) {
+                bool previewEnabled = true;
+                ImGui::BeginDisabled(true);
+                ImGui::Checkbox(label, &previewEnabled);
+                ImGui::EndDisabled();
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                    ImGui::SetTooltip("%s", Lang.DisplayOnlyNote);
+                }
+            };
+
             // Top Bar
             ImGui::SetCursorPos(ImVec2(0, 0));
             ImGui::BeginChild(skCrypt("##TopBar"), ImVec2(windowSize.x, 60), false, ImGuiWindowFlags_NoBackground);
@@ -1668,6 +1678,8 @@ void OverlayMenu::RenderFrame() {
                 ImGui::Checkbox(Lang.VisCheck, &g_Menu.aim_visible_only);
                 ImGui::Checkbox(Lang.ESP_Spectated, &g_Menu.esp_spectated);
                 ImGui::Checkbox(Lang.ESP_SpectatorList, &g_Menu.esp_spectator_list);
+                ImGui::Separator();
+                DrawDisplayOnlyOption(Lang.ShowcaseVisualProfile);
                 ImGui::EndChild();
                 
                 ImGui::NextColumn();
@@ -1941,6 +1953,8 @@ void OverlayMenu::RenderFrame() {
                 ImGui::Spacing();
                 if (ImGui::Button(Lang.SaveConfig, ImVec2(-1, 35))) { g_Menu.SaveConfig("dataMacro/Config/settings.json"); }
                 if (ImGui::Button(Lang.SafeStatus, ImVec2(-1, 35))) { exit(0); } // Mapping as stub for exit label? No, exit should have its own string.
+                ImGui::Separator();
+                DrawDisplayOnlyOption(Lang.ShowcasePrecisionProfile);
                 ImGui::EndChild();
 
                 ImGui::NextColumn();                
@@ -2029,6 +2043,7 @@ void OverlayMenu::RenderFrame() {
                 BeginGlassCard(skCrypt("##MacroCol3"), Lang.HeaderEngineUtils, ImVec2(totalWidth / 3.0f - 20, 0));
                 if (ImGui::Button(Lang.RescanAttach, ImVec2(-1, 35))) { /* Rescan */ }
                 ImGui::TextDisabled(skCrypt("Advanced anti-recoil logic active"));
+                DrawDisplayOnlyOption(Lang.ShowcaseInputProfile);
                 ImGui::EndChild();
 
                 ImGui::Columns(1);
@@ -2065,6 +2080,8 @@ void OverlayMenu::RenderFrame() {
                 ImGui::Checkbox(skCrypt("Show Vehicles"), &g_Menu.esp_vehicles);
                 ImGui::Checkbox(skCrypt("Show Airdrops"), &g_Menu.esp_airdrops);
                 ImGui::Checkbox(skCrypt("Show Deathboxes"), &g_Menu.esp_deadboxes);
+                ImGui::Separator();
+                DrawDisplayOnlyOption(Lang.ShowcaseVehicleProfile);
                 ImGui::EndChild();
                 
                 ImGui::NextColumn();
@@ -2085,6 +2102,8 @@ void OverlayMenu::RenderFrame() {
                 ImGui::Separator();
                 ImGui::Checkbox(skCrypt("Muzzle Access"), &g_Menu.loot_attach_muzzle);
                 ImGui::Checkbox(skCrypt("Extended Mags"), &g_Menu.loot_attach_mag);
+                ImGui::Separator();
+                DrawDisplayOnlyOption(Lang.ShowcaseInventoryProfile);
                 ImGui::EndChild();
                 
                 ImGui::Columns(1);
@@ -2142,12 +2161,14 @@ void OverlayMenu::RenderFrame() {
                 BeginGlassCard(skCrypt("##SetCol3"), Lang.HeaderEngineUtils, ImVec2(totalWidth / 3.0f - 20, 0));
                 if (ImGui::Button(Lang.ResetColors, ImVec2(-1, 35))) { /* Reset colors logic */ }
                 if (ImGui::Button(Lang.SaveConfig, ImVec2(-1, 35))) { g_Menu.SaveConfig("dataMacro/Config/settings.json"); }
+                DrawDisplayOnlyOption(Lang.ShowcaseConfigProfile);
                 
                 ImGui::Spacing();
                 ImGui::Separator();
                 ImGui::Spacing();
                 
                 if (ImGui::Button(skCrypt("Terminate Application"), ImVec2(-1, 40))) { exit(0); }
+                DrawDisplayOnlyOption(Lang.ShowcaseStreamerProfile);
                 ImGui::EndChild();
                 
                 ImGui::Columns(1);
@@ -2165,6 +2186,8 @@ void OverlayMenu::RenderFrame() {
                 ImGui::Checkbox(Lang.RadarEnable, &g_Menu.radar_enabled);
                 ImGui::Checkbox(Lang.ItemsVehicles, &g_Menu.esp_vehicles);
                 ImGui::Checkbox(skCrypt("Show Neutral Targets"), &g_Menu.esp_airdrops);
+                ImGui::Separator();
+                DrawDisplayOnlyOption(Lang.ShowcaseMapProfile);
                 ImGui::EndChild();
                 
                 ImGui::NextColumn();
@@ -2202,7 +2225,7 @@ void OverlayMenu::RenderFrame() {
             drawList->AddRectFilled(railPos, ImVec2(railPos.x + railSize.x, railPos.y + railSize.y), IM_COL32(20, 40, 80, 100), 22.0f);
             drawList->AddRect(railPos, ImVec2(railPos.x + railSize.x, railPos.y + railSize.y), IM_COL32(0, 200, 255, 60), 22.0f);
 
-            float totalWidth = (110.0f * 5.0f) + (10.0f * 4.0f);
+            float totalWidth = (110.0f * 6.0f) + (10.0f * 5.0f);
             ImGui::SetCursorPosX((railSize.x - totalWidth) / 2.0f);
             
             auto BottomTab = [&](const char* label, int id) {

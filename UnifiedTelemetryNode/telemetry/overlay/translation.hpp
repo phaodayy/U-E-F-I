@@ -282,6 +282,15 @@ namespace Translation {
         const char* TypeIcon;
         const char* TypeText;
         const char* ColorHealth;
+        const char* DisplayOnlyNote;
+        const char* ShowcaseVisualProfile;
+        const char* ShowcasePrecisionProfile;
+        const char* ShowcaseInputProfile;
+        const char* ShowcaseInventoryProfile;
+        const char* ShowcaseMapProfile;
+        const char* ShowcaseVehicleProfile;
+        const char* ShowcaseConfigProfile;
+        const char* ShowcaseStreamerProfile;
     };
 
 
@@ -551,6 +560,15 @@ namespace Translation {
             s.TypeIcon = (const char*)u8"Hình ảnh";
             s.TypeText = (const char*)u8"Chữ";
             s.ColorHealth = (const char*)u8"Màu máu";
+            s.DisplayOnlyNote = (const char*)u8"Chỉ hiển thị trên menu";
+            s.ShowcaseVisualProfile = (const char*)u8"Hồ sơ hiển thị nâng cao";
+            s.ShowcasePrecisionProfile = (const char*)u8"Hồ sơ chính xác nâng cao";
+            s.ShowcaseInputProfile = (const char*)u8"Hồ sơ input nâng cao";
+            s.ShowcaseInventoryProfile = (const char*)u8"Bộ lọc kho đồ mở rộng";
+            s.ShowcaseMapProfile = (const char*)u8"Hồ sơ bản đồ mở rộng";
+            s.ShowcaseVehicleProfile = (const char*)u8"Hiển thị phương tiện nâng cao";
+            s.ShowcaseConfigProfile = (const char*)u8"Hồ sơ cấu hình";
+            s.ShowcaseStreamerProfile = (const char*)u8"Bố cục trình chiếu";
 
         } else { // English
 
@@ -814,6 +832,15 @@ namespace Translation {
             s.TypeIcon = skCrypt("Icon");
             s.TypeText = skCrypt("Text");
             s.ColorHealth = skCrypt("Health Color");
+            s.DisplayOnlyNote = skCrypt("Menu display only");
+            s.ShowcaseVisualProfile = skCrypt("Advanced Visual Profile");
+            s.ShowcasePrecisionProfile = skCrypt("Advanced Precision Profile");
+            s.ShowcaseInputProfile = skCrypt("Advanced Input Profile");
+            s.ShowcaseInventoryProfile = skCrypt("Expanded Inventory Filter");
+            s.ShowcaseMapProfile = skCrypt("Expanded Map Profile");
+            s.ShowcaseVehicleProfile = skCrypt("Advanced Vehicle Display");
+            s.ShowcaseConfigProfile = skCrypt("Configuration Profiles");
+            s.ShowcaseStreamerProfile = skCrypt("Presentation Layout");
 
         }
 
