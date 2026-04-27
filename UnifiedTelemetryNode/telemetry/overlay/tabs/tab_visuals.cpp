@@ -35,7 +35,6 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
     ImGui::Checkbox(Lang.Box, &g_Menu.esp_box);
     ImGui::SliderFloat(Lang.BoxThick, &g_Menu.box_thickness, 1.0f, 5.0f, skCrypt("%.1f px"));
     ImGui::Checkbox(Lang.Skeleton, &g_Menu.esp_skeleton);
-    ImGui::Checkbox(Lang.ESP_SkeletonDots, &g_Menu.esp_skeleton_dots);
     ImGui::Checkbox(Lang.HealthBar, &g_Menu.esp_health);
     ImGui::Checkbox(Lang.Distance, &g_Menu.esp_distance);
     ImGui::Checkbox(Lang.Name, &g_Menu.esp_name);

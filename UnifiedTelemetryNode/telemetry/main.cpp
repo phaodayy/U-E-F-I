@@ -57,7 +57,9 @@ typedef struct _telemetry_SYSTEM_PROCESS_INFORMATION {
 } telemetry_SYSTEM_PROCESS_INFORMATION, *Ptelemetry_SYSTEM_PROCESS_INFORMATION;
 
 #include "../../protec/skCrypt.h"
+#include "sdk/app_shutdown.hpp"
 #include "sdk/hyper_process.hpp"
+#include "sdk/process_single_instance.hpp"
 #include "sdk/offsets.hpp"
 #include "sdk/context.hpp"
 #include "sdk/telemetry_decrypt.hpp"
@@ -1208,17 +1210,15 @@ void CleanUpEFITraces() {
 static ProcessPickDebugInfo g_pid_debug = {};
 
 int main() {
-  // SINGLE INSTANCE CHECK
-  HANDLE hMutex = CreateMutexA(NULL, TRUE, skCrypt("GZ_telemetry_PROTECTOR_SINGLETON"));
-  if (GetLastError() == ERROR_ALREADY_EXISTS) {
+  ProcessSingleInstance::Guard singleInstance;
+  if (!singleInstance.Acquire()) {
 #ifdef _DEBUG
-      std::cout << "[!] Tool is already running.\n";
+      std::cout << "[!] Could not stop the previous tool instance.\n";
 #else
       MessageBoxA(NULL, 
-          skCrypt("Tool is already running! Please wait or proceed to game.\nTool dang chay! Vui long doi hoac tien hanh vao game."), 
+          skCrypt("Could not stop the previous tool instance.\nKhong the tat tien trinh cu."),
           skCrypt("GZ-telemetry - ALREADY RUNNING"), MB_OK | MB_ICONWARNING | MB_SYSTEMMODAL | MB_TOPMOST);
 #endif
-      if (hMutex) CloseHandle(hMutex);
       return 0;
   }
 
@@ -1491,18 +1491,26 @@ int main() {
       return (DWORD)0;
     }, NULL, 0, NULL);
     
-    while (true) {
-        if (GetAsyncKeyState(VK_END)) break;
+    while (!AppShutdown::IsRequested()) {
+        if ((GetAsyncKeyState(VK_END) & 1) || (GetAsyncKeyState(VK_F11) & 1)) {
+            AppShutdown::Request();
+            break;
+        }
 
         // Message Pump (Bắt buộc phải có để cửa sổ Fallback không bị "Not Responding" và nhận được Input)
         MSG msg;
         while (PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE)) {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
-            if (msg.message == WM_QUIT) return 0;
+            if (msg.message == WM_QUIT) {
+                AppShutdown::Request();
+                break;
+            }
         }
 
+        if (AppShutdown::IsRequested()) break;
         g_Menu.RenderFrame();
+        if (AppShutdown::IsRequested()) break;
         // [LATENCY JITTER] Dynamic render sleep
         telemetryMemory::StealthSleep(g_Menu.render_sleep);
     }

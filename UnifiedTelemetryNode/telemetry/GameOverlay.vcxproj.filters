@@ -55,6 +55,15 @@
     <ClCompile Include="overlay\loot_icon_resolver.cpp">
       <Filter>Overlay</Filter>
     </ClCompile>
+    <ClCompile Include="overlay\loot_cluster_renderer.cpp">
+      <Filter>Overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\loot_source_merge.cpp">
+      <Filter>Overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\vehicle_resolver.cpp">
+      <Filter>Overlay</Filter>
+    </ClCompile>
     <ClCompile Include="imgui\imgui.cpp">
       <Filter>ImGui</Filter>
     </ClCompile>
@@ -73,6 +82,9 @@
     <ClCompile Include="imgui\imgui_impl_win32.cpp">
       <Filter>ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="sdk\process_single_instance.cpp">
+      <Filter>SDK</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sdk\offsets.hpp">
@@ -90,6 +102,12 @@
     <ClInclude Include="sdk\gobjects.hpp">
       <Filter>SDK</Filter>
     </ClInclude>
+    <ClInclude Include="sdk\app_shutdown.hpp">
+      <Filter>SDK</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\process_single_instance.hpp">
+      <Filter>SDK</Filter>
+    </ClInclude>
     <ClInclude Include="overlay\overlay_menu.hpp">
       <Filter>Overlay</Filter>
     </ClInclude>
@@ -97,6 +115,15 @@
       <Filter>Overlay</Filter>
     </ClInclude>
     <ClInclude Include="overlay\loot_icon_resolver.hpp">
+      <Filter>Overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\loot_cluster_renderer.hpp">
+      <Filter>Overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\loot_source_merge.hpp">
+      <Filter>Overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\vehicle_resolver.hpp">
       <Filter>Overlay</Filter>
     </ClInclude>
     <ClInclude Include="imgui\imgui.h">

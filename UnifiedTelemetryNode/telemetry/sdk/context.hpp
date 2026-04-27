@@ -74,11 +74,20 @@ struct RadarData {
 };
 
 extern RadarData G_Radar;
+enum class ItemRenderType : uint8_t {
+    Loot = 0,
+    Vehicle,
+    AirDrop,
+    DeadBox,
+    Projectile
+};
+
 struct ItemData {
     Vector3 Position;
     std::string Name;
     float Distance;
     bool IsImportant;
+    ItemRenderType RenderType = ItemRenderType::Loot;
 };
 
 #include <mutex>

@@ -10,6 +10,7 @@
 #include <set>
 #include <array>
 #include <utility>
+#include <initializer_list>
 
 using namespace telemetryOffsets;
 using namespace telemetryDecrypt;
@@ -202,6 +203,27 @@ namespace telemetryContext {
 
     static bool IsValidGamePtr(uint64_t value) {
         return value > 0x1000000;
+    }
+
+    static bool HasAnyToken(const std::string& value, const std::initializer_list<const char*>& tokens) {
+        for (const char* token : tokens) {
+            if (value.find(token) != std::string::npos) return true;
+        }
+        return false;
+    }
+
+    static bool IsVehicleActorName(const std::string& className) {
+        return HasAnyToken(className, {
+            "Vehicle", "Uaz", "Dacia", "Buggy", "Motorbike", "Dirtbike",
+            "Boat", "PG117", "AquaRail", "AirBoat", "BRDM", "Scooter",
+            "Snowbike", "Snowmobile", "Niva", "Tuk", "MiniBus", "Van",
+            "LootTruck", "Food_Truck", "Train", "Mirado", "PickupTruck",
+            "Rony", "Blanc", "Motorglider", "Bicycle", "Mountainbike",
+            "Rubber_boat", "Rubberboat", "PonyCoupe", "PicoBus",
+            "ATV", "Porter", "Pillar_Car", "CoupeRB", "McLaren",
+            "DBX", "Vantage", "Urus", "Countach", "Classic",
+            "Panigale", "BearV2", "StrongBox"
+        });
     }
 
     static std::string ResolveItemNameFromTable(uint64_t itemTable) {
@@ -770,7 +792,7 @@ namespace telemetryContext {
                         // objID & cname already fetched above!
                         
                         bool isLoot = (cname.find(skCrypt("Dropped")) != std::string::npos);
-                        bool isVeh  = (cname.find(skCrypt("Vehicle")) != std::string::npos || cname.find(skCrypt("Uaz")) != std::string::npos || cname.find(skCrypt("Dacia")) != std::string::npos);
+                        bool isVeh  = IsVehicleActorName(cname);
                         bool isAir  = (cname.find(skCrypt("AirDrop")) != std::string::npos || cname.find(skCrypt("CarePackage")) != std::string::npos);
                         bool isBox  = (cname.find(skCrypt("DeadBox")) != std::string::npos || cname.find(skCrypt("ItemPackage")) != std::string::npos);
                         bool isProj = (cname.find(skCrypt("Proj")) != std::string::npos || cname.find(skCrypt("Grenade")) != std::string::npos || cname.find(skCrypt("Molotov")) != std::string::npos);
@@ -818,7 +840,11 @@ namespace telemetryContext {
 
                                     if (cleanName == skCrypt("G36C") && !g_Menu.loot_weapon_g36c) continue;
 
-                                    item.Name = isVeh ? skCrypt("Vehicle") : (isAir ? skCrypt("Air Drop") : (isBox ? skCrypt("Dead Box") : (isProj ? skCrypt("PROJECTILE") : cleanName)));
+                                    item.Name = isVeh ? cleanName : (isAir ? skCrypt("Air Drop") : (isBox ? skCrypt("Dead Box") : (isProj ? skCrypt("PROJECTILE") : cleanName)));
+                                    item.RenderType = isVeh ? ItemRenderType::Vehicle :
+                                        (isAir ? ItemRenderType::AirDrop :
+                                        (isBox ? ItemRenderType::DeadBox :
+                                        (isProj ? ItemRenderType::Projectile : ItemRenderType::Loot)));
                                     item.IsImportant = (isAir || isVeh || isProj || cleanName.find(skCrypt("FlareGun")) != std::string::npos);
                                     tempItems.push_back(item);
                                 }

@@ -17,6 +17,10 @@ extern const wchar_t* LOADER_REGISTER_PATH;
 #include <iostream>
 #include "translation.hpp"
 #include "loot_icon_resolver.hpp"
+#include "loot_cluster_renderer.hpp"
+#include "loot_source_merge.hpp"
+#include "vehicle_resolver.hpp"
+#include "../sdk/app_shutdown.hpp"
 #include "../sdk/context.hpp"
 #include "../sdk/math.hpp"
 #include "../sdk/offsets.hpp"
@@ -162,12 +166,8 @@ static TextureInfo* GetVehicleIcon(std::string name) {
     if (VehicleIcons.find(name) != VehicleIcons.end()) return &VehicleIcons[name];
     ID3D11ShaderResourceView* srv = nullptr;
     int w, h;
-    std::string cleanName = name;
-    // Map generic boat names to actual file
-    if (cleanName.find(skCrypt("Boat")) != std::string::npos) cleanName = skCrypt("Boat_PG117_C");
-    else if (cleanName.find(skCrypt("Uaz")) != std::string::npos) cleanName = skCrypt("Uaz_A_00_C");
-    else if (cleanName.find(skCrypt("Dacia")) != std::string::npos) cleanName = skCrypt("Dacia_A_00_v2_C");
-    else if (cleanName.find(skCrypt("Buggy")) != std::string::npos) cleanName = skCrypt("Buggy_A_01_C");
+    const VehicleResolver::VehicleInfo info = VehicleResolver::Resolve(name);
+    const std::string cleanName = info.IconName;
 
     std::string path1 = skCrypt("Assets/Vehicle/") + cleanName + skCrypt(".png");
     std::string path2 = skCrypt("../Assets/Vehicle/") + cleanName + skCrypt(".png");
@@ -178,6 +178,30 @@ static TextureInfo* GetVehicleIcon(std::string name) {
     }
     VehicleIcons[name] = {nullptr, 0, 0};
     return &VehicleIcons[name];
+}
+
+static bool ShouldDrawVehicle(const OverlayMenu& menu, const std::string& name) {
+    const VehicleResolver::VehicleInfo info = VehicleResolver::Resolve(name);
+    switch (info.CategoryId) {
+    case VehicleResolver::Category::Uaz: return menu.loot_vehicle_uaz;
+    case VehicleResolver::Category::Dacia: return menu.loot_vehicle_dacia;
+    case VehicleResolver::Category::Buggy: return menu.loot_vehicle_buggy;
+    case VehicleResolver::Category::Bike: return menu.loot_vehicle_bike;
+    case VehicleResolver::Category::Boat: return menu.loot_vehicle_boat;
+    case VehicleResolver::Category::Brdm: return menu.loot_vehicle_brdm;
+    case VehicleResolver::Category::Scooter: return menu.loot_vehicle_scooter;
+    case VehicleResolver::Category::Snow: return menu.loot_vehicle_snow;
+    case VehicleResolver::Category::Tuk: return menu.loot_vehicle_tuk;
+    case VehicleResolver::Category::Bus: return menu.loot_vehicle_bus;
+    case VehicleResolver::Category::Truck: return menu.loot_vehicle_truck;
+    case VehicleResolver::Category::Train: return menu.loot_vehicle_train;
+    case VehicleResolver::Category::Mirado: return menu.loot_vehicle_mirado;
+    case VehicleResolver::Category::Pickup: return menu.loot_vehicle_pickup;
+    case VehicleResolver::Category::Rony: return menu.loot_vehicle_rony;
+    case VehicleResolver::Category::Blanc: return menu.loot_vehicle_blanc;
+    case VehicleResolver::Category::Air: return menu.loot_vehicle_air;
+    default: return true;
+    }
 }
 
 static TextureInfo* GetItemIcon(std::string name) {
@@ -1258,11 +1282,7 @@ void OverlayMenu::RenderFrame() {
                                     ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.skeleton_visible_color) :
                                     ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.skeleton_invisible_color);
 
-                                 draw->AddLine(ImVec2(s1.x, s1.y), ImVec2(s2.x, s2.y), ApplyAlpha(skelCol, alphaMult), g_Menu.skel_thickness);
-                                if (g_Menu.esp_skeleton_dots) {
-                                    draw->AddCircleFilled(ImVec2(s1.x, s1.y), g_Menu.skel_thickness * 1.5f, ApplyAlpha(skelCol, alphaMult));
-                                    draw->AddCircleFilled(ImVec2(s2.x, s2.y), g_Menu.skel_thickness * 1.5f, ApplyAlpha(skelCol, alphaMult));
-                                }
+                                draw->AddLine(ImVec2(s1.x, s1.y), ImVec2(s2.x, s2.y), ApplyAlpha(skelCol, alphaMult), g_Menu.skel_thickness);
                             }
                         };
                         DrawLine(player.Bone_Head, player.Bone_Neck);
@@ -1481,50 +1501,30 @@ void OverlayMenu::RenderFrame() {
 
         // --- 1.5. ITEM & VEHICLE RENDERING (MERGED ENGINE) ---
         if (is_authenticated && esp_toggle) {
-            std::vector<ItemData> allLoot;
-            {
-                // Source 1: DMA Radar Items (Precise names from Items.h)
-                auto dmaItems = Data::GetItems();
-                for (const auto& pair : dmaItems) {
-                    ItemData d;
-                    d.Position = { pair.second.Location.X, pair.second.Location.Y, pair.second.Location.Z };
-                    d.Name = pair.second.Name;
-                    d.Distance = pair.second.Distance;
-                    d.IsImportant = (pair.second.ItemType == WeaponType::AR || pair.second.ItemType == WeaponType::SR || pair.second.ItemType == WeaponType::DMR);
-                    allLoot.push_back(d);
-                }
-                
-                // Source 2: Actor Cached Items (Vehicles, Projectiles, Generic)
-                {
-                    std::lock_guard<std::mutex> lock(CachedItemsMutex);
-                    for (const auto& actorItem : CachedItems) {
-                        bool duplicate = false;
-                        for (const auto& existing : allLoot) {
-                            if (existing.Position.Distance(actorItem.Position) < 30.0f) { duplicate = true; break; }
-                        }
-                        if (!duplicate) allLoot.push_back(actorItem);
-                    }
-                }
-            }
+            std::vector<ItemData> allLoot = LootSourceMerge::BuildAllLoot();
 
+            std::vector<LootClusterRenderer::Entry> lootEntries;
             for (const auto& item : allLoot) {
                 if (item.Distance <= 0) continue;
 
                 bool should_draw = false;
                 ImU32 col = IM_COL32(200, 200, 200, 255); // Default Loot
 
-                if (item.Name == skCrypt("Vehicle")) {
-                    if (g_Menu.esp_vehicles && item.Distance < 400.0f) { // Max 400m for vehicles (Requirement #3015)
+                if (item.RenderType == ItemRenderType::Vehicle) {
+                    if (g_Menu.esp_vehicles &&
+                        !VehicleResolver::ShouldHideAtDistance(item.Distance) &&
+                        item.Distance < static_cast<float>(g_Menu.vehicle_max_dist) &&
+                        ShouldDrawVehicle(*this, item.Name)) {
                         should_draw = true; col = IM_COL32(0, 255, 255, 255);
                     }
-                } else if (item.Name == skCrypt("Air Drop")) {
+                } else if (item.RenderType == ItemRenderType::AirDrop) {
                     if (g_Menu.esp_airdrops) { should_draw = true; col = IM_COL32(255, 50, 50, 255); }
-                } else if (item.Name == "Dead Box") {
+                } else if (item.RenderType == ItemRenderType::DeadBox) {
                     if (g_Menu.esp_deadboxes && item.Distance < 200.0f) { should_draw = true; col = IM_COL32(255, 140, 0, 255); }
-                } else if (item.Name == "PROJECTILE") {
+                } else if (item.RenderType == ItemRenderType::Projectile) {
                     should_draw = true; col = IM_COL32(255, 0, 0, 255); // BRIGHT RED FOR DANGER
                 } else { // Generic items
-                    if (g_Menu.esp_items && item.Distance < 100.0f) { // Max 100m for items (Requirement #3015)
+                    if (g_Menu.esp_items && item.Distance > 5.0f && item.Distance < 100.0f) { // Max 100m, hide close loot under 5m.
                         const std::string& id = item.Name; // e.g. Item_Weapon_AK47_C
 
                         // --- 1. WEAPONS: ASSAULT RIFLES ---
@@ -1668,39 +1668,18 @@ void OverlayMenu::RenderFrame() {
                     if (telemetryContext::WorldToScreen(item.Position, itemScreen)) {
                         TextureInfo* icon = nullptr;
                         if (g_Menu.esp_icons) {
-                           if (item.Name == skCrypt("Vehicle")) icon = GetVehicleIcon(skCrypt("Vehicle"));
+                           if (item.RenderType == ItemRenderType::Vehicle) icon = GetVehicleIcon(item.Name);
                            else icon = GetItemIcon(item.Name);
                         }
 
-                        if (icon && icon->SRV) {
-                            float iconScale = 0.4f; // Base scale for item icons
-                            if (item.Name == skCrypt("Vehicle")) iconScale = 0.6f;
-
-                            // Distance adaptive scaling
-                            if (item.Distance > 100.0f) iconScale *= 0.7f;
-
-                            float w = (float)icon->Width * iconScale;
-                            float h = (float)icon->Height * iconScale;
-
-                            // Draw icon centered
-                            draw->AddImage(icon->SRV,
-                                ImVec2(itemScreen.x - w/2, itemScreen.y - h),
-                                ImVec2(itemScreen.x + w/2, itemScreen.y),
-                                ImVec2(0,0), ImVec2(1,1), IM_COL32(255,255,255,255));
-
-                            // Distance text below icon
-                            char distBuf[32]; sprintf_s(distBuf, skCrypt("[%dm]"), (int)item.Distance);
-                            ImVec2 dsz = ImGui::CalcTextSize(distBuf);
-                            draw->AddText(ImVec2(itemScreen.x - dsz.x/2, itemScreen.y + 2), col, distBuf);
-                        } else {
-                            char itemText[128];
-                            sprintf_s(itemText, sizeof(itemText), skCrypt("%s [%dm]"), item.Name.c_str(), (int)item.Distance);
-                            ImVec2 tsize = ImGui::CalcTextSize(itemText);
-                            draw->AddText(ImVec2(itemScreen.x - tsize.x/2, itemScreen.y), col, itemText);
-                        }
+                        const bool groupable =
+                            item.RenderType == ItemRenderType::Loot;
+                        lootEntries.push_back({ item.Name, itemScreen, item.Distance, col, icon, groupable, item.IsImportant });
                     }
                 }
             }
+
+            LootClusterRenderer::Draw(draw, lootEntries);
         }
 
         // --- 1.4.1 ADMIN DEBUG ACTOR ESP (Draw Class Names at World Positions) ---
@@ -1914,7 +1893,9 @@ void OverlayMenu::RenderFrame() {
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0,0,0,0));
             if (ImGui::Button(skCrypt("â€”"), ImVec2(28, 28))) { /* min */ }
             ImGui::SameLine(0, 10);
-            if (ImGui::Button(skCrypt("âœ•"), ImVec2(28, 28))) { showmenu = false; }
+            if (ImGui::Button(skCrypt("âœ•"), ImVec2(28, 28))) {
+                AppShutdown::Request();
+            }
             ImGui::PopStyleColor();
 
             ImGui::EndChild(); // TopBar
