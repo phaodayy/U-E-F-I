@@ -20,6 +20,7 @@
 #include <iomanip>
 #include <sstream>
 #include <ctime>
+#include <cstdio>
 #include "../nlohmann/json.hpp"
 
 #pragma comment(lib, "winhttp.lib")
@@ -206,9 +207,19 @@ uint64_t g_last_tick_count = 0;
 constexpr const wchar_t* LICENSE_API_HOST = L"licensing-backend.donghiem114.workers.dev";
 constexpr const wchar_t* LICENSE_ACTIVATE_PATH = L"/public/activate";
 constexpr const wchar_t* LICENSE_HEARTBEAT_PATH = L"/public/heartbeat";
+constexpr const wchar_t* LOADER_REGISTER_PATH = L"/loader/register";
+constexpr const wchar_t* LOADER_LOGIN_PATH = L"/loader/login";
+constexpr const wchar_t* LOADER_ME_PATH = L"/loader/me";
+constexpr const wchar_t* LOADER_KEY_ACTIVATE_PATH = L"/loader/keys/activate";
+constexpr const wchar_t* LOADER_HEARTBEAT_PATH = L"/loader/heartbeat";
+constexpr const wchar_t* LOADER_CONFIG_PATH = L"/loader/config";
+constexpr const wchar_t* LOADER_CONFIG_IMPORT_PATH = L"/loader/config/import";
 constexpr const wchar_t* LICENSE_USER_AGENT = L"GZ-Cheat-V2-Loader";
 constexpr int LICENSE_SIGNATURE_VERSION = 2;
 constexpr long long LICENSE_SIGNATURE_MAX_AGE_SECONDS = 300;
+std::string global_account_token = skCrypt("");
+std::string global_account_username = skCrypt("");
+std::string global_config_code = skCrypt("");
 
 // Chuyển "2026-04-02T16:17:30" => time_t (UTC)
 time_t ParseISO8601(const std::string& timestamp) {
@@ -233,6 +244,20 @@ void TypewriterPrint(const std::string& text, int delay_ms = 20, int color = 7) 
   }
   SetConsoleColor(7);
 }
+
+void EnsureLoaderConsole() {
+#ifndef _DEBUG
+    if (GetConsoleWindow()) return;
+    if (!AllocConsole()) return;
+
+    FILE* stream = nullptr;
+    freopen_s(&stream, skCrypt("CONOUT$"), skCrypt("w"), stdout);
+    freopen_s(&stream, skCrypt("CONOUT$"), skCrypt("w"), stderr);
+    freopen_s(&stream, skCrypt("CONIN$"), skCrypt("r"), stdin);
+    SetConsoleTitleA(skCrypt("GZ Loader"));
+#endif
+}
+
 // --- LINKER CONFIG: WINDOWS FOR RELEASE, CONSOLE FOR DEBUG ---
 #ifdef _DEBUG
 #pragma comment(linker, "/SUBSYSTEM:CONSOLE")
@@ -285,6 +310,144 @@ long long JsonInt64Value(const nlohmann::json& json, const char* field) {
     if (it->is_number_integer()) return it->get<long long>();
     if (it->is_number_unsigned()) return (long long)it->get<unsigned long long>();
     return 0;
+}
+
+std::wstring Utf8ToWide(const std::string& value) {
+    if (value.empty()) return L"";
+    int required = MultiByteToWideChar(CP_UTF8, 0, value.c_str(), -1, nullptr, 0);
+    if (required <= 0) return L"";
+    std::wstring out((size_t)required - 1, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, value.c_str(), -1, out.data(), required);
+    return out;
+}
+
+bool HttpJsonRequest(const wchar_t* method, const wchar_t* path, const std::string& body, const std::string& bearerToken, std::string& responseStr) {
+    responseStr.clear();
+
+    HINTERNET hSession = WinHttpOpen(LICENSE_USER_AGENT, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    if (!hSession) return false;
+
+    HINTERNET hConnect = WinHttpConnect(hSession, LICENSE_API_HOST, INTERNET_DEFAULT_HTTPS_PORT, 0);
+    if (!hConnect) {
+        WinHttpCloseHandle(hSession);
+        return false;
+    }
+
+    HINTERNET hRequest = WinHttpOpenRequest(hConnect, method, path, NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+    if (!hRequest) {
+        WinHttpCloseHandle(hConnect);
+        WinHttpCloseHandle(hSession);
+        return false;
+    }
+
+    std::wstring headers = skCrypt(L"Content-Type: application/json\r\nUser-Agent: GZ-Cheat-V2-Loader\r\n");
+    if (!bearerToken.empty()) {
+        headers += skCrypt(L"Authorization: Bearer ");
+        headers += Utf8ToWide(bearerToken);
+        headers += skCrypt(L"\r\n");
+    }
+
+    LPVOID requestBody = body.empty() ? WINHTTP_NO_REQUEST_DATA : (LPVOID)body.c_str();
+    DWORD requestBodyLength = body.empty() ? 0 : (DWORD)body.length();
+    bool ok = WinHttpSendRequest(hRequest, headers.c_str(), -1, requestBody, requestBodyLength, requestBodyLength, 0) == TRUE;
+
+    if (ok) {
+        ok = WinHttpReceiveResponse(hRequest, NULL) == TRUE;
+        if (ok) {
+            DWORD dwSize = 0;
+            DWORD dwDownloaded = 0;
+            do {
+                dwSize = 0;
+                if (!WinHttpQueryDataAvailable(hRequest, &dwSize)) break;
+                if (!dwSize) break;
+
+                std::vector<char> readBuffer(dwSize + 1, 0);
+                if (WinHttpReadData(hRequest, readBuffer.data(), dwSize, &dwDownloaded)) {
+                    responseStr.append(readBuffer.data(), dwDownloaded);
+                }
+            } while (dwSize > 0);
+        }
+    }
+
+    WinHttpCloseHandle(hRequest);
+    WinHttpCloseHandle(hConnect);
+    WinHttpCloseHandle(hSession);
+    return ok && !responseStr.empty();
+}
+
+bool HttpJsonPost(const wchar_t* path, const nlohmann::json& requestJson, const std::string& bearerToken, std::string& responseStr) {
+    return HttpJsonRequest(skCrypt(L"POST"), path, requestJson.dump(), bearerToken, responseStr);
+}
+
+bool HttpJsonPut(const wchar_t* path, const nlohmann::json& requestJson, const std::string& bearerToken, std::string& responseStr) {
+    return HttpJsonRequest(skCrypt(L"PUT"), path, requestJson.dump(), bearerToken, responseStr);
+}
+
+bool HttpJsonGet(const wchar_t* path, const std::string& bearerToken, std::string& responseStr) {
+    return HttpJsonRequest(skCrypt(L"GET"), path, skCrypt(""), bearerToken, responseStr);
+}
+
+struct LoaderSessionFile {
+    std::string token;
+    std::string username;
+    std::string key;
+    std::string config_code;
+};
+
+LoaderSessionFile LoadLoaderSessionFile() {
+    LoaderSessionFile session;
+    std::ifstream in(skCrypt("loader_session.json"));
+    if (!in.is_open()) return session;
+
+    nlohmann::json json = nlohmann::json::parse(in, nullptr, false);
+    if (json.is_discarded() || !json.is_object()) return session;
+
+    session.token = JsonStringValue(json, skCrypt("token"));
+    session.username = JsonStringValue(json, skCrypt("username"));
+    session.key = JsonStringValue(json, skCrypt("key"));
+    session.config_code = JsonStringValue(json, skCrypt("config_code"));
+    return session;
+}
+
+void SaveLoaderSessionFile() {
+    nlohmann::json json;
+    json["token"] = global_account_token;
+    json["username"] = global_account_username;
+    json["key"] = global_active_key;
+    json["config_code"] = global_config_code;
+
+    std::ofstream out(skCrypt("loader_session.json"), std::ios::trunc);
+    if (out.is_open()) {
+        out << json.dump(2);
+    }
+}
+
+void ClearLoaderSessionFile() {
+    DeleteFileA(skCrypt("loader_session.json"));
+    DeleteFileA(skCrypt("key.txt"));
+}
+
+bool ApplyExpiryFromJson(const nlohmann::json& json, const char* expiryField = "expiry", const char* timestampField = "timestamp") {
+    std::string expiry = JsonStringValue(json, expiryField);
+    if (expiry.empty()) expiry = JsonStringValue(json, skCrypt("expires_at"));
+    std::string server_time = JsonStringValue(json, timestampField);
+    if (server_time.empty()) server_time = JsonStringValue(json, skCrypt("server_time"));
+    if (server_time.empty()) {
+        server_time = JsonStringValue(json, skCrypt("timestamp"));
+    }
+
+    if (expiry.empty()) return false;
+    time_t exp_t = ParseISO8601(expiry);
+    time_t srv_t = server_time.empty() ? time(nullptr) : ParseISO8601(server_time);
+    if (exp_t > srv_t) {
+        g_remaining_seconds = (uint64_t)(exp_t - srv_t);
+        g_last_tick_count = GetTickCount64();
+        g_expiry_time = exp_t;
+        return true;
+    }
+
+    g_remaining_seconds = 0;
+    return false;
 }
 
 bool ValidateSignedLicensePayload(
@@ -354,50 +517,21 @@ bool ValidateSignedLicensePayload(
 
 bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) {
     global_license_error = "";
-    const wchar_t* endpointPath = silent ? LICENSE_HEARTBEAT_PATH : LICENSE_ACTIVATE_PATH;
+    const wchar_t* endpointPath = silent ? LOADER_HEARTBEAT_PATH : LOADER_KEY_ACTIVATE_PATH;
 
-    HINTERNET hSession = WinHttpOpen(LICENSE_USER_AGENT, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-    if (!hSession) { if (!silent) global_license_error = skCrypt("WINHTTP_OPEN_FAIL"); return false; }
-
-    HINTERNET hConnect = WinHttpConnect(hSession, LICENSE_API_HOST, INTERNET_DEFAULT_HTTPS_PORT, 0);
-    if (!hConnect) { WinHttpCloseHandle(hSession); return false; }
-
-    HINTERNET hRequest = WinHttpOpenRequest(hConnect, skCrypt(L"POST"), endpointPath, NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
-    if (!hRequest) { WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false; }
+    if (global_account_token.empty()) {
+        global_license_error = g_is_vietnamese ? skCrypt("CHUA DANG NHAP TAI KHOAN.") : skCrypt("ACCOUNT IS NOT LOGGED IN.");
+        return false;
+    }
 
     std::string nonce = GenerateSecureNonce();
     nlohmann::json requestJson;
-    requestJson["key"] = key;
+    if (!key.empty()) requestJson["key"] = key;
     requestJson["hwid"] = hwid;
     requestJson["nonce"] = nonce;
     requestJson["signature_version"] = LICENSE_SIGNATURE_VERSION;
-    std::string body = requestJson.dump();
-    std::wstring headers = skCrypt(L"Content-Type: application/json\r\nUser-Agent: GZ-Cheat-V2-Loader\r\nJWT_SECRET_KEY: MIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHCuqB3nW1bZHqKr8oY74k44pxwhs3xObnHCYxNks2QDqqbxSSR0NFiXH3aqce0ithBBNeT7hE+RHwMSLbLpIgFsv3yfEZLXs4x3k5XKh5q7U+p7dLt3kzf9jwn9Y+NAXCjnV9kO2IT6JnhvsH5OahTDzVflm9EGJdmN6YBaF4b9AgMBAAE=\r\n");
-
-    bool bResults = WinHttpSendRequest(hRequest, headers.c_str(), -1, (LPVOID)body.c_str(), (DWORD)body.length(), (DWORD)body.length(), 0);
-    
     std::string responseStr = "";
-    if (bResults) {
-        bResults = WinHttpReceiveResponse(hRequest, NULL);
-        if (bResults) {
-            DWORD dwSize = 0;
-            DWORD dwDownloaded = 0;
-            do {
-                dwSize = 0;
-                if (!WinHttpQueryDataAvailable(hRequest, &dwSize)) break;
-                if (!dwSize) break;
-
-                std::vector<char> readBuffer(dwSize + 1, 0);
-                if (WinHttpReadData(hRequest, readBuffer.data(), dwSize, &dwDownloaded)) {
-                    responseStr.append(readBuffer.data(), dwDownloaded);
-                }
-            } while (dwSize > 0);
-        }
-    }
-
-    WinHttpCloseHandle(hRequest);
-    WinHttpCloseHandle(hConnect);
-    WinHttpCloseHandle(hSession);
+    HttpJsonPost(endpointPath, requestJson, global_account_token, responseStr);
 
     if (responseStr.empty()) {
         if (!silent) {
@@ -474,6 +608,9 @@ bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) 
             g_session_token = 0;
             return false;
         }
+
+        std::string responseConfigCode = JsonStringValue(responseJson, skCrypt("config_code"));
+        if (!responseConfigCode.empty()) global_config_code = responseConfigCode;
 
         // Kiểm tra hash định kỳ so với giá trị nhúng ở server (Phần này Admin cần cấu hình ở Worker)
         // if (serverExpectedHash != localBinaryHash) { ... return false; }
@@ -606,32 +743,233 @@ bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) 
     return false;
 }
 
+bool DownloadLoaderConfig() {
+    if (global_account_token.empty()) return false;
+
+    std::string responseStr;
+    if (!HttpJsonGet(LOADER_CONFIG_PATH, global_account_token, responseStr)) return false;
+
+    nlohmann::json responseJson = nlohmann::json::parse(responseStr, nullptr, false);
+    if (responseJson.is_discarded() || !responseJson.is_object()) return false;
+
+    std::string code = JsonStringValue(responseJson, skCrypt("config_code"));
+    if (!code.empty()) global_config_code = code;
+
+    auto it = responseJson.find(skCrypt("config"));
+    if (it == responseJson.end() || !it->is_object() || it->empty()) return true;
+
+    CreateDirectoryA(skCrypt("dataMacro"), NULL);
+    CreateDirectoryA(skCrypt("dataMacro\\Config"), NULL);
+
+    std::ofstream out(skCrypt("dataMacro\\Config\\settings.json"), std::ios::trunc);
+    if (!out.is_open()) return false;
+    out << it->dump(2);
+    return true;
+}
+
+bool UploadLoaderConfig() {
+    if (global_account_token.empty()) return false;
+
+    std::ifstream in(skCrypt("dataMacro\\Config\\settings.json"));
+    if (!in.is_open()) return false;
+
+    nlohmann::json configJson = nlohmann::json::parse(in, nullptr, false);
+    if (configJson.is_discarded() || !configJson.is_object()) return false;
+
+    nlohmann::json requestJson;
+    requestJson["config"] = configJson;
+
+    std::string responseStr;
+    if (!HttpJsonPut(LOADER_CONFIG_PATH, requestJson, global_account_token, responseStr)) return false;
+
+    nlohmann::json responseJson = nlohmann::json::parse(responseStr, nullptr, false);
+    if (responseJson.is_discarded() || !responseJson.is_object()) return false;
+
+    std::string code = JsonStringValue(responseJson, skCrypt("config_code"));
+    if (!code.empty()) global_config_code = code;
+    SaveLoaderSessionFile();
+    return JsonStringValue(responseJson, skCrypt("status")) == skCrypt("OK");
+}
+
+void UploadActiveLoaderConfigAsync() {
+    CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)[](LPVOID) {
+        UploadLoaderConfig();
+        return (DWORD)0;
+    }, NULL, 0, NULL);
+}
+
+bool ImportLoaderConfigCode(const std::string& code) {
+    if (global_account_token.empty() || code.empty()) return false;
+
+    nlohmann::json requestJson;
+    requestJson["code"] = code;
+
+    std::string responseStr;
+    if (!HttpJsonPost(LOADER_CONFIG_IMPORT_PATH, requestJson, global_account_token, responseStr)) return false;
+
+    nlohmann::json responseJson = nlohmann::json::parse(responseStr, nullptr, false);
+    if (responseJson.is_discarded() || !responseJson.is_object()) return false;
+    if (JsonStringValue(responseJson, skCrypt("status")) != skCrypt("IMPORTED")) return false;
+
+    std::string ownCode = JsonStringValue(responseJson, skCrypt("config_code"));
+    if (!ownCode.empty()) global_config_code = ownCode;
+
+    auto it = responseJson.find(skCrypt("config"));
+    if (it != responseJson.end() && it->is_object()) {
+        CreateDirectoryA(skCrypt("dataMacro"), NULL);
+        CreateDirectoryA(skCrypt("dataMacro\\Config"), NULL);
+        std::ofstream out(skCrypt("dataMacro\\Config\\settings.json"), std::ios::trunc);
+        if (out.is_open()) out << it->dump(2);
+    }
+
+    SaveLoaderSessionFile();
+    return true;
+}
+
+bool ParseAuthSessionResponse(const std::string& responseStr, bool allowNoActiveKey) {
+    nlohmann::json responseJson = nlohmann::json::parse(responseStr, nullptr, false);
+    if (responseJson.is_discarded() || !responseJson.is_object()) return false;
+
+    if (responseJson.contains(skCrypt("error"))) return false;
+
+    std::string topStatus = JsonStringValue(responseJson, skCrypt("status"));
+    if (!topStatus.empty() &&
+        topStatus != skCrypt("OK") &&
+        topStatus != skCrypt("REGISTERED") &&
+        topStatus != skCrypt("ACTIVATED")) {
+        return false;
+    }
+
+    std::string token = JsonStringValue(responseJson, skCrypt("token"));
+    if (!token.empty()) global_account_token = token;
+
+    bool hasUser = false;
+    auto userIt = responseJson.find(skCrypt("user"));
+    if (userIt != responseJson.end() && userIt->is_object()) {
+        hasUser = true;
+        std::string username = JsonStringValue(*userIt, skCrypt("username"));
+        if (!username.empty()) global_account_username = username;
+    }
+
+    std::string configCode = JsonStringValue(responseJson, skCrypt("config_code"));
+    if (!configCode.empty()) global_config_code = configCode;
+
+    auto entitlementIt = responseJson.find(skCrypt("entitlement"));
+    if (entitlementIt != responseJson.end() && entitlementIt->is_object()) {
+        std::string key = JsonStringValue(*entitlementIt, skCrypt("key"));
+        bool active = (*entitlementIt).value(skCrypt("active"), false);
+        if (!key.empty()) global_active_key = key;
+        ApplyExpiryFromJson(*entitlementIt, skCrypt("expires_at"), skCrypt("timestamp"));
+        return active || allowNoActiveKey;
+    }
+
+    return allowNoActiveKey && (hasUser || !token.empty());
+}
+
+bool TryResumeLoaderAccount(const std::string& hwid) {
+    LoaderSessionFile session = LoadLoaderSessionFile();
+    if (session.token.empty()) return false;
+
+    global_account_token = session.token;
+    global_account_username = session.username;
+    global_active_key = session.key;
+    global_config_code = session.config_code;
+
+    std::wstring path = std::wstring(LOADER_ME_PATH) + skCrypt(L"?hwid=") + Utf8ToWide(hwid);
+    std::string responseStr;
+    if (!HttpJsonGet(path.c_str(), global_account_token, responseStr)) {
+        global_account_token.clear();
+        return false;
+    }
+
+    if (!ParseAuthSessionResponse(responseStr, true)) {
+        global_account_token.clear();
+        return false;
+    }
+
+    if (!global_active_key.empty() && DoAPIRequest(global_active_key, hwid, true)) {
+        return true;
+    }
+
+    return !global_account_token.empty();
+}
+
+bool PromptLoaderAccountLogin(const std::string& hwid) {
+    SetConsoleColor(11);
+    std::cout << skCrypt("\n[1] Dang nhap tai khoan\n[2] Tao tai khoan moi\n> ");
+    SetConsoleColor(15);
+
+    std::string choice;
+    std::getline(std::cin, choice);
+    bool registering = choice == skCrypt("2");
+
+    std::string username;
+    std::string password;
+    std::cout << skCrypt("Tai khoan: ");
+    std::getline(std::cin, username);
+    std::cout << skCrypt("Mat khau: ");
+    std::getline(std::cin, password);
+
+    nlohmann::json requestJson;
+    requestJson["username"] = username;
+    requestJson["password"] = password;
+    requestJson["hwid"] = hwid;
+
+    std::string responseStr;
+    if (!HttpJsonPost(registering ? LOADER_REGISTER_PATH : LOADER_LOGIN_PATH, requestJson, skCrypt(""), responseStr)) {
+        global_license_error = g_is_vietnamese ? skCrypt("Khong ket noi duoc may chu tai khoan.") : skCrypt("Cannot connect to account server.");
+        return false;
+    }
+
+    if (!ParseAuthSessionResponse(responseStr, true) || global_account_token.empty()) {
+        global_license_error = responseStr;
+        return false;
+    }
+
+    SaveLoaderSessionFile();
+    return true;
+}
+
 bool AuthenticateLicense() {
     TypewriterPrint("\n[", 10, 8);
     TypewriterPrint("*", 10, 11);
     TypewriterPrint("] ", 10, 8);
-    TypewriterPrint(g_is_vietnamese ? skCrypt("XAC THUC LICENSE") : skCrypt("LICENSE AUTHENTICATION"), 30, 7);
+    TypewriterPrint(g_is_vietnamese ? skCrypt("DANG NHAP LOADER") : skCrypt("LOADER ACCOUNT LOGIN"), 30, 7);
     std::cout << "\n";
 
-    std::string key;
-    std::ifstream keyFile("key.txt");
-    if (keyFile.is_open()) {
-        std::getline(keyFile, key);
-        keyFile.close();
-        key.erase(0, key.find_first_not_of(" \t\n\r\f\v"));
-        key.erase(key.find_last_not_of(" \t\n\r\f\v") + 1);
+    std::string hwid = GetHWID();
+    bool accountReady = TryResumeLoaderAccount(hwid);
+    if (accountReady) {
+        SetConsoleColor(10);
+        std::cout << (g_is_vietnamese ? skCrypt("[+] Da khoi phuc phien tai khoan.\n") : skCrypt("[+] Account session restored.\n"));
+        SetConsoleColor(7);
+    } else {
+        ClearLoaderSessionFile();
+        if (!PromptLoaderAccountLogin(hwid)) {
+            SetConsoleColor(12);
+            std::cout << skCrypt("[-] ") << global_license_error << std::endl;
+            SetConsoleColor(7);
+            return false;
+        }
     }
 
-    if (!key.empty()) {
-        SetConsoleColor(10);
-        std::cout << (g_is_vietnamese ? skCrypt("[*] Tu dong thay key da luu. Dang nap...\n") : skCrypt("[*] Saved Key found. Loading...\n"));
-    } else {
+    if (!global_config_code.empty()) {
         SetConsoleColor(11);
-        std::cout << (g_is_vietnamese ? skCrypt("[-] Vui long nhap License Key: ") : skCrypt("[-] Enter License Key: "));
-        SetConsoleColor(15);
-        std::getline(std::cin, key);
+        std::cout << (g_is_vietnamese ? skCrypt("[*] Ma config cua ban: ") : skCrypt("[*] Your config code: ")) << global_config_code << std::endl;
+        SetConsoleColor(7);
     }
-    
+
+    if (!global_active_key.empty() && DoAPIRequest(global_active_key, hwid, true)) {
+        DownloadLoaderConfig();
+        SaveLoaderSessionFile();
+        return true;
+    }
+
+    std::string key;
+    SetConsoleColor(11);
+    std::cout << (g_is_vietnamese ? skCrypt("[-] Vui long nhap License Key: ") : skCrypt("[-] Enter License Key: "));
+    SetConsoleColor(15);
+    std::getline(std::cin, key);
     key.erase(0, key.find_first_not_of(skCrypt(" \t\n\r\f\v")));
     key.erase(key.find_last_not_of(skCrypt(" \t\n\r\f\v")) + 1);
 
@@ -641,16 +979,6 @@ bool AuthenticateLicense() {
         SetConsoleColor(7);
         return false;
     }
-
-    // if (key.find("telemetry-") != 0) {
-    //     SetConsoleColor(12);
-    //     std::cout << (g_is_vietnamese ? skCrypt("\n[-] Chia khoa khong hop le voi game telemetry.\n") : skCrypt("\n[-] Key is invalid for telemetry game.\n"));
-    //     SetConsoleColor(7);
-    //     std::remove("key.txt");
-    //     return false;
-    // }
-
-    std::string hwid = GetHWID();
     
     SetConsoleColor(14);
     std::cout << (g_is_vietnamese ? skCrypt("\n[*] Dang xac thuc voi May chu... \n") : skCrypt("\n[*] Authenticating with Server... \n"));
@@ -658,16 +986,32 @@ bool AuthenticateLicense() {
     bool isValid = DoAPIRequest(key, hwid, false);
     if (isValid) {
         global_active_key = key;
-        std::ofstream outFile("key.txt");
-        if (outFile.is_open()) {
-            outFile << key;
-            outFile.close();
+        SaveLoaderSessionFile();
+        DownloadLoaderConfig();
+
+        SetConsoleColor(11);
+        std::cout << (g_is_vietnamese ? skCrypt("[?] Nhap ma config muon import (Enter de bo qua): ") : skCrypt("[?] Import config code (Enter to skip): "));
+        SetConsoleColor(15);
+        std::string importCode;
+        std::getline(std::cin, importCode);
+        importCode.erase(0, importCode.find_first_not_of(skCrypt(" \t\n\r\f\v")));
+        if (!importCode.empty()) {
+            importCode.erase(importCode.find_last_not_of(skCrypt(" \t\n\r\f\v")) + 1);
+            if (ImportLoaderConfigCode(importCode)) {
+                SetConsoleColor(10);
+                std::cout << (g_is_vietnamese ? skCrypt("[+] Da import config thanh cong.\n") : skCrypt("[+] Config imported.\n"));
+            } else {
+                SetConsoleColor(14);
+                std::cout << (g_is_vietnamese ? skCrypt("[!] Khong import duoc config, tiep tuc voi config hien tai.\n") : skCrypt("[!] Config import failed, continuing.\n"));
+            }
+            SetConsoleColor(7);
         }
     } else {
         SetConsoleColor(12);
         std::cout << (g_is_vietnamese ? skCrypt("[!] License key khong hop le!\n") : skCrypt("[!] Invalid license key!\n"));
         SetConsoleColor(7);
-        std::remove("key.txt");
+        global_active_key.clear();
+        SaveLoaderSessionFile();
     }
     return isValid;
 }
@@ -711,6 +1055,7 @@ void LicenseHeartbeatLoop() {
 void SelfDestruct() {
     // SECURITY: Delete configuration files first
     DeleteFileA(skCrypt("key.txt"));
+    DeleteFileA(skCrypt("loader_session.json"));
 
     char szModuleName[MAX_PATH];
     if (GetModuleFileNameA(NULL, szModuleName, MAX_PATH) == 0) return;
@@ -920,6 +1265,8 @@ int main() {
       return 0;
   }
 
+  EnsureLoaderConsole();
+
   protec::scan_detection_time = 1000;
   srand((unsigned int)GetTickCount64());
   protec::start_protect(false);
@@ -942,6 +1289,12 @@ int main() {
   SelectLanguage();
 
   SetConsoleColor(7);
+
+  if (!AuthenticateLicense()) {
+      system(skCrypt("pause"));
+      SelfDestruct();
+      return 1;
+  }
 
   SetConsoleColor(7);
 

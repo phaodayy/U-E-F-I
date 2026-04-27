@@ -163,23 +163,93 @@ public:
   bool loot_backpack_lv1 = false;
   bool loot_backpack_lv2 = true;
   bool loot_backpack_lv3 = true;
-  bool loot_ghillie = true;
+  bool loot_ghillie_all = true;
+  bool loot_ghillie_arctic = true;
+  bool loot_ghillie_desert = true;
+  bool loot_ghillie_jungle = true;
+  bool loot_ghillie_forest = true;
+  bool loot_ghillie_mossy = true;
+  bool loot_ghillie_brown = true;
 
   // --- [ LOOT TELEMETRY: MEDICINE & UTILITY ] ---
   bool loot_meds_boosts = true;
   bool loot_meds_healing = true;
-  bool loot_utility = true;
-  bool loot_repair = true;
+  bool loot_utility_all = true;
+  bool loot_utility_drone = true;
+  bool loot_utility_scope = true;
+  bool loot_repair_armor = true;
+  bool loot_repair_helmet = true;
+  bool loot_repair_vehicle = true;
+  bool loot_utility_jammer = true;
+  bool loot_utility_bluechip = true;
+  bool loot_utility_vtransmitter = true;
+  bool loot_utility_shield = true;
+  bool loot_utility = true; // Legacy group
+  bool loot_repair = true;  // Legacy group
 
-  // --- [ LOOT TELEMETRY: ATTACHMENTS ] ---
+  // --- [ LOOT TELEMETRY: AMMO - INDIVIDUAL ] ---
+  bool loot_ammo_556 = true;
+  bool loot_ammo_762 = true;
+  bool loot_ammo_9mm = true;
+  bool loot_ammo_45 = true;
+  bool loot_ammo_12g = true;
+  bool loot_ammo_300 = true;
+  bool loot_ammo_slug = true;
+  bool loot_ammo_57 = true;
+  bool loot_ammo_40 = true;
+  bool loot_ammo_bolt = true;
+  bool loot_ammo_flare = true;
+  bool loot_ammo_mortar = true;
+
+  // --- [ LOOT TELEMETRY: KEYS ] ---
+  bool loot_key_secret = true;
+  bool loot_key_chimera = true;
+  bool loot_key_vikendi = true;
+  bool loot_key_haven = true;
+  bool loot_key_security = true;
+  bool loot_key_taego = true;
+
+  // --- [ LOOT TELEMETRY: ATTACHMENTS - SCOPES ] ---
+  bool loot_scope_reddot = true;
+  bool loot_scope_holo = true;
+  bool loot_scope_2x = true;
+  bool loot_scope_3x = true;
+  bool loot_scope_4x = true;
+  bool loot_scope_6x = true;
+  bool loot_scope_8x = true;
+  bool loot_scope_15x = true;
+  bool loot_scope_thermal = true;
+
+  // --- [ LOOT TELEMETRY: ATTACHMENTS - MUZZLES ] ---
+  bool loot_muzzle_comp = true;
+  bool loot_muzzle_flash = true;
+  bool loot_muzzle_supp = true;
+  bool loot_muzzle_choke = true;
+
+  // --- [ LOOT TELEMETRY: ATTACHMENTS - GRIPS & STOCKS ] ---
+  bool loot_grip_vertical = true;
+  bool loot_grip_angled = true;
+  bool loot_grip_half = true;
+  bool loot_grip_thumb = true;
+  bool loot_grip_light = true;
+  bool loot_stock_heavy = true;
+  bool loot_stock_cheek = true;
+
+  // --- [ LOOT TELEMETRY: ATTACHMENTS - MAGAZINES ] ---
+  bool loot_mag_ext = true;
+  bool loot_mag_quick = true;
+  bool loot_mag_ext_quick = true;
+
+  // --- [ LOOT TELEMETRY: COMPATIBILITY GROUPS ] ---
   bool loot_ammo_all = false;
   bool loot_ammo_high = true;
-  bool loot_scopes_all = false;
-  bool loot_scopes_high = true;
-  bool loot_attach_mag = true;
-  bool loot_attach_muzzle = true;
   bool loot_attach_grip = true;
   bool loot_attach_stock = true;
+  bool loot_attach_mag = true;
+  bool loot_attach_muzzle = true;
+  bool loot_ghillie = true;
+  bool loot_scopes_all = false;
+  bool loot_scopes_high = true;
   bool loot_attach_scope_all = false;
   bool loot_attach_scope_high = true;
 
@@ -227,6 +297,16 @@ public:
   bool loot_weapon_m249 = true;
   bool loot_weapon_mg3 = true;
 
+  // --- [ LOOT TELEMETRY: THROWABLES ] ---
+  bool loot_throw_frag = true;
+  bool loot_throw_smoke = true;
+  bool loot_throw_molotov = true;
+  bool loot_throw_flash = true;
+  bool loot_throw_c4 = true;
+  bool loot_throw_sticky = true;
+  bool loot_throw_bz = true;
+  bool loot_throw_decoy = true;
+
   // --- [ LOOT TELEMETRY: WEAPONS - SG & HG ] ---
   bool loot_weapon_db = true; 
   bool loot_weapon_s12k = true;
@@ -236,6 +316,9 @@ public:
   bool loot_weapon_m1911 = true;
   bool loot_weapon_p92 = true;
   bool loot_weapon_skorpion = true;
+  bool loot_weapon_nagant = true;
+  bool loot_weapon_rhino = true;
+  bool loot_weapon_stungun = true;
 
   // --- [ LOOT TELEMETRY: WEAPONS - SPECIAL & MELEE ] ---
   bool loot_weapon_pan = true;
@@ -243,6 +326,7 @@ public:
   bool loot_weapon_m79 = true;
   bool loot_weapon_flare = true;
   bool loot_weapon_crossbow = true;
+  bool loot_weapon_panzer = true;
 
   // --- [ LOOT TELEMETRY: VEHICLES ] ---
   bool loot_vehicle_uaz = true;
