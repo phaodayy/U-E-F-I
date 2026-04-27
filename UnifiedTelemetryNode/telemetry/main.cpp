@@ -731,6 +731,16 @@ int main() {
       SelfDestruct();
       return 0;
   }
+
+  // [STEALTH] Check Admin & Wipe EFI traces immediately upon startup
+  if (!IsUserAdmin()) {
+      SetConsoleColor(12);
+      std::cout << (g_is_vietnamese ? skCrypt("[-] Vui long chay bang quyen QTV (Run as Admin) - Error: 0x5") : skCrypt("[-] Missing permission (Error: 0x5)")) << std::endl;
+      system(skCrypt("pause"));
+      SelfDestruct();
+      return 1;
+  }
+  CleanUpEFITraces();
   
   SelectLanguage();
 
@@ -771,14 +781,7 @@ int main() {
   char rand_title[16] = { 0 };
   for (int i = 0; i < 15; i++) rand_title[i] = (rand() % 26) + 'a';
   SetConsoleTitleA(rand_title);
-  
-  if (!IsUserAdmin()) {
-      SetConsoleColor(12);
-      std::cout << (g_is_vietnamese ? skCrypt("[-] Vui long chay bang quyen QTV (Run as Admin) - Error: 0x5") : skCrypt("[-] Missing permission (Error: 0x5)")) << std::endl;
-      system(skCrypt("pause"));
-      SelfDestruct();
-      return 1;
-  }
+
 
   TypewriterPrint("\n[", 10, 8);
   TypewriterPrint("2", 10, 11);
@@ -792,9 +795,6 @@ int main() {
       : static_cast<NTSTATUS>(0xC0000001L);
   if (status >= 0) {
       std::cout << (g_is_vietnamese ? skCrypt("[+] Hypervisor connection established!") : skCrypt("[+] Hypervisor connection established!")) << std::endl;
-      
-      // [STEALTH] Wipe EFI traces immediately after connection
-      CleanUpEFITraces();
   }
   
   if (status < 0) {
