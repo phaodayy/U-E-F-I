@@ -52,6 +52,9 @@
     <ClCompile Include="overlay\tabs\tab_admin.cpp">
       <Filter>Overlay\Tabs</Filter>
     </ClCompile>
+    <ClCompile Include="overlay\loot_icon_resolver.cpp">
+      <Filter>Overlay</Filter>
+    </ClCompile>
     <ClCompile Include="imgui\imgui.cpp">
       <Filter>ImGui</Filter>
     </ClCompile>
@@ -91,6 +94,9 @@
       <Filter>Overlay</Filter>
     </ClInclude>
     <ClInclude Include="overlay\discord_overlay.h">
+      <Filter>Overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\loot_icon_resolver.hpp">
       <Filter>Overlay</Filter>
     </ClInclude>
     <ClInclude Include="imgui\imgui.h">

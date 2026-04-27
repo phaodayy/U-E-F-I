@@ -109,6 +109,7 @@
     <ClCompile Include="sdk\hyper_process.cpp" />
     <ClCompile Include="sdk\context.cpp" />
     <ClCompile Include="sdk\fname_utils.cpp" />
+    <ClCompile Include="overlay\loot_icon_resolver.cpp" />
     <ClCompile Include="overlay\overlay_menu.cpp" />
     <ClCompile Include="overlay\tabs\tab_visuals.cpp" />
     <ClCompile Include="overlay\tabs\tab_precision.cpp" />
@@ -141,6 +142,7 @@
     <ClInclude Include="sdk\fname.hpp" />
     <ClInclude Include="sdk\gobjects.hpp" />
     <ClInclude Include="overlay\discord_overlay.h" />
+    <ClInclude Include="overlay\loot_icon_resolver.hpp" />
     <ClInclude Include="overlay\overlay_menu.hpp" />
     <ClInclude Include="imgui\imgui.h" />
     <ClInclude Include="imgui\imgui_impl_dx11.h" />

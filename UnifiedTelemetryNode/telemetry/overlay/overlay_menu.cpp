@@ -16,6 +16,7 @@ extern const wchar_t* LOADER_REGISTER_PATH;
 #include <chrono>
 #include <iostream>
 #include "translation.hpp"
+#include "loot_icon_resolver.hpp"
 #include "../sdk/context.hpp"
 #include "../sdk/math.hpp"
 #include "../sdk/offsets.hpp"
@@ -180,6 +181,9 @@ static TextureInfo* GetVehicleIcon(std::string name) {
 }
 
 static TextureInfo* GetItemIcon(std::string name) {
+    TextureInfo* resolvedIcon = LootIconResolver::GetItemIcon(name);
+    if (resolvedIcon && resolvedIcon->SRV) return resolvedIcon;
+
     if (ItemIcons.find(name) != ItemIcons.end()) return &ItemIcons[name];
     ID3D11ShaderResourceView* srv = nullptr;
     int w, h;
