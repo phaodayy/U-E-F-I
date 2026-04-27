@@ -199,21 +199,22 @@ std::string GetCurrentBinaryHash() {
 
 std::string global_active_key = skCrypt("");
 std::string global_license_error = skCrypt("");
+std::string g_expiry_str = skCrypt("N/A");
 bool g_is_vietnamese = false;
 time_t g_expiry_time = 0;
 uint64_t g_remaining_seconds = 0;
 uint64_t g_last_tick_count = 0;
 
-constexpr const wchar_t* LICENSE_API_HOST = L"licensing-backend.donghiem114.workers.dev";
-constexpr const wchar_t* LICENSE_ACTIVATE_PATH = L"/public/activate";
-constexpr const wchar_t* LICENSE_HEARTBEAT_PATH = L"/public/heartbeat";
-constexpr const wchar_t* LOADER_REGISTER_PATH = L"/loader/register";
-constexpr const wchar_t* LOADER_LOGIN_PATH = L"/loader/login";
-constexpr const wchar_t* LOADER_ME_PATH = L"/loader/me";
-constexpr const wchar_t* LOADER_KEY_ACTIVATE_PATH = L"/loader/keys/activate";
-constexpr const wchar_t* LOADER_HEARTBEAT_PATH = L"/loader/heartbeat";
-constexpr const wchar_t* LOADER_CONFIG_PATH = L"/loader/config";
-constexpr const wchar_t* LOADER_CONFIG_IMPORT_PATH = L"/loader/config/import";
+extern const wchar_t* LICENSE_API_HOST = L"licensing-backend.donghiem114.workers.dev";
+extern const wchar_t* LICENSE_ACTIVATE_PATH = L"/public/activate";
+extern const wchar_t* LICENSE_HEARTBEAT_PATH = L"/public/heartbeat";
+extern const wchar_t* LOADER_REGISTER_PATH = L"/loader/register";
+extern const wchar_t* LOADER_LOGIN_PATH = L"/loader/login";
+extern const wchar_t* LOADER_ME_PATH = L"/loader/me";
+extern const wchar_t* LOADER_KEY_ACTIVATE_PATH = L"/loader/keys/activate";
+extern const wchar_t* LOADER_HEARTBEAT_PATH = L"/loader/heartbeat";
+extern const wchar_t* LOADER_CONFIG_PATH = L"/loader/config";
+extern const wchar_t* LOADER_CONFIG_IMPORT_PATH = L"/loader/config/import";
 constexpr const wchar_t* LICENSE_USER_AGENT = L"GZ-Cheat-V2-Loader";
 constexpr int LICENSE_SIGNATURE_VERSION = 2;
 constexpr long long LICENSE_SIGNATURE_MAX_AGE_SECONDS = 300;
@@ -443,6 +444,7 @@ bool ApplyExpiryFromJson(const nlohmann::json& json, const char* expiryField = "
         g_remaining_seconds = (uint64_t)(exp_t - srv_t);
         g_last_tick_count = GetTickCount64();
         g_expiry_time = exp_t;
+        g_expiry_str = expiry;
         return true;
     }
 
@@ -931,89 +933,20 @@ bool PromptLoaderAccountLogin(const std::string& hwid) {
 }
 
 bool AuthenticateLicense() {
-    TypewriterPrint("\n[", 10, 8);
-    TypewriterPrint("*", 10, 11);
-    TypewriterPrint("] ", 10, 8);
-    TypewriterPrint(g_is_vietnamese ? skCrypt("DANG NHAP LOADER") : skCrypt("LOADER ACCOUNT LOGIN"), 30, 7);
-    std::cout << "\n";
-
     std::string hwid = GetHWID();
-    bool accountReady = TryResumeLoaderAccount(hwid);
-    if (accountReady) {
-        SetConsoleColor(10);
-        std::cout << (g_is_vietnamese ? skCrypt("[+] Da khoi phuc phien tai khoan.\n") : skCrypt("[+] Account session restored.\n"));
-        SetConsoleColor(7);
-    } else {
-        ClearLoaderSessionFile();
-        if (!PromptLoaderAccountLogin(hwid)) {
-            SetConsoleColor(12);
-            std::cout << skCrypt("[-] ") << global_license_error << std::endl;
-            SetConsoleColor(7);
-            return false;
-        }
-    }
-
-    if (!global_config_code.empty()) {
-        SetConsoleColor(11);
-        std::cout << (g_is_vietnamese ? skCrypt("[*] Ma config cua ban: ") : skCrypt("[*] Your config code: ")) << global_config_code << std::endl;
-        SetConsoleColor(7);
-    }
-
-    if (!global_active_key.empty() && DoAPIRequest(global_active_key, hwid, true)) {
-        DownloadLoaderConfig();
-        SaveLoaderSessionFile();
-        return true;
-    }
-
-    std::string key;
-    SetConsoleColor(11);
-    std::cout << (g_is_vietnamese ? skCrypt("[-] Vui long nhap License Key: ") : skCrypt("[-] Enter License Key: "));
-    SetConsoleColor(15);
-    std::getline(std::cin, key);
-    key.erase(0, key.find_first_not_of(skCrypt(" \t\n\r\f\v")));
-    key.erase(key.find_last_not_of(skCrypt(" \t\n\r\f\v")) + 1);
-
-    if (key.empty()) {
-        SetConsoleColor(12);
-        std::cout << (g_is_vietnamese ? skCrypt("\n[-] Key khong duoc de trong.\n") : skCrypt("\n[-] Key cannot be empty.\n"));
-        SetConsoleColor(7);
-        return false;
-    }
     
-    SetConsoleColor(14);
-    std::cout << (g_is_vietnamese ? skCrypt("\n[*] Dang xac thuc voi May chu... \n") : skCrypt("\n[*] Authenticating with Server... \n"));
-
-    bool isValid = DoAPIRequest(key, hwid, false);
-    if (isValid) {
-        global_active_key = key;
-        SaveLoaderSessionFile();
-        DownloadLoaderConfig();
-
-        SetConsoleColor(11);
-        std::cout << (g_is_vietnamese ? skCrypt("[?] Nhap ma config muon import (Enter de bo qua): ") : skCrypt("[?] Import config code (Enter to skip): "));
-        SetConsoleColor(15);
-        std::string importCode;
-        std::getline(std::cin, importCode);
-        importCode.erase(0, importCode.find_first_not_of(skCrypt(" \t\n\r\f\v")));
-        if (!importCode.empty()) {
-            importCode.erase(importCode.find_last_not_of(skCrypt(" \t\n\r\f\v")) + 1);
-            if (ImportLoaderConfigCode(importCode)) {
-                SetConsoleColor(10);
-                std::cout << (g_is_vietnamese ? skCrypt("[+] Da import config thanh cong.\n") : skCrypt("[+] Config imported.\n"));
-            } else {
-                SetConsoleColor(14);
-                std::cout << (g_is_vietnamese ? skCrypt("[!] Khong import duoc config, tiep tuc voi config hien tai.\n") : skCrypt("[!] Config import failed, continuing.\n"));
-            }
-            SetConsoleColor(7);
+    // Silent resume if session exists
+    if (TryResumeLoaderAccount(hwid)) {
+        if (!global_active_key.empty() && DoAPIRequest(global_active_key, hwid, true)) {
+            DownloadLoaderConfig();
+            SaveLoaderSessionFile();
+            return true;
         }
-    } else {
-        SetConsoleColor(12);
-        std::cout << (g_is_vietnamese ? skCrypt("[!] License key khong hop le!\n") : skCrypt("[!] Invalid license key!\n"));
-        SetConsoleColor(7);
-        global_active_key.clear();
-        SaveLoaderSessionFile();
     }
-    return isValid;
+
+    // Don't block. Let the UI handle credentials.
+    // We return true because the 'Loader' (main process) needs to keep running to show the overlay.
+    return true; 
 }
 
 void LicenseHeartbeatLoop() {

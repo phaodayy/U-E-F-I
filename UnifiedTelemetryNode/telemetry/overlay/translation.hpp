@@ -8,54 +8,28 @@ namespace Translation {
 
     inline int CurrentLanguage = 0; // 0: EN, 1: VN
 
-
-
     struct Strings {
-
         const char* MainTitle;
-
         const char* TabVisuals;
-
         const char* Tabprecision_calibration;
-
         const char* TabMacro;
-
         const char* TabSettings;
-
         const char* TabRadar;
-
-        const char* TabLoot; // NEW
-
-        
-
+        const char* TabLoot;
         const char* VisualPerformance;
-
         const char* MasterToggle;
-
         const char* EnemyESP;
-
         const char* TeammateESP;
-
         const char* PlayerESP;
-
         const char* InfoESP;
-
         const char* Box;
-
         const char* Skeleton;
-
         const char* Interpolate;
-
         const char* HeadCircle;
-
         const char* VisCheck;
-
         const char* HealthBar;
-
         const char* HealthPos;
-
         const char* Distance;
-
         const char* Name;
         const char* ESP_Icons;
         const char* ESP_SkeletonDots;
@@ -66,29 +40,20 @@ namespace Translation {
         const char* SurvivalLevel;
         const char* ESP_Spectated;
         const char* ESP_Offscreen;
-
         const char* FontSize;
         const char* BoxThick;
         const char* SmoothRNG;
         const char* AimKey2;
-
         const char* IndicatorRadius;
-
         const char* IndicatorSize;
-
         const char* IndicatorStyle;
-
         const char* ColorMode;
-
         const char* ColorNear;
-
         const char* ColorFar;
-
         const char* HeaderTactical;
         const char* GrenadeLine;
         const char* Projectiles;
         const char* ThreatWarning;
-
         const char* HeaderGearFilter;
         const char* HelmetLv1;
         const char* HelmetLv2;
@@ -96,182 +61,87 @@ namespace Translation {
         const char* ArmorLv1;
         const char* ArmorLv2;
         const char* ArmorLv3;
-
         const char* HeaderHealFilter;
         const char* Boosters;
         const char* Healing;
-
         const char* HeaderAmmoScope;
         const char* AmmoAll;
         const char* AmmoHigh;
         const char* ScopeAll;
         const char* ScopeHigh;
-
         const char* HeaderShareRadar;
         const char* RadarShare;
         const char* RadarIP;
-
         const char* Weapon;
-
         const char* WeaponType;
-
         const char* ItemsVehicles;
-
         const char* DistThresholds;
-
         const char* ColorsTitle;
-
         const char* RenderDist;
-
         const char* RadarOffsetX;
-
         const char* RadarOffsetY;
-
         const char* ShowCrosshair;
-
         const char* RadarZoom;
-
         const char* RadarRotation;
-
         const char* RadarEnable;
-
         const char* RadarDotSize;
-
         const char* TabDebug;
-
-        
-
         const char* precision_calibrationSoon;
-
         const char* MacroSoon;
-
-        
-
         const char* AimEnabled;
-
         const char* AimFOV;
-
         const char* AimSmooth;
-
         const char* AimKey;
-
         const char* AimBone;
-
         const char* AimVisible;
-
         const char* AimPrediction;
-
-        
-
         const char* MacroEnabled;
-
         const char* MacroStrength;
-
         const char* MacroHumanize;
-
         const char* MacroOSD;
-
         const char* RescanAttach;
-
         const char* CurrentWeapon;
-
         const char* DetectedAttach;
-
         const char* NoWeapon;
-
-        
-
         const char* Language;
-
         const char* ResetColors;
-
         const char* SaveConfig;
-
         const char* LoadConfig;
-
         const char* Version;
-
         const char* AntiScreenshot;
-
         const char* ShowMacroOSD;
-
         const char* RescaleX;
-
         const char* RescaleY;
-
-
-
-        // Visuals LOD Labels
-
         const char* SmartLOD;
-
         const char* BoxMax;
-
         const char* HealthMax;
-
         const char* SkeletonMax;
-
         const char* NameMax;
-
         const char* DistMax;
-
         const char* WeaponMax;
-
-        
-
         const char* VisBox;
-
         const char* InvBox;
-
         const char* VisSkel;
-
         const char* InvSkel;
-
         const char* ColorNames;
-
         const char* ColorDist;
-
         const char* ColorWeapon;
-
-        
-
-        // Premium Headers
-
         const char* HeaderSystemConfig;
-
         const char* HeaderPrecisionSettings;
-
         const char* HeaderAimStructure;
-
         const char* HeaderVisualCore;
-
         const char* HeaderRenderStyle;
-
         const char* HeaderOverlayHUD;
-
         const char* HeaderDangerScan;
-
         const char* HeaderLootEngine;
-
         const char* HeaderPickupFilter;
-
         const char* HeaderWorldEntities;
-
         const char* HeaderSystemCore;
-
         const char* HeaderAntiTracking;
-
         const char* HeaderEngineUtils;
-
-        
-
         const char* MainTelemetry;
-
         const char* SafeStatus;
-
         const char* PasteLabel;
-        
-        // Health & Weapon HUD additions
         const char* HealthMode;
         const char* ModeDynamic;
         const char* ModeStatic;
@@ -374,6 +244,20 @@ namespace Translation {
         const char* Stocks;
         const char* HeaderAttachments;
         const char* HeaderSurvival;
+
+        // New Account Fields
+        const char* HeaderAccount;
+        const char* Username;
+        const char* Password;
+        const char* Login;
+        const char* Logout;
+        const char* Register;
+        const char* ActivateKey;
+        const char* Expiry;
+        const char* ConfigCode;
+        const char* SaveCloud;
+        const char* ImportCloud;
+        const char* CloudConfig;
     };
 
 
@@ -629,9 +513,21 @@ namespace Translation {
 
             s.MainTelemetry = (const char*)u8"GIAVNI-Z TELEMETRY";
 
-            s.SafeStatus = (const char*)u8"AN TOÀN";
-
-            s.PasteLabel = (const char*)u8"Dán Key";
+        s.SafeStatus = (const char*)u8"AN TOÀN";
+        s.PasteLabel = (const char*)u8"Dán Key";
+        
+        s.HeaderAccount = (const char*)u8"TÀI KHOẢN LOADER";
+        s.Username = (const char*)u8"Tài khoản";
+        s.Password = (const char*)u8"Mật khẩu";
+        s.Login = (const char*)u8"Đăng nhập";
+        s.Logout = (const char*)u8"Đăng xuất";
+        s.Register = (const char*)u8"Đăng ký";
+        s.ActivateKey = (const char*)u8"Kích hoạt Key";
+        s.Expiry = (const char*)u8"Hạn dùng";
+        s.ConfigCode = (const char*)u8"Mã Config";
+        s.SaveCloud = (const char*)u8"Lưu Đám Mây";
+        s.ImportCloud = (const char*)u8"Import Đám Mây";
+        s.CloudConfig = (const char*)u8"Cấu hình Đám Mây";
 
             s.HealthMode = (const char*)u8"Kiểu màu máu";
             s.ModeDynamic = (const char*)u8"Động (Máu %)";
@@ -1070,26 +966,39 @@ namespace Translation {
             s.RepairKits = skCrypt("Repair Kits");
             s.Grips = skCrypt("Foregrips");
             s.Stocks = skCrypt("Stocks / Pads");
-            s.HeaderAttachments = skCrypt("ADDITIONAL ATTACHMENTS");
-            s.HeaderSurvival = skCrypt("SURVIVAL & UTILITY");
-            s.HeaderVehicleFilter = skCrypt("VEHICLE ASSET FILTER");
-            s.VehicleUAZ = skCrypt("UAZ Series");
-            s.VehicleDacia = skCrypt("Dacia Series");
-            s.VehicleBuggy = skCrypt("Buggy / Kart");
-            s.VehicleBike = skCrypt("Bikes / Cycles");
-            s.VehicleBoat = skCrypt("Boats / Aquatics");
-            s.VehicleAir = skCrypt("Gliders / Aircraft");
+            s.HeaderAttachments = skCrypt("[-] OTHER ATTACHMENTS");
+            s.HeaderSurvival = skCrypt("[-] SURVIVAL & UTILITY");
+            s.HeaderVehicleFilter = skCrypt("[-] VEHICLE FILTER");
+            s.VehicleUAZ = skCrypt("UAZ Vehicle");
+            s.VehicleDacia = skCrypt("Dacia Vehicle");
+            s.VehicleBuggy = skCrypt("Buggy Vehicle");
+            s.VehicleBike = skCrypt("Bike / Bicycle");
+            s.VehicleBoat = skCrypt("Boat / Ship");
+            s.VehicleAir = skCrypt("Aircraft / Glider");
             s.VehicleBRDM = skCrypt("BRDM Armored");
-            s.VehicleScooter = skCrypt("Scooters");
-            s.VehicleTuk = skCrypt("TukTuk / Rickshaw");
-            s.VehicleSnow = skCrypt("Snowmobiles");
-            s.VehicleBus = skCrypt("Bus / Transport");
-            s.VehicleTruck = skCrypt("Trucks / Loot Trucks");
-            s.VehicleTrain = skCrypt("Rail / Trains");
-            s.VehicleMirado = skCrypt("Mirado Sport");
-            s.VehiclePickup = skCrypt("Pickup Trucks");
-            s.VehicleRony = skCrypt("Rony Series");
-            s.VehicleBlanc = skCrypt("Blanc Series");
+            s.VehicleScooter = skCrypt("Scooter");
+            s.VehicleTuk = skCrypt("TukTuk");
+            s.VehicleSnow = skCrypt("Snow Vehicle");
+            s.VehicleBus = skCrypt("Mini Bus");
+            s.VehicleTruck = skCrypt("Truck / Loot Truck");
+            s.VehicleTrain = skCrypt("Train");
+            s.VehicleMirado = skCrypt("Mirado Vehicle");
+            s.VehiclePickup = skCrypt("Pickup Truck");
+            s.VehicleRony = skCrypt("Rony Vehicle");
+            s.VehicleBlanc = skCrypt("Blanc Vehicle");
+
+            s.HeaderAccount = skCrypt("LOADER ACCOUNT");
+            s.Username = skCrypt("Username");
+            s.Password = skCrypt("Password");
+            s.Login = skCrypt("Login");
+            s.Logout = skCrypt("Logout");
+            s.Register = skCrypt("Register");
+            s.ActivateKey = skCrypt("Activate Key");
+            s.Expiry = skCrypt("Expiry Date");
+            s.ConfigCode = skCrypt("Config Code");
+            s.SaveCloud = skCrypt("Cloud Sync");
+            s.ImportCloud = skCrypt("Cloud Import");
+            s.CloudConfig = skCrypt("Cloud Configuration");
 
         }
 

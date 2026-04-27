@@ -6,8 +6,11 @@
 #include "../imgui/imgui_impl_win32.h"
 #include <d3d11.h>
 #include <dwmapi.h>
-#include <vector>
+#include <fstream>
 #include <string>
+
+extern const wchar_t* LOADER_LOGIN_PATH;
+extern const wchar_t* LOADER_REGISTER_PATH;
 #include <algorithm>
 #include <cmath>
 #include <chrono>
@@ -349,6 +352,7 @@ bool OverlayMenu::Initialize(const VisualizationBridgeHost& bridge) {
     io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\tahoma.ttf", 16.0f, &font_cfg, io.Fonts->GetGlyphRangesVietnamese());
 
     SetupStyle();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable keyboard navigation
     ImGui_ImplWin32_Init(target_hwnd);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
@@ -596,16 +600,75 @@ void OverlayMenu::RenderFrame() {
         bool f5_current = telemetryMemory::IsKeyDown(VK_F5);
         if (f5_current && !f5_down) {
             showmenu = !showmenu;
+            
+            // Toggle Window Input Transparency
+            LONG_PTR exStyle = GetWindowLongPtr(target_hwnd, GWL_EXSTYLE);
+            if (showmenu) {
+                // Remove TRANSPARENT so we can type/click
+                SetWindowLongPtr(target_hwnd, GWL_EXSTYLE, exStyle & ~WS_EX_TRANSPARENT);
+                SetForegroundWindow(target_hwnd);
+                SetFocus(target_hwnd);
+            } else {
+                // Re-add TRANSPARENT so clicks pass through to game
+                SetWindowLongPtr(target_hwnd, GWL_EXSTYLE, exStyle | WS_EX_TRANSPARENT);
+            }
         }
         f5_down = f5_current;
 
-        // --- MOUSE INJECTION (FOR HIJACKED WINDOW) ---
+        // --- INPUT INJECTION (FOR HIJACKED WINDOW) ---
         ImGuiIO& io = ImGui::GetIO();
         if (showmenu) {
+            // Mouse
             POINT p; GetCursorPos(&p);
             ScreenToClient(target_hwnd, &p);
             io.MousePos = ImVec2((float)p.x, (float)p.y);
             io.MouseDown[0] = telemetryMemory::IsKeyDown(VK_LBUTTON);
+            io.MouseDown[1] = telemetryMemory::IsKeyDown(VK_RBUTTON);
+
+            // Manual Keyboard Input Sync (Since captured window messages don't reach us for hijacked windows)
+            static bool key_states[256] = { false };
+            for (int i = 0x08; i <= 0x5A; i++) { // Backspace to Z (covers common input) + common chars
+                bool down = (GetAsyncKeyState(i) & 0x8000);
+                if (down && !key_states[i]) {
+                    // 1. Priority Shortcuts (Ctrl+V, Ctrl+A)
+                    if (GetAsyncKeyState(VK_CONTROL) & 0x8000) {
+                        if (i == 'V') {
+                            const char* clipboard = ImGui::GetClipboardText();
+                            if (clipboard) io.AddInputCharactersUTF8(clipboard);
+                            key_states[i] = down;
+                            continue;
+                        } else if (i == 'A') {
+                            io.AddKeyEvent(ImGuiMod_Ctrl, true); io.AddKeyEvent(ImGuiKey_A, true);
+                            io.AddKeyEvent(ImGuiKey_A, false); io.AddKeyEvent(ImGuiMod_Ctrl, false);
+                            key_states[i] = down;
+                            continue;
+                        }
+                    }
+
+                    // 2. Normal Key Logic
+                    if (i >= 0x30 && i <= 0x5A) { // Alpha-numeric
+                        BYTE kst[256];
+                        GetKeyboardState(kst);
+                        wchar_t buf[2];
+                        if (ToUnicode(i, MapVirtualKey(i, MAPVK_VK_TO_VSC), kst, buf, 2, 0) == 1) {
+                            io.AddInputCharacter(buf[0]);
+                        }
+                    } else if (i == VK_BACK) { io.AddKeyEvent(ImGuiKey_Backspace, true); io.AddKeyEvent(ImGuiKey_Backspace, false); }
+                    else if (i == VK_SPACE) { io.AddInputCharacter(' '); }
+                    else if (i == VK_TAB) { io.AddKeyEvent(ImGuiKey_Tab, true); io.AddKeyEvent(ImGuiKey_Tab, false); }
+                }
+                key_states[i] = down;
+            }
+            // Additional symbols and NumPad
+            for (int i : {VK_OEM_1, VK_OEM_2, VK_OEM_3, VK_OEM_4, VK_OEM_5, VK_OEM_6, VK_OEM_7, VK_OEM_PERIOD, VK_OEM_COMMA, VK_OEM_MINUS, VK_OEM_PLUS}) {
+                 bool down = (GetAsyncKeyState(i) & 0x8000);
+                 if (down && !key_states[i & 0xFF]) {
+                     BYTE kst[256]; GetKeyboardState(kst);
+                     wchar_t buf[2];
+                     if (ToUnicode(i, MapVirtualKey(i, MAPVK_VK_TO_VSC), kst, buf, 2, 0) == 1) io.AddInputCharacter(buf[0]);
+                 }
+                 key_states[i & 0xFF] = down;
+            }
         }
 
         // --- WINDOW MESSAGE HANDLING (VALORANT STYLE) ---
@@ -874,11 +937,11 @@ void OverlayMenu::RenderFrame() {
             draw->AddCircle(ImVec2(ScreenCenterX, ScreenCenterY), finalFov * 8.0f, ImColor(255, 255, 255, 60), 64, 1.0f);
         }
 
-        // --- 1. VISUALS (signal_overlay) & precision_calibration CORE ---
-        if (is_authenticated) {
-            float dt_esp = (GetTickCount64() - G_LastScanTime) / 1000.0f;
-            if (!g_Menu.esp_skel_interp) dt_esp = 0.0f;
-            else if (dt_esp > 0.10f) dt_esp = 0.10f;
+            // --- 1. VISUALS (signal_overlay) & precision_calibration CORE ---
+            if (is_authenticated && !showmenu) {
+                float dt_esp = (GetTickCount64() - G_LastScanTime) / 1000.0f;
+                if (!g_Menu.esp_skel_interp) dt_esp = 0.0f;
+                else if (dt_esp > 0.10f) dt_esp = 0.10f;
 
             for (const auto& player_ref : localPlayers) {
             auto& player = const_cast<PlayerData&>(player_ref);
@@ -1750,7 +1813,7 @@ void OverlayMenu::RenderFrame() {
             ImGui::Text(Lang.MainTelemetry);
 
             // Safe Badge
-            ImGui::SameLine(180);
+            ImGui::SameLine(300);
             ImGui::SetCursorPosY(20);
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.6f, 1.0f), skCrypt("â— "));
             ImGui::SameLine(0, 2);
@@ -2522,12 +2585,11 @@ void OverlayMenu::RenderFrame() {
 
                 // Draw 3 items per row as requested
                 DrawVisualLootGrid(vehicleTiles, IM_ARRAYSIZE(vehicleTiles), 3);
-
                 ImGui::EndChild();
 
                 ImGui::Columns(1);
             }
-            // --- THIáº¾T Láº¬P (SETTINGS) TAB ---
+            // --- THIẾT LẬP (SETTINGS) TAB ---
             else if (active_tab == 5) {
                 float totalWidth = windowSize.x - 60;
                 ImGui::Columns(3, skCrypt("SettingsColumns"), false);
@@ -2535,66 +2597,153 @@ void OverlayMenu::RenderFrame() {
                 ImGui::SetColumnWidth(1, totalWidth / 3.0f);
                 ImGui::SetColumnWidth(2, totalWidth / 3.0f);
 
-                // Col 1: LÃµi Há»‡ Thá»‘ng
-                BeginGlassCard(skCrypt("##SetCol1"), Lang.HeaderSystemCore, ImVec2(totalWidth / 3.0f - 20, 0));
-                int currentLang = g_Menu.language ? 1 : 0;
-                if (ImGui::Combo(Lang.Language, &currentLang, (const char*)u8"English\0Tiáº¿ng Viá»‡t\0")) g_Menu.language = (currentLang == 1);
-
-                ImGui::Spacing();
-                ImGui::TextColored(ImVec4(0.8f, 0.2f, 1.0f, 1.0f), skCrypt("REGISTRATION"));
+                // --- COL 1: ACCOUNT & LICENSE ---
+                BeginGlassCard(skCrypt("##SetCol1"), Lang.HeaderAccount, ImVec2(totalWidth / 3.0f - 20, 0));
+                
+                extern std::string global_account_token;
+                extern std::string global_account_username;
                 extern std::string global_active_key;
-                bool is_active = !global_active_key.empty();
-                if (is_active) ImGui::TextColored(ImVec4(0, 1, 0, 1), skCrypt("STATUS: ACTIVE"));
-                else ImGui::TextColored(ImVec4(1, 0, 0, 1), skCrypt("STATUS: INACTIVE"));
+                extern std::string g_expiry_str;
+                extern std::string global_license_error;
+                extern std::string GetHWID();
+                extern bool ParseAuthSessionResponse(const std::string& responseStr, bool allowNoActiveKey);
+                extern void SaveLoaderSessionFile();
+                extern void ClearLoaderSessionFile();
+                extern bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent);
 
-                static char key_buf[128] = {0};
-                ImGui::SetNextItemWidth(-1);
-                ImGui::InputText(skCrypt("##TokenInput"), key_buf, sizeof(key_buf));
+                bool isLoggedIn = !global_account_token.empty();
 
-                if (ImGui::Button(Lang.PasteLabel, ImVec2(-1, 30))) {
-                    const char* clipboard = ImGui::GetClipboardText();
-                    if (clipboard) strcpy_s(key_buf, sizeof(key_buf), clipboard);
-                }
+                if (!isLoggedIn) {
+                    static char user_buf[64] = {0};
+                    static char pass_buf[64] = {0};
+                    
+                    ImGui::Text(Lang.Username);
+                    ImGui::SetNextItemWidth(-1);
+                    ImGui::InputText(skCrypt("##UserIn"), user_buf, sizeof(user_buf));
+                    
+                    ImGui::Text(Lang.Password);
+                    ImGui::SetNextItemWidth(-1);
+                    ImGui::InputText(skCrypt("##PassIn"), pass_buf, sizeof(pass_buf), ImGuiInputTextFlags_Password);
 
-                if (ImGui::Button(skCrypt("VALIDATE KEY"), ImVec2(-1, 35))) {
-                    extern std::string GetHWID();
-                    extern bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent);
-                    std::string key_str(key_buf);
-                    if (DoAPIRequest(key_str, GetHWID(), false)) {
-                        global_active_key = key_str;
-                        std::ofstream outFile("key.txt");
-                        if (outFile.is_open()) { outFile << key_str; outFile.close(); }
+                    ImGui::Spacing();
+                    
+                    if (ImGui::Button(Lang.Login, ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 5, 35))) {
+                        nlohmann::json req;
+                        req["username"] = user_buf;
+                        req["password"] = pass_buf;
+                        req["hwid"] = GetHWID();
+                        std::string resp;
+                        extern bool HttpJsonPost(const wchar_t* path, const nlohmann::json& requestBody, const std::string& token, std::string& response);
+                        if (HttpJsonPost(LOADER_LOGIN_PATH, req, "", resp)) {
+                            if (ParseAuthSessionResponse(resp, true)) SaveLoaderSessionFile();
+                            else global_license_error = resp;
+                        }
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button(Lang.Register, ImVec2(-1, 35))) {
+                        nlohmann::json req;
+                        req["username"] = user_buf;
+                        req["password"] = pass_buf;
+                        req["hwid"] = GetHWID();
+                        std::string resp;
+                        extern bool HttpJsonPost(const wchar_t* path, const nlohmann::json& requestBody, const std::string& token, std::string& response);
+                        if (HttpJsonPost(LOADER_REGISTER_PATH, req, "", resp)) {
+                            if (ParseAuthSessionResponse(resp, true)) SaveLoaderSessionFile();
+                            else global_license_error = resp;
+                        }
+                    }
+                } else {
+                    ImGui::TextColored(ImVec4(0, 1, 1, 1), "%s: %s", Lang.Username, global_account_username.c_str());
+                    bool hasKey = !global_active_key.empty();
+                    
+                    if (hasKey) {
+                        ImGui::TextColored(ImVec4(0, 1, 0, 1), "LICENSE: ACTIVE");
+                        ImGui::TextDisabled("%s: %s", Lang.Expiry, g_expiry_str.c_str());
+                    } else {
+                        ImGui::TextColored(ImVec4(1, 0.5f, 0, 1), "LICENSE: NO KEY");
+                        static char key_buf[128] = {0};
+                        ImGui::SetNextItemWidth(-1);
+                        ImGui::InputText(skCrypt("##KeyIn"), key_buf, sizeof(key_buf));
+                        if (ImGui::Button(Lang.ActivateKey, ImVec2(-1, 35))) {
+                            if (DoAPIRequest(key_buf, GetHWID(), false)) {
+                                global_active_key = key_buf;
+                                SaveLoaderSessionFile();
+                            }
+                        }
+                    }
+
+                    ImGui::Spacing();
+                    if (ImGui::Button(Lang.Logout, ImVec2(-1, 30))) {
+                        global_account_token.clear();
+                        global_account_username.clear();
+                        global_active_key.clear();
+                        ClearLoaderSessionFile();
                     }
                 }
+
+                if (!global_license_error.empty() && global_license_error.length() < 100) {
+                    ImGui::TextColored(ImVec4(1, 0, 0, 1), "Error: %s", global_license_error.c_str());
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", global_license_error.c_str());
+                }
+
                 ImGui::EndChild();
 
                 ImGui::NextColumn();
-                // Col 2: Báº£o Máº­t & Tracking
-                BeginGlassCard(skCrypt("##SetCol2"), Lang.HeaderAntiTracking, ImVec2(totalWidth / 3.0f - 20, 0));
+                // --- COL 2: CLOUD CONFIG & SETTINGS ---
+                BeginGlassCard(skCrypt("##SetCol2"), Lang.CloudConfig, ImVec2(totalWidth / 3.0f - 20, 0));
+                
+                extern std::string global_config_code;
+                if (!global_config_code.empty()) {
+                    ImGui::Text("%s: ", Lang.ConfigCode);
+                    ImGui::SameLine();
+                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "%s", global_config_code.c_str());
+                    if (ImGui::Button(skCrypt("COPY CODE"), ImVec2(-1, 30))) {
+                        ImGui::SetClipboardText(global_config_code.c_str());
+                    }
+                }
+
+                ImGui::Spacing();
+                if (ImGui::Button(Lang.SaveCloud, ImVec2(-1, 35))) {
+                    g_Menu.SaveConfig("dataMacro/Config/settings.json");
+                    extern bool UploadLoaderConfig();
+                    UploadLoaderConfig();
+                }
+                
+                static char import_buf[32] = {0};
+                ImGui::SetNextItemWidth(-1);
+                ImGui::InputText(skCrypt("##ImportCode"), import_buf, sizeof(import_buf));
+                if (ImGui::Button(Lang.ImportCloud, ImVec2(-1, 35))) {
+                    extern bool ImportLoaderConfigCode(const std::string& code);
+                    if (ImportLoaderConfigCode(import_buf)) {
+                        g_Menu.LoadConfig("dataMacro/Config/settings.json");
+                    }
+                }
+
+                ImGui::Separator();
+                ImGui::Checkbox(Lang.Language, &g_Menu.language);
                 ImGui::Checkbox(Lang.AntiScreenshot, &g_Menu.anti_screenshot);
-                ImGui::Checkbox(skCrypt("Hide Menu on Screen"), &g_Menu.anti_screenshot); // Map to same for now
+
                 ImGui::EndChild();
 
                 ImGui::NextColumn();
-                // Col 3: Tiá»‡n Ãch Engine
+                // --- COL 3: ENGINE UTILS ---
                 BeginGlassCard(skCrypt("##SetCol3"), Lang.HeaderEngineUtils, ImVec2(totalWidth / 3.0f - 20, 0));
                 if (ImGui::Button(Lang.ResetColors, ImVec2(-1, 35))) { /* Reset colors logic */ }
-                if (ImGui::Button(Lang.SaveConfig, ImVec2(-1, 35))) { g_Menu.SaveConfig("dataMacro/Config/settings.json"); UploadActiveLoaderConfigAsync(); }
-                DrawDisplayOnlyOption(Lang.ShowcaseConfigProfile);
-                DrawDisplayOnlyOption(Lang.ShowcaseProfileSlots);
-
+                
                 ImGui::Spacing();
                 ImGui::Separator();
                 ImGui::Spacing();
 
-                if (ImGui::Button(skCrypt("Terminate Application"), ImVec2(-1, 40))) { exit(0); }
+                if (ImGui::Button(skCrypt("TERMINATE LOADER"), ImVec2(-1, 40))) { exit(0); }
                 DrawDisplayOnlyOption(Lang.ShowcaseStreamerProfile);
                 DrawDisplayOnlyOption(Lang.ShowcaseAnnouncementPanel);
+                
+                ImGui::TextDisabled("HWID: %s", GetHWID().substr(0, 16).c_str());
                 ImGui::EndChild();
 
                 ImGui::Columns(1);
             }
-            // --- Báº¢N Äá»’ (RADAR) TAB ---
+            // --- BẢN ĐỒ (RADAR) TAB ---
             else if (active_tab == 4) {
                 float totalWidth = windowSize.x - 60;
                 ImGui::Columns(3, skCrypt("MapColumns"), false);
@@ -2651,8 +2800,8 @@ void OverlayMenu::RenderFrame() {
             drawList->AddRectFilled(railPos, ImVec2(railPos.x + railSize.x, railPos.y + railSize.y), IM_COL32(20, 40, 80, 100), 22.0f);
             drawList->AddRect(railPos, ImVec2(railPos.x + railSize.x, railPos.y + railSize.y), IM_COL32(0, 200, 255, 60), 22.0f);
 
-            float totalWidth = (110.0f * 6.0f) + (10.0f * 5.0f);
-            ImGui::SetCursorPosX((railSize.x - totalWidth) / 2.0f);
+            float navTotalWidth = (110.0f * 6.0f) + (10.0f * 5.0f);
+            ImGui::SetCursorPosX((railSize.x - navTotalWidth) / 2.0f);
 
             auto BottomTab = [&](const char* label, int id) {
                 bool active = (active_tab == id);
@@ -2678,11 +2827,20 @@ void OverlayMenu::RenderFrame() {
                 ImGui::SameLine(0, 10.0f);
             };
 
-            BottomTab(Lang.TabVisuals, 0);
-            BottomTab(Lang.Tabprecision_calibration, 1);
-            BottomTab(Lang.TabMacro, 2);
-            BottomTab(Lang.TabLoot, 3);
-            BottomTab(Lang.TabRadar, 4);
+            extern std::string global_active_key;
+            bool hasValidKey = !global_active_key.empty();
+
+            if (!hasValidKey && active_tab != 5) {
+                active_tab = 5; // Force to Account Tab if not authorized
+            }
+
+            if (hasValidKey) {
+                BottomTab(Lang.TabVisuals, 0);
+                BottomTab(Lang.Tabprecision_calibration, 1);
+                BottomTab(Lang.TabMacro, 2);
+                BottomTab(Lang.TabLoot, 3);
+                BottomTab(Lang.TabRadar, 4);
+            }
             BottomTab(Lang.TabSettings, 5);
 
             ImGui::EndChild(); // Rail
