@@ -1,5 +1,5 @@
-#include "../overlay_menu.hpp"
-#include "../translation.hpp"
+#include "../core/overlay_menu.hpp"
+#include "../translation/translation.hpp"
 #include "../../sdk/context.hpp"
 #include "../../protec/skCrypt.h"
 #include <windows.h>
@@ -66,7 +66,7 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
 
     ImGui::NextColumn();
 
-    // Column 3: Cáº¥u trÃºc Logic
+    // Column 3: aim structure
     BeginGlassCard(skCrypt("##AimCol3"), Lang.HeaderAimStructure, ImVec2(totalWidth / 3.0f - 20, 0));
     ImGui::TextColored(ImVec4(0.8f, 0.2f, 1.0f, 1.0f), Lang.AimBone);
     const char* bones[] = { "Head", "Neck", "Upper Chest", "Pelvis" };

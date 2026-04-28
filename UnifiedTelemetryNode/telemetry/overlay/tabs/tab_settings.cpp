@@ -1,5 +1,7 @@
-#include "../overlay_menu.hpp"
-#include "../translation.hpp"
+#include "../core/overlay_menu.hpp"
+#include "../entities/entity_aliases.hpp"
+#include "../core/overlay_presets.hpp"
+#include "../translation/translation.hpp"
 #include "../../../nlohmann/json.hpp"
 #include "../../protec/skCrypt.h"
 #include <string>
@@ -160,6 +162,27 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
     // --- COL 3: ENGINE UTILS ---
     BeginGlassCard(skCrypt("##SetCol3"), Lang.HeaderEngineUtils, ImVec2(totalWidth / 3.0f - 20, 0));
     if (ImGui::Button(Lang.ResetColors, ImVec2(-1, 35))) { /* Reset colors logic */ }
+
+    ImGui::TextDisabled(skCrypt("DISPLAY PRESETS"));
+    if (ImGui::Button(skCrypt("Clean"), ImVec2(-1, 28))) {
+        OverlayPresets::Apply(g_Menu, OverlayPresets::Preset::Clean);
+    }
+    if (ImGui::Button(skCrypt("Loot"), ImVec2(-1, 28))) {
+        OverlayPresets::Apply(g_Menu, OverlayPresets::Preset::Loot);
+    }
+    if (ImGui::Button(skCrypt("Combat"), ImVec2(-1, 28))) {
+        OverlayPresets::Apply(g_Menu, OverlayPresets::Preset::Combat);
+    }
+    if (ImGui::Button(skCrypt("Debug"), ImVec2(-1, 28))) {
+        OverlayPresets::Apply(g_Menu, OverlayPresets::Preset::Debug);
+    }
+
+    ImGui::Spacing();
+    if (ImGui::Button(skCrypt("RELOAD ENTITY ALIASES"), ImVec2(-1, 30))) {
+        EntityAliases::Reload();
+    }
+    const std::string& aliasPath = EntityAliases::LoadedPath();
+    ImGui::TextDisabled(skCrypt("Aliases: %s"), aliasPath.empty() ? "not loaded" : aliasPath.c_str());
     
     ImGui::Spacing();
     ImGui::Separator();

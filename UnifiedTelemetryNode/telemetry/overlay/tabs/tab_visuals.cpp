@@ -1,7 +1,9 @@
-#include "../overlay_menu.hpp"
-#include "../translation.hpp"
+#include "../core/overlay_menu.hpp"
+#include "../player/player_esp_layout.hpp"
+#include "../translation/translation.hpp"
 #include "../../sdk/context.hpp"
 #include "../../protec/skCrypt.h"
+#include <algorithm>
 #include <map>
 
 void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
@@ -13,7 +15,7 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
     ImGui::SetColumnWidth(2, totalWidth / 4.0f);
     ImGui::SetColumnWidth(3, totalWidth / 4.0f);
 
-    // Col 1: LÃµi Hiá»ƒn Thá»‹
+    // Column 1: visual core
     BeginGlassCard(skCrypt("##ESPCol1"), Lang.HeaderVisualCore, ImVec2(totalWidth / 4.0f - 15, 0));
     ImGui::Checkbox(Lang.MasterToggle, &g_Menu.esp_toggle);
     ImGui::Checkbox(Lang.ESP_Icons, &g_Menu.esp_icons);
@@ -30,7 +32,7 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
     ImGui::EndChild();
 
     ImGui::NextColumn();
-    // Col 2: Kiá»ƒu Váº½ & HUD
+    // Column 2: render style and HUD
     BeginGlassCard(skCrypt("##ESPCol2"), Lang.HeaderRenderStyle, ImVec2(totalWidth / 4.0f - 15, 0));
     ImGui::Checkbox(Lang.Box, &g_Menu.esp_box);
     ImGui::SliderFloat(Lang.BoxThick, &g_Menu.box_thickness, 1.0f, 5.0f, skCrypt("%.1f px"));
@@ -49,7 +51,7 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
     ImGui::EndChild();
 
     ImGui::NextColumn();
-    // Col 3: ThÃ´ng sá»‘ & MÃ u Sáº¯c
+    // Column 3: thresholds and colors
     BeginGlassCard(skCrypt("##ESPCol3"), Lang.HeaderOverlayHUD, ImVec2(totalWidth / 4.0f - 15, 0));
     ImGui::SliderFloat(Lang.FontSize, &g_Menu.esp_font_size, 8.0f, 24.0f, skCrypt("%.1f px"));
     ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), Lang.DistThresholds);
@@ -60,7 +62,30 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
     ImGui::Spacing();
     ImGui::SetNextItemWidth(120);
     const char* posItems[] = { Lang.PosLeft, Lang.PosRight, Lang.PosTop, Lang.PosBottom };
-    ImGui::Combo(Lang.HealthPos, &g_Menu.esp_health_pos, posItems, IM_ARRAYSIZE(posItems));
+    auto DrawPosCombo = [&](const char* label, int* value) {
+        ImGui::SetNextItemWidth(120);
+        ImGui::Combo(label, value, posItems, IM_ARRAYSIZE(posItems));
+    };
+    DrawPosCombo(Lang.HealthPos, &g_Menu.esp_health_pos);
+    DrawPosCombo(Lang.NamePos, &g_Menu.esp_name_pos);
+    DrawPosCombo(Lang.DistancePos, &g_Menu.esp_distance_pos);
+    DrawPosCombo(Lang.WeaponPos, &g_Menu.esp_weapon_pos);
+    DrawPosCombo(Lang.RankPos, &g_Menu.esp_rank_pos);
+    DrawPosCombo(Lang.SpectatedPos, &g_Menu.esp_spectated_pos);
+    DrawPosCombo(skCrypt("Team ID Pos"), &g_Menu.esp_teamid_pos);
+    DrawPosCombo(skCrypt("Kills Pos"), &g_Menu.esp_killcount_pos);
+    DrawPosCombo(skCrypt("Level Pos"), &g_Menu.esp_survival_level_pos);
+
+    ImGui::Separator();
+    ImGui::SliderFloat(skCrypt("Name Size"), &g_Menu.name_font_size, 8.0f, 26.0f, skCrypt("%.1f px"));
+    ImGui::SliderFloat(skCrypt("Distance Size"), &g_Menu.distance_font_size, 8.0f, 24.0f, skCrypt("%.1f px"));
+    ImGui::SliderFloat(skCrypt("Weapon Size"), &g_Menu.weapon_font_size, 8.0f, 24.0f, skCrypt("%.1f px"));
+    ImGui::SliderFloat(skCrypt("Weapon Icon"), &g_Menu.weapon_icon_size, 18.0f, 90.0f, skCrypt("%.0f px"));
+    ImGui::SliderFloat(skCrypt("Rank Size"), &g_Menu.rank_font_size, 8.0f, 24.0f, skCrypt("%.1f px"));
+    ImGui::SliderFloat(skCrypt("Team Badge"), &g_Menu.teamid_badge_size, 10.0f, 34.0f, skCrypt("%.0f px"));
+    ImGui::SliderFloat(skCrypt("Kills Size"), &g_Menu.kill_font_size, 8.0f, 24.0f, skCrypt("%.1f px"));
+    ImGui::SliderFloat(skCrypt("Level Size"), &g_Menu.survival_level_font_size, 8.0f, 24.0f, skCrypt("%.1f px"));
+    ImGui::SliderFloat(skCrypt("Watch Size"), &g_Menu.spectated_font_size, 8.0f, 28.0f, skCrypt("%.1f px"));
 
     ImGui::SetNextItemWidth(120);
     const char* modeItems[] = { Lang.ModeDynamic, Lang.ModeStatic };
@@ -87,12 +112,17 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
     ColorPicker(Lang.Name, g_Menu.name_color);
     ColorPicker(Lang.Distance, g_Menu.distance_color);
     ColorPicker(Lang.Weapon, g_Menu.weapon_color);
+    ColorPicker(Lang.Rank, g_Menu.rank_color);
+    ColorPicker(Lang.TeamID, g_Menu.teamid_color);
+    ColorPicker(Lang.KillCount, g_Menu.kill_color);
+    ColorPicker(Lang.SurvivalLevel, g_Menu.survival_level_color);
+    ColorPicker(Lang.ESP_Spectated, g_Menu.spectated_color);
     ColorPicker(Lang.ColorHealth, g_Menu.health_color);
 
     ImGui::EndChild();
 
     ImGui::NextColumn();
-    // Col 4: Xem TrÆ°á»›c (PREVIEW)
+    // Column 4: preview
     BeginGlassCard(skCrypt("##ESPCol4"), Lang.PreviewPanel, ImVec2(totalWidth / 4.0f - 15, 0));
 
     static bool bPreviewOccluded = false;
@@ -133,32 +163,24 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
             draw->AddRect(cursorPos, ImVec2(cursorPos.x + previewW, cursorPos.y + previewH), uBoxCol, 4.0f, 0, 2.0f);
         }
 
+        PlayerEspLayout::Stack previewLayout(
+            cursorPos.x,
+            cursorPos.y,
+            cursorPos.x + previewW,
+            cursorPos.y + previewH);
+
         // 2. Health Demo (Multi-Position & Multi-Color Mode)
         if (g_Menu.esp_health) {
             ImVec2 hpTop, hpBot;
             bool horizontal = false;
 
-            // Position calculation
-            switch (g_Menu.esp_health_pos) {
-            case 1: // Right
-                hpTop = ImVec2(cursorPos.x + previewW + 4, cursorPos.y);
-                hpBot = ImVec2(cursorPos.x + previewW + 16, cursorPos.y + previewH);
-                break;
-            case 2: // Top
-                hpTop = ImVec2(cursorPos.x, cursorPos.y - 16);
-                hpBot = ImVec2(cursorPos.x + previewW, cursorPos.y - 4);
-                horizontal = true;
-                break;
-            case 3: // Bottom
-                hpTop = ImVec2(cursorPos.x, cursorPos.y + previewH + 4);
-                hpBot = ImVec2(cursorPos.x + previewW, cursorPos.y + previewH + 16);
-                horizontal = true;
-                break;
-            default: // 0: Left
-                hpTop = ImVec2(cursorPos.x - 16, cursorPos.y);
-                hpBot = ImVec2(cursorPos.x - 4, cursorPos.y + previewH);
-                break;
-            }
+            auto healthSlot = previewLayout.TakeBar(
+                PlayerEspLayout::SideFromMenu(g_Menu.esp_health_pos),
+                12.0f,
+                4.0f);
+            hpTop = healthSlot.Min;
+            hpBot = healthSlot.Max;
+            horizontal = healthSlot.Horizontal;
 
             // Background
             draw->AddRectFilled(hpTop, hpBot, IM_COL32(0, 0, 0, 180), 2.0f);
@@ -194,9 +216,52 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
         // 2.5 Rank Preview
         if (g_Menu.esp_rank) {
             const char* szRank = skCrypt("Diamond");
-            ImU32 rsCol = IM_COL32(180, 100, 255, 255);
-            ImVec2 rsSize = ImGui::CalcTextSize(szRank);
-            draw->AddText(ImVec2(cursorPos.x + (previewW - rsSize.x) / 2.0f, cursorPos.y - rsSize.y - 22), rsCol, szRank);
+            ImU32 rsCol = ImColor(ImVec4(g_Menu.rank_color[0], g_Menu.rank_color[1], g_Menu.rank_color[2], g_Menu.rank_color[3]));
+            ImVec2 rsSize = ImGui::GetFont()->CalcTextSizeA(g_Menu.rank_font_size, FLT_MAX, 0.0f, szRank);
+            ImVec2 rankPos = previewLayout.Take(
+                PlayerEspLayout::SideFromMenu(g_Menu.esp_rank_pos),
+                rsSize,
+                1.0f);
+            draw->AddText(ImGui::GetFont(), g_Menu.rank_font_size, rankPos, rsCol, szRank);
+        }
+
+        if (g_Menu.esp_teamid) {
+            const float size = g_Menu.teamid_badge_size;
+            ImVec2 badgePos = previewLayout.Take(
+                PlayerEspLayout::SideFromMenu(g_Menu.esp_teamid_pos),
+                ImVec2(size, size),
+                2.0f);
+            ImVec2 center(badgePos.x + size * 0.5f, badgePos.y + size * 0.5f);
+            ImU32 badgeCol = ImColor(ImVec4(g_Menu.teamid_color[0], g_Menu.teamid_color[1], g_Menu.teamid_color[2], g_Menu.teamid_color[3]));
+            draw->AddCircleFilled(center, size * 0.5f, badgeCol, 20);
+            draw->AddCircle(center, size * 0.5f - 1.0f, IM_COL32(255, 255, 255, 100), 20, 1.0f);
+            const char* teamText = skCrypt("4");
+            const float fontSize = (std::max)(8.0f, size * 0.62f);
+            ImVec2 textSize = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, teamText);
+            draw->AddText(ImGui::GetFont(), fontSize, ImVec2(center.x - textSize.x * 0.5f, center.y - textSize.y * 0.5f),
+                IM_COL32(255, 255, 255, 255), teamText);
+        }
+
+        if (g_Menu.esp_killcount) {
+            const char* killText = skCrypt("K: 12");
+            ImU32 killCol = ImColor(ImVec4(g_Menu.kill_color[0], g_Menu.kill_color[1], g_Menu.kill_color[2], g_Menu.kill_color[3]));
+            ImVec2 textSize = ImGui::GetFont()->CalcTextSizeA(g_Menu.kill_font_size, FLT_MAX, 0.0f, killText);
+            ImVec2 killPos = previewLayout.Take(
+                PlayerEspLayout::SideFromMenu(g_Menu.esp_killcount_pos),
+                textSize,
+                1.0f);
+            draw->AddText(ImGui::GetFont(), g_Menu.kill_font_size, killPos, killCol, killText);
+        }
+
+        if (g_Menu.esp_survival_level) {
+            const char* levelText = skCrypt("Lv.50");
+            ImU32 levelCol = ImColor(ImVec4(g_Menu.survival_level_color[0], g_Menu.survival_level_color[1], g_Menu.survival_level_color[2], g_Menu.survival_level_color[3]));
+            ImVec2 textSize = ImGui::GetFont()->CalcTextSizeA(g_Menu.survival_level_font_size, FLT_MAX, 0.0f, levelText);
+            ImVec2 levelPos = previewLayout.Take(
+                PlayerEspLayout::SideFromMenu(g_Menu.esp_survival_level_pos),
+                textSize,
+                1.0f);
+            draw->AddText(ImGui::GetFont(), g_Menu.survival_level_font_size, levelPos, levelCol, levelText);
         }
 
         // 4. Name & Distance Demo
@@ -204,14 +269,14 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
             float* targetCol = g_Menu.name_color;
             ImU32 uNameCol = ImColor(ImVec4(targetCol[0], targetCol[1], targetCol[2], targetCol[3]));
 
-            std::string pName = "";
-            if (g_Menu.esp_teamid) pName += "[4] ";
-            pName += skCrypt("GZ-Preview");
-            if (g_Menu.esp_killcount) pName += " | K: 12";
-            if (g_Menu.esp_survival_level) pName += " | Lv.50";
+            std::string pName = skCrypt("GZ-Preview");
 
-            ImVec2 textSize = ImGui::CalcTextSize(pName.c_str());
-            draw->AddText(ImVec2(cursorPos.x + (previewW - textSize.x) / 2.0f, cursorPos.y - textSize.y - 5), uNameCol, pName.c_str());
+            ImVec2 textSize = ImGui::GetFont()->CalcTextSizeA(g_Menu.name_font_size, FLT_MAX, 0.0f, pName.c_str());
+            ImVec2 namePos = previewLayout.Take(
+                PlayerEspLayout::SideFromMenu(g_Menu.esp_name_pos),
+                textSize,
+                2.0f);
+            draw->AddText(ImGui::GetFont(), g_Menu.name_font_size, namePos, uNameCol, pName.c_str());
         }
 
         if (g_Menu.esp_distance) {
@@ -219,16 +284,24 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
             ImU32 uDistCol = ImColor(ImVec4(targetCol[0], targetCol[1], targetCol[2], targetCol[3]));
             char distBuf[32];
             sprintf_s(distBuf, skCrypt("[145m]"));
-            ImVec2 textSize = ImGui::CalcTextSize(distBuf);
-            draw->AddText(ImVec2(cursorPos.x + (previewW - textSize.x) / 2.0f, cursorPos.y + previewH + 5), uDistCol, distBuf);
+            ImVec2 textSize = ImGui::GetFont()->CalcTextSizeA(g_Menu.distance_font_size, FLT_MAX, 0.0f, distBuf);
+            ImVec2 distPos = previewLayout.Take(
+                PlayerEspLayout::SideFromMenu(g_Menu.esp_distance_pos),
+                textSize,
+                2.0f);
+            draw->AddText(ImGui::GetFont(), g_Menu.distance_font_size, distPos, uDistCol, distBuf);
         }
 
         // 5. Weapon Demo
         float* weaponColPtr = g_Menu.weapon_color;
         ImU32 uWeaponCol = ImColor(ImVec4(weaponColPtr[0], weaponColPtr[1], weaponColPtr[2], weaponColPtr[3]));
         const char* szWeapon = skCrypt("SCAR-L");
-        ImVec2 wpnSize = ImGui::CalcTextSize(szWeapon);
-        draw->AddText(ImVec2(cursorPos.x + (previewW - wpnSize.x) / 2.0f, cursorPos.y + previewH + 20), uWeaponCol, szWeapon);
+        ImVec2 wpnSize = ImGui::GetFont()->CalcTextSizeA(g_Menu.weapon_font_size, FLT_MAX, 0.0f, szWeapon);
+        ImVec2 weaponPos = previewLayout.Take(
+            PlayerEspLayout::SideFromMenu(g_Menu.esp_weapon_pos),
+            wpnSize,
+            2.0f);
+        draw->AddText(ImGui::GetFont(), g_Menu.weapon_font_size, weaponPos, uWeaponCol, szWeapon);
 
         // 3. Skeleton Demo (PIXEL-PERFECT FROM USER COORDINATES)
         if (g_Menu.esp_skeleton) {

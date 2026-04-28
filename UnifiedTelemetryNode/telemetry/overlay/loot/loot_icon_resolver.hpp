@@ -1,6 +1,6 @@
 #pragma once
 
-#include "overlay_menu.hpp"
+#include "../core/overlay_menu.hpp"
 #include <string>
 
 namespace LootIconResolver {

@@ -1,6 +1,6 @@
 #include "loot_cluster_renderer.hpp"
 
-#include "../imgui/imgui.h"
+#include "../../imgui/imgui.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -11,9 +11,6 @@ namespace {
 
 constexpr float kClusterScreenRadius = 42.0f;
 constexpr int kTwoColumnThreshold = 8;
-constexpr float kSingleItemIconSize = 24.0f;
-constexpr float kSingleSpecialIconSize = 34.0f;
-constexpr float kGroupIconSize = 18.0f;
 constexpr float kGroupIconGap = 4.0f;
 constexpr float kColumnGap = 6.0f;
 constexpr float kPanelPadding = 6.0f;
@@ -70,9 +67,9 @@ std::string ShortFallbackName(const std::string& id) {
     return name;
 }
 
-void DrawTextShadow(ImDrawList* draw, const ImVec2& pos, ImU32 color, const char* text) {
-    draw->AddText(ImVec2(pos.x + 1.0f, pos.y + 1.0f), IM_COL32(0, 0, 0, 220), text);
-    draw->AddText(pos, color, text);
+void DrawTextShadow(ImDrawList* draw, const ImVec2& pos, ImU32 color, const char* text, float fontSize) {
+    draw->AddText(ImGui::GetFont(), fontSize, ImVec2(pos.x + 1.0f, pos.y + 1.0f), IM_COL32(0, 0, 0, 220), text);
+    draw->AddText(ImGui::GetFont(), fontSize, pos, color, text);
 }
 
 void DrawScaledIcon(ImDrawList* draw, TextureInfo* icon, const ImVec2& center,
@@ -94,29 +91,31 @@ void DrawScaledIcon(ImDrawList* draw, TextureInfo* icon, const ImVec2& center,
         ImVec2(0, 0), ImVec2(1, 1), tint);
 }
 
-void DrawDistance(ImDrawList* draw, const ImVec2& center, float y, float distance, ImU32 color) {
+void DrawDistance(ImDrawList* draw, const ImVec2& center, float y, float distance, ImU32 color, float fontSize) {
     char distBuf[32] = {};
     sprintf_s(distBuf, "[%dm]", static_cast<int>(distance));
-    const ImVec2 textSize = ImGui::CalcTextSize(distBuf);
-    DrawTextShadow(draw, ImVec2(center.x - textSize.x * 0.5f, y), color, distBuf);
+    const ImVec2 textSize = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, distBuf);
+    DrawTextShadow(draw, ImVec2(center.x - textSize.x * 0.5f, y), color, distBuf, fontSize);
 }
 
-void DrawSingle(ImDrawList* draw, const LootClusterRenderer::Entry& entry) {
+void DrawSingle(ImDrawList* draw, const LootClusterRenderer::Entry& entry,
+                const LootClusterRenderer::Settings& settings) {
     const ImVec2 screen(entry.Screen.x, entry.Screen.y);
-    const float baseSize = entry.Groupable ? kSingleItemIconSize : kSingleSpecialIconSize;
+    const float baseSize = entry.IconSize > 0.0f ? entry.IconSize :
+        (entry.Groupable ? settings.ItemIconSize : settings.SpecialIconSize);
     const float iconSize = baseSize * DistanceScale(entry.Distance);
 
     if (entry.Icon && entry.Icon->SRV) {
         DrawScaledIcon(draw, entry.Icon, ImVec2(screen.x, screen.y - iconSize * 0.5f), iconSize);
-        DrawDistance(draw, screen, screen.y + 2.0f, entry.Distance, entry.Color);
+        DrawDistance(draw, screen, screen.y + 2.0f, entry.Distance, entry.Color, settings.DistanceFontSize);
         return;
     }
 
     const std::string label = ShortFallbackName(entry.Name);
     char itemText[128] = {};
     sprintf_s(itemText, sizeof(itemText), "%s [%dm]", label.c_str(), static_cast<int>(entry.Distance));
-    const ImVec2 textSize = ImGui::CalcTextSize(itemText);
-    DrawTextShadow(draw, ImVec2(screen.x - textSize.x * 0.5f, screen.y), entry.Color, itemText);
+    const ImVec2 textSize = ImGui::GetFont()->CalcTextSizeA(settings.DistanceFontSize, FLT_MAX, 0.0f, itemText);
+    DrawTextShadow(draw, ImVec2(screen.x - textSize.x * 0.5f, screen.y), entry.Color, itemText, settings.DistanceFontSize);
 }
 
 bool IsNearGroup(const LootClusterRenderer::Entry& entry,
@@ -166,20 +165,21 @@ void DrawIconCell(ImDrawList* draw, const LootClusterRenderer::Entry& entry,
     }
 }
 
-void DrawIconGroup(ImDrawList* draw, std::vector<LootClusterRenderer::Entry> group) {
+void DrawIconGroup(ImDrawList* draw, std::vector<LootClusterRenderer::Entry> group,
+                   const LootClusterRenderer::Settings& settings) {
     SortGroup(group);
 
     const int columns = static_cast<int>(group.size()) > kTwoColumnThreshold ? 2 : 1;
     const int rowsPerColumn = (static_cast<int>(group.size()) + columns - 1) / columns;
     const float distance = GroupDistance(group);
-    const float iconSize = kGroupIconSize * DistanceScale(distance);
+    const float iconSize = settings.GroupIconSize * DistanceScale(distance);
     const float cellSize = iconSize + kGroupIconGap;
 
     char distBuf[32] = {};
     sprintf_s(distBuf, "[%dm]", static_cast<int>(distance));
-    const ImVec2 distSize = ImGui::CalcTextSize(distBuf);
+    const ImVec2 distSize = ImGui::GetFont()->CalcTextSizeA(settings.DistanceFontSize, FLT_MAX, 0.0f, distBuf);
     const float iconAreaWidth = (columns * cellSize) + ((columns - 1) * kColumnGap);
-    const float panelWidth = (std::max)(iconAreaWidth, distSize.x) + (kPanelPadding * 2.0f);
+    const float panelWidth = iconAreaWidth + (kPanelPadding * 2.0f);
     const float panelHeight = (rowsPerColumn * cellSize) + distSize.y + kDistanceGap + (kPanelPadding * 2.0f);
     const Vector2 center = GroupCenter(group);
 
@@ -216,14 +216,14 @@ void DrawIconGroup(ImDrawList* draw, std::vector<LootClusterRenderer::Entry> gro
     }
 
     DrawDistance(draw, ImVec2(panelMin.x + panelWidth * 0.5f, 0.0f),
-        panelMax.y - kPanelPadding - distSize.y, distance, IM_COL32(220, 232, 245, 230));
+        panelMax.y - kPanelPadding - distSize.y, distance, IM_COL32(220, 232, 245, 230), settings.DistanceFontSize);
 }
 
 } // namespace
 
 namespace LootClusterRenderer {
 
-void Draw(ImDrawList* draw, const std::vector<Entry>& entries) {
+void Draw(ImDrawList* draw, const std::vector<Entry>& entries, const Settings& settings) {
     std::vector<bool> used(entries.size(), false);
 
     for (size_t i = 0; i < entries.size(); ++i) {
@@ -231,7 +231,7 @@ void Draw(ImDrawList* draw, const std::vector<Entry>& entries) {
         used[i] = true;
 
         if (!entries[i].Groupable) {
-            DrawSingle(draw, entries[i]);
+            DrawSingle(draw, entries[i], settings);
             continue;
         }
 
@@ -252,9 +252,9 @@ void Draw(ImDrawList* draw, const std::vector<Entry>& entries) {
         }
 
         if (group.size() <= 1) {
-            DrawSingle(draw, group.front());
+            DrawSingle(draw, group.front(), settings);
         } else {
-            DrawIconGroup(draw, std::move(group));
+            DrawIconGroup(draw, std::move(group), settings);
         }
     }
 }

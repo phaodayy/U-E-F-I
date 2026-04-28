@@ -1,5 +1,5 @@
-#include "../overlay_menu.hpp"
-#include "../translation.hpp"
+#include "../core/overlay_menu.hpp"
+#include "../translation/translation.hpp"
 #include "../../protec/skCrypt.h"
 
 void OverlayMenu::RenderTabMacro(ImVec2 windowSize) {

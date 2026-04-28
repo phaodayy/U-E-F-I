@@ -64,8 +64,8 @@ typedef struct _telemetry_SYSTEM_PROCESS_INFORMATION {
 #include "sdk/context.hpp"
 #include "sdk/telemetry_decrypt.hpp"
 #include "sdk/utils/MacroEngine.h"
-#include "overlay/overlay_menu.hpp"
-#include "overlay/discord_overlay.h"
+#include "overlay/core/overlay_menu.hpp"
+#include "overlay/core/discord_overlay.h"
 #include "sdk/netease_comm.hpp"
 #include "sdk/EptMouseSetup.hpp"
 

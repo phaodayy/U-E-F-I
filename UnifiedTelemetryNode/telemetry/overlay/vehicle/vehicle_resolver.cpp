@@ -1,4 +1,5 @@
 #include "vehicle_resolver.hpp"
+#include "../entities/entity_aliases.hpp"
 
 namespace {
 
@@ -25,6 +26,11 @@ namespace VehicleResolver {
 
 VehicleInfo Resolve(const std::string& className) {
     const std::string name = StripPng(className);
+    std::string aliasIcon;
+    Category aliasCategory = Category::Unknown;
+    if (EntityAliases::ResolveVehicle(name, aliasIcon, aliasCategory)) {
+        return { aliasIcon, aliasCategory, true };
+    }
 
     if (Contains(name, "AquaRail")) return Make("AquaRail_A_00_C", Category::Boat);
     if (Contains(name, "Rubber_boat") || Contains(name, "Rubberboat")) return Make("Item_Rubberboat_C", Category::Boat);
@@ -58,6 +64,14 @@ VehicleInfo Resolve(const std::string& className) {
     if (Contains(name, "PicoBus")) return Make("BP_PicoBus_C", Category::Bus);
     if (Contains(name, "MiniBus")) return Make("BP_MiniBus_C", Category::Bus);
     if (Contains(name, "Van")) return Make("BP_Van_A_00_C", Category::Bus);
+
+    if (Contains(name, "P vehicle Damaged Bp") || Contains(name, "P_vehicle_Damaged_Bp") ||
+        Contains(name, "P_Vehicle_Damaged_Bp") || Contains(name, "P_Vehicle_Damaged_BP") ||
+        Contains(name, "PVehicleDamagedBP") || Contains(name, "P vehicle Truck") ||
+        Contains(name, "P_vehicle_Truck") || Contains(name, "P_Vehicle_Truck") ||
+        Contains(name, "PVehicleTruck")) {
+        return Make("BP_Blanc_C", Category::Blanc);
+    }
 
     if (Contains(name, "Porter")) return Make("BP_PickupTruck_B_00_C", Category::Pickup);
     if (Contains(name, "Pillar_Car")) return Make("BP_PickupTruck_A_00_C", Category::Pickup);

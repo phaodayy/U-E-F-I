@@ -5,8 +5,8 @@
 #include <cstdlib>
 #include <cstdint>
 #include <windows.h>
-#include "../sdk/hyper_process.hpp"
-#include "../../protec/skCrypt.h"
+#include "../../sdk/hyper_process.hpp"
+#include "../../../protec/skCrypt.h"
 
 // Legacy filename kept for project compatibility. This adapter only consumes
 // bridge hosts that are explicitly registered by a trusted local bridge.

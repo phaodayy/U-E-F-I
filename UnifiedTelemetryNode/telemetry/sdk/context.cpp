@@ -4,7 +4,7 @@
 #include "scanner.hpp"
 #include "fname.hpp"
 #include "Common/Data.h"
-#include "../overlay/overlay_menu.hpp"
+#include "../overlay/core/overlay_menu.hpp"
 #include <iostream>
 #include <algorithm>
 #include <set>

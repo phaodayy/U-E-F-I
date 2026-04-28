@@ -14,6 +14,27 @@
     <Filter Include="Overlay\Tabs">
       <UniqueIdentifier>{C1D2E3F4-A5B6-9012-ABCD-EF1234567890}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Overlay\Core">
+      <UniqueIdentifier>{A1B2C3D4-E5F6-7890-ABCD-000000000001}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Overlay\Entities">
+      <UniqueIdentifier>{A1B2C3D4-E5F6-7890-ABCD-000000000002}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Overlay\Loot">
+      <UniqueIdentifier>{A1B2C3D4-E5F6-7890-ABCD-000000000003}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Overlay\Player">
+      <UniqueIdentifier>{A1B2C3D4-E5F6-7890-ABCD-000000000004}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Overlay\Radar">
+      <UniqueIdentifier>{A1B2C3D4-E5F6-7890-ABCD-000000000005}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Overlay\Translation">
+      <UniqueIdentifier>{A1B2C3D4-E5F6-7890-ABCD-000000000006}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Overlay\Vehicle">
+      <UniqueIdentifier>{A1B2C3D4-E5F6-7890-ABCD-000000000007}</UniqueIdentifier>
+    </Filter>
     <Filter Include="ImGui">
       <UniqueIdentifier>{B2C3D4E5-F6A7-8901-BCDE-F12345678901}</UniqueIdentifier>
     </Filter>
@@ -28,8 +49,8 @@
     <ClCompile Include="sdk\fname_utils.cpp">
       <Filter>SDK</Filter>
     </ClCompile>
-    <ClCompile Include="overlay\overlay_menu.cpp">
-      <Filter>Overlay</Filter>
+    <ClCompile Include="overlay\core\overlay_menu.cpp">
+      <Filter>Overlay\Core</Filter>
     </ClCompile>
     <ClCompile Include="overlay\tabs\tab_visuals.cpp">
       <Filter>Overlay\Tabs</Filter>
@@ -52,17 +73,68 @@
     <ClCompile Include="overlay\tabs\tab_admin.cpp">
       <Filter>Overlay\Tabs</Filter>
     </ClCompile>
-    <ClCompile Include="overlay\loot_icon_resolver.cpp">
-      <Filter>Overlay</Filter>
+    <ClCompile Include="overlay\loot\loot_icon_resolver.cpp">
+      <Filter>Overlay\Loot</Filter>
     </ClCompile>
-    <ClCompile Include="overlay\loot_cluster_renderer.cpp">
-      <Filter>Overlay</Filter>
+    <ClCompile Include="overlay\entities\entity_aliases.cpp">
+      <Filter>Overlay\Entities</Filter>
     </ClCompile>
-    <ClCompile Include="overlay\loot_source_merge.cpp">
-      <Filter>Overlay</Filter>
+    <ClCompile Include="overlay\loot\loot_debug_renderer.cpp">
+      <Filter>Overlay\Loot</Filter>
     </ClCompile>
-    <ClCompile Include="overlay\vehicle_resolver.cpp">
-      <Filter>Overlay</Filter>
+    <ClCompile Include="overlay\loot\loot_esp_renderer.cpp">
+      <Filter>Overlay\Loot</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\loot\loot_cluster_renderer.cpp">
+      <Filter>Overlay\Loot</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\loot\loot_source_merge.cpp">
+      <Filter>Overlay\Loot</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\core\overlay_config_load.cpp">
+      <Filter>Overlay\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\core\overlay_config_save.cpp">
+      <Filter>Overlay\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\core\overlay_config_sections.cpp">
+      <Filter>Overlay\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\core\overlay_frame_widgets.cpp">
+      <Filter>Overlay\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\core\overlay_hotkeys.cpp">
+      <Filter>Overlay\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\core\overlay_main_menu.cpp">
+      <Filter>Overlay\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\core\overlay_presets.cpp">
+      <Filter>Overlay\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\core\overlay_texture_cache.cpp">
+      <Filter>Overlay\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\core\overlay_style.cpp">
+      <Filter>Overlay\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\core\overlay_ui_helpers.cpp">
+      <Filter>Overlay\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\player\player_aim_controller.cpp">
+      <Filter>Overlay\Player</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\player\player_esp_renderer.cpp">
+      <Filter>Overlay\Player</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\player\player_esp_layout.cpp">
+      <Filter>Overlay\Player</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\radar\radar_overlay_renderer.cpp">
+      <Filter>Overlay\Radar</Filter>
+    </ClCompile>
+    <ClCompile Include="overlay\vehicle\vehicle_resolver.cpp">
+      <Filter>Overlay\Vehicle</Filter>
     </ClCompile>
     <ClCompile Include="imgui\imgui.cpp">
       <Filter>ImGui</Filter>
@@ -108,23 +180,59 @@
     <ClInclude Include="sdk\process_single_instance.hpp">
       <Filter>SDK</Filter>
     </ClInclude>
-    <ClInclude Include="overlay\overlay_menu.hpp">
-      <Filter>Overlay</Filter>
+    <ClInclude Include="overlay\core\overlay_menu.hpp">
+      <Filter>Overlay\Core</Filter>
     </ClInclude>
-    <ClInclude Include="overlay\discord_overlay.h">
-      <Filter>Overlay</Filter>
+    <ClInclude Include="overlay\core\discord_overlay.h">
+      <Filter>Overlay\Core</Filter>
     </ClInclude>
-    <ClInclude Include="overlay\loot_icon_resolver.hpp">
-      <Filter>Overlay</Filter>
+    <ClInclude Include="overlay\loot\loot_icon_resolver.hpp">
+      <Filter>Overlay\Loot</Filter>
     </ClInclude>
-    <ClInclude Include="overlay\loot_cluster_renderer.hpp">
-      <Filter>Overlay</Filter>
+    <ClInclude Include="overlay\entities\entity_aliases.hpp">
+      <Filter>Overlay\Entities</Filter>
     </ClInclude>
-    <ClInclude Include="overlay\loot_source_merge.hpp">
-      <Filter>Overlay</Filter>
+    <ClInclude Include="overlay\loot\loot_debug_renderer.hpp">
+      <Filter>Overlay\Loot</Filter>
     </ClInclude>
-    <ClInclude Include="overlay\vehicle_resolver.hpp">
-      <Filter>Overlay</Filter>
+    <ClInclude Include="overlay\loot\loot_cluster_renderer.hpp">
+      <Filter>Overlay\Loot</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\loot\loot_source_merge.hpp">
+      <Filter>Overlay\Loot</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\core\overlay_config_sections.hpp">
+      <Filter>Overlay\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\core\overlay_hotkeys.hpp">
+      <Filter>Overlay\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\core\overlay_presets.hpp">
+      <Filter>Overlay\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\core\overlay_texture_cache.hpp">
+      <Filter>Overlay\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\player\player_esp_layout.hpp">
+      <Filter>Overlay\Player</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\radar\radar_overlay_renderer.hpp">
+      <Filter>Overlay\Radar</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\translation\translation_attachments.hpp">
+      <Filter>Overlay\Translation</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\translation\translation_get_en.hpp">
+      <Filter>Overlay\Translation</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\translation\translation_get_vn.hpp">
+      <Filter>Overlay\Translation</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\translation\translation_strings.hpp">
+      <Filter>Overlay\Translation</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\vehicle\vehicle_resolver.hpp">
+      <Filter>Overlay\Vehicle</Filter>
     </ClInclude>
     <ClInclude Include="imgui\imgui.h">
       <Filter>ImGui</Filter>

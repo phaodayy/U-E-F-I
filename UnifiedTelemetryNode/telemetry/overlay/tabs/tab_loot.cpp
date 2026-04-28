@@ -1,5 +1,6 @@
-#include "../overlay_menu.hpp"
-#include "../translation.hpp"
+#include "../core/overlay_menu.hpp"
+#include "../core/overlay_hotkeys.hpp"
+#include "../translation/translation.hpp"
 #include "../../protec/skCrypt.h"
 #include <string>
 
@@ -106,10 +107,15 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
     ImGui::SetColumnWidth(3, totalWidth / 5.0f);
     ImGui::SetColumnWidth(4, totalWidth / 5.0f);
 
-    // Col 1: Há»‡ Thá»‘ng & Gear
+    // Column 1: engine and gear
     BeginGlassCard(skCrypt("##ItemCol1"), Lang.HeaderLootEngine, ImVec2(totalWidth / 5.0f - 12, 0));
     ImGui::Checkbox(Lang.TabLoot, &g_Menu.esp_items);
+    OverlayHotkeys::DrawKeyBind(skCrypt("Items Toggle Key"), &g_Menu.esp_items_toggle_key, g_Menu.waiting_for_key);
+    ImGui::Checkbox(skCrypt("Loot Resolver Debug"), &g_Menu.debug_loot_resolver);
     ImGui::SliderInt(Lang.RenderDist, &g_Menu.loot_max_dist, 10, 300, skCrypt("%d m"));
+    ImGui::SliderFloat(skCrypt("Item Icon Size"), &g_Menu.item_icon_size, 12.0f, 48.0f, skCrypt("%.0f px"));
+    ImGui::SliderFloat(skCrypt("Group Icon Size"), &g_Menu.item_group_icon_size, 10.0f, 38.0f, skCrypt("%.0f px"));
+    ImGui::SliderFloat(skCrypt("Loot Text Size"), &g_Menu.loot_distance_font_size, 8.0f, 20.0f, skCrypt("%.1f px"));
     ImGui::Separator();
     ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), Lang.HeaderGearFilter);
     VisualLootTile gearTiles[] = {
@@ -332,7 +338,9 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
 
     // Main Vehicle Toggle
     ImGui::Checkbox(Lang.ShowVehicles, &g_Menu.esp_vehicles);
+    OverlayHotkeys::DrawKeyBind(skCrypt("Vehicle Toggle Key"), &g_Menu.esp_vehicles_toggle_key, g_Menu.waiting_for_key);
     ImGui::SliderInt(skCrypt("##VehDist"), &g_Menu.vehicle_max_dist, 50, 1000, skCrypt("%d m"));
+    ImGui::SliderFloat(skCrypt("Vehicle Icon Size"), &g_Menu.vehicle_icon_size, 16.0f, 80.0f, skCrypt("%.0f px"));
     ImGui::Separator();
 
     // Specific Vehicle Sub-filters using the grid system for visual consistency

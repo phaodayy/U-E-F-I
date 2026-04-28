@@ -1,6 +1,6 @@
 #pragma once
-#include "../imgui/imgui.h"
-#include "../sdk/context.hpp"
+#include "../../imgui/imgui.h"
+#include "../../sdk/context.hpp"
 #include <d3d11.h>
 #include <dwmapi.h>
 #include <windows.h>
@@ -11,7 +11,7 @@
 #pragma comment(lib, "d3d11.lib")
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-#include "../sdk/Common/Constant.h"
+#include "../../sdk/Common/Constant.h"
 
 struct VisualizationBridgeHost {
     HWND hwnd = nullptr;
@@ -62,6 +62,14 @@ public:
   bool esp_skeleton = true;
   bool esp_health = true;
   int esp_health_pos = 0;
+  int esp_distance_pos = 3;
+  int esp_name_pos = 2;
+  int esp_rank_pos = 2;
+  int esp_weapon_pos = 2;
+  int esp_spectated_pos = 2;
+  int esp_teamid_pos = 0;
+  int esp_killcount_pos = 2;
+  int esp_survival_level_pos = 2;
   int esp_health_color_mode = 0;
   bool esp_distance = true;
   bool esp_name = true;
@@ -83,6 +91,8 @@ public:
   float offscreen_near_color[4] = {1.0f, 0.0f, 0.0f, 1.0f};
   float offscreen_far_color[4] = {0.0f, 1.0f, 0.4f, 1.00f};
   bool debug_actor_esp = false;
+  bool debug_loot_resolver = false;
+  int active_preset = 0;
   
   bool esp_show_enemies = true;
   bool esp_show_teammates = false;
@@ -119,6 +129,11 @@ public:
   float name_color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
   float distance_color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
   float weapon_color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+  float rank_color[4] = {0.78f, 0.78f, 0.78f, 1.0f};
+  float teamid_color[4] = {0.0f, 0.78f, 1.0f, 1.0f};
+  float kill_color[4] = {1.0f, 0.78f, 0.18f, 1.0f};
+  float survival_level_color[4] = {0.35f, 0.9f, 1.0f, 1.0f};
+  float spectated_color[4] = {1.0f, 0.67f, 0.0f, 1.0f};
   float health_color[4] = {0.0f, 1.0f, 0.5f, 1.0f};
   float box_fill_color[4] = {0.0f, 0.0f, 0.0f, 0.25f};
   float snapline_color[4] = {1.0f, 1.0f, 0.0f, 1.0f};
@@ -141,17 +156,32 @@ public:
   float skel_thickness = 1.0f;
   float box_thickness = 1.0f;
   float esp_font_size = 14.0f;
+  float name_font_size = 14.0f;
+  float distance_font_size = 12.6f;
+  float weapon_font_size = 14.7f;
+  float rank_font_size = 11.9f;
+  float teamid_badge_size = 18.0f;
+  float kill_font_size = 12.0f;
+  float survival_level_font_size = 12.0f;
+  float spectated_font_size = 15.0f;
+  float weapon_icon_size = 58.0f;
   bool esp_skeleton_dots = true;
   bool esp_spectator_list = true;
   
   bool esp_items = true;
   bool esp_vehicles = true;
+  int esp_items_toggle_key = 0;
+  int esp_vehicles_toggle_key = 0;
   bool esp_airdrops = true;
   bool esp_deadboxes = true;
   bool loot_weapon_special = true;
   bool loot_weapon_all = false;
   int loot_max_dist = 150;
   int vehicle_max_dist = 1000;
+  float item_icon_size = 24.0f;
+  float item_group_icon_size = 18.0f;
+  float vehicle_icon_size = 34.0f;
+  float loot_distance_font_size = 12.0f;
 
   bool loot_armor_lv1 = false;
   bool loot_armor_lv2 = true;
@@ -339,6 +369,22 @@ public:
   void Shutdown();
   void SaveConfig(const char *path);
   void LoadConfig(const char *path);
+  void RenderLootEsp(ImDrawList* draw);
+  void RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player, const Vector3& delta,
+                             const Vector2& local_feet_s, bool hasLocalS,
+                             float ScreenCenterX, float ScreenHeight);
+  void RenderMainMenuWindow(ImDrawList* draw, float ScreenWidth, float ScreenHeight);
+  void RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>& localPlayers,
+                           const Vector2& local_feet_s, bool hasLocalS,
+                           float ScreenCenterX, float ScreenCenterY,
+                           float ScreenHeight, bool is_authenticated);
+  void DrawLicenseWatermark(ImDrawList* draw);
+  void DrawGlobalSpectatorWarning(ImDrawList* draw, float ScreenWidth);
+  void RenderAdminDebugEsp(ImDrawList* draw);
+  void RenderMacroOsd(ImDrawList* draw, float ScreenWidth, float ScreenHeight);
+  void RenderSpectatorThreatList(ImDrawList* draw, const std::vector<PlayerData>& localPlayers,
+                                 float ScreenWidth);
+  void DrawAntiScreenshotWarning(ImDrawList* draw, float ScreenHeight);
 
   void BeginGlassCard(const char* id, const char* title, ImVec2 size = ImVec2(0,0));
   void DrawDisplayOnlyOption(const char* label);

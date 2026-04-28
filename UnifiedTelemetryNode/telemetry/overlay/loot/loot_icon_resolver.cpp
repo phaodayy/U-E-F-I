@@ -1,4 +1,5 @@
 #include "loot_icon_resolver.hpp"
+#include "../entities/entity_aliases.hpp"
 
 #include <map>
 #include <string>
@@ -58,7 +59,7 @@ TextureInfo* GetItemIcon(const std::string& itemName) {
 
     if (itemName.empty()) return &missingIcon;
 
-    const std::string asset = StripPngExtension(itemName);
+    const std::string asset = EntityAliases::ResolveItemAsset(StripPngExtension(itemName));
     auto cached = resolvedIcons.find(asset);
     if (cached != resolvedIcons.end()) {
         return cached->second ? cached->second : &missingIcon;

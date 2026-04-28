@@ -1,0 +1,32 @@
+{
+  "vehicles": [
+    {
+      "canonical": "BP_Blanc_C",
+      "category": "Blanc",
+      "aliases": [
+        "BP_Blanc_C",
+        "BP_Blanc_C.png"
+      ],
+      "contains": [
+        "BP_Blanc",
+        "P vehicle Damaged Bp",
+        "P_vehicle_Damaged_Bp",
+        "P_Vehicle_Damaged_BP",
+        "PVehicleDamagedBP",
+        "P vehicle Truck",
+        "P_vehicle_Truck",
+        "P_Vehicle_Truck",
+        "PVehicleTruck"
+      ]
+    }
+  ],
+  "items": [
+    {
+      "canonical": "Item_Weapon_AK47_C",
+      "aliases": [
+        "Item_Weapon_AK47_C",
+        "Item_Weapon_AK47_C.png"
+      ]
+    }
+  ]
+}

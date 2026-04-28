@@ -62,6 +62,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)telemetry;$(SolutionDir)telemetry\sdk;$(SolutionDir)..\;$(ProjectDir)..\..\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -110,11 +111,28 @@
     <ClCompile Include="sdk\process_single_instance.cpp" />
     <ClCompile Include="sdk\context.cpp" />
     <ClCompile Include="sdk\fname_utils.cpp" />
-    <ClCompile Include="overlay\loot_icon_resolver.cpp" />
-    <ClCompile Include="overlay\loot_cluster_renderer.cpp" />
-    <ClCompile Include="overlay\loot_source_merge.cpp" />
-    <ClCompile Include="overlay\vehicle_resolver.cpp" />
-    <ClCompile Include="overlay\overlay_menu.cpp" />
+    <ClCompile Include="overlay\entities\entity_aliases.cpp" />
+    <ClCompile Include="overlay\loot\loot_debug_renderer.cpp" />
+    <ClCompile Include="overlay\loot\loot_esp_renderer.cpp" />
+    <ClCompile Include="overlay\loot\loot_icon_resolver.cpp" />
+    <ClCompile Include="overlay\loot\loot_cluster_renderer.cpp" />
+    <ClCompile Include="overlay\loot\loot_source_merge.cpp" />
+    <ClCompile Include="overlay\core\overlay_config_load.cpp" />
+    <ClCompile Include="overlay\core\overlay_config_save.cpp" />
+    <ClCompile Include="overlay\core\overlay_config_sections.cpp" />
+    <ClCompile Include="overlay\core\overlay_frame_widgets.cpp" />
+    <ClCompile Include="overlay\core\overlay_hotkeys.cpp" />
+    <ClCompile Include="overlay\core\overlay_main_menu.cpp" />
+    <ClCompile Include="overlay\core\overlay_presets.cpp" />
+    <ClCompile Include="overlay\core\overlay_texture_cache.cpp" />
+    <ClCompile Include="overlay\core\overlay_style.cpp" />
+    <ClCompile Include="overlay\core\overlay_ui_helpers.cpp" />
+    <ClCompile Include="overlay\player\player_aim_controller.cpp" />
+    <ClCompile Include="overlay\player\player_esp_renderer.cpp" />
+    <ClCompile Include="overlay\player\player_esp_layout.cpp" />
+    <ClCompile Include="overlay\radar\radar_overlay_renderer.cpp" />
+    <ClCompile Include="overlay\vehicle\vehicle_resolver.cpp" />
+    <ClCompile Include="overlay\core\overlay_menu.cpp" />
     <ClCompile Include="overlay\tabs\tab_visuals.cpp" />
     <ClCompile Include="overlay\tabs\tab_precision.cpp" />
     <ClCompile Include="overlay\tabs\tab_macro.cpp" />
@@ -147,12 +165,24 @@
     <ClInclude Include="sdk\scanner.hpp" />
     <ClInclude Include="sdk\fname.hpp" />
     <ClInclude Include="sdk\gobjects.hpp" />
-    <ClInclude Include="overlay\discord_overlay.h" />
-    <ClInclude Include="overlay\loot_icon_resolver.hpp" />
-    <ClInclude Include="overlay\loot_cluster_renderer.hpp" />
-    <ClInclude Include="overlay\loot_source_merge.hpp" />
-    <ClInclude Include="overlay\vehicle_resolver.hpp" />
-    <ClInclude Include="overlay\overlay_menu.hpp" />
+    <ClInclude Include="overlay\core\discord_overlay.h" />
+    <ClInclude Include="overlay\entities\entity_aliases.hpp" />
+    <ClInclude Include="overlay\loot\loot_debug_renderer.hpp" />
+    <ClInclude Include="overlay\loot\loot_icon_resolver.hpp" />
+    <ClInclude Include="overlay\loot\loot_cluster_renderer.hpp" />
+    <ClInclude Include="overlay\loot\loot_source_merge.hpp" />
+    <ClInclude Include="overlay\core\overlay_config_sections.hpp" />
+    <ClInclude Include="overlay\core\overlay_hotkeys.hpp" />
+    <ClInclude Include="overlay\core\overlay_presets.hpp" />
+    <ClInclude Include="overlay\core\overlay_texture_cache.hpp" />
+    <ClInclude Include="overlay\player\player_esp_layout.hpp" />
+    <ClInclude Include="overlay\radar\radar_overlay_renderer.hpp" />
+    <ClInclude Include="overlay\translation\translation_attachments.hpp" />
+    <ClInclude Include="overlay\translation\translation_get_en.hpp" />
+    <ClInclude Include="overlay\translation\translation_get_vn.hpp" />
+    <ClInclude Include="overlay\translation\translation_strings.hpp" />
+    <ClInclude Include="overlay\vehicle\vehicle_resolver.hpp" />
+    <ClInclude Include="overlay\core\overlay_menu.hpp" />
     <ClInclude Include="imgui\imgui.h" />
     <ClInclude Include="imgui\imgui_impl_dx11.h" />
     <ClInclude Include="imgui\imgui_impl_win32.h" />

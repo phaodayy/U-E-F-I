@@ -1,6 +1,6 @@
 #include "loot_source_merge.hpp"
 
-#include "../sdk/Common/Data.h"
+#include "../../sdk/Common/Data.h"
 #include <mutex>
 
 namespace {
