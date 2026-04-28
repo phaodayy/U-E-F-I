@@ -104,41 +104,39 @@ void DrawNameplateChip(ImDrawList* draw, const ImVec2& pos, const char* text, fl
     DrawOutlinedText(draw, ImVec2(pos.x + 8.0f, pos.y + 2.0f), textColor, text, fontSize, alphaMult);
 }
 
-ImVec2 AmmoBadgeSize(float fontSize) {
-    return ImVec2(58.0f + fontSize * 1.4f, fontSize + 10.0f);
+ImVec2 AmmoBadgeSize(int ammo, int ammoMax, float fontSize) {
+    char ammoText[32] = {};
+    if (ammoMax > 0) sprintf_s(ammoText, sizeof(ammoText), skCrypt("%d/%d"), ammo, ammoMax);
+    else sprintf_s(ammoText, sizeof(ammoText), skCrypt("%d"), ammo);
+    const ImVec2 textSz = TextSize(ammoText, fontSize);
+    return ImVec2((std::max)(48.0f, textSz.x + 18.0f), textSz.y + 8.0f);
 }
 
 void DrawAmmoBadge(ImDrawList* draw, const ImVec2& pos, int ammo, int ammoMax, float fontSize,
                    ImU32 color, float alphaMult, bool warning) {
-    const ImVec2 size = AmmoBadgeSize(fontSize);
+    const ImVec2 size = AmmoBadgeSize(ammo, ammoMax, fontSize);
     const ImVec2 badgeMin(pos.x, pos.y);
     const ImVec2 badgeMax(pos.x + size.x, pos.y + size.y);
     const float pulse = warning ? (0.55f + 0.45f * std::sin(GetTickCount64() * 0.018f)) : 0.0f;
-    const ImU32 bg = warning ?
-        IM_COL32(46, 18, 8, AlphaByte((0.34f + 0.18f * pulse) * alphaMult)) :
-        IM_COL32(5, 9, 13, AlphaByte(0.30f * alphaMult));
+    const ImU32 bg = warning ? IM_COL32(50, 12, 8, AlphaByte((0.56f + 0.16f * pulse) * alphaMult)) :
+        IM_COL32(5, 8, 12, AlphaByte(0.64f * alphaMult));
 
     draw->AddRectFilled(ImVec2(badgeMin.x + 1.0f, badgeMin.y + 1.0f), ImVec2(badgeMax.x + 1.0f, badgeMax.y + 1.0f),
-        IM_COL32(0, 0, 0, AlphaByte(0.18f * alphaMult)), 5.0f);
-    draw->AddRectFilled(badgeMin, badgeMax, bg, 5.0f);
-    draw->AddRect(badgeMin, badgeMax, WithAlpha(color, warning ? 0.70f : 0.36f), 5.0f, 0, 1.0f);
+        IM_COL32(0, 0, 0, AlphaByte(0.22f * alphaMult)), 4.0f);
+    draw->AddRectFilled(badgeMin, badgeMax, bg, 4.0f);
+    draw->AddRect(badgeMin, badgeMax, WithAlpha(color, warning ? 0.78f : 0.34f), 4.0f, 0, 1.0f);
 
-    const int segments = 6;
     const float percent = ammoMax > 0 ? std::clamp(static_cast<float>(ammo) / static_cast<float>(ammoMax), 0.0f, 1.0f) : 1.0f;
-    const int filled = std::clamp(static_cast<int>(std::ceil(percent * segments)), 0, segments);
-    const float segW = 5.0f;
-    const float segH = size.y - 10.0f;
-    for (int i = 0; i < segments; ++i) {
-        const float x = badgeMin.x + 7.0f + i * (segW + 2.0f);
-        const ImU32 segCol = i < filled ? WithAlpha(color, 0.86f * alphaMult) : IM_COL32(255, 255, 255, AlphaByte(0.10f * alphaMult));
-        draw->AddRectFilled(ImVec2(x, badgeMin.y + 5.0f), ImVec2(x + segW, badgeMin.y + 5.0f + segH), segCol, 1.5f);
-    }
+    const float fillW = (size.x - 8.0f) * percent;
+    draw->AddRectFilled(ImVec2(badgeMin.x + 4.0f, badgeMax.y - 4.0f),
+        ImVec2(badgeMin.x + 4.0f + fillW, badgeMax.y - 2.0f),
+        WithAlpha(color, warning ? 1.0f : 0.92f), 2.0f);
 
     char ammoText[32] = {};
     if (ammoMax > 0) sprintf_s(ammoText, sizeof(ammoText), skCrypt("%d/%d"), ammo, ammoMax);
     else sprintf_s(ammoText, sizeof(ammoText), skCrypt("%d"), ammo);
     const ImVec2 textSz = TextSize(ammoText, fontSize);
-    DrawOutlinedText(draw, ImVec2(badgeMax.x - textSz.x - 7.0f, badgeMin.y + (size.y - textSz.y) * 0.5f),
+    DrawOutlinedText(draw, ImVec2(badgeMin.x + (size.x - textSz.x) * 0.5f, badgeMin.y + 3.0f),
         color, ammoText, fontSize, alphaMult);
 }
 
@@ -325,26 +323,13 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
 
                     PlayerEspLayout::Stack espLayout(finalBoxLeft, finalBoxTop, finalBoxRight, finalBoxBottom);
 
-                    // --- PREMIUM HEALTH BAR (DYNAMIC SCALING) ---
+                    // --- HEALTH DISPLAY ---
                     if (g_Menu.esp_health && player.Distance < g_Menu.hp_max_dist) {
                         float displayHealth = player.IsGroggy ? player.GroggyHealth : player.Health;
                         float healthPercent = displayHealth / 100.0f;
                         healthPercent = std::clamp(healthPercent, 0.0f, 1.0f);
 
-                        // Linear Scaling based on Box Height (PERFECT SCALING)
                         float boxH = finalBoxBottom - finalBoxTop;
-                        float boxW = finalBoxRight - finalBoxLeft;
-                        float barThickness = (std::max)(1.0f, boxH * 0.045f); // 4.5% of height, min 1px
-                        float barOffset = (std::max)(2.0f, boxH * 0.075f);    // 7.5% of height, min 2px
-
-                        // Disable heavy effects for tiny boxes to avoid "blob" look
-                        bool isTiny = (boxH < 35.0f);
-
-                        const auto healthSlot = espLayout.TakeBar(
-                            PlayerEspLayout::SideFromMenu(g_Menu.esp_health_pos),
-                            barThickness,
-                            barOffset);
-
                         ImU32 hpColor = IM_COL32(68, 230, 132, 255);
                         if (g_Menu.esp_health_color_mode == 1) {
                             hpColor = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.health_color);
@@ -354,63 +339,8 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                             hpColor = IM_COL32(245, 189, 71, 255);
                         }
                         hpColor = ApplyAlpha(hpColor, alphaMult);
-                        ImU32 bgCol = IM_COL32(4, 6, 8, (int)(145 * alphaMult));
 
-                        auto DrawHealthSegmented = [&](ImVec2 pMin, ImVec2 pMax, bool vertical) {
-                            if (!isTiny) {
-                                draw->AddRect(ImVec2(pMin.x - 1, pMin.y - 1), ImVec2(pMax.x + 1, pMax.y + 1), IM_COL32(0, 0, 0, (int)(170 * alphaMult)), 2.0f);
-                            }
-
-                            // 2. Glass Background
-                            draw->AddRectFilled(pMin, pMax, bgCol, 1.0f);
-
-                            if (vertical) {
-                                float h = pMax.y - pMin.y;
-                                float barH = h * healthPercent;
-                                ImVec2 hpMax = pMax;
-                                ImVec2 hpMin = ImVec2(pMin.x, pMax.y - barH);
-
-                                // 3. Vibrant Health Fill
-                                draw->AddRectFilled(hpMin, hpMax, hpColor, 1.0f);
-
-                                if (!isTiny) {
-                                    float glintW = (pMax.x - pMin.x) * 0.45f;
-                                    draw->AddRectFilled(hpMin, ImVec2(hpMin.x + glintW, hpMax.y), IM_COL32(255, 255, 255, (int)(34 * alphaMult)), 1.0f);
-
-                                    // 5. Segments
-                                    if (boxH > 45.0f) {
-                                        for (int i = 1; i <= 3; i++) {
-                                            float lineY = pMax.y - (h * (i * 0.25f));
-                                            draw->AddLine(ImVec2(pMin.x, lineY), ImVec2(pMax.x, lineY), IM_COL32(0, 0, 0, 80));
-                                        }
-                                    }
-                                }
-                            } else {
-                                float w_bar = pMax.x - pMin.x;
-                                float barW = w_bar * healthPercent;
-                                ImVec2 hpMin = pMin;
-                                ImVec2 hpMax = ImVec2(pMin.x + barW, pMax.y);
-
-                                // 3. Vibrant Health Fill
-                                draw->AddRectFilled(hpMin, hpMax, hpColor, 1.0f);
-
-                                if (!isTiny) {
-                                    float glintH = (pMax.y - pMin.y) * 0.45f;
-                                    draw->AddRectFilled(hpMin, ImVec2(hpMax.x, hpMin.y + glintH), IM_COL32(255, 255, 255, (int)(34 * alphaMult)), 1.0f);
-
-                                    if (boxH > 45.0f) {
-                                        for (int i = 1; i <= 3; i++) {
-                                            float lineX = pMin.x + (w_bar * (i * 0.25f));
-                                            draw->AddLine(ImVec2(lineX, pMin.y), ImVec2(lineX, pMax.y), IM_COL32(0, 0, 0, 80));
-                                        }
-                                    }
-                                }
-                            }
-                        };
-
-                        DrawHealthSegmented(healthSlot.Min, healthSlot.Max, !healthSlot.Horizontal);
-
-                        if (g_Menu.esp_health_text && !isTiny) {
+                        if (g_Menu.esp_health_display_mode == 1) {
                             char hpText[32];
                             if (player.IsGroggy) {
                                 sprintf_s(hpText, sizeof(hpText), skCrypt("DBNO %.0f"), displayHealth);
@@ -419,17 +349,48 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                             }
                             const float hpFont = (std::max)(9.0f, g_Menu.distance_font_size - 1.0f);
                             const ImVec2 hpSize = TextSize(hpText, hpFont);
-                            ImVec2 hpPos;
-                            if (healthSlot.Horizontal) {
-                                hpPos = ImVec2(
-                                    healthSlot.Min.x + ((healthSlot.Max.x - healthSlot.Min.x) - hpSize.x) * 0.5f,
-                                    healthSlot.Min.y - hpSize.y - 2.0f);
-                            } else {
-                                hpPos = ImVec2(
-                                    healthSlot.Max.x + 4.0f,
-                                    healthSlot.Min.y + ((healthSlot.Max.y - healthSlot.Min.y) - hpSize.y) * 0.5f);
-                            }
-                            DrawOutlinedText(draw, hpPos, hpColor, hpText, hpFont, 1.0f);
+                            const ImVec2 chipSize = ChipSize(hpSize);
+                            const ImVec2 hpPos = espLayout.Take(
+                                PlayerEspLayout::SideFromMenu(g_Menu.esp_health_pos),
+                                chipSize,
+                                2.0f);
+                            DrawTextChip(draw, hpPos, hpText, hpFont, hpColor, alphaMult,
+                                player.IsGroggy || healthPercent < 0.35f);
+                        } else {
+                            const float barThickness = std::clamp(boxH * 0.038f, 3.0f, 7.0f);
+                            const float barOffset = std::clamp(boxH * 0.060f, 3.0f, 9.0f);
+                            const auto healthSlot = espLayout.TakeBar(
+                                PlayerEspLayout::SideFromMenu(g_Menu.esp_health_pos),
+                                barThickness,
+                                barOffset);
+
+                            auto DrawHealthBarModern = [&](ImVec2 pMin, ImVec2 pMax, bool vertical) {
+                                const float radius = (std::min)(4.0f, (vertical ? (pMax.x - pMin.x) : (pMax.y - pMin.y)) * 0.5f);
+                                draw->AddRectFilled(ImVec2(pMin.x + 1.0f, pMin.y + 1.0f),
+                                    ImVec2(pMax.x + 1.0f, pMax.y + 1.0f),
+                                    IM_COL32(0, 0, 0, AlphaByte(0.22f * alphaMult)), radius);
+                                draw->AddRectFilled(pMin, pMax, IM_COL32(7, 10, 14, AlphaByte(0.64f * alphaMult)), radius);
+                                draw->AddRect(pMin, pMax, IM_COL32(255, 255, 255, AlphaByte(0.10f * alphaMult)), radius, 0, 1.0f);
+
+                                if (vertical) {
+                                    const float h = pMax.y - pMin.y;
+                                    const float barH = h * healthPercent;
+                                    ImVec2 fillMin(pMin.x + 1.0f, pMax.y - barH);
+                                    ImVec2 fillMax(pMax.x - 1.0f, pMax.y - 1.0f);
+                                    draw->AddRectFilled(fillMin, fillMax, hpColor, radius);
+                                    draw->AddRectFilled(fillMin, ImVec2(fillMin.x + (fillMax.x - fillMin.x) * 0.45f, fillMax.y),
+                                        IM_COL32(255, 255, 255, AlphaByte(0.13f * alphaMult)), radius);
+                                } else {
+                                    const float w = pMax.x - pMin.x;
+                                    ImVec2 fillMin(pMin.x + 1.0f, pMin.y + 1.0f);
+                                    ImVec2 fillMax(pMin.x + w * healthPercent, pMax.y - 1.0f);
+                                    draw->AddRectFilled(fillMin, fillMax, hpColor, radius);
+                                    draw->AddRectFilled(fillMin, ImVec2(fillMax.x, fillMin.y + (fillMax.y - fillMin.y) * 0.45f),
+                                        IM_COL32(255, 255, 255, AlphaByte(0.13f * alphaMult)), radius);
+                                }
+                            };
+
+                            DrawHealthBarModern(healthSlot.Min, healthSlot.Max, !healthSlot.Horizontal);
                         }
                     }
 
@@ -655,7 +616,7 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                     }
 
                     if (g_Menu.esp_ammo && player.HasAmmo && player.Distance < g_Menu.weapon_max_dist) {
-                        ImVec2 ammoSize = AmmoBadgeSize(g_Menu.ammo_font_size);
+                        ImVec2 ammoSize = AmmoBadgeSize(player.Ammo, player.AmmoMax, g_Menu.ammo_font_size);
                         ImVec2 ammoPos = espLayout.Take(
                             PlayerEspLayout::SideFromMenu(g_Menu.esp_ammo_pos),
                             ammoSize,
@@ -677,8 +638,9 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                                 if (targetWidth < g_Menu.weapon_icon_size * 0.35f) targetWidth = g_Menu.weapon_icon_size * 0.35f;
                                 if (targetWidth > g_Menu.weapon_icon_size) targetWidth = g_Menu.weapon_icon_size;
 
-                                float scale = targetWidth / tex->Width;
-                                float iconW = tex->Width * scale;
+                                const float frameWidth = static_cast<float>(tex->Width) / static_cast<float>((std::max)(1, tex->Frames));
+                                float scale = targetWidth / frameWidth;
+                                float iconW = frameWidth * scale;
                                 float iconH = tex->Height * scale;
 
                                 ImVec2 iconPos = espLayout.Take(
@@ -688,15 +650,11 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                                 ImU32 weaponCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.weapon_color);
                                 draw->AddRectFilled(iconPos, ImVec2(iconPos.x + iconW + 6.0f, iconPos.y + iconH + 4.0f),
                                     IM_COL32(5, 8, 12, AlphaByte(0.46f * alphaMult)), 4.0f);
-                                OverlayAssetAnimation::DrawOptions anim{};
-                                anim.important = player.IsFiring || player.IsReloading;
-                                anim.strength = anim.important ? 1.20f : 0.92f;
-                                anim.alpha = alphaMult * 0.88f;
-                                OverlayAssetAnimation::DrawAnimatedImageRect(draw, tex,
+                                OverlayAssetAnimation::DrawStaticImageRect(draw, tex,
                                     ImVec2(iconPos.x + 3.0f, iconPos.y + 2.0f),
                                     ImVec2(iconPos.x + iconW + 3.0f, iconPos.y + iconH + 2.0f),
                                     weaponCol,
-                                    anim);
+                                    alphaMult * 0.88f);
                             } else {
                                 ImVec2 ws = ChipSize(TextSize(player.WeaponName.c_str(), g_Menu.weapon_font_size));
                                 ImVec2 weaponPos = espLayout.Take(

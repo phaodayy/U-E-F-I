@@ -27,6 +27,7 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["esp_text_background"] = esp_text_background;
         j["esp_text_bg_alpha"] = esp_text_bg_alpha;
         j["esp_health_text"] = esp_health_text;
+        j["esp_health_display_mode"] = esp_health_display_mode;
         j["esp_aim_warning"] = esp_aim_warning;
         j["esp_view_direction"] = esp_view_direction;
         j["esp_status_badges"] = esp_status_badges;
@@ -36,6 +37,9 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["box_thickness"] = box_thickness;
         j["esp_skeleton_dots"] = esp_skeleton_dots;
         j["esp_spectator_list"] = esp_spectator_list;
+        j["player_list_enabled"] = player_list_enabled;
+        j["player_list_hold_required"] = player_list_hold_required;
+        j["player_list_hold_key"] = player_list_hold_key;
         j["debug_loot_resolver"] = debug_loot_resolver;
         j["active_preset"] = active_preset;
         j["aim_smooth_rng"] = aim_smooth_rng;

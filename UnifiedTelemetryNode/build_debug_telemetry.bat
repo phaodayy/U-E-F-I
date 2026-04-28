@@ -46,6 +46,14 @@ set "OUTPUT_DIR=%CD%\dist_debug"
 if not exist "!OUTPUT_DIR!" mkdir "!OUTPUT_DIR!"
 del /F /Q "!OUTPUT_DIR!\*" >nul 2>&1
 copy /Y "!STAGING_DIR!\GameOverlay_Debug.exe" "!OUTPUT_DIR!\GameOverlay_Debug.exe" >nul
+if errorlevel 1 (
+    echo [ERROR] Failed to copy debug output to: !OUTPUT_DIR!\GameOverlay_Debug.exe
+    exit /b 1
+)
+if not exist "!OUTPUT_DIR!\GameOverlay_Debug.exe" (
+    echo [ERROR] Missing debug output after copy: !OUTPUT_DIR!\GameOverlay_Debug.exe
+    exit /b 1
+)
 
 echo [OK] SUCCESS!
 echo [+] Single-file debug output: dist_debug\GameOverlay_Debug.exe

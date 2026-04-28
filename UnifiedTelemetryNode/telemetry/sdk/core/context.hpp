@@ -30,6 +30,12 @@ struct PlayerData {
     float DamageDealt = 0.0f;
     int Ammo = 0;
     int AmmoMax = 0;
+    int HelmetLevel = 0;
+    int VestLevel = 0;
+    int BackpackLevel = 0;
+    float HelmetDurability = 0.0f;
+    float VestDurability = 0.0f;
+    float BackpackDurability = 0.0f;
     uint64_t LastShotTimeMs = 0;
     int SpectatedCount = 0;
     std::string WeaponName = "";

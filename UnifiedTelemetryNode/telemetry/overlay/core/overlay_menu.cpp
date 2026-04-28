@@ -426,7 +426,7 @@ void OverlayMenu::RenderFrame() {
 
         // --- 1.6 VIVID SPECTATOR & THREAT LIST ---
         if (is_authenticated) {
-            RenderSpectatorThreatList(draw, localPlayers, ScreenWidth);
+            RenderSpectatorThreatList(draw, localPlayers, ScreenWidth, ScreenHeight);
         }
 
         // --- 1.6 STEAM PROOF STATUS INDICATOR (WARNING ONLY) ---

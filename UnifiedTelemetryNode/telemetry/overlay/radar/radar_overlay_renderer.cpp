@@ -3,6 +3,7 @@
 #include "../core/colors.hpp"
 #include "../core/overlay_asset_animation.hpp"
 #include "../core/overlay_texture_cache.hpp"
+#include "../translation/translation.hpp"
 #include "../vehicle/vehicle_resolver.hpp"
 #include "../../sdk/core/context.hpp"
 #include <algorithm>
@@ -399,6 +400,7 @@ void DrawLegendRow(ImDrawList* draw, float x, float y, ImU32 color, const char* 
 void DrawBigMapLegend(ImDrawList* draw, const OverlayMenu& menu, const BigMapRect& rect) {
     if (!menu.bigmap_show_legend) return;
 
+    auto Lang = Translation::Get();
     const float fontSize = 12.0f;
     const float rowHeight = 16.0f;
     const float width = 142.0f;
@@ -415,35 +417,35 @@ void DrawBigMapLegend(ImDrawList* draw, const OverlayMenu& menu, const BigMapRec
     draw->AddRectFilled(boxMin, boxMax, IM_COL32(10, 18, 26, 118), 5.0f);
     draw->AddRect(boxMin, boxMax, IM_COL32(95, 190, 255, 92), 5.0f, 0, 1.0f);
     draw->AddText(ImGui::GetFont(), fontSize, ImVec2(boxMin.x + 10.0f, boxMin.y + 6.0f),
-        IM_COL32(125, 220, 255, 235), skCrypt("Map Legend"));
+        IM_COL32(125, 220, 255, 235), Lang.MapLegend);
 
     float y = boxMin.y + 24.0f;
-    DrawLegendRow(draw, boxMin.x + 13.0f, y, IM_COL32(255, 80, 80, 230), skCrypt("Enemy"), fontSize);
+    DrawLegendRow(draw, boxMin.x + 13.0f, y, IM_COL32(255, 80, 80, 230), Lang.Enemy, fontSize);
     y += rowHeight;
     if (menu.bigmap_show_vehicles) {
-        DrawLegendRow(draw, boxMin.x + 13.0f, y, IM_COL32(85, 210, 255, 230), skCrypt("Vehicle"), fontSize);
+        DrawLegendRow(draw, boxMin.x + 13.0f, y, IM_COL32(85, 210, 255, 230), Lang.Vehicle, fontSize);
         y += rowHeight;
     }
     if (menu.bigmap_show_airdrops) {
-        DrawLegendRow(draw, boxMin.x + 13.0f, y, IM_COL32(255, 70, 70, 235), skCrypt("AirDrop"), fontSize);
+        DrawLegendRow(draw, boxMin.x + 13.0f, y, IM_COL32(255, 70, 70, 235), Lang.ShowAirdrops, fontSize);
         y += rowHeight;
     }
     if (menu.bigmap_show_deadboxes) {
-        DrawLegendRow(draw, boxMin.x + 13.0f, y, IM_COL32(255, 150, 55, 230), skCrypt("DeadBox"), fontSize);
+        DrawLegendRow(draw, boxMin.x + 13.0f, y, IM_COL32(255, 150, 55, 230), Lang.ShowDeathboxes, fontSize);
         y += rowHeight;
     }
     if (menu.minimap_show_direction) {
         ImU32 viewCol = ImGui::ColorConvertFloat4ToU32(ImVec4(
             menu.view_direction_color[0], menu.view_direction_color[1],
             menu.view_direction_color[2], menu.view_direction_color[3]));
-        DrawLegendRow(draw, boxMin.x + 13.0f, y, WithAlpha(viewCol, 0.86f), skCrypt("View Ray"), fontSize, true);
+        DrawLegendRow(draw, boxMin.x + 13.0f, y, WithAlpha(viewCol, 0.86f), Lang.ViewRay, fontSize, true);
         y += rowHeight;
     }
     if (menu.minimap_fire_trace) {
         ImU32 fireCol = ImGui::ColorConvertFloat4ToU32(ImVec4(
             menu.aim_warning_color[0], menu.aim_warning_color[1],
             menu.aim_warning_color[2], menu.aim_warning_color[3]));
-        DrawLegendRow(draw, boxMin.x + 13.0f, y, WithAlpha(fireCol, 0.92f), skCrypt("Fire Trace"), fontSize, true);
+        DrawLegendRow(draw, boxMin.x + 13.0f, y, WithAlpha(fireCol, 0.92f), Lang.FireTrace, fontSize, true);
     }
 }
 
@@ -665,14 +667,17 @@ void Draw(ImDrawList* draw, OverlayMenu& menu, const std::vector<PlayerData>& pl
     bool worldMapDrawn = false;
 
     if (canDrawWorldMap) {
-        const float baseMapSize = (std::min)(screenWidth, screenHeight) *
-            std::clamp(menu.bigmap_screen_scale, 0.70f, 1.25f);
-        const float worldLeft = ((screenWidth - baseMapSize) * 0.5f) + menu.bigmap_offset_x;
-        const float worldTop = ((screenHeight - baseMapSize) * 0.5f) + menu.bigmap_offset_y;
-        const float worldRight = worldLeft + baseMapSize;
-        const float worldBottom = worldTop + baseMapSize;
-
-        const BigMapRect bigMapRect{ worldLeft, worldTop, worldRight, worldBottom };
+        BigMapRect bigMapRect{};
+        if (G_Radar.IsWorldMapVisible) {
+            // PAOD-style projection: the opened world map is centered on the viewport and scaled by height.
+            bigMapRect = { 0.0f, 0.0f, screenWidth, screenHeight };
+        } else {
+            const float baseMapSize = (std::min)(screenWidth, screenHeight) *
+                std::clamp(menu.bigmap_screen_scale, 0.70f, 1.25f);
+            const float worldLeft = ((screenWidth - baseMapSize) * 0.5f) + menu.bigmap_offset_x;
+            const float worldTop = ((screenHeight - baseMapSize) * 0.5f) + menu.bigmap_offset_y;
+            bigMapRect = { worldLeft, worldTop, worldLeft + baseMapSize, worldTop + baseMapSize };
+        }
         DrawBigMapItems(draw, menu, bigMapRect);
 
         for (const auto& player : players) {

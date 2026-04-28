@@ -40,9 +40,11 @@ inline ImVec2 FitSize(const TextureInfo* icon, float targetSize) {
         return ImVec2(0.0f, 0.0f);
     }
 
+    const int frameCount = (std::max)(1, icon->Frames);
+    const float frameWidth = static_cast<float>(icon->Width) / static_cast<float>(frameCount);
     float width = targetSize;
     float height = targetSize;
-    const float aspect = static_cast<float>(icon->Width) / static_cast<float>(icon->Height);
+    const float aspect = frameWidth / static_cast<float>(icon->Height);
     if (aspect > 1.0f) {
         height = targetSize / aspect;
     } else {
@@ -116,6 +118,32 @@ inline void DrawAnimatedImageRect(ImDrawList* draw, TextureInfo* icon,
             (std::max)(1.0f, width * 0.055f));
         draw->PopClipRect();
     }
+}
+
+inline void DrawStaticImageRect(ImDrawList* draw, TextureInfo* icon,
+                                const ImVec2& rectMin, const ImVec2& rectMax,
+                                ImU32 tint = IM_COL32(255, 255, 255, 255),
+                                float alpha = 1.0f) {
+    if (!draw || !icon || !icon->SRV || icon->Width <= 0 || icon->Height <= 0) return;
+
+    const int frameCount = (std::max)(1, icon->Frames);
+    const float uvStep = 1.0f / static_cast<float>(frameCount);
+    draw->AddImage((ImTextureID)icon->SRV, rectMin, rectMax,
+        ImVec2(0.0f, 0.0f), ImVec2(uvStep, 1.0f), WithAlpha(tint, alpha));
+}
+
+inline void DrawStaticImage(ImDrawList* draw, TextureInfo* icon, const ImVec2& center,
+                            float targetSize,
+                            ImU32 tint = IM_COL32(255, 255, 255, 255),
+                            float alpha = 1.0f) {
+    const ImVec2 size = FitSize(icon, targetSize);
+    if (size.x <= 0.0f || size.y <= 0.0f) return;
+
+    DrawStaticImageRect(draw, icon,
+        ImVec2(center.x - size.x * 0.5f, center.y - size.y * 0.5f),
+        ImVec2(center.x + size.x * 0.5f, center.y + size.y * 0.5f),
+        tint,
+        alpha);
 }
 
 inline void DrawAnimatedImage(ImDrawList* draw, TextureInfo* icon, const ImVec2& center,

@@ -20,8 +20,8 @@ void OverlayMenu::RenderTabRadar(ImVec2 windowSize) {
 
     BeginGlassCard(skCrypt("##MapCore"), Lang.TabRadar, ImVec2(totalWidth / 4.0f - 15.0f, 0));
     ImGui::Checkbox(Lang.RadarEnable, &radar_enabled);
-    ImGui::Checkbox(skCrypt("MiniMap"), &minimap_enabled);
-    ImGui::Checkbox(skCrypt("BigMap (M)"), &bigmap_enabled);
+    ImGui::Checkbox(Lang.MiniMap, &minimap_enabled);
+    ImGui::Checkbox(Lang.BigMap, &bigmap_enabled);
     ImGui::Checkbox(Lang.ShowCrosshair, &show_radar_center);
     ImGui::Separator();
     ImGui::Checkbox(Lang.ItemsVehicles, &esp_vehicles);
@@ -32,32 +32,36 @@ void OverlayMenu::RenderTabRadar(ImVec2 windowSize) {
 
     ImGui::NextColumn();
     BeginGlassCard(skCrypt("##MapMini"), Lang.MiniMapConfig, ImVec2(totalWidth / 4.0f - 15.0f, 0));
-    ImGui::Checkbox(skCrypt("Enable MiniMap"), &minimap_enabled);
+    ImGui::Checkbox(Lang.EnableMiniMap, &minimap_enabled);
     ImGui::Checkbox(skCrypt("Radar Center"), &show_radar_center);
     SliderFloatFull(Lang.RadarDotSize, &radar_dot_size, 1.0f, 18.0f, skCrypt("%.1f px"));
     SliderFloatFull(Lang.RadarZoom, &radar_zoom_multiplier, 0.5f, 5.0f, skCrypt("%.1f x"));
     SliderFloatFull(Lang.RadarOffsetX, &radar_offset_x, -250.0f, 250.0f, skCrypt("%.0f px"));
     SliderFloatFull(Lang.RadarOffsetY, &radar_offset_y, -250.0f, 250.0f, skCrypt("%.0f px"));
     ImGui::Separator();
-    ImGui::Checkbox(skCrypt("View Ray"), &minimap_show_direction);
-    ImGui::Checkbox(skCrypt("Fire Trace"), &minimap_fire_trace);
-    SliderFloatFull(skCrypt("View Ray Len"), &minimap_view_ray_length, 10.0f, 180.0f, skCrypt("%.0f m"));
-    SliderFloatFull(skCrypt("Fire Ray Len"), &minimap_fire_ray_length, 40.0f, 500.0f, skCrypt("%.0f m"));
+    ImGui::Checkbox(Lang.ViewRay, &minimap_show_direction);
+    ImGui::Checkbox(Lang.FireTrace, &minimap_fire_trace);
+    ImGui::PushID(skCrypt("ViewRayLen"));
+    SliderFloatFull(Lang.ViewRay, &minimap_view_ray_length, 10.0f, 180.0f, skCrypt("%.0f m"));
+    ImGui::PopID();
+    ImGui::PushID(skCrypt("FireRayLen"));
+    SliderFloatFull(Lang.FireTrace, &minimap_fire_ray_length, 40.0f, 500.0f, skCrypt("%.0f m"));
+    ImGui::PopID();
     SliderFloatFull(skCrypt("Fire Flash"), &minimap_fire_flash_ms, 80.0f, 1200.0f, skCrypt("%.0f ms"));
-    SliderFloatFull(skCrypt("Ray Width"), &minimap_ray_width, 0.5f, 4.0f, skCrypt("%.1f px"));
+    SliderFloatFull(Lang.RayWidth, &minimap_ray_width, 0.5f, 4.0f, skCrypt("%.1f px"));
     ImGui::EndChild();
 
     ImGui::NextColumn();
     BeginGlassCard(skCrypt("##MapBig"), Lang.ShowcaseMapLayers, ImVec2(totalWidth / 4.0f - 15.0f, 0));
-    ImGui::Checkbox(skCrypt("Enable BigMap"), &bigmap_enabled);
-    ImGui::Checkbox(skCrypt("Name Radar"), &bigmap_show_names);
-    ImGui::Checkbox(skCrypt("Direction Radar"), &bigmap_show_direction);
-    ImGui::Checkbox(skCrypt("Name Background"), &bigmap_name_background);
+    ImGui::Checkbox(Lang.EnableBigMap, &bigmap_enabled);
+    ImGui::Checkbox(Lang.NameRadar, &bigmap_show_names);
+    ImGui::Checkbox(Lang.DirectionRadar, &bigmap_show_direction);
+    ImGui::Checkbox(Lang.NameBackground, &bigmap_name_background);
     ImGui::Checkbox(Lang.ShowcaseRadarLegend, &bigmap_show_legend);
     ImGui::Separator();
-    ImGui::Checkbox(skCrypt("Vehicle Radar"), &bigmap_show_vehicles);
-    ImGui::Checkbox(skCrypt("Airdrop Radar"), &bigmap_show_airdrops);
-    ImGui::Checkbox(skCrypt("DeadBox Radar"), &bigmap_show_deadboxes);
+    ImGui::Checkbox(Lang.VehicleRadar, &bigmap_show_vehicles);
+    ImGui::Checkbox(Lang.AirdropRadar, &bigmap_show_airdrops);
+    ImGui::Checkbox(Lang.DeadBoxRadar, &bigmap_show_deadboxes);
     ImGui::Separator();
     SliderFloatFull(skCrypt("BigMap Marker"), &bigmap_marker_size, 3.0f, 18.0f, skCrypt("%.1f px"));
     SliderFloatFull(skCrypt("BigMap Marker Alpha"), &bigmap_marker_alpha, 0.25f, 1.0f, skCrypt("%.2f"));
@@ -78,7 +82,7 @@ void OverlayMenu::RenderTabRadar(ImVec2 windowSize) {
     ImGui::SetNextItemWidth(-1);
     ImGui::InputText(skCrypt("##RadarIP"), share_radar_ip, sizeof(share_radar_ip));
     ImGui::Separator();
-    ImGui::TextDisabled(skCrypt("BigMap: %s"), G_Radar.IsWorldMapVisible ? skCrypt("HUD") : skCrypt("Fallback"));
+    ImGui::TextDisabled("%s: %s", Lang.BigMap, G_Radar.IsWorldMapVisible ? skCrypt("HUD") : skCrypt("Fallback"));
     ImGui::TextDisabled(skCrypt("Map: %.0f | Zoom: %.2f"),
         G_Radar.MapWorldSize, G_Radar.WorldMapZoomFactor > 0.001f ? G_Radar.WorldMapZoomFactor : 1.0f);
     ImGui::TextDisabled(skCrypt("Center: %.0f %.0f"),

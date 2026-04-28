@@ -1,6 +1,7 @@
 #include "overlay_menu.hpp"
 #include "../translation/translation.hpp"
 #include "../../sdk/core/context.hpp"
+#include "../../sdk/memory/memory.hpp"
 #include "../../sdk/Utils/MacroEngine.h"
 #include <protec/skCrypt.h>
 
@@ -9,12 +10,129 @@
 
 namespace {
 
-struct VividThreat {
+struct SpectatorPanelRow {
     std::string Name;
     int Dist = 0;
     float HP = 0.0f;
-    bool IsSpectator = false;
+    int Count = 0;
     bool IsAiming = false;
+    bool IsTeammate = false;
+};
+
+struct PlayerPanelRow {
+    std::string Name;
+    std::string Weapon;
+    int Team = 0;
+    int Dist = 0;
+    int Kills = 0;
+    int Level = 0;
+    int Ammo = 0;
+    int AmmoMax = 0;
+    int HelmetLevel = 0;
+    int VestLevel = 0;
+    int BackpackLevel = 0;
+    float HelmetDurability = 0.0f;
+    float VestDurability = 0.0f;
+    float BackpackDurability = 0.0f;
+    float HP = 0.0f;
+    float Damage = 0.0f;
+    bool IsTeammate = false;
+    bool IsBot = false;
+    bool IsGroggy = false;
+    bool IsVisible = false;
+    bool IsAiming = false;
+    bool IsSpectated = false;
+    bool HasAmmo = false;
+};
+
+void DrawPanelText(ImDrawList* draw, float fontSize, ImVec2 pos, ImU32 color, const char* text) {
+    draw->AddText(ImGui::GetFont(), fontSize, ImVec2(pos.x + 1.0f, pos.y + 1.0f),
+        IM_COL32(0, 0, 0, 170), text);
+    draw->AddText(ImGui::GetFont(), fontSize, pos, color, text);
+}
+
+std::string FitPanelText(const std::string& text, float fontSize, float maxWidth) {
+    if (text.empty()) return skCrypt("-");
+    if (ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, text.c_str()).x <= maxWidth) {
+        return text;
+    }
+
+    std::string fitted = text;
+    while (fitted.size() > 3) {
+        fitted.pop_back();
+        const std::string candidate = fitted + skCrypt("...");
+        if (ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, candidate.c_str()).x <= maxWidth) {
+            return candidate;
+        }
+    }
+    return skCrypt("...");
+}
+
+void DrawHealthMiniBar(ImDrawList* draw, ImVec2 pos, float width, float hp, bool groggy) {
+    const float height = 5.0f;
+    const float t = (std::clamp)(hp / 100.0f, 0.0f, 1.0f);
+    const ImU32 hpCol = groggy ? IM_COL32(255, 76, 64, 245) :
+        (t > 0.55f ? IM_COL32(58, 230, 130, 245) :
+            (t > 0.28f ? IM_COL32(255, 190, 55, 245) : IM_COL32(255, 70, 65, 245)));
+    draw->AddRectFilled(pos, ImVec2(pos.x + width, pos.y + height), IM_COL32(30, 34, 40, 220), 2.0f);
+    draw->AddRectFilled(pos, ImVec2(pos.x + width * t, pos.y + height), hpCol, 2.0f);
+}
+
+void DrawPanelShell(ImDrawList* draw, ImVec2 pos, ImVec2 size, const char* title, int count, ImU32 accent) {
+    draw->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(5, 10, 18, 222), 8.0f);
+    draw->AddRect(pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(0, 200, 255, 58), 8.0f, 0, 1.2f);
+    draw->AddRectFilledMultiColor(ImVec2(pos.x + 1.0f, pos.y + 1.0f),
+        ImVec2(pos.x + size.x - 1.0f, pos.y + 33.0f),
+        IM_COL32(0, 120, 255, 44), IM_COL32(0, 220, 255, 14),
+        IM_COL32(0, 220, 255, 7), IM_COL32(0, 120, 255, 30));
+
+    char header[128];
+    sprintf_s(header, sizeof(header), skCrypt("%s  %d"), title, count);
+    DrawPanelText(draw, 14.0f, ImVec2(pos.x + 12.0f, pos.y + 9.0f), accent, header);
+}
+
+std::string PlayerStatusText(const PlayerPanelRow& row) {
+    std::string status;
+    if (row.IsAiming) status += skCrypt("AIM");
+    if (row.IsSpectated) {
+        if (!status.empty()) status += skCrypt("/");
+        status += skCrypt("SPEC");
+    }
+    if (row.IsGroggy) {
+        if (!status.empty()) status += skCrypt("/");
+        status += skCrypt("DBNO");
+    }
+    if (row.IsTeammate) {
+        if (!status.empty()) status += skCrypt("/");
+        status += skCrypt("TEAM");
+    }
+    if (row.IsBot) {
+        if (!status.empty()) status += skCrypt("/");
+        status += skCrypt("AI");
+    }
+    if (status.empty()) status = row.IsVisible ? skCrypt("VIS") : skCrypt("-");
+    return status;
+}
+
+std::string GearText(int level, float durability, const char* prefix) {
+    if (level <= 0) return std::string(prefix) + skCrypt("-");
+    char buf[32];
+    if (durability > 0.5f) {
+        sprintf_s(buf, sizeof(buf), skCrypt("%s%d %.0f%%"), prefix, level, durability);
+    } else {
+        sprintf_s(buf, sizeof(buf), skCrypt("%s%d"), prefix, level);
+    }
+    return buf;
+}
+
+ImU32 PlayerRowColor(const PlayerPanelRow& row) {
+    if (row.IsAiming) return IM_COL32(255, 78, 62, 255);
+    if (row.IsSpectated) return IM_COL32(255, 170, 35, 255);
+    if (row.IsGroggy) return IM_COL32(255, 85, 75, 255);
+    if (row.IsTeammate) return IM_COL32(90, 190, 255, 255);
+    if (row.IsBot) return IM_COL32(175, 220, 190, 255);
+    if (row.IsVisible) return IM_COL32(235, 245, 255, 255);
+    return IM_COL32(190, 200, 214, 255);
 };
 
 } // namespace
@@ -102,73 +220,202 @@ void OverlayMenu::RenderMacroOsd(ImDrawList* draw, float ScreenWidth, float Scre
 
 void OverlayMenu::RenderSpectatorThreatList(ImDrawList* draw,
                                             const std::vector<PlayerData>& localPlayers,
-                                            float ScreenWidth) {
-    if (!draw || !esp_spectator_list ||
+                                            float ScreenWidth,
+                                            float ScreenHeight) {
+    if (!draw || (!esp_spectator_list && !player_list_enabled) ||
         (current_scene != Scene::Gaming && current_scene != Scene::Lobby)) return;
 
-    std::vector<VividThreat> threats;
+    if (player_list_hold_required) {
+        if (player_list_hold_key <= 0 || player_list_hold_key > 0xFE ||
+            !telemetryMemory::IsKeyDown(player_list_hold_key)) {
+            return;
+        }
+    }
+
+    auto Lang = Translation::Get();
+    std::vector<SpectatorPanelRow> spectators;
+    std::vector<PlayerPanelRow> players;
     int totalSpectators = 0;
     for (const auto& p : localPlayers) {
         if (p.SpectatedCount > 0) {
             totalSpectators += p.SpectatedCount;
-            threats.push_back({ p.Name, static_cast<int>(p.Distance), p.Health, true, p.IsAimingAtLocal });
-        } else if (p.IsAimingAtLocal && !p.IsTeammate) {
-            threats.push_back({ p.Name, static_cast<int>(p.Distance), p.Health, false, true });
-        } else if (p.Distance < 120.0f && !p.IsTeammate && p.Distance > 0.0f) {
-            threats.push_back({ p.Name, static_cast<int>(p.Distance), p.Health, false, false });
+            spectators.push_back({
+                p.Name.empty() ? std::string(skCrypt("Unknown")) : p.Name,
+                static_cast<int>(p.Distance),
+                p.Health,
+                p.SpectatedCount,
+                p.IsAimingAtLocal,
+                p.IsTeammate
+            });
         }
+
+        if (p.Distance <= 0.0f && p.Name.empty()) continue;
+        players.push_back({
+            p.Name.empty() ? std::string(skCrypt("Unknown")) : p.Name,
+            p.WeaponName.empty() ? std::string(skCrypt("-")) : p.WeaponName,
+            p.TeamID,
+            static_cast<int>(p.Distance),
+            p.Kills,
+            p.SurvivalLevel,
+            p.Ammo,
+            p.AmmoMax,
+            p.HelmetLevel,
+            p.VestLevel,
+            p.BackpackLevel,
+            p.HelmetDurability,
+            p.VestDurability,
+            p.BackpackDurability,
+            p.IsGroggy ? p.GroggyHealth : p.Health,
+            p.DamageDealt,
+            p.IsTeammate,
+            p.IsBot,
+            p.IsGroggy,
+            p.IsVisible,
+            p.IsAimingAtLocal,
+            p.SpectatedCount > 0,
+            p.HasAmmo
+        });
     }
 
-    std::sort(threats.begin(), threats.end(),
-        [](const VividThreat& a, const VividThreat& b) {
+    std::sort(spectators.begin(), spectators.end(),
+        [](const SpectatorPanelRow& a, const SpectatorPanelRow& b) {
+            if (a.Count != b.Count) return a.Count > b.Count;
             if (a.IsAiming != b.IsAiming) return a.IsAiming > b.IsAiming;
-            if (a.IsSpectator != b.IsSpectator) return a.IsSpectator > b.IsSpectator;
             return a.Dist < b.Dist;
         });
-    if (threats.empty() && totalSpectators <= 0) return;
 
-    auto Lang = Translation::Get();
-    const float listWidth = 240.0f;
-    const float listX = ScreenWidth - listWidth - 20.0f;
-    const float listY = 150.0f;
-    const float entryHeight = 28.0f;
-    const float headerHeight = 35.0f;
-    const float totalHeight = headerHeight + (threats.size() * entryHeight) + 8.0f;
+    std::sort(players.begin(), players.end(),
+        [](const PlayerPanelRow& a, const PlayerPanelRow& b) {
+            const int aPrio = (a.IsAiming ? 0 : a.IsSpectated ? 1 : a.IsGroggy ? 2 : a.IsTeammate ? 4 : 3);
+            const int bPrio = (b.IsAiming ? 0 : b.IsSpectated ? 1 : b.IsGroggy ? 2 : b.IsTeammate ? 4 : 3);
+            if (aPrio != bPrio) return aPrio < bPrio;
+            if (a.Team != b.Team) return a.Team < b.Team;
+            return a.Dist < b.Dist;
+        });
 
-    draw->AddRectFilled(ImVec2(listX, listY), ImVec2(listX + listWidth, listY + totalHeight),
-        IM_COL32(5, 15, 30, 220), 10.0f);
-    draw->AddRect(ImVec2(listX, listY), ImVec2(listX + listWidth, listY + totalHeight),
-        IM_COL32(0, 200, 255, 60), 10.0f, 0, 1.5f);
-    draw->AddRectFilledMultiColor(ImVec2(listX + 2, listY + 2),
-        ImVec2(listX + listWidth - 2, listY + headerHeight),
-        IM_COL32(0, 100, 255, 30), IM_COL32(0, 200, 255, 10),
-        IM_COL32(0, 200, 255, 10), IM_COL32(0, 100, 255, 30));
+    const float margin = 20.0f;
+    const float panelW = std::clamp(ScreenWidth * 0.86f, 760.0f, 1240.0f);
+    const float panelX = (ScreenWidth - panelW) * 0.5f;
+    float nextY = 72.0f;
 
-    char headerBuf[128];
-    sprintf_s(headerBuf, skCrypt("%s (%d)"), Lang.ESP_SpectatorList, totalSpectators);
-    draw->AddText(ImVec2(listX + 12, listY + 8), IM_COL32(0, 220, 255, 255), headerBuf);
+    if (esp_spectator_list && (!spectators.empty() || totalSpectators > 0)) {
+        const float specW = (std::min)(420.0f, panelW);
+        const float rowH = 25.0f;
+        const int rows = (std::min)(static_cast<int>(spectators.size()), 5);
+        const float specH = 40.0f + rows * rowH + 8.0f;
+        const float specX = panelX;
+        const ImVec2 pos(specX, nextY);
 
-    float currentY = listY + headerHeight;
-    for (const auto& t : threats) {
-        const ImU32 textCol = t.IsAiming ? IM_COL32(255, 50, 45, 255) :
-            (t.IsSpectator ? IM_COL32(255, 80, 80, 255) : IM_COL32(220, 220, 220, 255));
-        char entryBuf[128];
-        if (t.IsAiming) {
-            sprintf_s(entryBuf, sizeof(entryBuf), skCrypt("AIM %s (%dm)"), t.Name.c_str(), t.Dist);
-        } else {
-            sprintf_s(entryBuf, sizeof(entryBuf), skCrypt("%s (%dm)"), t.Name.c_str(), t.Dist);
+        DrawPanelShell(draw, pos, ImVec2(specW, specH), Lang.Spectators, totalSpectators,
+            IM_COL32(255, 170, 35, 255));
+
+        float y = pos.y + 39.0f;
+        for (int i = 0; i < rows; ++i) {
+            const auto& row = spectators[i];
+            if (i % 2 == 0) {
+                draw->AddRectFilled(ImVec2(pos.x + 7.0f, y - 2.0f),
+                    ImVec2(pos.x + specW - 7.0f, y + rowH - 3.0f), IM_COL32(255, 255, 255, 12), 4.0f);
+            }
+
+            const ImU32 rowCol = row.IsAiming ? IM_COL32(255, 76, 64, 255) :
+                (row.IsTeammate ? IM_COL32(90, 190, 255, 255) : IM_COL32(255, 196, 64, 255));
+            const std::string name = FitPanelText(row.Name, 12.5f, 210.0f);
+            char countBuf[24];
+            sprintf_s(countBuf, sizeof(countBuf), skCrypt("x%d"), row.Count);
+            char distBuf[24];
+            sprintf_s(distBuf, sizeof(distBuf), skCrypt("%dm"), row.Dist);
+            DrawPanelText(draw, 12.5f, ImVec2(pos.x + 12.0f, y + 1.0f), rowCol, name.c_str());
+            DrawPanelText(draw, 12.5f, ImVec2(pos.x + 238.0f, y + 1.0f), IM_COL32(255, 220, 110, 255), countBuf);
+            DrawPanelText(draw, 12.0f, ImVec2(pos.x + 282.0f, y + 1.0f), IM_COL32(185, 205, 224, 255), distBuf);
+            DrawHealthMiniBar(draw, ImVec2(pos.x + 335.0f, y + 8.0f), 58.0f, row.HP, false);
+            y += rowH;
         }
-        draw->AddText(ImVec2(listX + 12, currentY), textCol, entryBuf);
+        nextY += specH + 10.0f;
+    }
 
-        const float hpW = 45.0f;
-        const float hpH = 5.0f;
-        const float hpx = listX + listWidth - hpW - 12.0f;
-        const float hpy = currentY + 10.0f;
-        draw->AddRectFilled(ImVec2(hpx, hpy), ImVec2(hpx + hpW, hpy + hpH),
-            IM_COL32(40, 40, 40, 200), 2.0f);
-        draw->AddRectFilled(ImVec2(hpx, hpy), ImVec2(hpx + hpW * (t.HP / 100.0f), hpy + hpH),
-            IM_COL32(0, 255, 120, 255), 2.0f);
-        currentY += entryHeight;
+    if (!player_list_enabled || players.empty()) return;
+
+    const float rowH = 24.0f;
+    const float headerH = 60.0f;
+    const int maxRows = (std::max)(8, (std::min)(32,
+        static_cast<int>((ScreenHeight - nextY - headerH - margin) / rowH)));
+    const int rows = (std::min)(static_cast<int>(players.size()), maxRows);
+    const float panelH = headerH + rows * rowH + 9.0f;
+    const ImVec2 panelPos(panelX, nextY);
+
+    DrawPanelShell(draw, panelPos, ImVec2(panelW, panelH), Lang.PlayerList,
+        static_cast<int>(players.size()), IM_COL32(0, 220, 255, 255));
+
+    const float x = panelPos.x;
+    const float sx = panelW / 1180.0f;
+    auto cx = [&](float value) { return x + value * sx; };
+    const float yHead = panelPos.y + 38.0f;
+    DrawPanelText(draw, 11.0f, ImVec2(cx(14.0f), yHead), IM_COL32(125, 145, 170, 255), skCrypt("T"));
+    DrawPanelText(draw, 11.0f, ImVec2(cx(58.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.Name);
+    DrawPanelText(draw, 11.0f, ImVec2(cx(225.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.Distance);
+    DrawPanelText(draw, 11.0f, ImVec2(cx(280.0f), yHead), IM_COL32(125, 145, 170, 255), skCrypt("HP"));
+    DrawPanelText(draw, 11.0f, ImVec2(cx(350.0f), yHead), IM_COL32(125, 145, 170, 255), skCrypt("K"));
+    DrawPanelText(draw, 11.0f, ImVec2(cx(385.0f), yHead), IM_COL32(125, 145, 170, 255), skCrypt("DMG"));
+    DrawPanelText(draw, 11.0f, ImVec2(cx(445.0f), yHead), IM_COL32(125, 145, 170, 255), skCrypt("Lv"));
+    DrawPanelText(draw, 11.0f, ImVec2(cx(485.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.Ammo);
+    DrawPanelText(draw, 11.0f, ImVec2(cx(545.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.Weapon);
+    DrawPanelText(draw, 11.0f, ImVec2(cx(655.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.HelmetShort);
+    DrawPanelText(draw, 11.0f, ImVec2(cx(765.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.VestShort);
+    DrawPanelText(draw, 11.0f, ImVec2(cx(875.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.BackpackShort);
+    DrawPanelText(draw, 11.0f, ImVec2(cx(985.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.State);
+    draw->AddLine(ImVec2(x + 9.0f, yHead + 17.0f), ImVec2(x + panelW - 9.0f, yHead + 17.0f),
+        IM_COL32(255, 255, 255, 28), 1.0f);
+
+    float y = panelPos.y + headerH;
+    for (int i = 0; i < rows; ++i) {
+        const auto& row = players[i];
+        if (i % 2 == 0) {
+            draw->AddRectFilled(ImVec2(x + 7.0f, y - 2.0f),
+                ImVec2(x + panelW - 7.0f, y + rowH - 3.0f), IM_COL32(255, 255, 255, 11), 4.0f);
+        }
+
+        const ImU32 rowCol = PlayerRowColor(row);
+        draw->AddRectFilled(ImVec2(x + 7.0f, y - 2.0f), ImVec2(x + 10.0f, y + rowH - 3.0f),
+            rowCol, 2.0f);
+
+        char teamBuf[16];
+        sprintf_s(teamBuf, sizeof(teamBuf), skCrypt("%d"), row.Team);
+        char distBuf[24];
+        sprintf_s(distBuf, sizeof(distBuf), skCrypt("%dm"), row.Dist);
+        char killBuf[16];
+        sprintf_s(killBuf, sizeof(killBuf), skCrypt("%d"), row.Kills);
+        char damageBuf[24];
+        sprintf_s(damageBuf, sizeof(damageBuf), skCrypt("%d"), static_cast<int>(row.Damage));
+        char levelBuf[16];
+        sprintf_s(levelBuf, sizeof(levelBuf), skCrypt("%d"), row.Level);
+        char ammoBuf[24];
+        if (row.HasAmmo) {
+            sprintf_s(ammoBuf, sizeof(ammoBuf), skCrypt("%d/%d"), row.Ammo, row.AmmoMax);
+        } else {
+            sprintf_s(ammoBuf, sizeof(ammoBuf), skCrypt("-"));
+        }
+
+        const std::string name = FitPanelText(row.Name, 12.0f, 138.0f);
+        const std::string weapon = FitPanelText(row.Weapon, 12.0f, 92.0f * sx);
+        const std::string helmet = FitPanelText(GearText(row.HelmetLevel, row.HelmetDurability, skCrypt("H")), 11.5f, 98.0f * sx);
+        const std::string vest = FitPanelText(GearText(row.VestLevel, row.VestDurability, skCrypt("V")), 11.5f, 98.0f * sx);
+        const std::string pack = FitPanelText(GearText(row.BackpackLevel, row.BackpackDurability, skCrypt("B")), 11.5f, 98.0f * sx);
+        const std::string state = FitPanelText(PlayerStatusText(row), 11.0f, 150.0f * sx);
+
+        DrawPanelText(draw, 12.0f, ImVec2(cx(15.0f), y + 2.0f), rowCol, teamBuf);
+        DrawPanelText(draw, 12.0f, ImVec2(cx(58.0f), y + 2.0f), rowCol, name.c_str());
+        DrawPanelText(draw, 12.0f, ImVec2(cx(225.0f), y + 2.0f), IM_COL32(190, 210, 230, 255), distBuf);
+        DrawHealthMiniBar(draw, ImVec2(cx(280.0f), y + 8.0f), 58.0f * sx, row.HP, row.IsGroggy);
+        DrawPanelText(draw, 12.0f, ImVec2(cx(350.0f), y + 2.0f), IM_COL32(255, 210, 80, 255), killBuf);
+        DrawPanelText(draw, 12.0f, ImVec2(cx(385.0f), y + 2.0f), IM_COL32(255, 140, 80, 255), damageBuf);
+        DrawPanelText(draw, 12.0f, ImVec2(cx(445.0f), y + 2.0f), IM_COL32(110, 230, 255, 255), levelBuf);
+        DrawPanelText(draw, 12.0f, ImVec2(cx(485.0f), y + 2.0f), IM_COL32(238, 238, 178, 255), ammoBuf);
+        DrawPanelText(draw, 12.0f, ImVec2(cx(545.0f), y + 2.0f), IM_COL32(190, 236, 255, 255), weapon.c_str());
+        DrawPanelText(draw, 11.5f, ImVec2(cx(655.0f), y + 3.0f), IM_COL32(170, 220, 255, 255), helmet.c_str());
+        DrawPanelText(draw, 11.5f, ImVec2(cx(765.0f), y + 3.0f), IM_COL32(180, 235, 190, 255), vest.c_str());
+        DrawPanelText(draw, 11.5f, ImVec2(cx(875.0f), y + 3.0f), IM_COL32(225, 205, 135, 255), pack.c_str());
+        DrawPanelText(draw, 11.0f, ImVec2(cx(985.0f), y + 3.0f), rowCol, state.c_str());
+        y += rowH;
     }
 }
 

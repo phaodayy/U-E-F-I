@@ -441,6 +441,72 @@ namespace telemetryContext {
         return FNameUtils::GetNameFast(objId);
     }
 
+    static int ExtractGearLevel(const std::string& itemName) {
+        if (itemName.find(skCrypt("Lv3")) != std::string::npos ||
+            itemName.find(skCrypt("_G_")) != std::string::npos ||
+            itemName.find(skCrypt("_C_01")) != std::string::npos) return 3;
+        if (itemName.find(skCrypt("Lv2")) != std::string::npos ||
+            itemName.find(skCrypt("_F_")) != std::string::npos ||
+            itemName.find(skCrypt("_D_")) != std::string::npos) return 2;
+        if (itemName.find(skCrypt("Lv1")) != std::string::npos ||
+            itemName.find(skCrypt("_E_")) != std::string::npos) return 1;
+        return 0;
+    }
+
+    static float ReadDurabilityPercent(uint64_t item) {
+        const float cur = Read<float>(item + telemetryOffsets::Durability);
+        const float max = Read<float>(item + telemetryOffsets::Durabilitymax);
+        if (!std::isfinite(cur) || !std::isfinite(max) || max <= 1.0f) return 0.0f;
+        return std::clamp((cur / max) * 100.0f, 0.0f, 100.0f);
+    }
+
+    static void ReadPlayerEquipment(uint64_t actor, PlayerData& player) {
+        player.HelmetLevel = 0;
+        player.VestLevel = 0;
+        player.BackpackLevel = 0;
+        player.HelmetDurability = 0.0f;
+        player.VestDurability = 0.0f;
+        player.BackpackDurability = 0.0f;
+        if (!IsValidGamePtr(actor)) return;
+
+        const uint64_t inventoryFacade = ReadXe(actor + telemetryOffsets::InventoryFacade);
+        if (!IsValidGamePtr(inventoryFacade)) return;
+
+        uint64_t equipment = Read<uint64_t>(inventoryFacade + telemetryOffsets::Equipment);
+        if (!IsValidGamePtr(equipment)) {
+            equipment = ReadXe(inventoryFacade + telemetryOffsets::Equipment);
+        }
+        if (!IsValidGamePtr(equipment)) return;
+
+        const uint64_t items = Read<uint64_t>(equipment + telemetryOffsets::ItemsArray);
+        const int32_t count = Read<int32_t>(equipment + telemetryOffsets::ItemsArray + 0x8);
+        if (!IsValidGamePtr(items) || count <= 0 || count > 32) return;
+
+        for (int32_t i = 0; i < count; ++i) {
+            const uint64_t item = Read<uint64_t>(items + i * sizeof(uint64_t));
+            if (!IsValidGamePtr(item)) continue;
+
+            const std::string itemName = ResolveItemNameFromUItem(item);
+            if (itemName.empty()) continue;
+
+            const int level = ExtractGearLevel(itemName);
+            const float durability = ReadDurabilityPercent(item);
+            if (itemName.find(skCrypt("Head")) != std::string::npos ||
+                itemName.find(skCrypt("Helmet")) != std::string::npos) {
+                player.HelmetLevel = (std::max)(player.HelmetLevel, level);
+                player.HelmetDurability = (std::max)(player.HelmetDurability, durability);
+            } else if (itemName.find(skCrypt("Armor")) != std::string::npos ||
+                       itemName.find(skCrypt("Vest")) != std::string::npos) {
+                player.VestLevel = (std::max)(player.VestLevel, level);
+                player.VestDurability = (std::max)(player.VestDurability, durability);
+            } else if (itemName.find(skCrypt("Back")) != std::string::npos ||
+                       itemName.find(skCrypt("Backpack")) != std::string::npos) {
+                player.BackpackLevel = (std::max)(player.BackpackLevel, level);
+                player.BackpackDurability = (std::max)(player.BackpackDurability, durability);
+            }
+        }
+    }
+
     static std::string ResolveDroppedItemName(uint64_t actor) {
         const uint64_t droppedItem = ReadXe(actor + telemetryOffsets::DroppedItem);
         return ResolveItemNameFromUItem(droppedItem);
@@ -904,6 +970,7 @@ namespace telemetryContext {
                 p.SpectatedCount = Read<int>(playerState + telemetryOffsets::SpectatedCount);
                 p.Gender = NormalizeGender(Read<uint8_t>(actor + telemetryOffsets::Gender));
                 ReadPlayerStats(playerState, p);
+                ReadPlayerEquipment(actor, p);
                 
                 float enemyEyes = Read<float>(mesh + telemetryOffsets::LastRenderTimeOnScreen);
                 if (localPlayerEyes > 0.0f) {

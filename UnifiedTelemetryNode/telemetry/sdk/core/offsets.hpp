@@ -90,8 +90,12 @@ namespace telemetryOffsets {
     inline uint64_t InventoryFacade = telemetry_config::offsets::InventoryFacade;
     inline uint64_t Inventory = telemetry_config::offsets::Inventory;
     inline uint64_t InventoryItems = telemetry_config::offsets::InventoryItems;
+    inline uint64_t Equipment = telemetry_config::offsets::Equipment;
+    inline uint64_t ItemsArray = telemetry_config::offsets::ItemsArray;
     inline uint64_t ItemTable = telemetry_config::offsets::ItemTable;
     inline uint64_t ItemID = telemetry_config::offsets::ItemID;
+    inline uint64_t Durability = telemetry_config::offsets::Durability;
+    inline uint64_t Durabilitymax = telemetry_config::offsets::Durabilitymax;
 
     // Health Keys Redirection (pointing to latest HealthKey names)
     inline uint32_t HealthKey0 = telemetry_config::offsets::HealthKey0;

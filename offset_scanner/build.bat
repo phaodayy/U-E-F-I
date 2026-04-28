@@ -12,18 +12,18 @@ if not exist "build" mkdir "build"
 echo [*] Building Offset Scanner (Hyper-reV Version)...
 
 :: Compile ASM first
-ml64 /c /nologo /Fo build\hypercall_entry.obj "D:\HyperVesion\UEFI\U-E-F-I\PUBG-2\pubg\sdk\hypercall_entry.asm"
+ml64 /c /nologo /Fo build\hypercall_entry.obj "..\UnifiedTelemetryNode\telemetry\sdk\memory\hypercall_entry.asm"
 
 :: Compile CPP files
 cl /EHsc /O2 /MT /std:c++17 ^
-    /I "D:\HyperVesion\UEFI\U-E-F-I\PUBG-2" ^
-    /I "D:\HyperVesion\UEFI\U-E-F-I\PUBG-2\pubg" ^
-    /I "D:\HyperVesion\UEFI\U-E-F-I\PUBG-2\pubg\sdk" ^
-    /I "D:\HyperVesion\UEFI\U-E-F-I\shared" ^
+    /I ".." ^
+    /I "..\UnifiedTelemetryNode" ^
+    /I "..\UnifiedTelemetryNode\telemetry\sdk\memory" ^
+    /I "..\shared" ^
     /Fo"build\\" ^
     main.cpp ^
-    "D:\HyperVesion\UEFI\U-E-F-I\PUBG-2\pubg\sdk\hypercall_bridge.cpp" ^
-    "D:\HyperVesion\UEFI\U-E-F-I\PUBG-2\pubg\sdk\hyper_process.cpp" ^
+    "..\UnifiedTelemetryNode\telemetry\sdk\memory\hypercall_bridge.cpp" ^
+    "..\UnifiedTelemetryNode\telemetry\sdk\memory\hyper_process.cpp" ^
     build\hypercall_entry.obj ^
     /link /OUT:bin\offset_scanner_smart.exe psapi.lib user32.lib shell32.lib advapi32.lib
 

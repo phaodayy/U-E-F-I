@@ -247,6 +247,38 @@ namespace Translation {
         const char* Stocks;
         const char* HeaderAttachments;
         const char* HeaderSurvival;
+        const char* PlayerList;
+        const char* Spectators;
+        const char* HoldPanelKey;
+        const char* PanelKey;
+        const char* HealthDisplay;
+        const char* HealthColumn;
+        const char* HealthTextOnly;
+        const char* Ammo;
+        const char* Damage;
+        const char* Speed;
+        const char* AimWarn;
+        const char* CloseWarn;
+        const char* ViewRay;
+        const char* FireTrace;
+        const char* RayWidth;
+        const char* BigMap;
+        const char* MiniMap;
+        const char* EnableMiniMap;
+        const char* EnableBigMap;
+        const char* NameRadar;
+        const char* DirectionRadar;
+        const char* NameBackground;
+        const char* VehicleRadar;
+        const char* AirdropRadar;
+        const char* DeadBoxRadar;
+        const char* MapLegend;
+        const char* Enemy;
+        const char* Vehicle;
+        const char* State;
+        const char* HelmetShort;
+        const char* VestShort;
+        const char* BackpackShort;
 
         // New Account Fields
         const char* HeaderAccount;

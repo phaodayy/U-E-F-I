@@ -46,6 +46,14 @@ set "OUTPUT_DIR=%CD%\dist"
 if not exist "!OUTPUT_DIR!" mkdir "!OUTPUT_DIR!"
 del /F /Q "!OUTPUT_DIR!\*" >nul 2>&1
 copy /Y "!STAGING_DIR!\GameOverlay.exe" "!OUTPUT_DIR!\GameOverlay.exe" >nul
+if errorlevel 1 (
+    echo [ERROR] Failed to copy release output to: !OUTPUT_DIR!\GameOverlay.exe
+    exit /b 1
+)
+if not exist "!OUTPUT_DIR!\GameOverlay.exe" (
+    echo [ERROR] Missing release output after copy: !OUTPUT_DIR!\GameOverlay.exe
+    exit /b 1
+)
 
 echo [OK] SUCCESS!
 echo [+] Single-file release output: dist\GameOverlay.exe

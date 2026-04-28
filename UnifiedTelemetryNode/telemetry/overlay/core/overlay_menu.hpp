@@ -81,6 +81,7 @@ public:
   bool esp_damage = false;
   bool esp_speed = false;
   bool esp_ammo = true;
+  int esp_health_display_mode = 0;
   bool esp_teamid = false;
   bool esp_spectators = true;
   bool esp_rank = false;
@@ -228,6 +229,9 @@ public:
   float esp_text_bg_alpha = 0.32f;
   bool esp_skeleton_dots = true;
   bool esp_spectator_list = true;
+  bool player_list_enabled = true;
+  bool player_list_hold_required = true;
+  int player_list_hold_key = VK_TAB;
   
   bool esp_items = true;
   bool esp_vehicles = true;
@@ -449,7 +453,7 @@ public:
   void RenderAdminDebugEsp(ImDrawList* draw);
   void RenderMacroOsd(ImDrawList* draw, float ScreenWidth, float ScreenHeight);
   void RenderSpectatorThreatList(ImDrawList* draw, const std::vector<PlayerData>& localPlayers,
-                                 float ScreenWidth);
+                                 float ScreenWidth, float ScreenHeight);
   void DrawAntiScreenshotWarning(ImDrawList* draw, float ScreenHeight);
 
   void BeginGlassCard(const char* id, const char* title, ImVec2 size = ImVec2(0,0));

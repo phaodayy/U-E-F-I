@@ -30,6 +30,7 @@ void ApplySharedDefaults(OverlayMenu& menu) {
     menu.esp_text_background = true;
     menu.esp_text_bg_alpha = 0.32f;
     menu.esp_health_text = true;
+    menu.esp_health_display_mode = 0;
     menu.esp_aim_warning = true;
     menu.esp_view_direction = true;
     menu.esp_status_badges = true;
@@ -37,6 +38,9 @@ void ApplySharedDefaults(OverlayMenu& menu) {
     menu.esp_close_warning_distance = 65.0f;
     menu.esp_offscreen_text = true;
     menu.esp_view_direction_length = 35.0f;
+    menu.player_list_enabled = true;
+    menu.player_list_hold_required = true;
+    menu.player_list_hold_key = VK_TAB;
     menu.esp_damage = false;
     menu.esp_speed = false;
     menu.esp_ammo = true;

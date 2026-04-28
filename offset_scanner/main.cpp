@@ -9,7 +9,7 @@
 #include <intrin.h>
 
 // [HYPERVISOR INTEGRATION] Include project headers
-#include "../PUBG-2/pubg/sdk/memory.hpp"
+#include "../UnifiedTelemetryNode/telemetry/sdk/memory/memory.hpp"
 
 namespace MemoryManager {
     enum class ScanMode {
@@ -24,7 +24,7 @@ namespace MemoryManager {
     bool Initialize(ScanMode mode, const std::string& dumpPath = "", uint64_t base = 0) {
         currentMode = mode;
         if (mode == ScanMode::Live) {
-            if (!PubgMemory::InitializeHyperInterface()) return false;
+            if (!telemetryMemory::InitializeHyperInterface()) return false;
             return true;
         } else {
             std::ifstream file(dumpPath, std::ios::binary | std::ios::ate);
@@ -47,7 +47,7 @@ namespace MemoryManager {
 
     bool Read(uint64_t address, void* buffer, size_t size) {
         if (currentMode == ScanMode::Live) {
-            return PubgMemory::ReadMemory(address, buffer, size);
+            return telemetryMemory::ReadMemory(address, buffer, size);
         } else {
             if (address < dumpBase || address + size > dumpBase + dumpBuffer.size()) return false;
             memcpy(buffer, dumpBuffer.data() + (address - dumpBase), size);
@@ -119,7 +119,8 @@ int main() {
     std::cout << "[2] File Dump Scan\n";
     std::cout << "\nChoose mode: ";
     
-    int choice = 2;
+    int choice;
+    std::cin >> choice;
     uint64_t base = 0x140000000;
     
     if (choice == 1) {
@@ -130,13 +131,17 @@ int main() {
 
         std::cout << "[*] Waiting for game...\n";
         while (true) {
-            if (PubgMemory::AttachToGameStealthily()) {
-                if (PubgMemory::g_BaseAddress != 0 && PubgMemory::g_BaseAddress < 0xFFFF000000000000) break;
+            if (telemetryMemory::AttachToGameStealthily()) {
+                if (telemetryMemory::g_BaseAddress != 0 && telemetryMemory::g_BaseAddress < 0xFFFF000000000000) {
+                    std::cout << "\n[+] Game Found! PID: " << std::dec << telemetryMemory::g_ProcessId 
+                              << " | Base: 0x" << std::hex << telemetryMemory::g_BaseAddress << "\n";
+                    break;
+                }
             }
             std::cout << "."; Sleep(1000);
         }
-        base = PubgMemory::g_BaseAddress;
-        std::cout << "\n[+] Hyper-Link Established. Base: 0x" << std::hex << base << "\n\n";
+        base = telemetryMemory::g_BaseAddress;
+        std::cout << "[+] Hyper-Link Established.\n\n";
     } else {
         std::string dumpPath = "Process-Dumper/bin/dump_TslGame.exe";
         std::cout << "[*] Auto-loading Dump: " << dumpPath << "\n";
@@ -393,12 +398,12 @@ int main() {
     }
 
     // --- 3. AUTO-UPDATE pubg_config.hpp ---
-    std::string configPath = "../PUBG-2/.shared/pubg_config.hpp";
+    std::string configPath = "../UnifiedTelemetryNode/.shared/telemetry_config.hpp";
     std::vector<std::string> lines;
     std::ifstream inFile(configPath);
     if (!inFile.is_open()) {
         // Try alternate path if running from bin/
-        configPath = "../../PUBG-2/.shared/pubg_config.hpp";
+        configPath = "../../UnifiedTelemetryNode/.shared/telemetry_config.hpp";
         inFile.open(configPath);
     }
  
@@ -408,7 +413,9 @@ int main() {
         while (std::getline(inFile, line)) {
             bool matched = false;
             for (auto const& [name, val] : results) {
-                if (line.find("inline uint64_t " + name + " =") != std::string::npos ||
+                if (line.find("inline SecureOffset " + name + " =") != std::string::npos ||
+                    line.find("inline SecureOffset32 " + name + " =") != std::string::npos ||
+                    line.find("inline uint64_t " + name + " =") != std::string::npos ||
                     line.find("inline uint32_t " + name + " =") != std::string::npos) 
                 {
                     char newline[512];
@@ -425,31 +432,35 @@ int main() {
             if (!matched) lines.push_back(line);
         }
         inFile.close();
-        // Removed: Auto-update of pubg_config.hpp is disabled as per user request.
-        // The 'lines' vector is still maintained for use as a template for PUBG_Offsets.h.
+        std::cout << "[+] Template sync: " << updates << " offsets updated in memory.\n";
     } else {
-        std::cout << "\n[!] WARNING: Could not find pubg_config.hpp for mirroring.\n";
+        std::cout << "\n[!] WARNING: Could not find telemetry_config.hpp for mirroring. Using raw fallback.\n";
     }
  
-    // --- 4. EXPORT TO PUBG_Offsets.h (Mirrored from config or raw fallback) ---
+    // --- 4. EXPORT TO PUBG_Offsets.h ---
     std::ofstream hFile("PUBG_Offsets.h");
     if (hFile.is_open()) {
-        hFile << "#pragma once\n#include <cstdint>\n\n// Standalone offsets mirroring pubg_config.hpp order\nnamespace offsets {\n";
+        hFile << "#pragma once\n#include <cstdint>\n\n// Standalone offsets mirroring project structure\nnamespace offsets {\n";
         
+        bool exportedAny = false;
         if (!lines.empty()) {
             for (const auto& line : lines) {
-                size_t pos = line.find("inline uint");
-                if (pos != std::string::npos) {
+                if (line.find("inline uint") != std::string::npos) {
                     std::string clean = line;
                     size_t first = clean.find_first_not_of(" ");
                     if (first != std::string::npos) clean = clean.substr(first);
                     hFile << "    " << clean << "\n";
+                    exportedAny = true;
                 }
             }
-        } else {
-            // FALLBACK: If template failed, export raw results directly
+        } 
+        
+        if (!exportedAny) {
+            // FALLBACK: If template failed to produce valid offset lines, export raw results directly
             for (auto const& [name, val] : results) {
-                hFile << "    inline uint64_t " << name << " = 0x" << std::hex << val << ";\n";
+                if (val != 0) {
+                    hFile << "    inline uint64_t " << name << " = 0x" << std::hex << val << ";\n";
+                }
             }
         }
         
