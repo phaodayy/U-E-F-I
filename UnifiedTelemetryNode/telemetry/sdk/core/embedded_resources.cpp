@@ -41,6 +41,7 @@ std::string NormalizePath(const std::string& path) {
     }
 
     const char* roots[] = {
+        "assetsanimated/",
         "assets/",
         "datamacro/"
     };

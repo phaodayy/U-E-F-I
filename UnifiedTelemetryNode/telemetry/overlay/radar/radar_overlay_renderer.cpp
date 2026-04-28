@@ -1,6 +1,7 @@
 #include "radar_overlay_renderer.hpp"
 
 #include "../core/colors.hpp"
+#include "../core/overlay_asset_animation.hpp"
 #include "../core/overlay_texture_cache.hpp"
 #include "../vehicle/vehicle_resolver.hpp"
 #include "../../sdk/core/context.hpp"
@@ -13,7 +14,12 @@
 
 namespace {
 
-ImU32 GetTeamColor(int teamID) {
+ImU32 GetTeamColor(const OverlayMenu& menu, int teamID) {
+    if (menu.team_color_custom) {
+        const int slot = teamID < 0 ? 0 : (teamID % 4);
+        const float* color = menu.team_custom_colors[slot];
+        return ImGui::ColorConvertFloat4ToU32(ImVec4(color[0], color[1], color[2], color[3]));
+    }
     return telemetryColors::GetTeamColor(teamID);
 }
 
@@ -128,7 +134,7 @@ void DrawBigMapName(ImDrawList* draw, const OverlayMenu& menu, const PlayerData&
 void DrawBigMapMarker(ImDrawList* draw, const OverlayMenu& menu, const PlayerData& player,
                       float x, float y) {
     DrawBigMapDirection(draw, menu, player, x, y);
-    DrawTeamMarker(draw, x, y, player.TeamID, GetTeamColor(player.TeamID),
+    DrawTeamMarker(draw, x, y, player.TeamID, GetTeamColor(menu, player.TeamID),
         menu.bigmap_marker_size, menu.bigmap_marker_alpha, menu.bigmap_name_font_size * 0.82f);
     DrawBigMapName(draw, menu, player, x, y);
 }
@@ -218,7 +224,7 @@ void DrawBigMapAimRay(ImDrawList* draw, const OverlayMenu& menu, const PlayerDat
     if (player.IsTeammate || !player.HasAimYaw) return;
 
     const float yaw = NormalizeAngle(player.AimYaw + menu.radar_rotation_offset);
-    const float rayWidth = std::clamp(menu.minimap_ray_width, 1.0f, 5.0f);
+    const float rayWidth = std::clamp(menu.minimap_ray_width, 0.5f, 4.0f);
 
     if (menu.minimap_show_direction) {
         const ImVec2 viewEnd = BigMapRayEnd(rect, player, marker, yaw,
@@ -256,22 +262,14 @@ void DrawBigMapAimRay(ImDrawList* draw, const OverlayMenu& menu, const PlayerDat
 }
 
 void DrawScaledIcon(ImDrawList* draw, TextureInfo* icon, const ImVec2& center,
-                    float targetSize, ImU32 tint = IM_COL32(255, 255, 255, 255)) {
+                    float targetSize, ImU32 tint = IM_COL32(255, 255, 255, 255),
+                    bool important = false) {
     if (!icon || !icon->SRV || icon->Width <= 0 || icon->Height <= 0) return;
 
-    float width = targetSize;
-    float height = targetSize;
-    const float aspect = static_cast<float>(icon->Width) / static_cast<float>(icon->Height);
-    if (aspect > 1.0f) {
-        height = targetSize / aspect;
-    } else {
-        width = targetSize * aspect;
-    }
-
-    draw->AddImage(icon->SRV,
-        ImVec2(center.x - width * 0.5f, center.y - height * 0.5f),
-        ImVec2(center.x + width * 0.5f, center.y + height * 0.5f),
-        ImVec2(0, 0), ImVec2(1, 1), tint);
+    OverlayAssetAnimation::DrawOptions anim{};
+    anim.important = important;
+    anim.strength = important ? 1.18f : 0.86f;
+    OverlayAssetAnimation::DrawAnimatedImage(draw, icon, center, targetSize, tint, anim);
 }
 
 bool ShouldDrawBigMapVehicle(const OverlayMenu& menu, const std::string& name) {
@@ -299,11 +297,11 @@ bool ShouldDrawBigMapVehicle(const OverlayMenu& menu, const std::string& name) {
 }
 
 void DrawBigMapIcon(ImDrawList* draw, float x, float y, TextureInfo* icon,
-                    float size, ImU32 tint, ImU32 fallbackColor) {
+                    float size, ImU32 tint, ImU32 fallbackColor, bool important = false) {
     const ImVec2 center(x, y);
     draw->AddCircleFilled(ImVec2(x + 1.0f, y + 1.0f), size * 0.48f, IM_COL32(0, 0, 0, 55), 18);
     if (icon && icon->SRV) {
-        DrawScaledIcon(draw, icon, center, size, tint);
+        DrawScaledIcon(draw, icon, center, size, tint, important);
     } else {
         draw->AddCircleFilled(center, size * 0.34f, fallbackColor, 18);
         draw->AddCircle(center, size * 0.36f, IM_COL32(0, 0, 0, 170), 18, 1.0f);
@@ -316,6 +314,7 @@ void DrawBigMapItem(ImDrawList* draw, const OverlayMenu& menu, const ItemData& i
     ImU32 tint = IM_COL32(255, 255, 255, 235);
     ImU32 fallback = IM_COL32(255, 255, 255, 220);
     float size = menu.bigmap_icon_size;
+    bool important = false;
 
     if (item.RenderType == ItemRenderType::Vehicle) {
         if (!menu.bigmap_show_vehicles || !menu.esp_vehicles ||
@@ -331,17 +330,19 @@ void DrawBigMapItem(ImDrawList* draw, const OverlayMenu& menu, const ItemData& i
         icon = OverlayTextures::GetMapIcon(skCrypt("Carapackage_RedBox_C"));
         size *= 1.15f;
         fallback = IM_COL32(255, 70, 70, 235);
+        important = true;
     } else if (item.RenderType == ItemRenderType::DeadBox) {
         if (!menu.bigmap_show_deadboxes || !menu.esp_deadboxes) return;
         icon = OverlayTextures::GetMapIcon(skCrypt("dead"));
         size *= 0.90f;
         tint = IM_COL32(255, 190, 90, 235);
         fallback = IM_COL32(255, 150, 55, 230);
+        important = true;
     } else {
         return;
     }
 
-    DrawBigMapIcon(draw, x, y, icon, size, tint, fallback);
+    DrawBigMapIcon(draw, x, y, icon, size, tint, fallback, important);
 }
 
 void DrawBigMapItems(ImDrawList* draw, const OverlayMenu& menu, const BigMapRect& rect) {
@@ -557,7 +558,7 @@ void DrawMiniMapAimRay(ImDrawList* draw, const OverlayMenu& menu, const PlayerDa
     if (player.IsTeammate || !player.HasAimYaw) return;
 
     const float yaw = NormalizeAngle(player.AimYaw + menu.radar_rotation_offset);
-    const float rayWidth = std::clamp(menu.minimap_ray_width, 1.0f, 5.0f);
+    const float rayWidth = std::clamp(menu.minimap_ray_width, 0.5f, 4.0f);
 
     if (menu.minimap_show_direction) {
         const ImVec2 viewEnd = MiniMapRayEnd(marker, yaw, menu.minimap_view_ray_length,
@@ -664,17 +665,12 @@ void Draw(ImDrawList* draw, OverlayMenu& menu, const std::vector<PlayerData>& pl
     bool worldMapDrawn = false;
 
     if (canDrawWorldMap) {
-        float worldLeft = G_Radar.WorldMapX;
-        float worldTop = G_Radar.WorldMapY;
-        float worldRight = worldLeft + G_Radar.WorldMapWidth;
-        float worldBottom = worldTop + G_Radar.WorldMapHeight;
-        if (G_Radar.WorldMapWidth <= 10.0f || G_Radar.WorldMapHeight <= 10.0f) {
-            const float mapSize = screenHeight;
-            worldLeft = (screenWidth - mapSize) * 0.5f;
-            worldTop = 0.0f;
-            worldRight = worldLeft + mapSize;
-            worldBottom = mapSize;
-        }
+        const float baseMapSize = (std::min)(screenWidth, screenHeight) *
+            std::clamp(menu.bigmap_screen_scale, 0.70f, 1.25f);
+        const float worldLeft = ((screenWidth - baseMapSize) * 0.5f) + menu.bigmap_offset_x;
+        const float worldTop = ((screenHeight - baseMapSize) * 0.5f) + menu.bigmap_offset_y;
+        const float worldRight = worldLeft + baseMapSize;
+        const float worldBottom = worldTop + baseMapSize;
 
         const BigMapRect bigMapRect{ worldLeft, worldTop, worldRight, worldBottom };
         DrawBigMapItems(draw, menu, bigMapRect);
@@ -708,7 +704,7 @@ void Draw(ImDrawList* draw, OverlayMenu& menu, const std::vector<PlayerData>& pl
         DrawMiniMapAimRay(draw, menu, player, ImVec2(clampedX, clampedY), mapDiv,
             miniLeft, miniTop, miniRight, miniBottom);
         DrawTeamMarker(draw, clampedX, clampedY, player.TeamID,
-            GetTeamColor(player.TeamID), menu.radar_dot_size);
+            GetTeamColor(menu, player.TeamID), menu.radar_dot_size);
     }
 
     if (menu.show_radar_center) {

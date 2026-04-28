@@ -36,7 +36,17 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
 
         PlayerData* bestTarget = nullptr;
         Vector2 bestScreenPos = { 0, 0 };
-        float closestDist = finalFov * 8.0f; // Reset each frame
+        const float fovLimit = finalFov * 8.0f;
+        float bestScore = 1000000000.0f;
+
+        auto TargetScore = [&](const PlayerData& player, float screenDist) {
+            switch (aim_target_priority) {
+            case 1: return player.Distance;
+            case 2: return (std::max)(0.0f, player.Health) + screenDist * 0.01f;
+            case 3: return (player.IsAimingAtLocal ? -5000.0f : 0.0f) + screenDist + player.Distance * 0.05f;
+            default: return screenDist;
+            }
+        };
 
         if (is_authenticated && canAim && activeConfig.enabled) {
             draw->AddCircle(ImVec2(ScreenCenterX, ScreenCenterY), finalFov * 8.0f, ImColor(255, 255, 255, 60), 64, 1.0f);
@@ -65,7 +75,9 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
             Vector3 delta = player.Velocity * dt_esp;
 
             // --- INTEGRATED precision_calibration TARGET CHECK (Optimization) ---
-            if (isprecision_calibrationTarget && telemetryMemory::IsKeyDown(activeKey)) {
+            const bool aimKeyDown = (activeKey != 0 && telemetryMemory::IsKeyDown(activeKey)) ||
+                (aim_key2 != 0 && telemetryMemory::IsKeyDown(aim_key2));
+            if (isprecision_calibrationTarget && aimKeyDown) {
                 if (!player.IsTeammate && player.Health > 0) {
                     if (!aim_visible_only || player.IsVisible) {
                         // SMART-BONE LOGIC: Check Head, Neck, Chest on the player and pick the one closest to crosshair
@@ -113,10 +125,13 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
                             }
 
                             float finalDist = selected.dist; // Use the original screen distance for filter
-                            if (finalDist < closestDist) {
-                                closestDist = finalDist;
+                            if (finalDist < fovLimit) {
+                                const float score = TargetScore(player, finalDist);
+                                if (score < bestScore) {
+                                    bestScore = score;
                                 bestTarget = &player;
                                 bestScreenPos = targetScreen;
+                                }
                             }
                         }
                     }
@@ -135,8 +150,19 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
             float moveY = (bestScreenPos.y - ScreenCenterY);
 
             if (activeConfig.smooth > 1.0f) {
-                moveX /= activeConfig.smooth;
-                moveY /= activeConfig.smooth;
+                const float moveLen = std::sqrt((moveX * moveX) + (moveY * moveY));
+                const float nearFactor = std::clamp(moveLen / 160.0f, 0.0f, 1.0f);
+                float smoothDivisor = activeConfig.smooth;
+                if (aim_smooth_curve == 1) {
+                    smoothDivisor *= 0.72f + nearFactor * 0.28f;
+                } else if (aim_smooth_curve == 2) {
+                    smoothDivisor *= 1.30f - nearFactor * 0.35f;
+                } else if (aim_smooth_curve == 3) {
+                    smoothDivisor *= 0.62f;
+                }
+                smoothDivisor = (std::max)(1.0f, smoothDivisor);
+                moveX /= smoothDivisor;
+                moveY /= smoothDivisor;
             }
 
             telemetryMemory::MoveMouse((long)moveX, (long)moveY);

@@ -22,6 +22,11 @@ void ApplySharedDefaults(OverlayMenu& menu) {
     menu.item_group_icon_size = 18.0f;
     menu.vehicle_icon_size = 34.0f;
     menu.loot_distance_font_size = 12.0f;
+    menu.asset_animation_enabled = true;
+    menu.asset_animation_glow = false;
+    menu.asset_animation_shine = false;
+    menu.asset_animation_strength = 1.0f;
+    menu.asset_animation_speed = 1.0f;
     menu.esp_text_background = true;
     menu.esp_text_bg_alpha = 0.32f;
     menu.esp_health_text = true;
@@ -44,7 +49,7 @@ void ApplySharedDefaults(OverlayMenu& menu) {
     menu.minimap_view_ray_length = 55.0f;
     menu.minimap_fire_ray_length = 240.0f;
     menu.minimap_fire_flash_ms = 420.0f;
-    menu.minimap_ray_width = 1.6f;
+    menu.minimap_ray_width = 1.1f;
     menu.bigmap_name_background = true;
     menu.bigmap_show_legend = true;
     menu.bigmap_show_vehicles = true;
@@ -55,6 +60,13 @@ void ApplySharedDefaults(OverlayMenu& menu) {
     menu.bigmap_icon_size = 20.0f;
     menu.bigmap_name_font_size = 13.0f;
     menu.bigmap_name_bg_alpha = 0.34f;
+    menu.bigmap_offset_x = 0.0f;
+    menu.bigmap_offset_y = 0.0f;
+    menu.bigmap_screen_scale = 1.0f;
+    menu.esp_multilayer_nameplate = true;
+    menu.team_color_custom = false;
+    menu.aim_smooth_curve = 1;
+    menu.aim_target_priority = 0;
     menu.damage_color[0] = 1.0f; menu.damage_color[1] = 0.48f; menu.damage_color[2] = 0.18f; menu.damage_color[3] = 1.0f;
     menu.speed_color[0] = 0.45f; menu.speed_color[1] = 1.0f; menu.speed_color[2] = 0.72f; menu.speed_color[3] = 1.0f;
     menu.ammo_color[0] = 0.95f; menu.ammo_color[1] = 0.95f; menu.ammo_color[2] = 0.72f; menu.ammo_color[3] = 1.0f;

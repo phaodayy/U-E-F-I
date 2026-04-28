@@ -36,6 +36,7 @@ struct TextureInfo {
     ID3D11ShaderResourceView* SRV = nullptr;
     int Width = 0;
     int Height = 0;
+    int Frames = 1;
 };
 
 class OverlayMenu {
@@ -121,7 +122,7 @@ public:
   float minimap_view_ray_length = 55.0f;
   float minimap_fire_ray_length = 240.0f;
   float minimap_fire_flash_ms = 420.0f;
-  float minimap_ray_width = 1.6f;
+  float minimap_ray_width = 1.1f;
   bool bigmap_show_names = true;
   bool bigmap_show_direction = true;
   bool bigmap_name_background = true;
@@ -134,11 +135,16 @@ public:
   float bigmap_icon_size = 20.0f;
   float bigmap_name_font_size = 13.0f;
   float bigmap_name_bg_alpha = 0.34f;
+  float bigmap_offset_x = 0.0f;
+  float bigmap_offset_y = 0.0f;
+  float bigmap_screen_scale = 1.0f;
 
   bool aim_master_enabled = true;
   bool aim_visible_only = true;
   bool aim_adaptive_fov = true;
   float aim_smooth_rng = 0.0f;
+  int aim_smooth_curve = 1;
+  int aim_target_priority = 0;
   int aim_key2 = 0;
   bool macro_enabled = false;
   bool macro_humanize = true;
@@ -173,6 +179,14 @@ public:
   float box_fill_color[4] = {0.0f, 0.0f, 0.0f, 0.25f};
   float snapline_color[4] = {1.0f, 1.0f, 0.0f, 1.0f};
   float shield_color[4] = {0.25f, 0.6f, 1.0f, 1.0f};
+  bool team_color_custom = false;
+  float team_custom_colors[4][4] = {
+    {1.0f, 0.24f, 0.24f, 1.0f},
+    {0.20f, 0.82f, 1.0f, 1.0f},
+    {0.35f, 1.0f, 0.55f, 1.0f},
+    {1.0f, 0.76f, 0.18f, 1.0f}
+  };
+  bool esp_multilayer_nameplate = true;
   bool language = 0;
 
   int render_distance = 600;
@@ -229,6 +243,11 @@ public:
   float item_group_icon_size = 18.0f;
   float vehicle_icon_size = 34.0f;
   float loot_distance_font_size = 12.0f;
+  bool asset_animation_enabled = true;
+  bool asset_animation_glow = false;
+  bool asset_animation_shine = false;
+  float asset_animation_strength = 1.0f;
+  float asset_animation_speed = 1.0f;
 
   bool loot_armor_lv1 = false;
   bool loot_armor_lv2 = true;

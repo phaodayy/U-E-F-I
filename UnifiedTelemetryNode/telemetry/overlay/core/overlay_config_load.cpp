@@ -170,6 +170,9 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("bigmap_icon_size")) bigmap_icon_size = j["bigmap_icon_size"];
             if (j.contains("bigmap_name_font_size")) bigmap_name_font_size = j["bigmap_name_font_size"];
             if (j.contains("bigmap_name_bg_alpha")) bigmap_name_bg_alpha = j["bigmap_name_bg_alpha"];
+            if (j.contains("bigmap_offset_x")) bigmap_offset_x = j["bigmap_offset_x"];
+            if (j.contains("bigmap_offset_y")) bigmap_offset_y = j["bigmap_offset_y"];
+            if (j.contains("bigmap_screen_scale")) bigmap_screen_scale = j["bigmap_screen_scale"];
             if (j.contains("macro_enabled")) {
                 macro_enabled = j["macro_enabled"];
                 MacroEngine::macro_enabled = macro_enabled;
@@ -222,6 +225,16 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("color_aim_warning")) for (int i = 0; i < 4; i++) aim_warning_color[i] = j["color_aim_warning"][i];
             if (j.contains("color_close_warning")) for (int i = 0; i < 4; i++) close_warning_color[i] = j["color_close_warning"][i];
             if (j.contains("color_view_direction")) for (int i = 0; i < 4; i++) view_direction_color[i] = j["color_view_direction"][i];
+            if (j.contains("team_color_custom")) team_color_custom = j["team_color_custom"];
+            if (j.contains("team_custom_colors") && j["team_custom_colors"].is_array()) {
+                for (int row = 0; row < 4 && row < (int)j["team_custom_colors"].size(); ++row) {
+                    if (!j["team_custom_colors"][row].is_array()) continue;
+                    for (int col = 0; col < 4 && col < (int)j["team_custom_colors"][row].size(); ++col) {
+                        team_custom_colors[row][col] = j["team_custom_colors"][row][col];
+                    }
+                }
+            }
+            if (j.contains("esp_multilayer_nameplate")) esp_multilayer_nameplate = j["esp_multilayer_nameplate"];
 
             if (j.contains("esp_items")) esp_items = j["esp_items"];
             if (j.contains("esp_vehicles")) esp_vehicles = j["esp_vehicles"];
@@ -233,6 +246,11 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("item_group_icon_size")) item_group_icon_size = j["item_group_icon_size"];
             if (j.contains("vehicle_icon_size")) vehicle_icon_size = j["vehicle_icon_size"];
             if (j.contains("loot_distance_font_size")) loot_distance_font_size = j["loot_distance_font_size"];
+            if (j.contains("asset_animation_enabled")) asset_animation_enabled = j["asset_animation_enabled"];
+            if (j.contains("asset_animation_glow")) asset_animation_glow = j["asset_animation_glow"];
+            if (j.contains("asset_animation_shine")) asset_animation_shine = j["asset_animation_shine"];
+            if (j.contains("asset_animation_strength")) asset_animation_strength = j["asset_animation_strength"];
+            if (j.contains("asset_animation_speed")) asset_animation_speed = j["asset_animation_speed"];
 
             if (j.contains("share_radar")) share_radar = j["share_radar"];
             if (j.contains("share_radar_ip")) strcpy_s(share_radar_ip, j["share_radar_ip"].get<std::string>().c_str());
@@ -421,6 +439,9 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("aim_master_enabled")) aim_master_enabled = j["aim_master_enabled"];
             if (j.contains("aim_adaptive_fov")) aim_adaptive_fov = j["aim_adaptive_fov"];
             if (j.contains("aim_visible_only")) aim_visible_only = j["aim_visible_only"];
+            if (j.contains("aim_category_idx")) aim_category_idx = j["aim_category_idx"];
+            if (j.contains("aim_smooth_curve")) aim_smooth_curve = j["aim_smooth_curve"];
+            if (j.contains("aim_target_priority")) aim_target_priority = j["aim_target_priority"];
 
             if (j.contains("aim_configs") && j["aim_configs"].is_array()) {
                 auto aim_array = j["aim_configs"];

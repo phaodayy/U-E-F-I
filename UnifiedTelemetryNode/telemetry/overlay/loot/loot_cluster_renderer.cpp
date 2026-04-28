@@ -1,5 +1,6 @@
 #include "loot_cluster_renderer.hpp"
 
+#include "../core/overlay_asset_animation.hpp"
 #include "../../imgui/imgui.h"
 #include <algorithm>
 #include <cmath>
@@ -73,22 +74,14 @@ void DrawTextShadow(ImDrawList* draw, const ImVec2& pos, ImU32 color, const char
 }
 
 void DrawScaledIcon(ImDrawList* draw, TextureInfo* icon, const ImVec2& center,
-                    float targetSize, ImU32 tint = IM_COL32(255, 255, 255, 255)) {
+                    float targetSize, ImU32 tint = IM_COL32(255, 255, 255, 255),
+                    bool important = false) {
     if (!icon || !icon->SRV || icon->Width <= 0 || icon->Height <= 0) return;
 
-    float width = targetSize;
-    float height = targetSize;
-    const float aspect = static_cast<float>(icon->Width) / static_cast<float>(icon->Height);
-    if (aspect > 1.0f) {
-        height = targetSize / aspect;
-    } else {
-        width = targetSize * aspect;
-    }
-
-    draw->AddImage(icon->SRV,
-        ImVec2(center.x - width * 0.5f, center.y - height * 0.5f),
-        ImVec2(center.x + width * 0.5f, center.y + height * 0.5f),
-        ImVec2(0, 0), ImVec2(1, 1), tint);
+    OverlayAssetAnimation::DrawOptions anim{};
+    anim.important = important;
+    anim.strength = important ? 1.18f : 0.92f;
+    OverlayAssetAnimation::DrawAnimatedImage(draw, icon, center, targetSize, tint, anim);
 }
 
 void DrawDistance(ImDrawList* draw, const ImVec2& center, float y, float distance, ImU32 color, float fontSize) {
@@ -116,7 +109,7 @@ void DrawSingle(ImDrawList* draw, const LootClusterRenderer::Entry& entry,
         draw->AddCircleFilled(ImVec2(iconCenter.x + 1.0f, iconCenter.y + 1.0f), iconSize * 0.58f,
             IM_COL32(0, 0, 0, 36), 24);
         draw->AddCircleFilled(iconCenter, iconSize * 0.56f, IM_COL32(5, 8, 12, 34), 24);
-        DrawScaledIcon(draw, entry.Icon, iconCenter, iconSize);
+        DrawScaledIcon(draw, entry.Icon, iconCenter, iconSize, IM_COL32(255, 255, 255, 255), entry.Important);
         DrawDistance(draw, screen, screen.y + 2.0f, entry.Distance, entry.Color, settings.DistanceFontSize);
         return;
     }
@@ -168,12 +161,8 @@ void DrawIconCell(ImDrawList* draw, const LootClusterRenderer::Entry& entry,
         IM_COL32(0, 0, 0, 32), 18);
     draw->AddCircleFilled(center, iconSize * 0.52f, IM_COL32(7, 10, 14, 46), 18);
 
-    if (entry.Important) {
-        draw->AddCircle(center, iconSize * 0.58f, entry.Color & IM_COL32(255, 255, 255, 120), 18, 1.5f);
-    }
-
     if (entry.Icon && entry.Icon->SRV) {
-        DrawScaledIcon(draw, entry.Icon, center, iconSize);
+        DrawScaledIcon(draw, entry.Icon, center, iconSize, IM_COL32(255, 255, 255, 255), entry.Important);
     } else {
         draw->AddCircleFilled(center, iconSize * 0.25f, entry.Color);
     }

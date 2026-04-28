@@ -3,11 +3,44 @@
 #include "../../sdk/core/context.hpp"
 #include <protec/skCrypt.h>
 #include <windows.h>
+#include <algorithm>
 
 void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     auto Lang = Translation::Get();
     extern void UploadActiveLoaderConfigAsync();
     float totalWidth = windowSize.x - 60;
+
+    const char* aimCategories[] = {
+        skCrypt("AR"), skCrypt("SR"), skCrypt("DMR"), skCrypt("SMG"),
+        skCrypt("Shotgun"), skCrypt("Pistol"), skCrypt("Melee"),
+        skCrypt("Throwable"), skCrypt("Global")
+    };
+    g_Menu.aim_category_idx = std::clamp(g_Menu.aim_category_idx, 0, 8);
+    AimConfig* pCfg = &g_Menu.aim_configs[g_Menu.aim_category_idx];
+
+    const char* keyLabels[] = { "NONE", "MOUSE LEFT", "MOUSE RIGHT", "L-ALT", "L-SHIFT", "X", "V" };
+    int keyVals[] = { 0, VK_LBUTTON, VK_RBUTTON, VK_LMENU, VK_LSHIFT, 'X', 'V' };
+    auto DrawKeyCombo = [&](const char* label, int* keyValue) {
+        int keyIdx = 0;
+        for (int i = 0; i < IM_ARRAYSIZE(keyVals); ++i) {
+            if (*keyValue == keyVals[i]) keyIdx = i;
+        }
+        ImGui::SetNextItemWidth(-1);
+        if (ImGui::Combo(label, &keyIdx, keyLabels, IM_ARRAYSIZE(keyLabels))) {
+            *keyValue = keyVals[keyIdx];
+        }
+    };
+
+    auto ApplyActiveAimPreset = [&](int preset) {
+        if (preset == 0) {
+            pCfg->fov = 7.0f; pCfg->smooth = 8.0f; pCfg->max_dist = 220.0f; pCfg->bone = 5; pCfg->prediction = true;
+        } else if (preset == 1) {
+            pCfg->fov = 11.0f; pCfg->smooth = 4.5f; pCfg->max_dist = 450.0f; pCfg->bone = 6; pCfg->prediction = true;
+        } else if (preset == 2) {
+            pCfg->fov = 15.0f; pCfg->smooth = 2.2f; pCfg->max_dist = 260.0f; pCfg->bone = 2; pCfg->prediction = false;
+        }
+    };
+
     ImGui::Columns(3, skCrypt("AimColumns"), false);
     ImGui::SetColumnWidth(0, totalWidth / 3.0f);
     ImGui::SetColumnWidth(1, totalWidth / 3.0f);
@@ -23,18 +56,34 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     if (ImGui::Button(Lang.SaveConfig, ImVec2(-1, 35))) { g_Menu.SaveConfig("dataMacro/Config/settings.json"); UploadActiveLoaderConfigAsync(); }
     if (ImGui::Button(Lang.CloseOverlay, ImVec2(-1, 35))) { showmenu = false; }
     ImGui::Separator();
-    DrawDisplayOnlyOption(Lang.ShowcasePrecisionProfile);
-    DrawDisplayOnlyOption(Lang.ShowcaseControllerMatrix);
-    DrawDisplayOnlyOption(Lang.ShowcaseKeyPresets);
-    DrawDisplayOnlyOption(Lang.ShowcaseAimProfiles);
+    ImGui::TextDisabled("%s", Lang.ShowcasePrecisionProfile);
+    ImGui::Checkbox(Lang.AimEnabled, &g_Menu.aim_master_enabled);
+    ImGui::Checkbox(Lang.AimVisible, &g_Menu.aim_visible_only);
+    ImGui::Checkbox(Lang.AimPrediction, &pCfg->prediction);
+    ImGui::Checkbox(skCrypt("Adaptive FOV"), &g_Menu.aim_adaptive_fov);
+    ImGui::SliderFloat(Lang.SmoothRNG, &g_Menu.aim_smooth_rng, 0.0f, 10.0f, skCrypt("%.1f"));
+    ImGui::Separator();
+    ImGui::TextDisabled("%s", Lang.ShowcaseControllerMatrix);
+    DrawKeyCombo(skCrypt("Primary Key"), &pCfg->key);
+    DrawKeyCombo(skCrypt("Secondary Key"), &g_Menu.aim_key2);
+    ImGui::Separator();
+    ImGui::TextDisabled("%s", Lang.ShowcaseKeyPresets);
+    if (ImGui::Button(skCrypt("RMB"), ImVec2(70, 24))) pCfg->key = VK_RBUTTON;
+    ImGui::SameLine();
+    if (ImGui::Button(skCrypt("L-ALT"), ImVec2(70, 24))) pCfg->key = VK_LMENU;
+    if (ImGui::Button(skCrypt("L-SHIFT"), ImVec2(70, 24))) pCfg->key = VK_LSHIFT;
+    ImGui::SameLine();
+    if (ImGui::Button(skCrypt("LMB"), ImVec2(70, 24))) pCfg->key = VK_LBUTTON;
     ImGui::EndChild();
 
     ImGui::NextColumn();
     // Column 2: Settings
     BeginGlassCard(skCrypt("##AimCol2"), Lang.HeaderPrecisionSettings, ImVec2(totalWidth / 3.0f - 20, 0));
-    ImGui::Checkbox(Lang.AimEnabled, &g_Menu.aim_master_enabled);
-
-    AimConfig* pCfg = &g_Menu.aim_configs[8]; // GLOBAL
+    ImGui::TextDisabled("%s", Lang.ShowcaseAimProfiles);
+    ImGui::SetNextItemWidth(-1);
+    ImGui::Combo(skCrypt("##AimProfileCategory"), &g_Menu.aim_category_idx, aimCategories, IM_ARRAYSIZE(aimCategories));
+    pCfg = &g_Menu.aim_configs[g_Menu.aim_category_idx];
+    ImGui::Checkbox(skCrypt("Enable Profile"), &pCfg->enabled);
     ImGui::Checkbox(Lang.AimPrediction, &pCfg->prediction);
     ImGui::Checkbox(Lang.AimVisible, &g_Menu.aim_visible_only);
 
@@ -42,6 +91,11 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     ImGui::SliderFloat(Lang.AimFOV, &pCfg->fov, 1.0f, 100.0f, skCrypt("%.0f px"));
     ImGui::SliderFloat(Lang.AimSmooth, &pCfg->smooth, 1.0f, 20.0f, skCrypt("%.1f"));
     ImGui::SliderFloat(Lang.MaxDistance, &pCfg->max_dist, 10.0f, 800.0f, skCrypt("%.0f m"));
+    ImGui::Separator();
+    if (ImGui::Button(skCrypt("Safe"), ImVec2(90, 24))) ApplyActiveAimPreset(0);
+    ImGui::SameLine();
+    if (ImGui::Button(skCrypt("Balanced"), ImVec2(90, 24))) ApplyActiveAimPreset(1);
+    if (ImGui::Button(skCrypt("Fast"), ImVec2(90, 24))) ApplyActiveAimPreset(2);
 
     ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), Lang.FovColor);
     static float fov_col[4] = {1.0f, 1.0f, 1.0f, 0.5f}; // Stub or find global fov color
@@ -54,13 +108,7 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
 
     ImGui::Spacing();
     ImGui::TextColored(ImVec4(0.8f, 0.2f, 1.0f, 1.0f), Lang.AimKey2);
-    const char* keys[] = { "NONE", "MOUSE LEFT", "MOUSE RIGHT", "L-ALT", "L-SHIFT", "X", "V" };
-    int keyVals[] = { 0, VK_LBUTTON, VK_RBUTTON, VK_LMENU, VK_LSHIFT, 'X', 'V' };
-    int key2Idx = 0;
-    for(int i=0; i<7; i++) if(g_Menu.aim_key2 == keyVals[i]) key2Idx = i;
-    if (ImGui::Combo(skCrypt("##AimKey2Combo"), &key2Idx, keys, IM_ARRAYSIZE(keys))) {
-        g_Menu.aim_key2 = keyVals[key2Idx];
-    }
+    DrawKeyCombo(skCrypt("##AimKey2Combo"), &g_Menu.aim_key2);
 
     ImGui::EndChild();
 
@@ -78,13 +126,19 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
 
     ImGui::Spacing();
     ImGui::Separator();
+    ImGui::TextDisabled("%s", Lang.ShowcaseAimCurve);
+    const char* curveItems[] = { skCrypt("Linear"), skCrypt("Soft"), skCrypt("Stable"), skCrypt("Fast") };
+    ImGui::SetNextItemWidth(-1);
+    ImGui::Combo(skCrypt("##AimCurve"), &g_Menu.aim_smooth_curve, curveItems, IM_ARRAYSIZE(curveItems));
+    ImGui::TextDisabled("%s", Lang.ShowcaseAimPriority);
+    const char* priorityItems[] = { skCrypt("Crosshair"), skCrypt("Distance"), skCrypt("Low HP"), skCrypt("Threat") };
+    ImGui::SetNextItemWidth(-1);
+    ImGui::Combo(skCrypt("##AimPriority"), &g_Menu.aim_target_priority, priorityItems, IM_ARRAYSIZE(priorityItems));
+    ImGui::Separator();
     ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), Lang.HeaderTactical);
     ImGui::Checkbox(Lang.GrenadeLine, &g_Menu.esp_grenade_prediction);
     ImGui::Checkbox(Lang.Projectiles, &g_Menu.esp_projectile_tracer);
     ImGui::Checkbox(Lang.ThreatWarning, &g_Menu.esp_threat_warning);
-    ImGui::Separator();
-    DrawDisplayOnlyOption(Lang.ShowcaseAimCurve);
-    DrawDisplayOnlyOption(Lang.ShowcaseAimPriority);
 
     ImGui::EndChild();
 

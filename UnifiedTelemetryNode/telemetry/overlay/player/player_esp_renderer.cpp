@@ -1,6 +1,7 @@
 #include "../core/overlay_menu.hpp"
 #include "../core/colors.hpp"
 #include "player_esp_layout.hpp"
+#include "../core/overlay_asset_animation.hpp"
 #include "../core/overlay_texture_cache.hpp"
 #include "../../sdk/core/context.hpp"
 #include "../../sdk/core/math.hpp"
@@ -29,6 +30,15 @@ int AlphaByte(float alpha) {
 ImU32 WithAlpha(ImU32 color, float alphaMult) {
     int alpha = static_cast<int>(((color >> 24) & 0xFF) * std::clamp(alphaMult, 0.0f, 1.0f));
     return (color & 0x00FFFFFF) | (alpha << 24);
+}
+
+ImU32 TeamColorFromMenu(int teamID) {
+    if (g_Menu.team_color_custom) {
+        const int slot = teamID < 0 ? 0 : (teamID % 4);
+        const float* color = g_Menu.team_custom_colors[slot];
+        return ImGui::ColorConvertFloat4ToU32(ImVec4(color[0], color[1], color[2], color[3]));
+    }
+    return telemetryColors::GetTeamColor(teamID);
 }
 
 ImVec2 TextSize(const char* text, float fontSize) {
@@ -69,6 +79,67 @@ void DrawTextChip(ImDrawList* draw, const ImVec2& pos, const char* text, float f
         draw->AddRect(chipMin, chipMax, border, 4.0f, 0, 1.0f);
     }
     DrawOutlinedText(draw, ImVec2(pos.x + 4.0f, pos.y + 2.0f), textColor, text, fontSize, alphaMult);
+}
+
+void DrawNameplateChip(ImDrawList* draw, const ImVec2& pos, const char* text, float fontSize,
+                       ImU32 textColor, ImU32 accentColor, float alphaMult, bool warning = false) {
+    if (!g_Menu.esp_multilayer_nameplate) {
+        DrawTextChip(draw, pos, text, fontSize, textColor, alphaMult, warning);
+        return;
+    }
+
+    const ImVec2 textSz = TextSize(text, fontSize);
+    const ImVec2 chipMin(pos.x, pos.y);
+    const ImVec2 chipMax(pos.x + textSz.x + 14.0f, pos.y + textSz.y + 5.0f);
+    const float bgAlpha = std::clamp(g_Menu.esp_text_bg_alpha, 0.0f, 0.58f);
+    const ImU32 bg = warning ?
+        IM_COL32(42, 20, 8, AlphaByte((bgAlpha + 0.12f) * alphaMult)) :
+        IM_COL32(7, 12, 18, AlphaByte(bgAlpha * alphaMult));
+    draw->AddRectFilled(ImVec2(chipMin.x + 1.0f, chipMin.y + 1.0f),
+        ImVec2(chipMax.x + 1.0f, chipMax.y + 1.0f), IM_COL32(0, 0, 0, AlphaByte(0.12f * alphaMult)), 4.0f);
+    draw->AddRectFilled(chipMin, chipMax, bg, 4.0f);
+    draw->AddRectFilled(ImVec2(chipMin.x, chipMin.y), ImVec2(chipMin.x + 3.0f, chipMax.y),
+        WithAlpha(accentColor, alphaMult), 4.0f, ImDrawFlags_RoundCornersLeft);
+    draw->AddRect(chipMin, chipMax, WithAlpha(accentColor, 0.34f * alphaMult), 4.0f, 0, 1.0f);
+    DrawOutlinedText(draw, ImVec2(pos.x + 8.0f, pos.y + 2.0f), textColor, text, fontSize, alphaMult);
+}
+
+ImVec2 AmmoBadgeSize(float fontSize) {
+    return ImVec2(58.0f + fontSize * 1.4f, fontSize + 10.0f);
+}
+
+void DrawAmmoBadge(ImDrawList* draw, const ImVec2& pos, int ammo, int ammoMax, float fontSize,
+                   ImU32 color, float alphaMult, bool warning) {
+    const ImVec2 size = AmmoBadgeSize(fontSize);
+    const ImVec2 badgeMin(pos.x, pos.y);
+    const ImVec2 badgeMax(pos.x + size.x, pos.y + size.y);
+    const float pulse = warning ? (0.55f + 0.45f * std::sin(GetTickCount64() * 0.018f)) : 0.0f;
+    const ImU32 bg = warning ?
+        IM_COL32(46, 18, 8, AlphaByte((0.34f + 0.18f * pulse) * alphaMult)) :
+        IM_COL32(5, 9, 13, AlphaByte(0.30f * alphaMult));
+
+    draw->AddRectFilled(ImVec2(badgeMin.x + 1.0f, badgeMin.y + 1.0f), ImVec2(badgeMax.x + 1.0f, badgeMax.y + 1.0f),
+        IM_COL32(0, 0, 0, AlphaByte(0.18f * alphaMult)), 5.0f);
+    draw->AddRectFilled(badgeMin, badgeMax, bg, 5.0f);
+    draw->AddRect(badgeMin, badgeMax, WithAlpha(color, warning ? 0.70f : 0.36f), 5.0f, 0, 1.0f);
+
+    const int segments = 6;
+    const float percent = ammoMax > 0 ? std::clamp(static_cast<float>(ammo) / static_cast<float>(ammoMax), 0.0f, 1.0f) : 1.0f;
+    const int filled = std::clamp(static_cast<int>(std::ceil(percent * segments)), 0, segments);
+    const float segW = 5.0f;
+    const float segH = size.y - 10.0f;
+    for (int i = 0; i < segments; ++i) {
+        const float x = badgeMin.x + 7.0f + i * (segW + 2.0f);
+        const ImU32 segCol = i < filled ? WithAlpha(color, 0.86f * alphaMult) : IM_COL32(255, 255, 255, AlphaByte(0.10f * alphaMult));
+        draw->AddRectFilled(ImVec2(x, badgeMin.y + 5.0f), ImVec2(x + segW, badgeMin.y + 5.0f + segH), segCol, 1.5f);
+    }
+
+    char ammoText[32] = {};
+    if (ammoMax > 0) sprintf_s(ammoText, sizeof(ammoText), skCrypt("%d/%d"), ammo, ammoMax);
+    else sprintf_s(ammoText, sizeof(ammoText), skCrypt("%d"), ammo);
+    const ImVec2 textSz = TextSize(ammoText, fontSize);
+    DrawOutlinedText(draw, ImVec2(badgeMax.x - textSz.x - 7.0f, badgeMin.y + (size.y - textSz.y) * 0.5f),
+        color, ammoText, fontSize, alphaMult);
 }
 
 void DrawCornerBox(ImDrawList* draw, const ImVec2& min, const ImVec2& max, ImU32 color,
@@ -453,7 +524,9 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                             PlayerEspLayout::SideFromMenu(g_Menu.esp_teamid_pos),
                             badgeSize,
                             2.0f);
-                        ImU32 badgeCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.teamid_color);
+                        ImU32 badgeCol = g_Menu.team_color_custom ?
+                            TeamColorFromMenu(player.TeamID) :
+                            ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.teamid_color);
                         DrawPlayerTeamBadge(draw, badgePos, g_Menu.teamid_badge_size, player.TeamID,
                             ApplyAlpha(badgeCol, alphaMult), alphaMult);
                     }
@@ -501,7 +574,7 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                     if (g_Menu.esp_close_warning && !player.IsTeammate &&
                         player.Distance > 0.0f && player.Distance <= g_Menu.esp_close_warning_distance) {
                         char closeText[32];
-                        sprintf_s(closeText, sizeof(closeText), skCrypt("NEAR %dm"), static_cast<int>(player.Distance));
+                        sprintf_s(closeText, sizeof(closeText), skCrypt("! %dm"), static_cast<int>(player.Distance));
                         const float closeFont = (std::max)(10.0f, g_Menu.spectated_font_size - 1.0f);
                         ImVec2 closeSize = ChipSize(TextSize(closeText, closeFont));
                         ImVec2 closePos = espLayout.Take(
@@ -582,12 +655,7 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                     }
 
                     if (g_Menu.esp_ammo && player.HasAmmo && player.Distance < g_Menu.weapon_max_dist) {
-                        std::string ammoText = std::string(skCrypt("AMMO: ")) + std::to_string(player.Ammo);
-                        if (player.AmmoMax > 0) {
-                            ammoText += skCrypt("/");
-                            ammoText += std::to_string(player.AmmoMax);
-                        }
-                        ImVec2 ammoSize = ChipSize(TextSize(ammoText.c_str(), g_Menu.ammo_font_size));
+                        ImVec2 ammoSize = AmmoBadgeSize(g_Menu.ammo_font_size);
                         ImVec2 ammoPos = espLayout.Take(
                             PlayerEspLayout::SideFromMenu(g_Menu.esp_ammo_pos),
                             ammoSize,
@@ -595,7 +663,8 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                         ImU32 ammoCol = player.IsReloading ?
                             ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.aim_warning_color) :
                             ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.ammo_color);
-                        DrawTextChip(draw, ammoPos, ammoText.c_str(), g_Menu.ammo_font_size, ammoCol, alphaMult, player.IsReloading);
+                        DrawAmmoBadge(draw, ammoPos, player.Ammo, player.AmmoMax,
+                            g_Menu.ammo_font_size, ammoCol, alphaMult, player.IsReloading || player.IsFiring);
                     }
 
                     // 2. Weapon above head
@@ -619,10 +688,15 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                                 ImU32 weaponCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.weapon_color);
                                 draw->AddRectFilled(iconPos, ImVec2(iconPos.x + iconW + 6.0f, iconPos.y + iconH + 4.0f),
                                     IM_COL32(5, 8, 12, AlphaByte(0.46f * alphaMult)), 4.0f);
-                                draw->AddImage((ImTextureID)tex->SRV,
+                                OverlayAssetAnimation::DrawOptions anim{};
+                                anim.important = player.IsFiring || player.IsReloading;
+                                anim.strength = anim.important ? 1.20f : 0.92f;
+                                anim.alpha = alphaMult * 0.88f;
+                                OverlayAssetAnimation::DrawAnimatedImageRect(draw, tex,
                                     ImVec2(iconPos.x + 3.0f, iconPos.y + 2.0f),
                                     ImVec2(iconPos.x + iconW + 3.0f, iconPos.y + iconH + 2.0f),
-                                    ImVec2(0,0), ImVec2(1,1), ApplyAlpha(weaponCol, alphaMult * 0.88f));
+                                    weaponCol,
+                                    anim);
                             } else {
                                 ImVec2 ws = ChipSize(TextSize(player.WeaponName.c_str(), g_Menu.weapon_font_size));
                                 ImVec2 weaponPos = espLayout.Take(
@@ -675,7 +749,10 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                         if (nameText.empty() || nameText == "Player") nameText = "Unknown";
 
                         float baseFontSize = g_Menu.name_font_size;
-                        ImVec2 ns = ChipSize(TextSize(nameText.c_str(), baseFontSize * textScale));
+                        const ImVec2 nameTextSize = TextSize(nameText.c_str(), baseFontSize * textScale);
+                        ImVec2 ns = g_Menu.esp_multilayer_nameplate ?
+                            ImVec2(nameTextSize.x + 14.0f, nameTextSize.y + 5.0f) :
+                            ChipSize(nameTextSize);
                         ImVec2 namePos = espLayout.Take(
                             PlayerEspLayout::SideFromMenu(g_Menu.esp_name_pos),
                             ns,
@@ -686,8 +763,8 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                             ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.name_invisible_color);
                         if (player.IsGroggy) nameCol = IM_COL32(255, 0, 0, 255);
 
-                        DrawTextChip(draw, namePos, nameText.c_str(), baseFontSize * textScale,
-                            nameCol, alphaMult, player.IsGroggy);
+                        DrawNameplateChip(draw, namePos, nameText.c_str(), baseFontSize * textScale,
+                            nameCol, TeamColorFromMenu(player.TeamID), alphaMult, player.IsGroggy);
                     }
 
                     // 4. SPECTATED COUNT (EYE WARNING)

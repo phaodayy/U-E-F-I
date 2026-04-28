@@ -1,2 +1,6 @@
 key.txt
 loader_session.json
+dist/
+dist_debug/
+dist_build/
+telemetry/script_build/

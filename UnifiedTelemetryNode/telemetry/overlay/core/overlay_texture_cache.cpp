@@ -21,6 +21,7 @@ std::map<std::string, TextureInfo> g_weaponImages;
 std::map<std::string, TextureInfo> g_mapIcons;
 std::map<std::string, TextureInfo> g_vehicleIcons;
 std::map<std::string, TextureInfo> g_itemIcons;
+constexpr int kAnimatedSpriteFrames = 8;
 
 char ToLowerAscii(char value) {
     if (value >= 'A' && value <= 'Z') return static_cast<char>(value + ('a' - 'A'));
@@ -177,23 +178,40 @@ std::vector<std::string> VehicleIconCandidates(const std::string& name) {
 }
 
 bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** outSrv,
-                         int* outWidth, int* outHeight);
+                         int* outWidth, int* outHeight, int* outFrames = nullptr);
 
 bool LoadTextureFromAssetFolders(const char* folder, const std::string& asset,
                                  ID3D11ShaderResourceView** outSrv,
-                                 int* outWidth, int* outHeight) {
+                                 int* outWidth, int* outHeight, int* outFrames = nullptr) {
     if (asset.empty()) return false;
     const std::string fileName = asset + skCrypt(".png");
     const std::string path1 = skCrypt("Assets/") + std::string(folder) + skCrypt("/") + fileName;
     const std::string path2 = skCrypt("../") + path1;
     const std::string path3 = skCrypt("../../") + path1;
-    return LoadTextureFromFile(path1.c_str(), outSrv, outWidth, outHeight) ||
-        LoadTextureFromFile(path2.c_str(), outSrv, outWidth, outHeight) ||
-        LoadTextureFromFile(path3.c_str(), outSrv, outWidth, outHeight);
+    return LoadTextureFromFile(path1.c_str(), outSrv, outWidth, outHeight, outFrames) ||
+        LoadTextureFromFile(path2.c_str(), outSrv, outWidth, outHeight, outFrames) ||
+        LoadTextureFromFile(path3.c_str(), outSrv, outWidth, outHeight, outFrames);
 }
 
-bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** outSrv,
-                         int* outWidth, int* outHeight) {
+std::string AnimatedPathFor(const char* filename) {
+    if (!filename) return {};
+    std::string path(filename);
+    std::string lower = path;
+    for (char& c : lower) {
+        c = ToLowerAscii(c);
+        if (c == '\\') c = '/';
+    }
+
+    const std::string needle = skCrypt("assets/");
+    const std::size_t pos = lower.find(needle);
+    if (pos == std::string::npos) return {};
+
+    path.replace(pos, needle.size(), skCrypt("AssetsAnimated/"));
+    return path;
+}
+
+bool DecodeTextureFromFile(const char* filename, ID3D11ShaderResourceView** outSrv,
+                           int* outWidth, int* outHeight, int* outFrames, bool animatedSheet) {
     if (!g_device || !outSrv || !outWidth || !outHeight) return false;
 
     int imageWidth = 0;
@@ -243,9 +261,29 @@ bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** outSrv
     stbi_image_free(imageData);
     if (!ok) return false;
 
-    *outWidth = imageWidth;
+    int frames = animatedSheet ? kAnimatedSpriteFrames : 1;
+    if (frames > 1 && imageWidth >= frames && (imageWidth % frames) == 0) {
+        *outWidth = imageWidth / frames;
+    } else {
+        frames = 1;
+        *outWidth = imageWidth;
+    }
     *outHeight = imageHeight;
+    if (outFrames) *outFrames = frames;
     return true;
+}
+
+bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** outSrv,
+                         int* outWidth, int* outHeight, int* outFrames) {
+    if (outFrames) *outFrames = 1;
+
+    const std::string animatedPath = AnimatedPathFor(filename);
+    if (!animatedPath.empty() &&
+        DecodeTextureFromFile(animatedPath.c_str(), outSrv, outWidth, outHeight, outFrames, true)) {
+        return true;
+    }
+
+    return DecodeTextureFromFile(filename, outSrv, outWidth, outHeight, outFrames, false);
 }
 
 } // namespace
@@ -260,6 +298,7 @@ TextureInfo* GetPreviewIcon(std::string folder, std::string asset) {
     ID3D11ShaderResourceView* srv = nullptr;
     int w = 0;
     int h = 0;
+    int frames = 1;
     const std::string fileName = asset + skCrypt(".png");
     const std::string basePath = skCrypt("Assets/") + folder + skCrypt("/");
 
@@ -267,10 +306,10 @@ TextureInfo* GetPreviewIcon(std::string folder, std::string asset) {
     const std::string p2 = skCrypt("../") + p1;
     const std::string p3 = skCrypt("../../") + p1;
 
-    if (LoadTextureFromFile(p1.c_str(), &srv, &w, &h) ||
-        LoadTextureFromFile(p2.c_str(), &srv, &w, &h) ||
-        LoadTextureFromFile(p3.c_str(), &srv, &w, &h)) {
-        g_itemIcons[cacheKey] = { srv, w, h };
+    if (LoadTextureFromFile(p1.c_str(), &srv, &w, &h, &frames) ||
+        LoadTextureFromFile(p2.c_str(), &srv, &w, &h, &frames) ||
+        LoadTextureFromFile(p3.c_str(), &srv, &w, &h, &frames)) {
+        g_itemIcons[cacheKey] = { srv, w, h, frames };
         return &g_itemIcons[cacheKey];
     }
 
@@ -286,7 +325,7 @@ void SetDevice(ID3D11Device* device) {
 
 bool LoadInstructor() {
     return LoadTextureFromFile(skCrypt("Assets/All/Instructor.png"),
-        &PreviewInstructor.SRV, &PreviewInstructor.Width, &PreviewInstructor.Height);
+        &PreviewInstructor.SRV, &PreviewInstructor.Width, &PreviewInstructor.Height, &PreviewInstructor.Frames);
 }
 
 TextureInfo* GetMapIcon(const std::string& name) {
@@ -296,8 +335,9 @@ TextureInfo* GetMapIcon(const std::string& name) {
     ID3D11ShaderResourceView* srv = nullptr;
     int w = 0;
     int h = 0;
-    if (LoadTextureFromAssetFolders("Map", name, &srv, &w, &h)) {
-        g_mapIcons[name] = { srv, w, h };
+    int frames = 1;
+    if (LoadTextureFromAssetFolders("Map", name, &srv, &w, &h, &frames)) {
+        g_mapIcons[name] = { srv, w, h, frames };
         return &g_mapIcons[name];
     }
 
@@ -312,10 +352,11 @@ TextureInfo* GetVehicleIcon(const std::string& name) {
     ID3D11ShaderResourceView* srv = nullptr;
     int w = 0;
     int h = 0;
+    int frames = 1;
 
     for (const std::string& candidate : VehicleIconCandidates(name)) {
-        if (LoadTextureFromAssetFolders("Vehicle", candidate, &srv, &w, &h)) {
-            g_vehicleIcons[name] = { srv, w, h };
+        if (LoadTextureFromAssetFolders("Vehicle", candidate, &srv, &w, &h, &frames)) {
+            g_vehicleIcons[name] = { srv, w, h, frames };
             return &g_vehicleIcons[name];
         }
     }
@@ -334,6 +375,7 @@ TextureInfo* GetItemIcon(const std::string& name) {
     ID3D11ShaderResourceView* srv = nullptr;
     int w = 0;
     int h = 0;
+    int frames = 1;
     std::string fileName;
 
     if (name.find(skCrypt("Helmet")) != std::string::npos) {
@@ -356,8 +398,8 @@ TextureInfo* GetItemIcon(const std::string& name) {
 
     if (!fileName.empty()) {
         const std::string path = skCrypt("Assets/All/") + fileName + skCrypt(".png");
-        if (LoadTextureFromFile(path.c_str(), &srv, &w, &h)) {
-            g_itemIcons[name] = { srv, w, h };
+        if (LoadTextureFromFile(path.c_str(), &srv, &w, &h, &frames)) {
+            g_itemIcons[name] = { srv, w, h, frames };
             return &g_itemIcons[name];
         }
     }
@@ -373,10 +415,11 @@ TextureInfo* GetWeaponImage(const std::string& weaponName) {
     ID3D11ShaderResourceView* srv = nullptr;
     int w = 0;
     int h = 0;
+    int frames = 1;
 
     for (const std::string& candidate : WeaponIconCandidates(weaponName)) {
-        if (LoadTextureFromAssetFolders("Weapon", candidate, &srv, &w, &h)) {
-            g_weaponImages[weaponName] = { srv, w, h };
+        if (LoadTextureFromAssetFolders("Weapon", candidate, &srv, &w, &h, &frames)) {
+            g_weaponImages[weaponName] = { srv, w, h, frames };
             return &g_weaponImages[weaponName];
         }
     }

@@ -110,6 +110,9 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["bigmap_icon_size"] = bigmap_icon_size;
         j["bigmap_name_font_size"] = bigmap_name_font_size;
         j["bigmap_name_bg_alpha"] = bigmap_name_bg_alpha;
+        j["bigmap_offset_x"] = bigmap_offset_x;
+        j["bigmap_offset_y"] = bigmap_offset_y;
+        j["bigmap_screen_scale"] = bigmap_screen_scale;
         j["anti_screenshot"] = anti_screenshot;
         j["macro_enabled"] = macro_enabled;
         j["macro_humanize"] = macro_humanize;
@@ -127,6 +130,11 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["item_group_icon_size"] = item_group_icon_size;
         j["vehicle_icon_size"] = vehicle_icon_size;
         j["loot_distance_font_size"] = loot_distance_font_size;
+        j["asset_animation_enabled"] = asset_animation_enabled;
+        j["asset_animation_glow"] = asset_animation_glow;
+        j["asset_animation_shine"] = asset_animation_shine;
+        j["asset_animation_strength"] = asset_animation_strength;
+        j["asset_animation_speed"] = asset_animation_speed;
 
         j["share_radar"] = share_radar;
         j["share_radar_ip"] = std::string(share_radar_ip);
@@ -283,11 +291,22 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["color_aim_warning"] = { aim_warning_color[0], aim_warning_color[1], aim_warning_color[2], aim_warning_color[3] };
         j["color_close_warning"] = { close_warning_color[0], close_warning_color[1], close_warning_color[2], close_warning_color[3] };
         j["color_view_direction"] = { view_direction_color[0], view_direction_color[1], view_direction_color[2], view_direction_color[3] };
+        j["team_color_custom"] = team_color_custom;
+        j["team_custom_colors"] = {
+            { team_custom_colors[0][0], team_custom_colors[0][1], team_custom_colors[0][2], team_custom_colors[0][3] },
+            { team_custom_colors[1][0], team_custom_colors[1][1], team_custom_colors[1][2], team_custom_colors[1][3] },
+            { team_custom_colors[2][0], team_custom_colors[2][1], team_custom_colors[2][2], team_custom_colors[2][3] },
+            { team_custom_colors[3][0], team_custom_colors[3][1], team_custom_colors[3][2], team_custom_colors[3][3] }
+        };
+        j["esp_multilayer_nameplate"] = esp_multilayer_nameplate;
 
         // precision_calibration Configs
         j["aim_master_enabled"] = aim_master_enabled;
         j["aim_adaptive_fov"] = aim_adaptive_fov;
         j["aim_visible_only"] = aim_visible_only;
+        j["aim_category_idx"] = aim_category_idx;
+        j["aim_smooth_curve"] = aim_smooth_curve;
+        j["aim_target_priority"] = aim_target_priority;
 
         nlohmann::json aim_array = nlohmann::json::array();
         for (int i = 0; i < 9; i++) {
