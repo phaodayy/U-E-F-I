@@ -1,6 +1,6 @@
 #include "../core/overlay_menu.hpp"
 #include "../translation/translation.hpp"
-#include "../../protec/skCrypt.h"
+#include <protec/skCrypt.h>
 
 void OverlayMenu::RenderTabRadar(ImVec2 windowSize) {
     auto Lang = Translation::Get();

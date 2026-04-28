@@ -63,7 +63,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)telemetry;$(SolutionDir)telemetry\sdk;$(SolutionDir)..\;$(ProjectDir)..\..\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)telemetry;$(SolutionDir)telemetry\sdk;$(SolutionDir)telemetry\sdk\core;$(SolutionDir)telemetry\sdk\memory;$(SolutionDir)telemetry\sdk\features;$(SolutionDir)telemetry\sdk\assets\embedded;$(SolutionDir)telemetry\sdk\third_party\stb;$(SolutionDir)..\;$(ProjectDir)..\..\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -82,8 +82,8 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)telemetry;$(SolutionDir)telemetry\sdk;$(SolutionDir)..\;$(ProjectDir)..\..\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 /guard:cf %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)telemetry;$(SolutionDir)telemetry\sdk;$(SolutionDir)telemetry\sdk\core;$(SolutionDir)telemetry\sdk\memory;$(SolutionDir)telemetry\sdk\features;$(SolutionDir)telemetry\sdk\assets\embedded;$(SolutionDir)telemetry\sdk\third_party\stb;$(SolutionDir)..\;$(ProjectDir)..\..\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -94,6 +94,10 @@
       <AdditionalDependencies>d3d11.lib;dwmapi.lib;FltLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
       <UACExecutionLevel>requireAdministrator</UACExecutionLevel>
+      <ControlFlowGuard>Guard</ControlFlowGuard>
+      <RandomizedBaseAddress>true</RandomizedBaseAddress>
+      <DataExecutionPrevention>true</DataExecutionPrevention>
+      <AdditionalOptions>/guard:cf %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -106,11 +110,11 @@
   </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="sdk\hypercall_bridge.cpp" />
-    <ClCompile Include="sdk\hyper_process.cpp" />
-    <ClCompile Include="sdk\process_single_instance.cpp" />
-    <ClCompile Include="sdk\context.cpp" />
-    <ClCompile Include="sdk\fname_utils.cpp" />
+    <ClCompile Include="sdk\memory\hypercall_bridge.cpp" />
+    <ClCompile Include="sdk\memory\hyper_process.cpp" />
+    <ClCompile Include="sdk\core\process_single_instance.cpp" />
+    <ClCompile Include="sdk\core\context.cpp" />
+    <ClCompile Include="sdk\core\fname_utils.cpp" />
     <ClCompile Include="overlay\entities\entity_aliases.cpp" />
     <ClCompile Include="overlay\loot\loot_debug_renderer.cpp" />
     <ClCompile Include="overlay\loot\loot_esp_renderer.cpp" />
@@ -149,22 +153,22 @@
 
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="sdk\hypercall_entry.asm" />
+    <MASM Include="sdk\memory\hypercall_entry.asm" />
   </ItemGroup>
 
   <ItemGroup>
 
-    <ClInclude Include="sdk\hypercall_bridge.hpp" />
-    <ClInclude Include="sdk\hyper_process.hpp" />
-    <ClInclude Include="sdk\app_shutdown.hpp" />
-    <ClInclude Include="sdk\process_single_instance.hpp" />
-    <ClInclude Include="sdk\netease_comm.hpp" />
-    <ClInclude Include="sdk\telemetry_decrypt.hpp" />
-    <ClInclude Include="sdk\offsets.hpp" />
-    <ClInclude Include="sdk\context.hpp" />
-    <ClInclude Include="sdk\scanner.hpp" />
-    <ClInclude Include="sdk\fname.hpp" />
-    <ClInclude Include="sdk\gobjects.hpp" />
+    <ClInclude Include="sdk\memory\hypercall_bridge.hpp" />
+    <ClInclude Include="sdk\memory\hyper_process.hpp" />
+    <ClInclude Include="sdk\core\app_shutdown.hpp" />
+    <ClInclude Include="sdk\core\process_single_instance.hpp" />
+    <ClInclude Include="sdk\memory\netease_comm.hpp" />
+    <ClInclude Include="sdk\core\telemetry_decrypt.hpp" />
+    <ClInclude Include="sdk\core\offsets.hpp" />
+    <ClInclude Include="sdk\core\context.hpp" />
+    <ClInclude Include="sdk\memory\scanner.hpp" />
+    <ClInclude Include="sdk\core\fname.hpp" />
+    <ClInclude Include="sdk\core\gobjects.hpp" />
     <ClInclude Include="overlay\core\discord_overlay.h" />
     <ClInclude Include="overlay\entities\entity_aliases.hpp" />
     <ClInclude Include="overlay\loot\loot_debug_renderer.hpp" />

@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <string>
 #include <cstring>
-#include "../../../protec/skCrypt.h"
+#include <protec/skCrypt.h>
 
 
 

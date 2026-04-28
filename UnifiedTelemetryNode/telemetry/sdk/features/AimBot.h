@@ -4,12 +4,12 @@
 #include "common/Entitys.h"
 #include "utils/Driver.h"
 #include "utils/UsermodeMouse.h"
-#include <diagnostic_node/LineTraceHook.h>
-#include <diagnostic_node/LineTrace.h>
-#include <diagnostic_node/VisibleCheck.h>
+#include <features/LineTraceHook.h>
+#include <features/LineTrace.h>
+#include <features/VisibleCheck.h>
 #include <Common/Offset.h>
 #include "MouseDispatcher.h"
-//#include <diagnostic_node/Mortar.h>
+//#include <features/Mortar.h>
 #include <set>
 
 #define MAX_flt			(3.402823466e+38F)

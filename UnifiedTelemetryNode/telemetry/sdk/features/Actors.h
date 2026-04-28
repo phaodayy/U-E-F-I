@@ -4,7 +4,7 @@
 #include <Common/Entitys.h>
 #include <Utils/Utils.h>
 #include <Utils/Throttler.h>
-#include <diagnostic_node/GNames.h>
+#include <features/GNames.h>
 #include <Utils/FNVHash.h>
 #include <Common/Offset.h>
 #include <unordered_set>

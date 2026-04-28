@@ -3,7 +3,7 @@
 #include "../core/overlay_presets.hpp"
 #include "../translation/translation.hpp"
 #include "../../../nlohmann/json.hpp"
-#include "../../protec/skCrypt.h"
+#include <protec/skCrypt.h>
 #include <string>
 
 // External globals from main.cpp / context.cpp

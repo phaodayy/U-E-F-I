@@ -4,7 +4,7 @@
 #include <nlohmann/json.hpp>
 #include <Mosquitto/mosquitto.h>
 #include <TlHelp32.h>
-#include "../../../protec/skCrypt.h"
+#include <protec/skCrypt.h>
 #pragma comment(lib, "mosquitto.lib")
 
 static struct mosquitto* mosq;

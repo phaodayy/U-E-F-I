@@ -1,5 +1,5 @@
 #pragma once
-#include "../memory.hpp"
+#include "../memory/memory.hpp"
 
 class Driver
 {

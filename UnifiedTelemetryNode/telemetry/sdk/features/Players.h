@@ -4,18 +4,18 @@
 #include <Common/Entitys.h>
 #include <Utils/Utils.h>
 #include <Utils/Throttler.h>
-#include <diagnostic_node/Decrypt.h>
+#include <memory/Decrypt.h>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 #include <queue>
 #include <vector>
 #include <future>
-#include <diagnostic_node/GNames.h>
+#include <features/GNames.h>
 #include <Utils/Timer.h>
-#include <diagnostic_node/Process.h>
-#include <diagnostic_node/LineTrace.h>
-#include <diagnostic_node/PhysXManager.h>
+#include <memory/Process.h>
+#include <features/LineTrace.h>
+#include <features/PhysXManager.h>
 #include <Common/Offset.h>
 
 #ifdef min

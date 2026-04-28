@@ -5,7 +5,7 @@
 #include "Decrypt.h"
 #include <Utils/FNVHash.h>
 #include <Common/Offset.h>
-#include "../../../protec/skCrypt.h"
+#include <protec/skCrypt.h>
 
 class GNames
 {

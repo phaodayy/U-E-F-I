@@ -4,9 +4,9 @@
 #include <Common/Entitys.h>
 #include <Utils/Utils.h>
 #include <Utils/Throttler.h>
-#include <diagnostic_node/GNames.h>
-#include <diagnostic_node/Decrypt.h>
-#include <diagnostic_node/LineTrace.h>
+#include <features/GNames.h>
+#include <memory/Decrypt.h>
+#include <features/LineTrace.h>
 
 namespace LineTraceHook
 {

@@ -27,13 +27,13 @@ extern const wchar_t* LOADER_REGISTER_PATH;
 #include "overlay_texture_cache.hpp"
 #include "../radar/radar_overlay_renderer.hpp"
 #include "../vehicle/vehicle_resolver.hpp"
-#include "../../sdk/app_shutdown.hpp"
-#include "../../sdk/context.hpp"
-#include "../../sdk/math.hpp"
-#include "../../sdk/offsets.hpp"
-#include "../../sdk/health.hpp"
+#include "../../sdk/core/app_shutdown.hpp"
+#include "../../sdk/core/context.hpp"
+#include "../../sdk/core/math.hpp"
+#include "../../sdk/core/offsets.hpp"
+#include "../../sdk/core/health.hpp"
 #include "../../sdk/Utils/MacroEngine.h"
-#include "../../../protec/skCrypt.h"
+#include <protec/skCrypt.h>
 
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "d3d11.lib")

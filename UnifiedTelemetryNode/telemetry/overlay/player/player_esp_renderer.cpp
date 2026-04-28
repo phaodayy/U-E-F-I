@@ -2,9 +2,9 @@
 #include "../core/colors.hpp"
 #include "player_esp_layout.hpp"
 #include "../core/overlay_texture_cache.hpp"
-#include "../../sdk/context.hpp"
-#include "../../sdk/math.hpp"
-#include "../../../protec/skCrypt.h"
+#include "../../sdk/core/context.hpp"
+#include "../../sdk/core/math.hpp"
+#include <protec/skCrypt.h>
 #include <algorithm>
 #include <cmath>
 

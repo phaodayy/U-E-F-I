@@ -1,6 +1,6 @@
 #include "../core/overlay_menu.hpp"
-#include "../../sdk/context.hpp"
-#include "../../protec/skCrypt.h"
+#include "../../sdk/core/context.hpp"
+#include <protec/skCrypt.h>
 #include <vector>
 #include <mutex>
 

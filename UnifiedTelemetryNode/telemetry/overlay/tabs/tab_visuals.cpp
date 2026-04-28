@@ -1,8 +1,8 @@
 #include "../core/overlay_menu.hpp"
 #include "../player/player_esp_layout.hpp"
 #include "../translation/translation.hpp"
-#include "../../sdk/context.hpp"
-#include "../../protec/skCrypt.h"
+#include "../../sdk/core/context.hpp"
+#include <protec/skCrypt.h>
 #include <algorithm>
 #include <map>
 

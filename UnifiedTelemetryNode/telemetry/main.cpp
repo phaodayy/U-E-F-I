@@ -27,7 +27,7 @@
 #pragma comment(lib, "psapi.lib")
 
 #include ".shared/shared.hpp"
-#include "sdk/memory.hpp"
+#include "sdk/memory/memory.hpp"
 
 typedef struct _telemetry_SYSTEM_PROCESS_INFORMATION {
     ULONG NextEntryOffset;
@@ -56,23 +56,23 @@ typedef struct _telemetry_SYSTEM_PROCESS_INFORMATION {
     LARGE_INTEGER Reserved6[6];
 } telemetry_SYSTEM_PROCESS_INFORMATION, *Ptelemetry_SYSTEM_PROCESS_INFORMATION;
 
-#include "../../protec/skCrypt.h"
-#include "sdk/app_shutdown.hpp"
-#include "sdk/hyper_process.hpp"
-#include "sdk/process_single_instance.hpp"
-#include "sdk/offsets.hpp"
-#include "sdk/context.hpp"
-#include "sdk/telemetry_decrypt.hpp"
+#include <protec/skCrypt.h>
+#include "sdk/core/app_shutdown.hpp"
+#include "sdk/memory/hyper_process.hpp"
+#include "sdk/core/process_single_instance.hpp"
+#include "sdk/core/offsets.hpp"
+#include "sdk/core/context.hpp"
+#include "sdk/core/telemetry_decrypt.hpp"
 #include "sdk/utils/MacroEngine.h"
 #include "overlay/core/overlay_menu.hpp"
 #include "overlay/core/discord_overlay.h"
-#include "sdk/netease_comm.hpp"
-#include "sdk/EptMouseSetup.hpp"
+#include "sdk/memory/netease_comm.hpp"
+#include "sdk/memory/EptMouseSetup.hpp"
 
 #include "sdk/Utils/WinSha256.h"
 #include "sdk/Utils/WinCrypto.h"
 #include "sdk/Utils/ADVobfuscator.h"
-#include "../../protec/protector.h"
+#include <protec/protector.h>
 
 // [GZ-DEBUG] Force OBF_STR evasion_calibration after all includes to prevent template errors in Debug mode
 #ifdef _DEBUG

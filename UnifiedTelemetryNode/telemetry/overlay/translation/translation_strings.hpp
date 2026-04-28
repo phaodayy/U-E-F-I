@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../../protec/skCrypt.h"
+#include <protec/skCrypt.h>
 
 namespace Translation {
 

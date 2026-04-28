@@ -9,11 +9,11 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "../context.hpp"
-#include "../fname.hpp"
-#include "../memory.hpp"
-#include "../offsets.hpp"
-#include "../telemetry_decrypt.hpp"
+#include "../core/context.hpp"
+#include "../core/fname.hpp"
+#include "../memory/memory.hpp"
+#include "../core/offsets.hpp"
+#include "../core/telemetry_decrypt.hpp"
 #include "Driver.h"
 #include "Utils.h"
 #include "../Common/Data.h"

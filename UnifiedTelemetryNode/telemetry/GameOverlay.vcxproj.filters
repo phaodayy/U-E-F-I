@@ -8,6 +8,21 @@
     <Filter Include="SDK">
       <UniqueIdentifier>{C3D4E5F6-A7B8-9012-CDEF-123456789ABC}</UniqueIdentifier>
     </Filter>
+    <Filter Include="SDK\Core">
+      <UniqueIdentifier>{D3A11111-A7B8-9012-CDEF-123456789ABC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SDK\Memory">
+      <UniqueIdentifier>{D3A22222-A7B8-9012-CDEF-123456789ABC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SDK\Features">
+      <UniqueIdentifier>{D3A33333-A7B8-9012-CDEF-123456789ABC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SDK\Assets">
+      <UniqueIdentifier>{D3A44444-A7B8-9012-CDEF-123456789ABC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SDK\ThirdParty">
+      <UniqueIdentifier>{D3A55555-A7B8-9012-CDEF-123456789ABC}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Overlay">
       <UniqueIdentifier>{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}</UniqueIdentifier>
     </Filter>
@@ -43,11 +58,17 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="sdk\context.cpp">
-      <Filter>SDK</Filter>
+    <ClCompile Include="sdk\core\context.cpp">
+      <Filter>SDK\Core</Filter>
     </ClCompile>
-    <ClCompile Include="sdk\fname_utils.cpp">
-      <Filter>SDK</Filter>
+    <ClCompile Include="sdk\core\fname_utils.cpp">
+      <Filter>SDK\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="sdk\memory\hypercall_bridge.cpp">
+      <Filter>SDK\Memory</Filter>
+    </ClCompile>
+    <ClCompile Include="sdk\memory\hyper_process.cpp">
+      <Filter>SDK\Memory</Filter>
     </ClCompile>
     <ClCompile Include="overlay\core\overlay_menu.cpp">
       <Filter>Overlay\Core</Filter>
@@ -154,31 +175,48 @@
     <ClCompile Include="imgui\imgui_impl_win32.cpp">
       <Filter>ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="sdk\process_single_instance.cpp">
-      <Filter>SDK</Filter>
+    <ClCompile Include="sdk\core\process_single_instance.cpp">
+      <Filter>SDK\Core</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="sdk\offsets.hpp">
-      <Filter>SDK</Filter>
+    <MASM Include="sdk\memory\hypercall_entry.asm">
+      <Filter>SDK\Memory</Filter>
+    </MASM>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="sdk\core\offsets.hpp">
+      <Filter>SDK\Core</Filter>
     </ClInclude>
-    <ClInclude Include="sdk\context.hpp">
-      <Filter>SDK</Filter>
+    <ClInclude Include="sdk\core\context.hpp">
+      <Filter>SDK\Core</Filter>
     </ClInclude>
-    <ClInclude Include="sdk\scanner.hpp">
-      <Filter>SDK</Filter>
+    <ClInclude Include="sdk\memory\scanner.hpp">
+      <Filter>SDK\Memory</Filter>
     </ClInclude>
-    <ClInclude Include="sdk\fname.hpp">
-      <Filter>SDK</Filter>
+    <ClInclude Include="sdk\core\fname.hpp">
+      <Filter>SDK\Core</Filter>
     </ClInclude>
-    <ClInclude Include="sdk\gobjects.hpp">
-      <Filter>SDK</Filter>
+    <ClInclude Include="sdk\core\gobjects.hpp">
+      <Filter>SDK\Core</Filter>
     </ClInclude>
-    <ClInclude Include="sdk\app_shutdown.hpp">
-      <Filter>SDK</Filter>
+    <ClInclude Include="sdk\core\app_shutdown.hpp">
+      <Filter>SDK\Core</Filter>
     </ClInclude>
-    <ClInclude Include="sdk\process_single_instance.hpp">
-      <Filter>SDK</Filter>
+    <ClInclude Include="sdk\core\process_single_instance.hpp">
+      <Filter>SDK\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\memory\hypercall_bridge.hpp">
+      <Filter>SDK\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\memory\hyper_process.hpp">
+      <Filter>SDK\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\memory\netease_comm.hpp">
+      <Filter>SDK\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\core\telemetry_decrypt.hpp">
+      <Filter>SDK\Core</Filter>
     </ClInclude>
     <ClInclude Include="overlay\core\overlay_menu.hpp">
       <Filter>Overlay\Core</Filter>

@@ -4,8 +4,8 @@
 #include <Common/Entitys.h>
 #include <Utils/Utils.h>
 #include <Utils/Throttler.h>
-#include <diagnostic_node/GNames.h>
-#include <diagnostic_node/Decrypt.h>
+#include <features/GNames.h>
+#include <memory/Decrypt.h>
 #include <Common/Offset.h>
 
 class Vehicles

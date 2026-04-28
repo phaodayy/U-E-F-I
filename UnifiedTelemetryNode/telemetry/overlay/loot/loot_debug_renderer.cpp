@@ -1,6 +1,6 @@
 #include "loot_debug_renderer.hpp"
 
-#include "../../../protec/skCrypt.h"
+#include <protec/skCrypt.h>
 #include <cstdio>
 
 namespace {

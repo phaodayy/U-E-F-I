@@ -3,7 +3,7 @@
 #include <Common/Data.h>
 #include <Common/Entitys.h>
 #include <Utils/Utils.h>
-#include <diagnostic_node/PhysXManager.h>
+#include <features/PhysXManager.h>
 #include <Common/VisibleScene.h>
 
 namespace LineTrace

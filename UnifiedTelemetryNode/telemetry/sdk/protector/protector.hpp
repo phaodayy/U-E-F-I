@@ -15,7 +15,7 @@
 #include <nmmintrin.h> // SSE4.2 CRC32
 
 // Use the project's existing skCrypt for compile-time string encryption
-#include "../skCrypt.h"
+#include <protec/skCrypt.h>
 
 namespace protector {
 

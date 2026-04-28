@@ -1,7 +1,7 @@
 #include "overlay_menu.hpp"
 #include "../translation/translation.hpp"
-#include "../../sdk/app_shutdown.hpp"
-#include "../../../protec/skCrypt.h"
+#include "../../sdk/core/app_shutdown.hpp"
+#include <protec/skCrypt.h>
 #include <string>
 
 void OverlayMenu::RenderMainMenuWindow(ImDrawList* draw, float ScreenWidth, float ScreenHeight) {

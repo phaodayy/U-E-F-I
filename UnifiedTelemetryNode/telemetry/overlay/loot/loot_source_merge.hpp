@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../sdk/context.hpp"
+#include "../../sdk/core/context.hpp"
 #include <vector>
 
 namespace LootSourceMerge {

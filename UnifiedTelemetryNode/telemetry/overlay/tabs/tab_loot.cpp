@@ -1,7 +1,7 @@
 #include "../core/overlay_menu.hpp"
 #include "../core/overlay_hotkeys.hpp"
 #include "../translation/translation.hpp"
-#include "../../protec/skCrypt.h"
+#include <protec/skCrypt.h>
 #include <string>
 
 struct VisualLootTile {

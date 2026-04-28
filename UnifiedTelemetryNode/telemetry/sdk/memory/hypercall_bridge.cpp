@@ -1,6 +1,6 @@
 #include "hypercall_bridge.hpp"
 
-#include "../../../shared/hypercall/hypercall_def.h"
+#include <shared/hypercall/hypercall_def.h>
 
 extern "C" std::uint64_t launch_raw_hypercall(hypercall_info_t rcx,
                                               std::uint64_t rdx,

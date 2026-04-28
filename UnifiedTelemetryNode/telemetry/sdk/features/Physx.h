@@ -8,7 +8,7 @@
 #include <Common/math.h>
 #include <DMALibrary/Memory/Memory.h>
 #include <Common/Data.h>
-#include <diagnostic_node/MeshPatcher.h>
+#include <features/MeshPatcher.h>
 
 
 namespace GamePhysX

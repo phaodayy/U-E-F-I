@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../../imgui/imgui.h"
-#include "../../sdk/context.hpp"
+#include "../../sdk/core/context.hpp"
 #include <string>
 
 namespace LootDebugRenderer {

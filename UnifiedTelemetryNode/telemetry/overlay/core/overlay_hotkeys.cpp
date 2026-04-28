@@ -1,8 +1,8 @@
 #include "overlay_hotkeys.hpp"
 
 #include "../../imgui/imgui.h"
-#include "../../sdk/memory.hpp"
-#include "../../../protec/skCrypt.h"
+#include "../../sdk/memory/memory.hpp"
+#include <protec/skCrypt.h>
 #include <string>
 #include <windows.h>
 

@@ -4,7 +4,7 @@
 #include <Common/Entitys.h>
 #include <Utils/Utils.h>
 #include <Utils/Throttler.h>
-#include <diagnostic_node/GNames.h>
+#include <features/GNames.h>
 #include <Common/Offset.h>
 
 class Projects

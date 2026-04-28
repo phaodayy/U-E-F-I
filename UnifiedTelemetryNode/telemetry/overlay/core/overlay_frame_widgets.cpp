@@ -1,8 +1,8 @@
 #include "overlay_menu.hpp"
 #include "../translation/translation.hpp"
-#include "../../sdk/context.hpp"
+#include "../../sdk/core/context.hpp"
 #include "../../sdk/Utils/MacroEngine.h"
-#include "../../../protec/skCrypt.h"
+#include <protec/skCrypt.h>
 
 #include <algorithm>
 #include <mutex>

@@ -9,7 +9,7 @@
 #include <chrono>
 #include <queue>
 #include <condition_variable>
-#include <diagnostic_node/PhysXManager.h>
+#include <features/PhysXManager.h>
 #include <Common/Offset.h>
 
 namespace VisibleCheck {

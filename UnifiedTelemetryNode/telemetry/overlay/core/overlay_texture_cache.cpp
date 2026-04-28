@@ -2,12 +2,12 @@
 
 #include "../loot/loot_icon_resolver.hpp"
 #include "../vehicle/vehicle_resolver.hpp"
-#include "../../../protec/skCrypt.h"
+#include <protec/skCrypt.h>
 
 #include <map>
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "../../sdk/Utils/stb_image.h"
+#include "../../sdk/third_party/stb/stb_image.h"
 
 namespace {
 

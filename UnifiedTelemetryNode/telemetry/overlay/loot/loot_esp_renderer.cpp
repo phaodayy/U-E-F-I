@@ -5,8 +5,8 @@
 #include "loot_source_merge.hpp"
 #include "../core/overlay_texture_cache.hpp"
 #include "../vehicle/vehicle_resolver.hpp"
-#include "../../sdk/context.hpp"
-#include "../../../protec/skCrypt.h"
+#include "../../sdk/core/context.hpp"
+#include <protec/skCrypt.h>
 
 namespace {
 

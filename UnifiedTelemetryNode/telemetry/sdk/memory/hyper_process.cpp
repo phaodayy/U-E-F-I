@@ -1,7 +1,7 @@
 #include "hyper_process.hpp"
 
 #include "hypercall_bridge.hpp"
-#include "../../../protec/skCrypt.h"
+#include <protec/skCrypt.h>
 
 #include <TlHelp32.h>
 #include <winternl.h>

@@ -1,7 +1,7 @@
-﻿#pragma once
+#pragma once
 #include "imgui/imgui.h"
 #include "common/Data.h"
-#include <diagnostic_node/Players.h>
+#include <features/Players.h>
 
 namespace MenuPlayerLists
 {

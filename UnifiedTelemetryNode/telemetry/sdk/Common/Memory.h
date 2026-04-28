@@ -7,9 +7,9 @@
 #include <cstdint>
 #include <vector>
 
-#include "../hyper_process.hpp"
-#include "../memory.hpp"
-#include "../../../protec/skCrypt.h"
+#include "../memory/hyper_process.hpp"
+#include "../memory/memory.hpp"
+#include <protec/skCrypt.h>
 
 typedef void* VMMDLL_SCATTER_HANDLE;
 
