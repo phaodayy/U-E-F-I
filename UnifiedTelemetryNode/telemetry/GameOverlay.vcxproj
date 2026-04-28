@@ -64,6 +64,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)telemetry;$(SolutionDir)telemetry\sdk;$(SolutionDir)telemetry\sdk\core;$(SolutionDir)telemetry\sdk\memory;$(SolutionDir)telemetry\sdk\features;$(SolutionDir)telemetry\sdk\assets\embedded;$(SolutionDir)telemetry\sdk\third_party\stb;$(SolutionDir)..\;$(ProjectDir)..\..\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -99,11 +100,6 @@
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <AdditionalOptions>/guard:cf %(AdditionalOptions)</AdditionalOptions>
     </Link>
-    <PostBuildEvent>
-      <Command>
-        xcopy /Y /S /I "$(ProjectDir)..\dataMacro" "$(OutDir)dataMacro"
-      </Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>GameOverlay</TargetName>
@@ -114,6 +110,7 @@
     <ClCompile Include="sdk\memory\hyper_process.cpp" />
     <ClCompile Include="sdk\core\process_single_instance.cpp" />
     <ClCompile Include="sdk\core\context.cpp" />
+    <ClCompile Include="sdk\core\embedded_resources.cpp" />
     <ClCompile Include="sdk\core\fname_utils.cpp" />
     <ClCompile Include="overlay\entities\entity_aliases.cpp" />
     <ClCompile Include="overlay\loot\loot_debug_renderer.cpp" />
@@ -157,11 +154,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ResourceCompile Include="embedded_assets.rc" />
+  </ItemGroup>
 
+  <ItemGroup>
+
+    <ClInclude Include="sdk\core\app_paths.hpp" />
     <ClInclude Include="sdk\memory\hypercall_bridge.hpp" />
     <ClInclude Include="sdk\memory\hyper_process.hpp" />
     <ClInclude Include="sdk\core\app_shutdown.hpp" />
     <ClInclude Include="sdk\core\process_single_instance.hpp" />
+    <ClInclude Include="sdk\core\embedded_resources.hpp" />
     <ClInclude Include="sdk\memory\netease_comm.hpp" />
     <ClInclude Include="sdk\core\telemetry_decrypt.hpp" />
     <ClInclude Include="sdk\core\offsets.hpp" />

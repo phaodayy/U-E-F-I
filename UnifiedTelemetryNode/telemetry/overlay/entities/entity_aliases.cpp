@@ -1,9 +1,11 @@
 #include "entity_aliases.hpp"
 
+#include "../../sdk/core/embedded_resources.hpp"
 #include "../../../nlohmann/json.hpp"
 #include <algorithm>
 #include <cctype>
 #include <fstream>
+#include <string>
 #include <vector>
 
 namespace {
@@ -89,14 +91,21 @@ void LoadAliases() {
     g_state.Items.clear();
     g_state.Path.clear();
 
-    std::ifstream file;
-    if (!TryOpen("Assets/entity_aliases.json", file) &&
-        !TryOpen("../Assets/entity_aliases.json", file) &&
-        !TryOpen("../../Assets/entity_aliases.json", file)) {
-        return;
-    }
+    nlohmann::json root;
+    std::string embeddedAliases;
+    if (EmbeddedResources::LoadText("Assets/entity_aliases.json", embeddedAliases)) {
+        g_state.Path = "embedded:Assets/entity_aliases.json";
+        root = nlohmann::json::parse(embeddedAliases, nullptr, false);
+    } else {
+        std::ifstream file;
+        if (!TryOpen("Assets/entity_aliases.json", file) &&
+            !TryOpen("../Assets/entity_aliases.json", file) &&
+            !TryOpen("../../Assets/entity_aliases.json", file)) {
+            return;
+        }
 
-    nlohmann::json root = nlohmann::json::parse(file, nullptr, false);
+        root = nlohmann::json::parse(file, nullptr, false);
+    }
     if (root.is_discarded()) return;
 
     if (root.contains("vehicles") && root["vehicles"].is_array()) {

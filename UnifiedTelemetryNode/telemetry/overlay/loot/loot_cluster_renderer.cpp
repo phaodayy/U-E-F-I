@@ -68,7 +68,7 @@ std::string ShortFallbackName(const std::string& id) {
 }
 
 void DrawTextShadow(ImDrawList* draw, const ImVec2& pos, ImU32 color, const char* text, float fontSize) {
-    draw->AddText(ImGui::GetFont(), fontSize, ImVec2(pos.x + 1.0f, pos.y + 1.0f), IM_COL32(0, 0, 0, 220), text);
+    draw->AddText(ImGui::GetFont(), fontSize, ImVec2(pos.x + 1.0f, pos.y + 1.0f), IM_COL32(0, 0, 0, 150), text);
     draw->AddText(ImGui::GetFont(), fontSize, pos, color, text);
 }
 
@@ -95,7 +95,13 @@ void DrawDistance(ImDrawList* draw, const ImVec2& center, float y, float distanc
     char distBuf[32] = {};
     sprintf_s(distBuf, "[%dm]", static_cast<int>(distance));
     const ImVec2 textSize = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, distBuf);
-    DrawTextShadow(draw, ImVec2(center.x - textSize.x * 0.5f, y), color, distBuf, fontSize);
+    const ImVec2 pos(center.x - textSize.x * 0.5f - 4.0f, y - 2.0f);
+    const ImVec2 chipMax(pos.x + textSize.x + 8.0f, pos.y + textSize.y + 4.0f);
+    draw->AddRectFilled(ImVec2(pos.x + 1.0f, pos.y + 1.0f), ImVec2(chipMax.x + 1.0f, chipMax.y + 1.0f),
+        IM_COL32(0, 0, 0, 28), 4.0f);
+    draw->AddRectFilled(pos, chipMax, IM_COL32(5, 8, 12, 74), 4.0f);
+    draw->AddRect(pos, chipMax, IM_COL32(255, 255, 255, 22), 4.0f, 0, 1.0f);
+    DrawTextShadow(draw, ImVec2(pos.x + 4.0f, pos.y + 2.0f), color, distBuf, fontSize);
 }
 
 void DrawSingle(ImDrawList* draw, const LootClusterRenderer::Entry& entry,
@@ -106,7 +112,11 @@ void DrawSingle(ImDrawList* draw, const LootClusterRenderer::Entry& entry,
     const float iconSize = baseSize * DistanceScale(entry.Distance);
 
     if (entry.Icon && entry.Icon->SRV) {
-        DrawScaledIcon(draw, entry.Icon, ImVec2(screen.x, screen.y - iconSize * 0.5f), iconSize);
+        const ImVec2 iconCenter(screen.x, screen.y - iconSize * 0.5f);
+        draw->AddCircleFilled(ImVec2(iconCenter.x + 1.0f, iconCenter.y + 1.0f), iconSize * 0.58f,
+            IM_COL32(0, 0, 0, 36), 24);
+        draw->AddCircleFilled(iconCenter, iconSize * 0.56f, IM_COL32(5, 8, 12, 34), 24);
+        DrawScaledIcon(draw, entry.Icon, iconCenter, iconSize);
         DrawDistance(draw, screen, screen.y + 2.0f, entry.Distance, entry.Color, settings.DistanceFontSize);
         return;
     }
@@ -154,8 +164,12 @@ float GroupDistance(const std::vector<LootClusterRenderer::Entry>& group) {
 
 void DrawIconCell(ImDrawList* draw, const LootClusterRenderer::Entry& entry,
                   const ImVec2& center, float iconSize) {
+    draw->AddCircleFilled(ImVec2(center.x + 1.0f, center.y + 1.0f), iconSize * 0.54f,
+        IM_COL32(0, 0, 0, 32), 18);
+    draw->AddCircleFilled(center, iconSize * 0.52f, IM_COL32(7, 10, 14, 46), 18);
+
     if (entry.Important) {
-        draw->AddCircleFilled(center, iconSize * 0.58f, entry.Color & IM_COL32(255, 255, 255, 90));
+        draw->AddCircle(center, iconSize * 0.58f, entry.Color & IM_COL32(255, 255, 255, 120), 18, 1.5f);
     }
 
     if (entry.Icon && entry.Icon->SRV) {
@@ -193,8 +207,10 @@ void DrawIconGroup(ImDrawList* draw, std::vector<LootClusterRenderer::Entry> gro
     }
 
     const ImVec2 panelMax(panelMin.x + panelWidth, panelMin.y + panelHeight);
-    draw->AddRectFilled(panelMin, panelMax, IM_COL32(5, 12, 20, 215), 6.0f);
-    draw->AddRect(panelMin, panelMax, IM_COL32(0, 190, 255, 110), 6.0f, 0, 1.1f);
+    draw->AddRectFilled(ImVec2(panelMin.x + 2.0f, panelMin.y + 2.0f),
+        ImVec2(panelMax.x + 2.0f, panelMax.y + 2.0f), IM_COL32(0, 0, 0, 36), 6.0f);
+    draw->AddRectFilled(panelMin, panelMax, IM_COL32(6, 9, 13, 82), 6.0f);
+    draw->AddRect(panelMin, panelMax, IM_COL32(255, 255, 255, 24), 6.0f, 0, 1.0f);
 
     for (int column = 0; column < columns; ++column) {
         const int start = column * rowsPerColumn;
@@ -212,7 +228,7 @@ void DrawIconGroup(ImDrawList* draw, std::vector<LootClusterRenderer::Entry> gro
     if (columns == 2) {
         const float separatorX = panelMin.x + kPanelPadding + cellSize + kColumnGap * 0.5f;
         draw->AddLine(ImVec2(separatorX, panelMin.y + 6.0f),
-            ImVec2(separatorX, panelMax.y - 6.0f), IM_COL32(0, 190, 255, 45), 1.0f);
+            ImVec2(separatorX, panelMax.y - 6.0f), IM_COL32(255, 255, 255, 24), 1.0f);
     }
 
     DrawDistance(draw, ImVec2(panelMin.x + panelWidth * 0.5f, 0.0f),

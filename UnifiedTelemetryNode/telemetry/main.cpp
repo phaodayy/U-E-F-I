@@ -58,6 +58,7 @@ typedef struct _telemetry_SYSTEM_PROCESS_INFORMATION {
 
 #include <protec/skCrypt.h>
 #include "sdk/core/app_shutdown.hpp"
+#include "sdk/core/app_paths.hpp"
 #include "sdk/memory/hyper_process.hpp"
 #include "sdk/core/process_single_instance.hpp"
 #include "sdk/core/offsets.hpp"
@@ -400,7 +401,11 @@ struct LoaderSessionFile {
 
 LoaderSessionFile LoadLoaderSessionFile() {
     LoaderSessionFile session;
-    std::ifstream in(skCrypt("loader_session.json"));
+    std::ifstream in(AppPaths::LoaderSessionPath());
+    if (!in.is_open()) {
+        in.clear();
+        in.open(skCrypt("loader_session.json"));
+    }
     if (!in.is_open()) return session;
 
     nlohmann::json json = nlohmann::json::parse(in, nullptr, false);
@@ -420,13 +425,15 @@ void SaveLoaderSessionFile() {
     json["key"] = global_active_key;
     json["config_code"] = global_config_code;
 
-    std::ofstream out(skCrypt("loader_session.json"), std::ios::trunc);
+    std::ofstream out(AppPaths::LoaderSessionPath(), std::ios::trunc);
     if (out.is_open()) {
         out << json.dump(2);
     }
 }
 
 void ClearLoaderSessionFile() {
+    DeleteFileA(AppPaths::LoaderSessionPath().c_str());
+    DeleteFileA(AppPaths::KeyPath().c_str());
     DeleteFileA(skCrypt("loader_session.json"));
     DeleteFileA(skCrypt("key.txt"));
 }
@@ -763,10 +770,7 @@ bool DownloadLoaderConfig() {
     auto it = responseJson.find(skCrypt("config"));
     if (it == responseJson.end() || !it->is_object() || it->empty()) return true;
 
-    CreateDirectoryA(skCrypt("dataMacro"), NULL);
-    CreateDirectoryA(skCrypt("dataMacro\\Config"), NULL);
-
-    std::ofstream out(skCrypt("dataMacro\\Config\\settings.json"), std::ios::trunc);
+    std::ofstream out(AppPaths::SettingsConfigPath(), std::ios::trunc);
     if (!out.is_open()) return false;
     out << it->dump(2);
     return true;
@@ -775,7 +779,11 @@ bool DownloadLoaderConfig() {
 bool UploadLoaderConfig() {
     if (global_account_token.empty()) return false;
 
-    std::ifstream in(skCrypt("dataMacro\\Config\\settings.json"));
+    std::ifstream in(AppPaths::SettingsConfigPath());
+    if (!in.is_open()) {
+        in.clear();
+        in.open(skCrypt("dataMacro\\Config\\settings.json"));
+    }
     if (!in.is_open()) return false;
 
     nlohmann::json configJson = nlohmann::json::parse(in, nullptr, false);
@@ -821,9 +829,7 @@ bool ImportLoaderConfigCode(const std::string& code) {
 
     auto it = responseJson.find(skCrypt("config"));
     if (it != responseJson.end() && it->is_object()) {
-        CreateDirectoryA(skCrypt("dataMacro"), NULL);
-        CreateDirectoryA(skCrypt("dataMacro\\Config"), NULL);
-        std::ofstream out(skCrypt("dataMacro\\Config\\settings.json"), std::ios::trunc);
+        std::ofstream out(AppPaths::SettingsConfigPath(), std::ios::trunc);
         if (out.is_open()) out << it->dump(2);
     }
 
@@ -992,6 +998,8 @@ void LicenseHeartbeatLoop() {
 
 void SelfDestruct() {
     // SECURITY: Delete configuration files first
+    DeleteFileA(AppPaths::KeyPath().c_str());
+    DeleteFileA(AppPaths::LoaderSessionPath().c_str());
     DeleteFileA(skCrypt("key.txt"));
     DeleteFileA(skCrypt("loader_session.json"));
 

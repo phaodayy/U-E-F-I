@@ -225,7 +225,9 @@ void OverlayMenu::RenderLootEsp(ImDrawList* draw) {
                     std::string resolvedIconName = EntityAliases::ResolveItemAsset(item.Name);
                     bool duplicateVehicle = false;
                     if (item.RenderType == ItemRenderType::Vehicle) {
-                        resolvedIconName = VehicleResolver::Resolve(item.Name).IconName;
+                        const std::string vehicleResolverName =
+                            item.ClassName.empty() ? item.Name : item.ClassName;
+                        resolvedIconName = VehicleResolver::Resolve(vehicleResolverName).IconName;
                         duplicateVehicle = HasDuplicateVehicle(resolvedIconName, itemScreen);
                     }
 
@@ -253,7 +255,7 @@ void OverlayMenu::RenderLootEsp(ImDrawList* draw) {
                         }
 
                         const bool groupable =
-                            item.RenderType == ItemRenderType::Loot;
+                            item.RenderType == ItemRenderType::Loot && icon && icon->SRV;
                         lootEntries.push_back({ item.Name, itemScreen, item.Distance, col, icon, groupable, item.IsImportant, iconSize });
                     }
                 }

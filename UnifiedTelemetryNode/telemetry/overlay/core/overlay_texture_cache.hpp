@@ -8,6 +8,7 @@ namespace OverlayTextures {
 
 void SetDevice(ID3D11Device* device);
 bool LoadInstructor();
+TextureInfo* GetMapIcon(const std::string& name);
 TextureInfo* GetVehicleIcon(const std::string& name);
 TextureInfo* GetItemIcon(const std::string& name);
 TextureInfo* GetWeaponImage(const std::string& weaponName);

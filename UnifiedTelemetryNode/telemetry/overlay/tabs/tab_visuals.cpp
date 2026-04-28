@@ -35,17 +35,30 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
     // Column 2: render style and HUD
     BeginGlassCard(skCrypt("##ESPCol2"), Lang.HeaderRenderStyle, ImVec2(totalWidth / 4.0f - 15, 0));
     ImGui::Checkbox(Lang.Box, &g_Menu.esp_box);
+    ImGui::SetNextItemWidth(130);
+    const char* boxStyleItems[] = { skCrypt("Full"), skCrypt("Corner") };
+    ImGui::Combo(skCrypt("Box Style"), &g_Menu.esp_box_type, boxStyleItems, IM_ARRAYSIZE(boxStyleItems));
     ImGui::SliderFloat(Lang.BoxThick, &g_Menu.box_thickness, 1.0f, 5.0f, skCrypt("%.1f px"));
+    ImGui::Checkbox(skCrypt("Fill Box"), &g_Menu.esp_fillbox);
     ImGui::Checkbox(Lang.Skeleton, &g_Menu.esp_skeleton);
     ImGui::Checkbox(Lang.HealthBar, &g_Menu.esp_health);
+    ImGui::Checkbox(skCrypt("Health Text"), &g_Menu.esp_health_text);
     ImGui::Checkbox(Lang.Distance, &g_Menu.esp_distance);
     ImGui::Checkbox(Lang.Name, &g_Menu.esp_name);
     ImGui::Checkbox(Lang.TeamID, &g_Menu.esp_teamid);
     ImGui::Checkbox(Lang.KillCount, &g_Menu.esp_killcount);
+    ImGui::Checkbox(skCrypt("Damage"), &g_Menu.esp_damage);
+    ImGui::Checkbox(skCrypt("Ammo"), &g_Menu.esp_ammo);
+    ImGui::Checkbox(skCrypt("Speed"), &g_Menu.esp_speed);
     ImGui::Checkbox(Lang.Rank, &g_Menu.esp_rank);
     ImGui::Checkbox(Lang.SurvivalLevel, &g_Menu.esp_survival_level);
     ImGui::Checkbox(Lang.HeadCircle, &g_Menu.esp_head_circle);
     ImGui::Checkbox(Lang.Snaplines, &g_Menu.esp_snapline);
+    ImGui::Checkbox(skCrypt("Aim Warning"), &g_Menu.esp_aim_warning);
+    ImGui::Checkbox(skCrypt("View Direction"), &g_Menu.esp_view_direction);
+    ImGui::Checkbox(skCrypt("Status Badges"), &g_Menu.esp_status_badges);
+    ImGui::Checkbox(skCrypt("Close Warning"), &g_Menu.esp_close_warning);
+    ImGui::Checkbox(skCrypt("Offscreen Text"), &g_Menu.esp_offscreen_text);
     ImGui::Separator();
     DrawDisplayOnlyOption(Lang.ShowcaseEspNameplates);
     ImGui::EndChild();
@@ -54,10 +67,18 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
     // Column 3: thresholds and colors
     BeginGlassCard(skCrypt("##ESPCol3"), Lang.HeaderOverlayHUD, ImVec2(totalWidth / 4.0f - 15, 0));
     ImGui::SliderFloat(Lang.FontSize, &g_Menu.esp_font_size, 8.0f, 24.0f, skCrypt("%.1f px"));
+    ImGui::Checkbox(skCrypt("Text BG"), &g_Menu.esp_text_background);
+    ImGui::SliderFloat(skCrypt("Text BG Alpha"), &g_Menu.esp_text_bg_alpha, 0.0f, 0.70f, skCrypt("%.2f"));
     ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), Lang.DistThresholds);
     ImGui::SliderInt(Lang.RenderDist, &g_Menu.render_distance, 50, 1000, skCrypt("%d m"));
     ImGui::SliderInt(Lang.InfoESP, &g_Menu.name_max_dist, 50, 600, skCrypt("%d m"));
     ImGui::SliderFloat(skCrypt("Thick"), &g_Menu.skel_thickness, 1.0f, 5.0f, skCrypt("%.1f px"));
+    ImGui::SliderFloat(skCrypt("View Dir"), &g_Menu.esp_view_direction_length, 5.0f, 120.0f, skCrypt("%.0f m"));
+    ImGui::SliderFloat(skCrypt("Close Warn"), &g_Menu.esp_close_warning_distance, 10.0f, 150.0f, skCrypt("%.0f m"));
+
+    ImGui::SetNextItemWidth(120);
+    const char* snapItems[] = { skCrypt("Bottom"), skCrypt("Center"), skCrypt("Top"), skCrypt("Local") };
+    ImGui::Combo(skCrypt("Snap From"), &g_Menu.snapline_type, snapItems, IM_ARRAYSIZE(snapItems));
 
     ImGui::Spacing();
     ImGui::SetNextItemWidth(120);
@@ -74,6 +95,9 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
     DrawPosCombo(Lang.SpectatedPos, &g_Menu.esp_spectated_pos);
     DrawPosCombo(skCrypt("Team ID Pos"), &g_Menu.esp_teamid_pos);
     DrawPosCombo(skCrypt("Kills Pos"), &g_Menu.esp_killcount_pos);
+    DrawPosCombo(skCrypt("Damage Pos"), &g_Menu.esp_damage_pos);
+    DrawPosCombo(skCrypt("Ammo Pos"), &g_Menu.esp_ammo_pos);
+    DrawPosCombo(skCrypt("Speed Pos"), &g_Menu.esp_speed_pos);
     DrawPosCombo(skCrypt("Level Pos"), &g_Menu.esp_survival_level_pos);
 
     ImGui::Separator();
@@ -84,6 +108,9 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
     ImGui::SliderFloat(skCrypt("Rank Size"), &g_Menu.rank_font_size, 8.0f, 24.0f, skCrypt("%.1f px"));
     ImGui::SliderFloat(skCrypt("Team Badge"), &g_Menu.teamid_badge_size, 10.0f, 34.0f, skCrypt("%.0f px"));
     ImGui::SliderFloat(skCrypt("Kills Size"), &g_Menu.kill_font_size, 8.0f, 24.0f, skCrypt("%.1f px"));
+    ImGui::SliderFloat(skCrypt("Damage Size"), &g_Menu.damage_font_size, 8.0f, 24.0f, skCrypt("%.1f px"));
+    ImGui::SliderFloat(skCrypt("Ammo Size"), &g_Menu.ammo_font_size, 8.0f, 24.0f, skCrypt("%.1f px"));
+    ImGui::SliderFloat(skCrypt("Speed Size"), &g_Menu.speed_font_size, 8.0f, 24.0f, skCrypt("%.1f px"));
     ImGui::SliderFloat(skCrypt("Level Size"), &g_Menu.survival_level_font_size, 8.0f, 24.0f, skCrypt("%.1f px"));
     ImGui::SliderFloat(skCrypt("Watch Size"), &g_Menu.spectated_font_size, 8.0f, 28.0f, skCrypt("%.1f px"));
 
@@ -109,14 +136,20 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
 
     ColorPicker(Lang.Box, g_Menu.box_visible_color, g_Menu.box_invisible_color);
     ColorPicker(Lang.Skeleton, g_Menu.skeleton_visible_color, g_Menu.skeleton_invisible_color);
-    ColorPicker(Lang.Name, g_Menu.name_color);
+    ColorPicker(Lang.Name, g_Menu.name_visible_color, g_Menu.name_invisible_color);
     ColorPicker(Lang.Distance, g_Menu.distance_color);
     ColorPicker(Lang.Weapon, g_Menu.weapon_color);
     ColorPicker(Lang.Rank, g_Menu.rank_color);
     ColorPicker(Lang.TeamID, g_Menu.teamid_color);
     ColorPicker(Lang.KillCount, g_Menu.kill_color);
+    ColorPicker(skCrypt("Damage"), g_Menu.damage_color);
+    ColorPicker(skCrypt("Ammo"), g_Menu.ammo_color);
+    ColorPicker(skCrypt("Speed"), g_Menu.speed_color);
     ColorPicker(Lang.SurvivalLevel, g_Menu.survival_level_color);
     ColorPicker(Lang.ESP_Spectated, g_Menu.spectated_color);
+    ColorPicker(skCrypt("Aim Warn"), g_Menu.aim_warning_color);
+    ColorPicker(skCrypt("Close Warn"), g_Menu.close_warning_color);
+    ColorPicker(skCrypt("View Dir"), g_Menu.view_direction_color);
     ColorPicker(Lang.ColorHealth, g_Menu.health_color);
 
     ImGui::EndChild();
@@ -160,7 +193,23 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
         if (g_Menu.esp_box) {
             float* targetCol = bPreviewOccluded ? g_Menu.box_invisible_color : g_Menu.box_visible_color;
             ImU32 uBoxCol = ImColor(ImVec4(targetCol[0], targetCol[1], targetCol[2], targetCol[3]));
-            draw->AddRect(cursorPos, ImVec2(cursorPos.x + previewW, cursorPos.y + previewH), uBoxCol, 4.0f, 0, 2.0f);
+            if (g_Menu.esp_box_type == 1) {
+                const float len = (std::min)(previewW, previewH) * 0.24f;
+                const ImVec2 tl = cursorPos;
+                const ImVec2 tr(cursorPos.x + previewW, cursorPos.y);
+                const ImVec2 bl(cursorPos.x, cursorPos.y + previewH);
+                const ImVec2 br(cursorPos.x + previewW, cursorPos.y + previewH);
+                draw->AddLine(tl, ImVec2(tl.x + len, tl.y), uBoxCol, 2.0f);
+                draw->AddLine(tl, ImVec2(tl.x, tl.y + len), uBoxCol, 2.0f);
+                draw->AddLine(tr, ImVec2(tr.x - len, tr.y), uBoxCol, 2.0f);
+                draw->AddLine(tr, ImVec2(tr.x, tr.y + len), uBoxCol, 2.0f);
+                draw->AddLine(bl, ImVec2(bl.x + len, bl.y), uBoxCol, 2.0f);
+                draw->AddLine(bl, ImVec2(bl.x, bl.y - len), uBoxCol, 2.0f);
+                draw->AddLine(br, ImVec2(br.x - len, br.y), uBoxCol, 2.0f);
+                draw->AddLine(br, ImVec2(br.x, br.y - len), uBoxCol, 2.0f);
+            } else {
+                draw->AddRect(cursorPos, ImVec2(cursorPos.x + previewW, cursorPos.y + previewH), uBoxCol, 4.0f, 0, 2.0f);
+            }
         }
 
         PlayerEspLayout::Stack previewLayout(
@@ -266,7 +315,7 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
 
         // 4. Name & Distance Demo
         if (g_Menu.esp_name) {
-            float* targetCol = g_Menu.name_color;
+            float* targetCol = bPreviewOccluded ? g_Menu.name_invisible_color : g_Menu.name_visible_color;
             ImU32 uNameCol = ImColor(ImVec4(targetCol[0], targetCol[1], targetCol[2], targetCol[3]));
 
             std::string pName = skCrypt("GZ-Preview");

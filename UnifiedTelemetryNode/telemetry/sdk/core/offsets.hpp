@@ -49,13 +49,22 @@ namespace telemetryOffsets {
     inline uint64_t GroggyHealth = telemetry_config::offsets::GroggyHealth;
     inline uint64_t CharacterName = telemetry_config::offsets::CharacterName;
     inline uint64_t PlayerName = telemetry_config::offsets::PlayerName;
+    inline uint64_t PlayerStatistics = telemetry_config::offsets::PlayerStatistics;
+    inline uint64_t DamageDealtOnEnemy = telemetry_config::offsets::DamageDealtOnEnemy;
+    inline uint64_t SurvivalTier = telemetry_config::offsets::SurvivalTier;
+    inline uint64_t SurvivalLevel = telemetry_config::offsets::SurvivalLevel;
     inline uint64_t WeaponProcessor = telemetry_config::offsets::WeaponProcessor;
     inline uint64_t EquippedWeapons = telemetry_config::offsets::EquippedWeapons;
     inline uint64_t CurrentWeaponIndex = telemetry_config::offsets::CurrentWeaponIndex;
+    inline uint64_t CurrentAmmoData = telemetry_config::offsets::CurrentAmmoData;
 
     // --- 5. MOVEMENT ---
     inline uint64_t CharacterMovement = telemetry_config::offsets::CharacterMovement;
     inline uint64_t LastUpdateVelocity = telemetry_config::offsets::LastUpdateVelocity;
+    inline uint64_t AimOffsets = telemetry_config::offsets::AimOffsets;
+    inline uint64_t AnimScriptInstance = telemetry_config::offsets::AnimScriptInstance;
+    inline uint64_t bIsScoping_CP = telemetry_config::offsets::bIsScoping_CP;
+    inline uint64_t bIsReloading_CP = telemetry_config::offsets::bIsReloading_CP;
 
     // --- 6. RADAR & HUD ---
     inline uint64_t Minimap = telemetry_config::offsets::Minimap;

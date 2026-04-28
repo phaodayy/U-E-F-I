@@ -1,12 +1,54 @@
 #include "overlay_menu.hpp"
+#include "../../sdk/core/app_paths.hpp"
 #include "../../sdk/Utils/MacroEngine.h"
 #include "../../../nlohmann/json.hpp"
 #include <fstream>
 #include <iostream>
 #include <string>
+
+namespace {
+
+void ApplyModernVisualDefaults(OverlayMenu& menu) {
+    menu.esp_box_type = 1;
+    menu.box_thickness = 1.5f;
+    menu.skel_thickness = 1.25f;
+    menu.esp_fillbox = false;
+
+    menu.box_visible_color[0] = 1.0f; menu.box_visible_color[1] = 0.22f; menu.box_visible_color[2] = 0.24f; menu.box_visible_color[3] = 1.0f;
+    menu.box_invisible_color[0] = 1.0f; menu.box_invisible_color[1] = 0.72f; menu.box_invisible_color[2] = 0.26f; menu.box_invisible_color[3] = 0.90f;
+    menu.skeleton_visible_color[0] = 0.92f; menu.skeleton_visible_color[1] = 0.96f; menu.skeleton_visible_color[2] = 1.0f; menu.skeleton_visible_color[3] = 0.78f;
+    menu.skeleton_invisible_color[0] = 1.0f; menu.skeleton_invisible_color[1] = 0.82f; menu.skeleton_invisible_color[2] = 0.48f; menu.skeleton_invisible_color[3] = 0.58f;
+    menu.name_visible_color[0] = 0.92f; menu.name_visible_color[1] = 0.96f; menu.name_visible_color[2] = 1.0f; menu.name_visible_color[3] = 0.96f;
+    menu.name_invisible_color[0] = 1.0f; menu.name_invisible_color[1] = 0.82f; menu.name_invisible_color[2] = 0.48f; menu.name_invisible_color[3] = 0.88f;
+    menu.distance_color[0] = 0.82f; menu.distance_color[1] = 0.88f; menu.distance_color[2] = 0.94f; menu.distance_color[3] = 0.95f;
+    menu.weapon_color[0] = 0.80f; menu.weapon_color[1] = 0.94f; menu.weapon_color[2] = 1.0f; menu.weapon_color[3] = 0.95f;
+    menu.health_color[0] = 0.27f; menu.health_color[1] = 0.90f; menu.health_color[2] = 0.52f; menu.health_color[3] = 1.0f;
+    menu.damage_color[0] = 1.0f; menu.damage_color[1] = 0.48f; menu.damage_color[2] = 0.18f; menu.damage_color[3] = 1.0f;
+    menu.speed_color[0] = 0.45f; menu.speed_color[1] = 1.0f; menu.speed_color[2] = 0.72f; menu.speed_color[3] = 1.0f;
+    menu.ammo_color[0] = 0.95f; menu.ammo_color[1] = 0.95f; menu.ammo_color[2] = 0.72f; menu.ammo_color[3] = 1.0f;
+    menu.close_warning_color[0] = 1.0f; menu.close_warning_color[1] = 0.20f; menu.close_warning_color[2] = 0.08f; menu.close_warning_color[3] = 1.0f;
+    menu.aim_warning_color[0] = 1.0f; menu.aim_warning_color[1] = 0.12f; menu.aim_warning_color[2] = 0.08f; menu.aim_warning_color[3] = 1.0f;
+    menu.view_direction_color[0] = 0.20f; menu.view_direction_color[1] = 0.82f; menu.view_direction_color[2] = 1.0f; menu.view_direction_color[3] = 0.85f;
+    menu.esp_aim_warning = true;
+    menu.esp_view_direction = true;
+    menu.esp_status_badges = true;
+    menu.esp_health_text = true;
+    menu.esp_close_warning = true;
+    menu.esp_close_warning_distance = 65.0f;
+    menu.esp_offscreen_text = true;
+    menu.esp_view_direction_length = 35.0f;
+}
+
+} // namespace
+
 void OverlayMenu::LoadConfig(const char* path) {
     try {
-        std::ifstream file(path);
+        const std::string resolvedPath = AppPaths::RuntimePath(path ? path : "");
+        std::ifstream file(resolvedPath);
+        if (!file.is_open() && path) {
+            file.clear();
+            file.open(path);
+        }
         if (file.is_open()) {
             nlohmann::json j;
             file >> j;
@@ -22,8 +64,20 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("teamid_badge_size")) teamid_badge_size = j["teamid_badge_size"];
             if (j.contains("kill_font_size")) kill_font_size = j["kill_font_size"];
             if (j.contains("survival_level_font_size")) survival_level_font_size = j["survival_level_font_size"];
+            if (j.contains("damage_font_size")) damage_font_size = j["damage_font_size"];
+            if (j.contains("speed_font_size")) speed_font_size = j["speed_font_size"];
+            if (j.contains("ammo_font_size")) ammo_font_size = j["ammo_font_size"];
             if (j.contains("spectated_font_size")) spectated_font_size = j["spectated_font_size"];
             if (j.contains("weapon_icon_size")) weapon_icon_size = j["weapon_icon_size"];
+            if (j.contains("esp_text_background")) esp_text_background = j["esp_text_background"];
+            if (j.contains("esp_text_bg_alpha")) esp_text_bg_alpha = j["esp_text_bg_alpha"];
+            if (j.contains("esp_health_text")) esp_health_text = j["esp_health_text"];
+            if (j.contains("esp_aim_warning")) esp_aim_warning = j["esp_aim_warning"];
+            if (j.contains("esp_view_direction")) esp_view_direction = j["esp_view_direction"];
+            if (j.contains("esp_status_badges")) esp_status_badges = j["esp_status_badges"];
+            if (j.contains("esp_close_warning")) esp_close_warning = j["esp_close_warning"];
+            if (j.contains("esp_close_warning_distance")) esp_close_warning_distance = j["esp_close_warning_distance"];
+            if (j.contains("esp_view_direction_length")) esp_view_direction_length = j["esp_view_direction_length"];
             if (j.contains("box_thickness")) box_thickness = j["box_thickness"];
             if (j.contains("esp_skeleton_dots")) esp_skeleton_dots = j["esp_skeleton_dots"];
             if (j.contains("esp_spectator_list")) esp_spectator_list = j["esp_spectator_list"];
@@ -39,6 +93,8 @@ void OverlayMenu::LoadConfig(const char* path) {
                 esp_show_teammates = !static_cast<bool>(j["esp_team_check"]);
             }
             if (j.contains("esp_box")) esp_box = j["esp_box"];
+            if (j.contains("esp_box_type")) esp_box_type = j["esp_box_type"];
+            if (j.contains("esp_fillbox")) esp_fillbox = j["esp_fillbox"];
             if (j.contains("esp_skeleton")) esp_skeleton = j["esp_skeleton"];
             if (j.contains("esp_name")) esp_name = j["esp_name"];
             if (j.contains("esp_distance")) esp_distance = j["esp_distance"];
@@ -52,14 +108,22 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("esp_teamid_pos")) esp_teamid_pos = j["esp_teamid_pos"];
             if (j.contains("esp_killcount_pos")) esp_killcount_pos = j["esp_killcount_pos"];
             if (j.contains("esp_survival_level_pos")) esp_survival_level_pos = j["esp_survival_level_pos"];
+            if (j.contains("esp_damage_pos")) esp_damage_pos = j["esp_damage_pos"];
+            if (j.contains("esp_speed_pos")) esp_speed_pos = j["esp_speed_pos"];
+            if (j.contains("esp_ammo_pos")) esp_ammo_pos = j["esp_ammo_pos"];
             if (j.contains("esp_items")) esp_items = j["esp_items"];
             if (j.contains("esp_items_toggle_key")) esp_items_toggle_key = j["esp_items_toggle_key"];
             if (j.contains("esp_vehicles_toggle_key")) esp_vehicles_toggle_key = j["esp_vehicles_toggle_key"];
             if (j.contains("esp_snapline")) esp_snapline = j["esp_snapline"];
+            if (j.contains("snapline_type")) snapline_type = j["snapline_type"];
             if (j.contains("esp_weapon")) esp_weapon = j["esp_weapon"];
+            if (j.contains("esp_damage")) esp_damage = j["esp_damage"];
+            if (j.contains("esp_speed")) esp_speed = j["esp_speed"];
+            if (j.contains("esp_ammo")) esp_ammo = j["esp_ammo"];
             if (j.contains("esp_weapon_type")) esp_weapon_type = j["esp_weapon_type"];
             if (j.contains("render_distance")) render_distance = j["render_distance"];
             if (j.contains("esp_offscreen")) esp_offscreen = j["esp_offscreen"];
+            if (j.contains("esp_offscreen_text")) esp_offscreen_text = j["esp_offscreen_text"];
             if (j.contains("esp_offscreen_style")) esp_offscreen_style = j["esp_offscreen_style"];
             if (j.contains("offscreen_color_mode")) offscreen_color_mode = j["offscreen_color_mode"];
             if (j.contains("offscreen_radius")) offscreen_radius = j["offscreen_radius"];
@@ -79,6 +143,33 @@ void OverlayMenu::LoadConfig(const char* path) {
             radar_zoom_multiplier = 1.0f;
             radar_dot_size = 8.0f;
             radar_rotation_offset = 0.0f;
+            if (j.contains("radar_enabled")) radar_enabled = j["radar_enabled"];
+            if (j.contains("radar_offset_x")) radar_offset_x = j["radar_offset_x"];
+            if (j.contains("radar_offset_y")) radar_offset_y = j["radar_offset_y"];
+            if (j.contains("radar_zoom_multiplier")) radar_zoom_multiplier = j["radar_zoom_multiplier"];
+            if (j.contains("radar_scale")) radar_scale = j["radar_scale"];
+            if (j.contains("radar_dot_size")) radar_dot_size = j["radar_dot_size"];
+            if (j.contains("radar_rotation_offset")) radar_rotation_offset = j["radar_rotation_offset"];
+            if (j.contains("minimap_enabled")) minimap_enabled = j["minimap_enabled"];
+            if (j.contains("bigmap_enabled")) bigmap_enabled = j["bigmap_enabled"];
+            if (j.contains("minimap_show_direction")) minimap_show_direction = j["minimap_show_direction"];
+            if (j.contains("minimap_fire_trace")) minimap_fire_trace = j["minimap_fire_trace"];
+            if (j.contains("minimap_view_ray_length")) minimap_view_ray_length = j["minimap_view_ray_length"];
+            if (j.contains("minimap_fire_ray_length")) minimap_fire_ray_length = j["minimap_fire_ray_length"];
+            if (j.contains("minimap_fire_flash_ms")) minimap_fire_flash_ms = j["minimap_fire_flash_ms"];
+            if (j.contains("minimap_ray_width")) minimap_ray_width = j["minimap_ray_width"];
+            if (j.contains("bigmap_show_names")) bigmap_show_names = j["bigmap_show_names"];
+            if (j.contains("bigmap_show_direction")) bigmap_show_direction = j["bigmap_show_direction"];
+            if (j.contains("bigmap_name_background")) bigmap_name_background = j["bigmap_name_background"];
+            if (j.contains("bigmap_show_legend")) bigmap_show_legend = j["bigmap_show_legend"];
+            if (j.contains("bigmap_show_vehicles")) bigmap_show_vehicles = j["bigmap_show_vehicles"];
+            if (j.contains("bigmap_show_airdrops")) bigmap_show_airdrops = j["bigmap_show_airdrops"];
+            if (j.contains("bigmap_show_deadboxes")) bigmap_show_deadboxes = j["bigmap_show_deadboxes"];
+            if (j.contains("bigmap_marker_size")) bigmap_marker_size = j["bigmap_marker_size"];
+            if (j.contains("bigmap_marker_alpha")) bigmap_marker_alpha = j["bigmap_marker_alpha"];
+            if (j.contains("bigmap_icon_size")) bigmap_icon_size = j["bigmap_icon_size"];
+            if (j.contains("bigmap_name_font_size")) bigmap_name_font_size = j["bigmap_name_font_size"];
+            if (j.contains("bigmap_name_bg_alpha")) bigmap_name_bg_alpha = j["bigmap_name_bg_alpha"];
             if (j.contains("macro_enabled")) {
                 macro_enabled = j["macro_enabled"];
                 MacroEngine::macro_enabled = macro_enabled;
@@ -109,14 +200,28 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("color_box_inv")) for (int i = 0; i < 4; i++) box_invisible_color[i] = j["color_box_inv"][i];
             if (j.contains("color_skel_vis")) for (int i = 0; i < 4; i++) skeleton_visible_color[i] = j["color_skel_vis"][i];
             if (j.contains("color_skel_inv")) for (int i = 0; i < 4; i++) skeleton_invisible_color[i] = j["color_skel_inv"][i];
-            if (j.contains("color_names")) for (int i = 0; i < 4; i++) name_color[i] = j["color_names"][i];
+            if (j.contains("color_names")) {
+                for (int i = 0; i < 4; i++) {
+                    name_color[i] = j["color_names"][i];
+                    name_visible_color[i] = name_color[i];
+                    name_invisible_color[i] = name_color[i];
+                }
+            }
+            if (j.contains("color_name_vis")) for (int i = 0; i < 4; i++) name_visible_color[i] = j["color_name_vis"][i];
+            if (j.contains("color_name_inv")) for (int i = 0; i < 4; i++) name_invisible_color[i] = j["color_name_inv"][i];
             if (j.contains("color_dist")) for (int i = 0; i < 4; i++) distance_color[i] = j["color_dist"][i];
             if (j.contains("color_weapon")) for (int i = 0; i < 4; i++) weapon_color[i] = j["color_weapon"][i];
             if (j.contains("color_rank")) for (int i = 0; i < 4; i++) rank_color[i] = j["color_rank"][i];
             if (j.contains("color_teamid")) for (int i = 0; i < 4; i++) teamid_color[i] = j["color_teamid"][i];
             if (j.contains("color_kill")) for (int i = 0; i < 4; i++) kill_color[i] = j["color_kill"][i];
             if (j.contains("color_survival_level")) for (int i = 0; i < 4; i++) survival_level_color[i] = j["color_survival_level"][i];
+            if (j.contains("color_damage")) for (int i = 0; i < 4; i++) damage_color[i] = j["color_damage"][i];
+            if (j.contains("color_speed")) for (int i = 0; i < 4; i++) speed_color[i] = j["color_speed"][i];
+            if (j.contains("color_ammo")) for (int i = 0; i < 4; i++) ammo_color[i] = j["color_ammo"][i];
             if (j.contains("color_spectated")) for (int i = 0; i < 4; i++) spectated_color[i] = j["color_spectated"][i];
+            if (j.contains("color_aim_warning")) for (int i = 0; i < 4; i++) aim_warning_color[i] = j["color_aim_warning"][i];
+            if (j.contains("color_close_warning")) for (int i = 0; i < 4; i++) close_warning_color[i] = j["color_close_warning"][i];
+            if (j.contains("color_view_direction")) for (int i = 0; i < 4; i++) view_direction_color[i] = j["color_view_direction"][i];
 
             if (j.contains("esp_items")) esp_items = j["esp_items"];
             if (j.contains("esp_vehicles")) esp_vehicles = j["esp_vehicles"];
@@ -329,6 +434,10 @@ void OverlayMenu::LoadConfig(const char* path) {
                     if (c.contains("max_dist")) aim_configs[i].max_dist = c["max_dist"];
                     if (c.contains("prediction")) aim_configs[i].prediction = c["prediction"];
                 }
+            }
+
+            if (!j.contains("visual_style_version")) {
+                ApplyModernVisualDefaults(*this);
             }
 
             std::cout << "[+] Loaded Config from: " << path << std::endl;

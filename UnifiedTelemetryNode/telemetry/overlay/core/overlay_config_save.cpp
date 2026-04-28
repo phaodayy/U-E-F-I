@@ -1,4 +1,5 @@
 #include "overlay_menu.hpp"
+#include "../../sdk/core/app_paths.hpp"
 #include "../../sdk/Utils/MacroEngine.h"
 #include "../../../nlohmann/json.hpp"
 #include <fstream>
@@ -7,6 +8,7 @@
 void OverlayMenu::SaveConfig(const char* path) {
     try {
         nlohmann::json j;
+        j["visual_style_version"] = 2;
         j["esp_toggle"] = esp_toggle;
         j["esp_icons"] = esp_icons;
         j["esp_font_size"] = esp_font_size;
@@ -17,8 +19,20 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["teamid_badge_size"] = teamid_badge_size;
         j["kill_font_size"] = kill_font_size;
         j["survival_level_font_size"] = survival_level_font_size;
+        j["damage_font_size"] = damage_font_size;
+        j["speed_font_size"] = speed_font_size;
+        j["ammo_font_size"] = ammo_font_size;
         j["spectated_font_size"] = spectated_font_size;
         j["weapon_icon_size"] = weapon_icon_size;
+        j["esp_text_background"] = esp_text_background;
+        j["esp_text_bg_alpha"] = esp_text_bg_alpha;
+        j["esp_health_text"] = esp_health_text;
+        j["esp_aim_warning"] = esp_aim_warning;
+        j["esp_view_direction"] = esp_view_direction;
+        j["esp_status_badges"] = esp_status_badges;
+        j["esp_close_warning"] = esp_close_warning;
+        j["esp_close_warning_distance"] = esp_close_warning_distance;
+        j["esp_view_direction_length"] = esp_view_direction_length;
         j["box_thickness"] = box_thickness;
         j["esp_skeleton_dots"] = esp_skeleton_dots;
         j["esp_spectator_list"] = esp_spectator_list;
@@ -29,6 +43,7 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["esp_show_enemies"] = esp_show_enemies;
         j["esp_show_teammates"] = esp_show_teammates;
         j["esp_offscreen"] = esp_offscreen;
+        j["esp_offscreen_text"] = esp_offscreen_text;
         j["esp_offscreen_style"] = esp_offscreen_style;
         j["offscreen_color_mode"] = offscreen_color_mode;
         j["offscreen_radius"] = offscreen_radius;
@@ -36,6 +51,7 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["offscreen_near_color"] = { offscreen_near_color[0], offscreen_near_color[1], offscreen_near_color[2], offscreen_near_color[3] };
         j["offscreen_far_color"] = { offscreen_far_color[0], offscreen_far_color[1], offscreen_far_color[2], offscreen_far_color[3] };
         j["esp_box"] = esp_box;
+        j["esp_box_type"] = esp_box_type;
         j["esp_skeleton"] = esp_skeleton;
         j["esp_name"] = esp_name;
         j["esp_distance"] = esp_distance;
@@ -49,16 +65,51 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["esp_teamid_pos"] = esp_teamid_pos;
         j["esp_killcount_pos"] = esp_killcount_pos;
         j["esp_survival_level_pos"] = esp_survival_level_pos;
+        j["esp_damage_pos"] = esp_damage_pos;
+        j["esp_speed_pos"] = esp_speed_pos;
+        j["esp_ammo_pos"] = esp_ammo_pos;
         j["esp_items"] = esp_items;
         j["esp_items_toggle_key"] = esp_items_toggle_key;
         j["esp_vehicles_toggle_key"] = esp_vehicles_toggle_key;
         j["esp_snapline"] = esp_snapline;
+        j["snapline_type"] = snapline_type;
         j["esp_weapon"] = esp_weapon;
+        j["esp_damage"] = esp_damage;
+        j["esp_speed"] = esp_speed;
+        j["esp_ammo"] = esp_ammo;
         j["esp_weapon_type"] = esp_weapon_type;
+        j["esp_fillbox"] = esp_fillbox;
         j["render_distance"] = render_distance;
         j["language"] = language;
         j["show_macro_overlay"] = show_macro_overlay;
         j["show_radar_center"] = show_radar_center;
+        j["radar_enabled"] = radar_enabled;
+        j["radar_offset_x"] = radar_offset_x;
+        j["radar_offset_y"] = radar_offset_y;
+        j["radar_zoom_multiplier"] = radar_zoom_multiplier;
+        j["radar_scale"] = radar_scale;
+        j["radar_dot_size"] = radar_dot_size;
+        j["radar_rotation_offset"] = radar_rotation_offset;
+        j["minimap_enabled"] = minimap_enabled;
+        j["bigmap_enabled"] = bigmap_enabled;
+        j["minimap_show_direction"] = minimap_show_direction;
+        j["minimap_fire_trace"] = minimap_fire_trace;
+        j["minimap_view_ray_length"] = minimap_view_ray_length;
+        j["minimap_fire_ray_length"] = minimap_fire_ray_length;
+        j["minimap_fire_flash_ms"] = minimap_fire_flash_ms;
+        j["minimap_ray_width"] = minimap_ray_width;
+        j["bigmap_show_names"] = bigmap_show_names;
+        j["bigmap_show_direction"] = bigmap_show_direction;
+        j["bigmap_name_background"] = bigmap_name_background;
+        j["bigmap_show_legend"] = bigmap_show_legend;
+        j["bigmap_show_vehicles"] = bigmap_show_vehicles;
+        j["bigmap_show_airdrops"] = bigmap_show_airdrops;
+        j["bigmap_show_deadboxes"] = bigmap_show_deadboxes;
+        j["bigmap_marker_size"] = bigmap_marker_size;
+        j["bigmap_marker_alpha"] = bigmap_marker_alpha;
+        j["bigmap_icon_size"] = bigmap_icon_size;
+        j["bigmap_name_font_size"] = bigmap_name_font_size;
+        j["bigmap_name_bg_alpha"] = bigmap_name_bg_alpha;
         j["anti_screenshot"] = anti_screenshot;
         j["macro_enabled"] = macro_enabled;
         j["macro_humanize"] = macro_humanize;
@@ -216,14 +267,22 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["color_box_inv"] = { box_invisible_color[0], box_invisible_color[1], box_invisible_color[2], box_invisible_color[3] };
         j["color_skel_vis"] = { skeleton_visible_color[0], skeleton_visible_color[1], skeleton_visible_color[2], skeleton_visible_color[3] };
         j["color_skel_inv"] = { skeleton_invisible_color[0], skeleton_invisible_color[1], skeleton_invisible_color[2], skeleton_invisible_color[3] };
-        j["color_names"] = { name_color[0], name_color[1], name_color[2], name_color[3] };
+        j["color_names"] = { name_visible_color[0], name_visible_color[1], name_visible_color[2], name_visible_color[3] };
+        j["color_name_vis"] = { name_visible_color[0], name_visible_color[1], name_visible_color[2], name_visible_color[3] };
+        j["color_name_inv"] = { name_invisible_color[0], name_invisible_color[1], name_invisible_color[2], name_invisible_color[3] };
         j["color_dist"] = { distance_color[0], distance_color[1], distance_color[2], distance_color[3] };
         j["color_weapon"] = { weapon_color[0], weapon_color[1], weapon_color[2], weapon_color[3] };
         j["color_rank"] = { rank_color[0], rank_color[1], rank_color[2], rank_color[3] };
         j["color_teamid"] = { teamid_color[0], teamid_color[1], teamid_color[2], teamid_color[3] };
         j["color_kill"] = { kill_color[0], kill_color[1], kill_color[2], kill_color[3] };
         j["color_survival_level"] = { survival_level_color[0], survival_level_color[1], survival_level_color[2], survival_level_color[3] };
+        j["color_damage"] = { damage_color[0], damage_color[1], damage_color[2], damage_color[3] };
+        j["color_speed"] = { speed_color[0], speed_color[1], speed_color[2], speed_color[3] };
+        j["color_ammo"] = { ammo_color[0], ammo_color[1], ammo_color[2], ammo_color[3] };
         j["color_spectated"] = { spectated_color[0], spectated_color[1], spectated_color[2], spectated_color[3] };
+        j["color_aim_warning"] = { aim_warning_color[0], aim_warning_color[1], aim_warning_color[2], aim_warning_color[3] };
+        j["color_close_warning"] = { close_warning_color[0], close_warning_color[1], close_warning_color[2], close_warning_color[3] };
+        j["color_view_direction"] = { view_direction_color[0], view_direction_color[1], view_direction_color[2], view_direction_color[3] };
 
         // precision_calibration Configs
         j["aim_master_enabled"] = aim_master_enabled;
@@ -244,11 +303,12 @@ void OverlayMenu::SaveConfig(const char* path) {
         }
         j["aim_configs"] = aim_array;
 
-        std::ofstream file(path);
+        const std::string resolvedPath = AppPaths::RuntimePath(path ? path : "settings.json");
+        std::ofstream file(resolvedPath);
         if (file.is_open()) {
             file << j.dump(4);
             file.close();
-            std::cout << "[+] Saved Config to: " << path << std::endl;
+            std::cout << "[+] Saved Config to: " << resolvedPath << std::endl;
         }
     } catch (...) {}
 }

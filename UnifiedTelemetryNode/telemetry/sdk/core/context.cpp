@@ -9,8 +9,10 @@
 #include <algorithm>
 #include <set>
 #include <array>
+#include <cctype>
 #include <utility>
 #include <initializer_list>
+#include <unordered_map>
 
 using namespace telemetryOffsets;
 using namespace telemetryDecrypt;
@@ -55,6 +57,15 @@ namespace {
         int rightFoot = 180;
     };
 
+    struct ShotState {
+        uint64_t weapon = 0;
+        int lastAmmo = -1;
+        uint64_t lastShotTimeMs = 0;
+        uint64_t lastSeenTimeMs = 0;
+    };
+
+    std::unordered_map<uint64_t, ShotState> g_PlayerShotStates;
+
     PlayerGender NormalizeGender(uint8_t genderValue) {
         return (genderValue == static_cast<uint8_t>(PlayerGender::Female)) ? PlayerGender::Female : PlayerGender::Male;
     }
@@ -87,8 +98,58 @@ namespace {
     
     bool IsWorldMapWidgetClass(const std::string& className) {
         return className.find(skCrypt("WorldMap")) != std::string::npos ||
-            className.find(skCrypt("MapGrid")) != std::string::npos ||
-            className.find(skCrypt("ChildCenter")) != std::string::npos;
+               className.find(skCrypt("MapGrid")) != std::string::npos ||
+               className.find(skCrypt("ChildCenter")) != std::string::npos;
+    }
+
+    __forceinline uint64_t ReadXe(uint64_t addr) {
+        uint64_t val = 0;
+        if (telemetryMemory::ReadMemory(addr, &val, sizeof(uint64_t)))
+            return telemetryDecrypt::Xe(val);
+        return 0;
+    }
+
+    bool IsVehicleActorName(const std::string& name) {
+        return name.find(skCrypt("Vehicle")) != std::string::npos || 
+               name.find(skCrypt("BP_")) == 0 ||
+               name.find(skCrypt("Dacia")) != std::string::npos ||
+               name.find(skCrypt("Uaz")) != std::string::npos ||
+               name.find(skCrypt("Buggy")) != std::string::npos ||
+               name.find(skCrypt("Motorbike")) != std::string::npos ||
+               name.find(skCrypt("Mirado")) != std::string::npos ||
+               name.find(skCrypt("Pickup")) != std::string::npos ||
+               name.find(skCrypt("Rony")) != std::string::npos;
+    }
+
+    std::string ResolveDroppedItemName(uint64_t actor) {
+        uint64_t uItem = ReadXe(actor + telemetryOffsets::DroppedItem);
+        if (uItem > 0x1000000) {
+            uint32_t rawID = Read<uint32_t>(uItem + telemetryOffsets::ObjID);
+            return FNameUtils::GetNameFast(telemetryOffsets::DecryptCIndex(rawID));
+        }
+        return "";
+    }
+
+    void AppendDroppedItemGroupItems(uint64_t actor, const Vector3& pos, std::vector<ItemData>& list) {
+        uint64_t listPtr = Read<uint64_t>(actor + telemetryOffsets::DroppedItemGroup);
+        int cnt = Read<int>(actor + telemetryOffsets::DroppedItemGroup + 0x8);
+        if (listPtr > 0x1000000 && cnt > 0 && cnt < 50) {
+            for (int j = 0; j < cnt; j++) {
+                uint64_t comp = Read<uint64_t>(listPtr + (j * 0x10) + 0x8); 
+                if (comp > 0x1000000) {
+                    uint64_t uItem = Read<uint64_t>(comp + telemetryOffsets::DroppedItemGroupUItem);
+                    if (uItem > 0x1000000) {
+                        uint32_t rawID = Read<uint32_t>(uItem + telemetryOffsets::ObjID);
+                        std::string rawName = FNameUtils::GetNameFast(telemetryOffsets::DecryptCIndex(rawID));
+                        if (!rawName.empty()) {
+                            float dist = G_CameraLocation.Distance(pos) / 100.0f;
+                            ItemData item{ pos, rawName, "", dist, false, ItemRenderType::Loot };
+                            list.push_back(item);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     float GetMapWorldSize(const std::string& mapName) {
@@ -146,6 +207,137 @@ namespace {
             return 0;
         }
         return team;
+    }
+
+    float NormalizeAngle(float angle) {
+        while (angle < -180.0f) angle += 360.0f;
+        while (angle > 180.0f) angle -= 360.0f;
+        return angle;
+    }
+
+    float AbsAngleDelta(float a, float b) {
+        return std::fabs(NormalizeAngle(a - b));
+    }
+
+    void ReadAimAngles(uint64_t actor, PlayerData& player) {
+        player.HasAimYaw = false;
+        player.IsAimingAtLocal = false;
+        if (actor <= 0x1000000) return;
+
+        const Vector3 aimOffsets = Read<Vector3>(actor + telemetryOffsets::AimOffsets);
+        if (!std::isfinite(aimOffsets.y) || std::fabs(aimOffsets.y) > 720.0f) return;
+
+        player.AimPitch = std::isfinite(aimOffsets.x) ? std::clamp(aimOffsets.x, -180.0f, 180.0f) : 0.0f;
+        player.AimYaw = NormalizeAngle(aimOffsets.y);
+        player.HasAimYaw = true;
+    }
+
+    void UpdateAimThreat(PlayerData& player) {
+        player.IsAimingAtLocal = false;
+        if (!player.HasAimYaw || player.IsTeammate || player.Health <= 0.0f || player.Distance > 600.0f ||
+            player.Position.IsZero() || G_LocalPlayerPos.IsZero()) {
+            return;
+        }
+
+        const float dx = G_LocalPlayerPos.x - player.Position.x;
+        const float dy = G_LocalPlayerPos.y - player.Position.y;
+        const float horizontal = std::sqrt(dx * dx + dy * dy);
+        if (horizontal < 1.0f) return;
+
+        const float yawToLocal = std::atan2(dy, dx) * 57.2957795f;
+        const float dz = (G_LocalPlayerPos.z + 80.0f) - (player.Position.z + 80.0f);
+        const float pitchToLocal = std::atan2(dz, horizontal) * 57.2957795f;
+        const float yawDelta = AbsAngleDelta(player.AimYaw, yawToLocal);
+        const float pitchDelta = std::fabs(player.AimPitch - pitchToLocal);
+
+        player.IsAimingAtLocal = yawDelta <= 9.0f && pitchDelta <= 25.0f;
+    }
+
+    void ReadPlayerStats(uint64_t playerState, PlayerData& player) {
+        if (playerState <= 0x1000000) return;
+
+        const int kills = Read<int>(playerState + telemetryOffsets::PlayerStatistics);
+        if (kills >= 0 && kills < 100) {
+            player.Kills = kills;
+        }
+
+        const float damage = Read<float>(playerState + telemetryOffsets::DamageDealtOnEnemy);
+        if (std::isfinite(damage) && damage >= 0.0f && damage < 30000.0f) {
+            player.DamageDealt = damage;
+        }
+
+        const int tier = Read<int>(playerState + telemetryOffsets::SurvivalTier);
+        const int level = Read<int>(playerState + telemetryOffsets::SurvivalLevel);
+        if (tier > 0 && tier < 20 && level > 0 && level <= 500) {
+            player.SurvivalLevel = (tier - 1) * 500 + level;
+        } else if (level > 0 && level < 10000) {
+            player.SurvivalLevel = level;
+        }
+    }
+
+    void ReadAnimState(uint64_t mesh, PlayerData& player) {
+        player.IsScoping = false;
+        player.IsReloading = false;
+        if (mesh <= 0x1000000) return;
+
+        const uint64_t anim = Read<uint64_t>(mesh + telemetryOffsets::AnimScriptInstance);
+        if (anim <= 0x1000000) return;
+
+        player.IsScoping = Read<uint8_t>(anim + telemetryOffsets::bIsScoping_CP) != 0;
+        player.IsReloading = Read<uint8_t>(anim + telemetryOffsets::bIsReloading_CP) != 0;
+    }
+
+    void ReadWeaponAmmo(uint64_t weapon, PlayerData& player) {
+        player.HasAmmo = false;
+        player.Ammo = 0;
+        player.AmmoMax = 0;
+        player.IsFiring = false;
+        if (weapon <= 0x1000000) return;
+
+        const uint64_t now = GetTickCount64();
+        const int ammo = Read<int>(weapon + telemetryOffsets::CurrentAmmoData);
+        const int ammoMax = Read<int>(weapon + telemetryOffsets::CurrentAmmoData - sizeof(int));
+        if (ammo >= 0 && ammo <= 500) {
+            player.Ammo = ammo;
+            player.HasAmmo = true;
+        }
+        if (ammoMax > 0 && ammoMax <= 500) {
+            player.AmmoMax = ammoMax;
+        }
+
+        if (!player.HasAmmo || player.ActorPtr <= 0x1000000) return;
+
+        ShotState& state = g_PlayerShotStates[player.ActorPtr];
+        if (state.weapon != weapon) {
+            state.weapon = weapon;
+            state.lastAmmo = player.Ammo;
+            state.lastShotTimeMs = 0;
+            state.lastSeenTimeMs = now;
+            player.LastShotTimeMs = 0;
+            return;
+        }
+
+        if (state.lastAmmo >= 0 && player.Ammo < state.lastAmmo && !player.IsReloading) {
+            const int spent = state.lastAmmo - player.Ammo;
+            if (spent > 0 && spent <= 50) {
+                state.lastShotTimeMs = now;
+            }
+        }
+
+        state.lastAmmo = player.Ammo;
+        state.lastSeenTimeMs = now;
+        player.LastShotTimeMs = state.lastShotTimeMs;
+        player.IsFiring = state.lastShotTimeMs != 0 && (now - state.lastShotTimeMs) <= 220;
+
+        if (g_PlayerShotStates.size() > 256) {
+            for (auto it = g_PlayerShotStates.begin(); it != g_PlayerShotStates.end(); ) {
+                if (now - it->second.lastSeenTimeMs > 15000) {
+                    it = g_PlayerShotStates.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+        }
     }
 }
 
@@ -500,15 +692,21 @@ namespace telemetryContext {
                                 worldAlignX = alignX;
                                 worldAlignY = alignY;
 
+                                const float layoutZoom = width / 1080.0f;
                                 const float zoomState = Read<float>(widget + 0xA28);
-                                G_Radar.WorldMapZoomFactor = (zoomState > 0.001f) ? zoomState : 1.0f;
+                                G_Radar.WorldMapZoomFactor = (layoutZoom > 0.001f)
+                                    ? layoutZoom
+                                    : ((zoomState > 0.001f) ? zoomState : 1.0f);
                                 
                                 const float currentPosX = (width * (alignX - 0.5f)) - left;
                                 const float currentPosY = (height * (alignY - 0.5f)) - top;
+                                const float safeZoom = (G_Radar.WorldMapZoomFactor > 0.001f)
+                                    ? G_Radar.WorldMapZoomFactor
+                                    : 1.0f;
                                 
                                 G_Radar.WorldMapPosition = {
-                                    currentPosX / 1080.0f,
-                                    currentPosY / 1080.0f
+                                    currentPosX / 1080.0f / safeZoom * 2.0f,
+                                    currentPosY / 1080.0f / safeZoom * 2.0f
                                 };
                             }
                         }
@@ -542,26 +740,18 @@ namespace telemetryContext {
                 G_Radar.WorldOriginLocation = { worldOriginX, worldOriginY, 0.0f };
             }
 
-            // Update G_Radar.IsWorldMapVisible and other properties based on widget scan
-            if (!G_Radar.IsWorldMapVisible) {
-                // Minimap defaults (handled by minimap widgets)
-            } else {
-                // FORCE PIXEL SCALE: The MapSizeFactored must be in screen pixels (e.g. 1080)
-                // If the read width is garbage or world-units, override with screenHeight
-                G_Radar.MapSizeFactored = (float)screenHeight; 
-                
-                // If we have a valid width from widget, use it but cap it at screenWidth
-                if (G_Radar.WorldMapWidth > 50.0f && G_Radar.WorldMapWidth <= (float)screenWidth) {
-                    G_Radar.MapSizeFactored = G_Radar.WorldMapWidth;
-                }
+            if (G_Radar.WorldMapZoomFactor <= 0.001f) {
+                G_Radar.WorldMapZoomFactor = 1.0f;
             }
 
-            // Training Map Special: Range_Main usually centers at 0,0 with 2km size
-            if (G_Radar.MapWorldSize == 101175.0f) {
-                G_Radar.WorldCenterLocation = { 0.0f, 0.0f, 0.0f };
+            if (G_Radar.MapWorldSize > 1000.0f) {
+                G_Radar.MapSizeFactored = G_Radar.MapWorldSize / G_Radar.WorldMapZoomFactor;
+                G_Radar.WorldCenterLocation = {
+                    G_Radar.MapWorldSize * (1.0f + G_Radar.WorldMapPosition.x),
+                    G_Radar.MapWorldSize * (1.0f + G_Radar.WorldMapPosition.y),
+                    0.0f
+                };
             }
-
-            // Removed legacy scaling logic that was causing coordinate drift
         }
 
         // Dynamic fallback when HUD widget is not ready
@@ -643,11 +833,15 @@ namespace telemetryContext {
 
             if (actor == G_LocalPawn) continue;
             
-            bool isPlayer = (cname.find(skCrypt("PlayerMale")) != std::string::npos || 
-                             cname.find(skCrypt("PlayerFemale")) != std::string::npos || 
-                             cname.find(skCrypt("AIPawn")) != std::string::npos ||
-                             cname.find(skCrypt("NPC_")) != std::string::npos ||
-                             cname.find(skCrypt("ZombieNpc")) != std::string::npos);
+            const bool isBot = (cname.find(skCrypt("AIPawn")) != std::string::npos ||
+                                cname.find(skCrypt("NPC_")) != std::string::npos ||
+                                cname.find(skCrypt("ZombieNpc")) != std::string::npos ||
+                                cname.find(skCrypt("UltAIPawn")) != std::string::npos ||
+                                cname.find(skCrypt("ZDF2_NPC")) != std::string::npos);
+
+            bool isPlayer = (cname.find(skCrypt("PlayerMale")) != std::string::npos ||
+                             cname.find(skCrypt("PlayerFemale")) != std::string::npos ||
+                             isBot);
 
             if (isPlayer) {
                 uint64_t mesh = Read<uintptr_t>(actor + telemetryOffsets::Mesh);
@@ -672,7 +866,7 @@ namespace telemetryContext {
                 if (dist > 1000.0f) continue;
 
                 PlayerData p{};
-                p.ActorPtr = actor; p.MeshAddr = mesh; p.Position = pos; p.Distance = dist;
+                p.ActorPtr = actor; p.MeshAddr = mesh; p.Position = pos; p.Distance = dist; p.IsBot = isBot;
                 // Read CharacterName directly from Pawn as per gamebaseRael.txt
                 uint64_t pNameData = Read<uint64_t>(actor + telemetryOffsets::CharacterName); 
                 if (pNameData > 0x1000000) {
@@ -691,6 +885,9 @@ namespace telemetryContext {
                 if (movement) {
                     p.Velocity = Read<Vector3>(movement + telemetryOffsets::LastUpdateVelocity);
                 }
+
+                ReadAnimState(mesh, p);
+                ReadAimAngles(actor, p);
                 
                 // PAOD-style priority: LastTeamNum on actor, then PlayerState TeamNumber fallback.
                 p.TeamID = NormalizeTeamId(Read<int>(actor + telemetryOffsets::LastTeamNum));
@@ -706,6 +903,7 @@ namespace telemetryContext {
                 p.IsGroggy = (p.GroggyHealth > 0.0f && p.Health <= 0.0f);
                 p.SpectatedCount = Read<int>(playerState + telemetryOffsets::SpectatedCount);
                 p.Gender = NormalizeGender(Read<uint8_t>(actor + telemetryOffsets::Gender));
+                ReadPlayerStats(playerState, p);
                 
                 float enemyEyes = Read<float>(mesh + telemetryOffsets::LastRenderTimeOnScreen);
                 if (localPlayerEyes > 0.0f) {
@@ -723,6 +921,8 @@ namespace telemetryContext {
                     if (currentIdx < 3) {
                         uint64_t weapon = Read<uint64_t>(equippedAddr + (currentIdx * 8));
                         if (weapon) {
+                            p.WeaponPtr = weapon;
+                            ReadWeaponAmmo(weapon, p);
                             int32_t wID = telemetryOffsets::DecryptCIndex(Read<int32_t>(weapon + telemetryOffsets::ObjID));
                             std::string rawWeap = FNameUtils::GetNameFast(wID);
                             
@@ -746,6 +946,7 @@ namespace telemetryContext {
                 }
 
                 p.IsTeammate = (localTeam != 0 && p.TeamID == localTeam);
+                UpdateAimThreat(p);
 
                 uint64_t boneArray = Read<uint64_t>(mesh + telemetryOffsets::BoneArray);
                 if (boneArray) {
@@ -786,71 +987,71 @@ namespace telemetryContext {
             } 
             else {
                 // Throttle Item/Vehicle/Drop scan to save CPU
-                static ULONGLONG lastItemScan = 0;
-                if (GetTickCount64() - lastItemScan > 1000) {
-                    if (tempItems.size() < 400) {
-                        // objID & cname already fetched above!
-                        
-                        bool isLoot = (cname.find(skCrypt("Dropped")) != std::string::npos);
-                        bool isVeh  = IsVehicleActorName(cname);
-                        bool isAir  = (cname.find(skCrypt("AirDrop")) != std::string::npos || cname.find(skCrypt("CarePackage")) != std::string::npos);
-                        bool isBox  = (cname.find(skCrypt("DeadBox")) != std::string::npos || cname.find(skCrypt("ItemPackage")) != std::string::npos);
-                        bool isProj = (cname.find(skCrypt("Proj")) != std::string::npos || cname.find(skCrypt("Grenade")) != std::string::npos || cname.find(skCrypt("Molotov")) != std::string::npos);
+                static ULONGLONG lastItemScanTime = 0;
+                if (now - lastItemScanTime > 500) {
+                    bool isLoot = (cname.find(skCrypt("Dropped")) != std::string::npos);
+                    bool isVeh  = IsVehicleActorName(cname);
+                    bool isAir  = (cname.find(skCrypt("AirDrop")) != std::string::npos || cname.find(skCrypt("CarePackage")) != std::string::npos);
+                    bool isBox  = (cname.find(skCrypt("DeadBox")) != std::string::npos || cname.find(skCrypt("ItemPackage")) != std::string::npos);
+                    bool isProj = (cname.find(skCrypt("Proj")) != std::string::npos || cname.find(skCrypt("Grenade")) != std::string::npos || cname.find(skCrypt("Molotov")) != std::string::npos);
 
-                        if (isLoot || isVeh || isAir || isBox || isProj) {
-                            uint64_t root = ReadXe(actor + telemetryOffsets::RootComponent);
-                            if (root) {
-                                Vector3 pos = Read<Vector3>(root + telemetryOffsets::ComponentLocation);
-                                float dist = G_CameraLocation.Distance(pos) / 100.0f;
-                                if (dist < (isLoot ? 100.0f : 1000.0f)) {
-                                    if (isLoot && cname.find(skCrypt("DroppedItemGroup")) != std::string::npos) {
-                                        AppendDroppedItemGroupItems(actor, pos, tempItems);
-                                        continue;
-                                    }
-
+                    if (isLoot || isVeh || isAir || isBox || isProj) {
+                        uint64_t root = ReadXe(actor + telemetryOffsets::RootComponent);
+                        if (root) {
+                            Vector3 pos = Read<Vector3>(root + telemetryOffsets::ComponentLocation);
+                            float dist = G_CameraLocation.Distance(pos) / 100.0f;
+                            if (dist < (isLoot ? 150.0f : 1000.0f)) {
+                                if (isLoot && cname.find(skCrypt("DroppedItemGroup")) != std::string::npos) {
+                                    AppendDroppedItemGroupItems(actor, pos, tempItems);
+                                }
+                                else {
                                     ItemData item;
                                     item.Position = pos; item.Distance = dist;
+                                    item.ClassName = cname;
                                     
-                                    // IMPROVED: Extract clean name from class for Weapons & Items
                                     std::string cleanName = cname;
-                                    
-                                    // Handle the common dropped-loot container.
                                     if (isLoot && cleanName.find(skCrypt("DroppedItem")) != std::string::npos) {
                                         std::string itemNameReal = ResolveDroppedItemName(actor);
                                         if (!itemNameReal.empty()) cleanName = itemNameReal;
                                     }
 
-                                    // Keep catalog item names intact so overlay loot filters can match Item_* IDs.
-                                    if (cleanName.find(skCrypt("Item_")) != 0) {
+                                    const bool isCatalogItem = cleanName.find(skCrypt("Item_")) == 0;
+                                    if (!isCatalogItem) {
                                         if (cleanName.find(skCrypt("ProjItem_")) == 0) cleanName.erase(0, 9);
 
                                         if (cleanName.length() >= 2 && cleanName.substr(cleanName.length() - 2) == skCrypt("_C")) 
                                             cleanName.erase(cleanName.length() - 2);
 
-                                        // Filter out instances with numeric suffixes (like _21)
-                                        size_t lastUnderscore = cleanName.find_last_of('_');
+                                        const size_t lastUnderscore = cleanName.find_last_of('_');
                                         if (lastUnderscore != std::string::npos && lastUnderscore > 0) {
-                                            bool isNumSuffix = true;
-                                            for (size_t k = lastUnderscore + 1; k < cleanName.size(); k++) {
-                                                if (!isdigit(cleanName[k])) { isNumSuffix = false; break; }
+                                            bool isNumericSuffix = true;
+                                            for (size_t k = lastUnderscore + 1; k < cleanName.size(); ++k) {
+                                                if (!std::isdigit(static_cast<unsigned char>(cleanName[k]))) {
+                                                    isNumericSuffix = false;
+                                                    break;
+                                                }
                                             }
-                                            if (isNumSuffix) cleanName = cleanName.substr(0, lastUnderscore);
+                                            if (isNumericSuffix) cleanName.resize(lastUnderscore);
                                         }
                                     }
 
-                                    if (cleanName == skCrypt("G36C") && !g_Menu.loot_weapon_g36c) continue;
+                                    // Correct Name Logic
+                                    if (isVeh) item.Name = skCrypt("Vehicle");
+                                    else if (isAir) item.Name = skCrypt("Air Drop");
+                                    else if (isBox) item.Name = skCrypt("Dead Box");
+                                    else item.Name = cleanName;
 
-                                    item.Name = isVeh ? cleanName : (isAir ? skCrypt("Air Drop") : (isBox ? skCrypt("Dead Box") : (isProj ? skCrypt("PROJECTILE") : cleanName)));
                                     item.RenderType = isVeh ? ItemRenderType::Vehicle :
-                                        (isAir ? ItemRenderType::AirDrop :
-                                        (isBox ? ItemRenderType::DeadBox :
+                                        (isAir ? ItemRenderType::AirDrop : (isBox ? ItemRenderType::DeadBox : 
                                         (isProj ? ItemRenderType::Projectile : ItemRenderType::Loot)));
-                                    item.IsImportant = (isAir || isVeh || isProj || cleanName.find(skCrypt("FlareGun")) != std::string::npos);
+                                    item.IsImportant = (isAir || isVeh || isProj || cleanName.find(skCrypt("Flare")) != std::string::npos);
+                                    
                                     tempItems.push_back(item);
                                 }
                             }
                         }
                     }
+                    if (i == actorCount - 1) lastItemScanTime = now;
                 }
             }
         }
@@ -908,6 +1109,19 @@ namespace telemetryContext {
 
     void SyncLivePlayers(std::vector<PlayerData>& players) {
         for (auto& p : players) {
+            if (p.ActorPtr) {
+                ReadAimAngles(p.ActorPtr, p);
+                UpdateAimThreat(p);
+            }
+
+            if (p.MeshAddr) {
+                ReadAnimState(p.MeshAddr, p);
+            }
+
+            if (p.WeaponPtr) {
+                ReadWeaponAmmo(p.WeaponPtr, p);
+            }
+
             if (p.Distance > 300.0f) continue;
             if (p.MeshAddr) {
                 uint64_t boneArray = Read<uint64_t>(p.MeshAddr + telemetryOffsets::BoneArray);

@@ -53,12 +53,19 @@
     <Filter Include="ImGui">
       <UniqueIdentifier>{B2C3D4E5-F6A7-8901-BCDE-F12345678901}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{A1B2C3D4-E5F6-7890-ABCD-000000000008}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="sdk\core\context.cpp">
+      <Filter>SDK\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="sdk\core\embedded_resources.cpp">
       <Filter>SDK\Core</Filter>
     </ClCompile>
     <ClCompile Include="sdk\core\fname_utils.cpp">
@@ -185,6 +192,14 @@
     </MASM>
   </ItemGroup>
   <ItemGroup>
+    <ResourceCompile Include="embedded_assets.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="sdk\core\app_paths.hpp">
+      <Filter>SDK\Core</Filter>
+    </ClInclude>
     <ClInclude Include="sdk\core\offsets.hpp">
       <Filter>SDK\Core</Filter>
     </ClInclude>
@@ -201,6 +216,9 @@
       <Filter>SDK\Core</Filter>
     </ClInclude>
     <ClInclude Include="sdk\core\app_shutdown.hpp">
+      <Filter>SDK\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\core\embedded_resources.hpp">
       <Filter>SDK\Core</Filter>
     </ClInclude>
     <ClInclude Include="sdk\core\process_single_instance.hpp">

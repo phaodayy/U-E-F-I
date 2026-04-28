@@ -14,6 +14,7 @@ struct VividThreat {
     int Dist = 0;
     float HP = 0.0f;
     bool IsSpectator = false;
+    bool IsAiming = false;
 };
 
 } // namespace
@@ -110,14 +111,20 @@ void OverlayMenu::RenderSpectatorThreatList(ImDrawList* draw,
     for (const auto& p : localPlayers) {
         if (p.SpectatedCount > 0) {
             totalSpectators += p.SpectatedCount;
-            threats.push_back({ p.Name, static_cast<int>(p.Distance), p.Health, true });
+            threats.push_back({ p.Name, static_cast<int>(p.Distance), p.Health, true, p.IsAimingAtLocal });
+        } else if (p.IsAimingAtLocal && !p.IsTeammate) {
+            threats.push_back({ p.Name, static_cast<int>(p.Distance), p.Health, false, true });
         } else if (p.Distance < 120.0f && !p.IsTeammate && p.Distance > 0.0f) {
-            threats.push_back({ p.Name, static_cast<int>(p.Distance), p.Health, false });
+            threats.push_back({ p.Name, static_cast<int>(p.Distance), p.Health, false, false });
         }
     }
 
     std::sort(threats.begin(), threats.end(),
-        [](const VividThreat& a, const VividThreat& b) { return a.Dist < b.Dist; });
+        [](const VividThreat& a, const VividThreat& b) {
+            if (a.IsAiming != b.IsAiming) return a.IsAiming > b.IsAiming;
+            if (a.IsSpectator != b.IsSpectator) return a.IsSpectator > b.IsSpectator;
+            return a.Dist < b.Dist;
+        });
     if (threats.empty() && totalSpectators <= 0) return;
 
     auto Lang = Translation::Get();
@@ -143,9 +150,14 @@ void OverlayMenu::RenderSpectatorThreatList(ImDrawList* draw,
 
     float currentY = listY + headerHeight;
     for (const auto& t : threats) {
-        const ImU32 textCol = t.IsSpectator ? IM_COL32(255, 80, 80, 255) : IM_COL32(220, 220, 220, 255);
+        const ImU32 textCol = t.IsAiming ? IM_COL32(255, 50, 45, 255) :
+            (t.IsSpectator ? IM_COL32(255, 80, 80, 255) : IM_COL32(220, 220, 220, 255));
         char entryBuf[128];
-        sprintf_s(entryBuf, skCrypt("%s (%dm)"), t.Name.c_str(), t.Dist);
+        if (t.IsAiming) {
+            sprintf_s(entryBuf, sizeof(entryBuf), skCrypt("AIM %s (%dm)"), t.Name.c_str(), t.Dist);
+        } else {
+            sprintf_s(entryBuf, sizeof(entryBuf), skCrypt("%s (%dm)"), t.Name.c_str(), t.Dist);
+        }
         draw->AddText(ImVec2(listX + 12, currentY), textCol, entryBuf);
 
         const float hpW = 45.0f;

@@ -22,16 +22,30 @@ struct PlayerData {
     float Health = 0;
     float GroggyHealth = 0;
     float Distance = 0;
+    float AimPitch = 0.0f;
+    float AimYaw = 0.0f;
     int TeamID = 0;
     int Kills = 0;
     int SurvivalLevel = 0;
+    float DamageDealt = 0.0f;
+    int Ammo = 0;
+    int AmmoMax = 0;
+    uint64_t LastShotTimeMs = 0;
     int SpectatedCount = 0;
     std::string WeaponName = "";
     bool IsGroggy = false;
     bool IsVisible = false;
     bool IsTeammate = false;
+    bool IsBot = false;
+    bool IsAimingAtLocal = false;
+    bool IsScoping = false;
+    bool IsReloading = false;
+    bool IsFiring = false;
+    bool HasAmmo = false;
+    bool HasAimYaw = false;
     PlayerGender Gender = PlayerGender::Male;
     uint64_t ActorPtr = 0;
+    uint64_t WeaponPtr = 0;
     uintptr_t MeshAddr = 0;
     uintptr_t BoneArrayAddr = 0;
 
@@ -85,6 +99,7 @@ enum class ItemRenderType : uint8_t {
 struct ItemData {
     Vector3 Position;
     std::string Name;
+    std::string ClassName;
     float Distance;
     bool IsImportant;
     ItemRenderType RenderType = ItemRenderType::Loot;

@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <vector>
 #include "../core/context.hpp"
+#include "../core/embedded_resources.hpp"
 #include "../core/fname.hpp"
 #include "../memory/memory.hpp"
 #include "../core/offsets.hpp"
@@ -182,7 +183,18 @@ public:
     {
         try
         {
-            return Utils::ReadConfigFile(path);
+            const std::string content = Utils::ReadConfigFile(path);
+            if (!content.empty())
+            {
+                return content;
+            }
+
+            std::string embedded;
+            if (EmbeddedResources::LoadText(path, embedded))
+            {
+                return embedded;
+            }
+            return "";
         }
         catch (...)
         {

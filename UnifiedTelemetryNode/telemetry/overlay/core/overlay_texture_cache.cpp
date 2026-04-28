@@ -2,9 +2,14 @@
 
 #include "../loot/loot_icon_resolver.hpp"
 #include "../vehicle/vehicle_resolver.hpp"
+#include "../../sdk/core/embedded_resources.hpp"
 #include <protec/skCrypt.h>
 
+#include <algorithm>
+#include <cctype>
+#include <limits>
 #include <map>
+#include <vector>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../../sdk/third_party/stb/stb_image.h"
@@ -13,8 +18,179 @@ namespace {
 
 ID3D11Device* g_device = nullptr;
 std::map<std::string, TextureInfo> g_weaponImages;
+std::map<std::string, TextureInfo> g_mapIcons;
 std::map<std::string, TextureInfo> g_vehicleIcons;
 std::map<std::string, TextureInfo> g_itemIcons;
+
+char ToLowerAscii(char value) {
+    if (value >= 'A' && value <= 'Z') return static_cast<char>(value + ('a' - 'A'));
+    return value;
+}
+
+bool EndsWithPng(const std::string& value) {
+    constexpr const char* suffix = ".png";
+    constexpr std::size_t suffixLen = 4;
+    if (value.size() < suffixLen) return false;
+    for (std::size_t i = 0; i < suffixLen; ++i) {
+        if (ToLowerAscii(value[value.size() - suffixLen + i]) != suffix[i]) return false;
+    }
+    return true;
+}
+
+bool StartsWith(const std::string& value, const char* prefix) {
+    const std::size_t prefixLen = std::char_traits<char>::length(prefix);
+    return value.size() >= prefixLen && value.compare(0, prefixLen, prefix) == 0;
+}
+
+bool EndsWith(const std::string& value, const char* suffix) {
+    const std::size_t suffixLen = std::char_traits<char>::length(suffix);
+    return value.size() >= suffixLen &&
+        value.compare(value.size() - suffixLen, suffixLen, suffix) == 0;
+}
+
+std::string StripPngExtension(std::string value) {
+    if (EndsWithPng(value)) value.resize(value.size() - 4);
+    return value;
+}
+
+std::string Basename(std::string value) {
+    const std::size_t slash = value.find_last_of("/\\");
+    if (slash != std::string::npos) value.erase(0, slash + 1);
+    return StripPngExtension(value);
+}
+
+std::string StripWeaponClassAffixes(std::string value) {
+    value = Basename(value);
+    if (StartsWith(value, "Item_Weapon_")) value.erase(0, 12);
+    if (StartsWith(value, "Weap")) value.erase(0, 4);
+    if (EndsWith(value, "_C")) value.resize(value.size() - 2);
+    return value;
+}
+
+std::string AliasKey(const std::string& value) {
+    std::string stripped = StripWeaponClassAffixes(value);
+    std::string key;
+    key.reserve(stripped.size());
+    for (char c : stripped) {
+        if (c == '_' || c == '-' || c == ' ') continue;
+        key.push_back(ToLowerAscii(c));
+    }
+    return key;
+}
+
+void AddCandidate(std::vector<std::string>& out, std::string value) {
+    value = Basename(value);
+    if (value.empty()) return;
+    if (std::find(out.begin(), out.end(), value) == out.end()) {
+        out.push_back(value);
+    }
+}
+
+std::string WeaponAssetAlias(const std::string& weaponName) {
+    struct Alias {
+        const char* Key;
+        const char* Asset;
+    };
+    static const Alias aliases[] = {
+        { "ace32", "ACE" },
+        { "ak47", "AKM" },
+        { "berreta686", "S686" },
+        { "bizon", "野牛PP19" },
+        { "bizonpp19", "野牛PP19" },
+        { "cowbar", "撬棍" },
+        { "crossbow", "弩" },
+        { "crowbar", "撬棍" },
+        { "deagle", "沙漠之鹰" },
+        { "decoygrenade", "诱饵手雷" },
+        { "deserteagle", "沙漠之鹰" },
+        { "dp12", "DBS" },
+        { "duncanshk416", "M416" },
+        { "famas", "FAMASI" },
+        { "famasg2", "FAMASI" },
+        { "flashbang", "闪光弹" },
+        { "flaregun", "信号枪" },
+        { "fnfal", "SLR" },
+        { "fraggrenade", "手雷" },
+        { "g18", "P18C" },
+        { "grenade", "手雷" },
+        { "hk416", "M416" },
+        { "l6", "Lynx" },
+        { "lunchmeatsak47", "AKM" },
+        { "m9", "P92" },
+        { "madsfnfal", "SLR" },
+        { "madsqbu88", "QBU" },
+        { "machete", "砍刀" },
+        { "microuzi", "UZI" },
+        { "mk47mutant", "Mk47" },
+        { "molotov", "燃烧瓶" },
+        { "mosin", "莫辛甘纳" },
+        { "mosinnagant", "莫辛甘纳" },
+        { "mutant", "Mk47" },
+        { "nagantm1895", "R1895" },
+        { "origin12", "O12" },
+        { "origins12", "O12" },
+        { "pan", "平底锅" },
+        { "panzerfaust", "RPG" },
+        { "pp19", "野牛PP19" },
+        { "qbu88", "QBU" },
+        { "qbz", "QBZ95" },
+        { "rhino", "R45" },
+        { "saiga12", "S12K" },
+        { "sawedoff", "SawedOff" },
+        { "sawnoff", "SawedOff" },
+        { "scarl", "SCAR-L" },
+        { "sickle", "镰刀" },
+        { "skorpion", "蝎式手枪" },
+        { "smokebomb", "SmokeGrenade" },
+        { "smokegrenade", "SmokeGrenade" },
+        { "spiketrap", "SpikeTrap" },
+        { "stickygrenade", "粘性炸弹" },
+        { "thompson", "汤姆逊" },
+        { "tommygun", "汤姆逊" },
+        { "ump45", "UMP" },
+        { "win1894", "Win94" },
+        { "winchester", "Win94" },
+        { "vz61skorpion", "蝎式手枪" },
+    };
+
+    const std::string key = AliasKey(weaponName);
+    for (const Alias& alias : aliases) {
+        if (key == alias.Key) return alias.Asset;
+    }
+    return {};
+}
+
+std::vector<std::string> WeaponIconCandidates(const std::string& weaponName) {
+    std::vector<std::string> candidates;
+    AddCandidate(candidates, weaponName);
+    AddCandidate(candidates, StripWeaponClassAffixes(weaponName));
+    AddCandidate(candidates, WeaponAssetAlias(weaponName));
+    return candidates;
+}
+
+std::vector<std::string> VehicleIconCandidates(const std::string& name) {
+    std::vector<std::string> candidates;
+    AddCandidate(candidates, name);
+    const VehicleResolver::VehicleInfo info = VehicleResolver::Resolve(name);
+    AddCandidate(candidates, info.IconName);
+    return candidates;
+}
+
+bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** outSrv,
+                         int* outWidth, int* outHeight);
+
+bool LoadTextureFromAssetFolders(const char* folder, const std::string& asset,
+                                 ID3D11ShaderResourceView** outSrv,
+                                 int* outWidth, int* outHeight) {
+    if (asset.empty()) return false;
+    const std::string fileName = asset + skCrypt(".png");
+    const std::string path1 = skCrypt("Assets/") + std::string(folder) + skCrypt("/") + fileName;
+    const std::string path2 = skCrypt("../") + path1;
+    const std::string path3 = skCrypt("../../") + path1;
+    return LoadTextureFromFile(path1.c_str(), outSrv, outWidth, outHeight) ||
+        LoadTextureFromFile(path2.c_str(), outSrv, outWidth, outHeight) ||
+        LoadTextureFromFile(path3.c_str(), outSrv, outWidth, outHeight);
+}
 
 bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** outSrv,
                          int* outWidth, int* outHeight) {
@@ -22,7 +198,19 @@ bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** outSrv
 
     int imageWidth = 0;
     int imageHeight = 0;
-    unsigned char* imageData = stbi_load(filename, &imageWidth, &imageHeight, nullptr, 4);
+    unsigned char* imageData = nullptr;
+
+    const unsigned char* resourceData = nullptr;
+    std::size_t resourceSize = 0;
+    if (EmbeddedResources::LoadBinary(filename, resourceData, resourceSize) &&
+        resourceSize <= static_cast<std::size_t>((std::numeric_limits<int>::max)())) {
+        imageData = stbi_load_from_memory(resourceData, static_cast<int>(resourceSize),
+            &imageWidth, &imageHeight, nullptr, 4);
+    }
+
+    if (!imageData) {
+        imageData = stbi_load(filename, &imageWidth, &imageHeight, nullptr, 4);
+    }
     if (!imageData) return false;
 
     D3D11_TEXTURE2D_DESC desc = {};
@@ -101,6 +289,22 @@ bool LoadInstructor() {
         &PreviewInstructor.SRV, &PreviewInstructor.Width, &PreviewInstructor.Height);
 }
 
+TextureInfo* GetMapIcon(const std::string& name) {
+    auto cached = g_mapIcons.find(name);
+    if (cached != g_mapIcons.end()) return &cached->second;
+
+    ID3D11ShaderResourceView* srv = nullptr;
+    int w = 0;
+    int h = 0;
+    if (LoadTextureFromAssetFolders("Map", name, &srv, &w, &h)) {
+        g_mapIcons[name] = { srv, w, h };
+        return &g_mapIcons[name];
+    }
+
+    g_mapIcons[name] = {};
+    return &g_mapIcons[name];
+}
+
 TextureInfo* GetVehicleIcon(const std::string& name) {
     auto cached = g_vehicleIcons.find(name);
     if (cached != g_vehicleIcons.end()) return &cached->second;
@@ -108,16 +312,12 @@ TextureInfo* GetVehicleIcon(const std::string& name) {
     ID3D11ShaderResourceView* srv = nullptr;
     int w = 0;
     int h = 0;
-    const VehicleResolver::VehicleInfo info = VehicleResolver::Resolve(name);
-    const std::string cleanName = info.IconName;
 
-    const std::string path1 = skCrypt("Assets/Vehicle/") + cleanName + skCrypt(".png");
-    const std::string path2 = skCrypt("../Assets/Vehicle/") + cleanName + skCrypt(".png");
-
-    if (LoadTextureFromFile(path1.c_str(), &srv, &w, &h) ||
-        LoadTextureFromFile(path2.c_str(), &srv, &w, &h)) {
-        g_vehicleIcons[name] = { srv, w, h };
-        return &g_vehicleIcons[name];
+    for (const std::string& candidate : VehicleIconCandidates(name)) {
+        if (LoadTextureFromAssetFolders("Vehicle", candidate, &srv, &w, &h)) {
+            g_vehicleIcons[name] = { srv, w, h };
+            return &g_vehicleIcons[name];
+        }
     }
 
     g_vehicleIcons[name] = {};
@@ -173,16 +373,12 @@ TextureInfo* GetWeaponImage(const std::string& weaponName) {
     ID3D11ShaderResourceView* srv = nullptr;
     int w = 0;
     int h = 0;
-    const std::string fileName = weaponName + skCrypt(".png");
-    const std::string path1 = skCrypt("Assets/Weapon/") + fileName;
-    const std::string path2 = skCrypt("../Assets/Weapon/") + fileName;
-    const std::string path3 = skCrypt("../../Assets/Weapon/") + fileName;
 
-    if (LoadTextureFromFile(path1.c_str(), &srv, &w, &h) ||
-        LoadTextureFromFile(path2.c_str(), &srv, &w, &h) ||
-        LoadTextureFromFile(path3.c_str(), &srv, &w, &h)) {
-        g_weaponImages[weaponName] = { srv, w, h };
-        return &g_weaponImages[weaponName];
+    for (const std::string& candidate : WeaponIconCandidates(weaponName)) {
+        if (LoadTextureFromAssetFolders("Weapon", candidate, &srv, &w, &h)) {
+            g_weaponImages[weaponName] = { srv, w, h };
+            return &g_weaponImages[weaponName];
+        }
     }
 
     g_weaponImages[weaponName] = {};
