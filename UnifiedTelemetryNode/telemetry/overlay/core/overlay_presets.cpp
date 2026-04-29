@@ -31,6 +31,7 @@ void ApplySharedDefaults(OverlayMenu& menu) {
     menu.esp_text_bg_alpha = 0.32f;
     menu.esp_health_text = true;
     menu.esp_health_display_mode = 0;
+    menu.esp_health_bar_style = 0;
     menu.esp_aim_warning = true;
     menu.esp_view_direction = true;
     menu.esp_status_badges = true;
@@ -102,6 +103,7 @@ void Apply(OverlayMenu& menu, Preset preset) {
         menu.esp_box = true;
         menu.esp_skeleton = true;
         menu.esp_health = true;
+        menu.esp_health_bar_style = 2;
         menu.esp_distance = true;
         menu.esp_name = true;
         menu.esp_weapon = false;
@@ -123,6 +125,7 @@ void Apply(OverlayMenu& menu, Preset preset) {
         menu.esp_box = true;
         menu.esp_skeleton = false;
         menu.esp_health = true;
+        menu.esp_health_bar_style = 1;
         menu.esp_distance = true;
         menu.esp_name = true;
         menu.esp_weapon = false;
@@ -140,6 +143,7 @@ void Apply(OverlayMenu& menu, Preset preset) {
         menu.esp_box = true;
         menu.esp_skeleton = true;
         menu.esp_health = true;
+        menu.esp_health_bar_style = 4;
         menu.esp_distance = true;
         menu.esp_name = true;
         menu.esp_weapon = true;
@@ -162,6 +166,7 @@ void Apply(OverlayMenu& menu, Preset preset) {
         menu.esp_box = true;
         menu.esp_skeleton = true;
         menu.esp_health = true;
+        menu.esp_health_bar_style = 3;
         menu.esp_distance = true;
         menu.esp_name = true;
         menu.esp_weapon = true;

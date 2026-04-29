@@ -1,5 +1,6 @@
 #include "context.hpp"
 #include "offsets.hpp"
+#include "runtime_offsets.hpp"
 #include "telemetry_decrypt.hpp"
 #include "scanner.hpp"
 #include "fname.hpp"
@@ -549,6 +550,17 @@ namespace telemetryContext {
         if (telemetryMemory::g_BaseAddress == 0) {
             telemetryMemory::g_BaseAddress = base_address;
         }
+
+        const bool usingRuntimeSignatures = telemetryRuntimeOffsets::ApplyRuntimeScan(telemetryMemory::g_BaseAddress);
+#ifdef _DEBUG
+        const auto& runtimeReport = telemetryRuntimeOffsets::GetLastReport();
+        std::cout << skCrypt("[INIT] offset source=")
+                  << (usingRuntimeSignatures ? skCrypt("signature-scan") : skCrypt("compiled-static"))
+                  << skCrypt(" scanned=") << (runtimeReport.Scanned ? skCrypt("yes") : skCrypt("no"))
+                  << skCrypt(" applied=") << runtimeReport.Applied
+                  << skCrypt(" required=") << runtimeReport.RequiredFound
+                  << skCrypt("/") << runtimeReport.RequiredTotal << std::endl;
+#endif
 
         if (!telemetryDecrypt::Initialize(telemetryMemory::ReadMemory, telemetryMemory::g_BaseAddress, telemetryOffsets::XenuineDecrypt)) return false;
 

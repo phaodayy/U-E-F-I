@@ -1,0 +1,241 @@
+{
+  "info": {
+    "_postman_id": "gz-loader-account-api-v1",
+    "name": "GZ Loader Account API",
+    "description": "Loader account, key activation, heartbeat, and cloud config endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "https://licensing-backend.donghiem114.workers.dev",
+      "type": "string"
+    },
+    {
+      "key": "LOADER_TOKEN",
+      "value": "PASTE_TOKEN_FROM_LOGIN",
+      "type": "string"
+    },
+    {
+      "key": "NONCE",
+      "value": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Register Loader Account",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "User-Agent",
+            "value": "GZ-Account-Loader"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"customer01\",\n  \"password\": \"strong-password\",\n  \"hwid\": \"HWID_HASH_16\",\n  \"email\": \"customer01@example.com\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{BASE_URL}}/loader/register"
+      },
+      "response": []
+    },
+    {
+      "name": "Login Loader Account",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "User-Agent",
+            "value": "GZ-Account-Loader"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"customer01\",\n  \"password\": \"strong-password\",\n  \"hwid\": \"HWID_HASH_16\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{BASE_URL}}/loader/login"
+      },
+      "response": []
+    },
+    {
+      "name": "Get Current Loader Account",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "GZ-Account-Loader"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{LOADER_TOKEN}}"
+          }
+        ],
+        "url": "{{BASE_URL}}/loader/me?hwid=HWID_HASH_16"
+      },
+      "response": []
+    },
+    {
+      "name": "Activate Key For Account",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "User-Agent",
+            "value": "GZ-Account-Loader"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{LOADER_TOKEN}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"key\": \"PRODUCT-XXXX-XXXX\",\n  \"hwid\": \"HWID_HASH_16\",\n  \"nonce\": \"{{NONCE}}\",\n  \"signature_version\": 2\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{BASE_URL}}/loader/keys/activate"
+      },
+      "response": []
+    },
+    {
+      "name": "Heartbeat",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "User-Agent",
+            "value": "GZ-Account-Loader"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{LOADER_TOKEN}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"hwid\": \"HWID_HASH_16\",\n  \"nonce\": \"{{NONCE}}\",\n  \"signature_version\": 2\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{BASE_URL}}/loader/heartbeat"
+      },
+      "response": []
+    },
+    {
+      "name": "Get Config",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "GZ-Account-Loader"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{LOADER_TOKEN}}"
+          }
+        ],
+        "url": "{{BASE_URL}}/loader/config"
+      },
+      "response": []
+    },
+    {
+      "name": "Save Config",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "User-Agent",
+            "value": "GZ-Account-Loader"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{LOADER_TOKEN}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"config\": {\n    \"example\": true\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{BASE_URL}}/loader/config"
+      },
+      "response": []
+    },
+    {
+      "name": "Import Config",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "User-Agent",
+            "value": "GZ-Account-Loader"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{LOADER_TOKEN}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"CFG-XXXXXXXXXXXX\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{BASE_URL}}/loader/config/import"
+      },
+      "response": []
+    }
+  ]
+}

@@ -252,6 +252,7 @@ namespace Translation {
         const char* HoldPanelKey;
         const char* PanelKey;
         const char* HealthDisplay;
+        const char* HealthBarStyle;
         const char* HealthColumn;
         const char* HealthTextOnly;
         const char* Ammo;

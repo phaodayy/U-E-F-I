@@ -218,13 +218,25 @@ extern const wchar_t* LOADER_KEY_ACTIVATE_PATH = L"/loader/keys/activate";
 extern const wchar_t* LOADER_HEARTBEAT_PATH = L"/loader/heartbeat";
 extern const wchar_t* LOADER_CONFIG_PATH = L"/loader/config";
 extern const wchar_t* LOADER_CONFIG_IMPORT_PATH = L"/loader/config/import";
-constexpr const wchar_t* LICENSE_USER_AGENT = L"GZ-V2-Loader";
+constexpr const wchar_t* LICENSE_USER_AGENT = L"GZ-Account-Loader";
 constexpr int LICENSE_SIGNATURE_VERSION = 2;
 constexpr long long LICENSE_SIGNATURE_MAX_AGE_SECONDS = 300;
 std::string global_account_token = skCrypt("");
 std::string global_account_username = skCrypt("");
 std::string global_account_role = skCrypt("");
 std::string global_config_code = skCrypt("");
+
+void ClearActiveEntitlementState() {
+    global_active_key.clear();
+    g_expiry_str = skCrypt("N/A");
+    g_expiry_time = 0;
+    g_remaining_seconds = 0;
+    g_last_tick_count = 0;
+}
+
+bool HasActiveLoaderEntitlement() {
+    return !global_account_token.empty() && !global_active_key.empty();
+}
 
 // Chuyển "2026-04-02T16:17:30" => time_t (UTC)
 time_t ParseISO8601(const std::string& timestamp) {
@@ -251,7 +263,7 @@ void TypewriterPrint(const std::string& text, int delay_ms = 20, int color = 7) 
 }
 
 void EnsureLoaderConsole() {
-#ifndef _DEBUG
+#ifdef _DEBUG
     if (GetConsoleWindow()) return;
     if (!AllocConsole()) return;
 
@@ -260,6 +272,12 @@ void EnsureLoaderConsole() {
     freopen_s(&stream, skCrypt("CONOUT$"), skCrypt("w"), stderr);
     freopen_s(&stream, skCrypt("CONIN$"), skCrypt("r"), stdin);
     SetConsoleTitleA(skCrypt("GZ Loader"));
+#endif
+}
+
+void DebugPause() {
+#ifdef _DEBUG
+    system(skCrypt("pause"));
 #endif
 }
 
@@ -345,7 +363,7 @@ bool HttpJsonRequest(const wchar_t* method, const wchar_t* path, const std::stri
         return false;
     }
 
-    std::wstring headers = skCrypt(L"Content-Type: application/json\r\nUser-Agent: GZ--V2-Loader\r\n");
+    std::wstring headers = skCrypt(L"Content-Type: application/json\r\nUser-Agent: GZ-Account-Loader\r\n");
     if (!bearerToken.empty()) {
         headers += skCrypt(L"Authorization: Bearer ");
         headers += Utf8ToWide(bearerToken);
@@ -624,6 +642,13 @@ bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) 
         std::string responseConfigCode = JsonStringValue(responseJson, skCrypt("config_code"));
         if (!responseConfigCode.empty()) global_config_code = responseConfigCode;
 
+        if (!signedExpiry.empty()) {
+            nlohmann::json expiryJson;
+            expiryJson["expiry"] = signedExpiry;
+            expiryJson["timestamp"] = signedTimestamp;
+            ApplyExpiryFromJson(expiryJson, skCrypt("expiry"), skCrypt("timestamp"));
+        }
+
         // Kiểm tra hash định kỳ so với giá trị nhúng ở server (Phần này Admin cần cấu hình ở Worker)
         // if (serverExpectedHash != localBinaryHash) { ... return false; }
 
@@ -673,8 +698,24 @@ bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) 
             }
         }
         return true;
+    } else if (responseStr.find(skCrypt("SESSION_REPLACED")) != std::string::npos ||
+               responseStr.find(skCrypt("SESSION_HWID_MISMATCH")) != std::string::npos) {
+        std::string err = g_is_vietnamese ? skCrypt("PHIEN DANG NHAP DA BI THAY THE. Vui long dang nhap lai.") : skCrypt("SESSION REPLACED. Please log in again.");
+        global_license_error = err;
+        global_account_token.clear();
+        global_account_username.clear();
+        global_account_role.clear();
+        global_config_code.clear();
+        ClearActiveEntitlementState();
+        ClearLoaderSessionFile();
+        if (!silent) {
+            SetConsoleColor(12);
+            std::cout << "[-] " << err << std::endl;
+            SetConsoleColor(7);
+        }
+        return false;
     } else if (responseStr.find(skCrypt("HWID_MISMATCH")) != std::string::npos) {
-        std::string err = g_is_vietnamese ? skCrypt("SAI HWID: Key bi khoa tren may khac.") : skCrypt("HWID MISMATCH: Locked to another PC.");
+        std::string err = g_is_vietnamese ? skCrypt("SAI HWID: Tai khoan dang khoa tren may khac.") : skCrypt("HWID MISMATCH: Account is active on another PC.");
         global_license_error = err;
         if (!silent) {
             SetConsoleColor(12);
@@ -841,13 +882,30 @@ bool ParseAuthSessionResponse(const std::string& responseStr, bool allowNoActive
     nlohmann::json responseJson = nlohmann::json::parse(responseStr, nullptr, false);
     if (responseJson.is_discarded() || !responseJson.is_object()) return false;
 
-    if (responseJson.contains(skCrypt("error"))) return false;
+    if (responseJson.contains(skCrypt("error"))) {
+        global_license_error = JsonStringValue(responseJson, skCrypt("error"));
+        return false;
+    }
 
     std::string topStatus = JsonStringValue(responseJson, skCrypt("status"));
+    if (topStatus == skCrypt("SESSION_REPLACED") ||
+        topStatus == skCrypt("SESSION_HWID_MISMATCH") ||
+        topStatus == skCrypt("BANNED")) {
+        global_license_error = topStatus;
+        global_account_token.clear();
+        global_account_username.clear();
+        global_account_role.clear();
+        global_config_code.clear();
+        ClearActiveEntitlementState();
+        ClearLoaderSessionFile();
+        return false;
+    }
+
     if (!topStatus.empty() &&
         topStatus != skCrypt("OK") &&
         topStatus != skCrypt("REGISTERED") &&
         topStatus != skCrypt("ACTIVATED")) {
+        global_license_error = topStatus;
         return false;
     }
 
@@ -871,11 +929,15 @@ bool ParseAuthSessionResponse(const std::string& responseStr, bool allowNoActive
     if (entitlementIt != responseJson.end() && entitlementIt->is_object()) {
         std::string key = JsonStringValue(*entitlementIt, skCrypt("key"));
         bool active = (*entitlementIt).value(skCrypt("active"), false);
-        if (!key.empty()) global_active_key = key;
-        ApplyExpiryFromJson(*entitlementIt, skCrypt("expires_at"), skCrypt("timestamp"));
-        return active || allowNoActiveKey;
+        if (active && !key.empty() && ApplyExpiryFromJson(*entitlementIt, skCrypt("expires_at"), skCrypt("timestamp"))) {
+            global_active_key = key;
+        } else {
+            ClearActiveEntitlementState();
+        }
+        return HasActiveLoaderEntitlement() || allowNoActiveKey;
     }
 
+    ClearActiveEntitlementState();
     return allowNoActiveKey && (hasUser || !token.empty());
 }
 
@@ -1156,6 +1218,12 @@ struct ProcessPickDebugInfo {
 };
 
 void CleanUpEFITraces() {
+#ifdef _DEBUG
+  std::cout << skCrypt("[BOOT-SAFETY] EFI cleanup is disabled in telemetry to avoid boot/BIOS side effects.") << std::endl;
+#endif
+  return;
+
+#if 0
   // [STEALTH] Dọn dẹp dấu vết trên EFI ngay lập tức
   std::string drive = skCrypt("Z:");
   
@@ -1213,6 +1281,7 @@ void CleanUpEFITraces() {
 
   // Unmount partition EFI
   system((skCrypt("mountvol ") + drive + skCrypt(" /D >nul 2>&1")).c_str());
+#endif
 }
 
 static ProcessPickDebugInfo g_pid_debug = {};
@@ -1245,7 +1314,7 @@ int main() {
   if (!IsUserAdmin()) {
       SetConsoleColor(12);
       std::cout << (g_is_vietnamese ? skCrypt("[-] Vui long chay bang quyen QTV (Run as Admin) - Error: 0x5") : skCrypt("[-] Missing permission (Error: 0x5)")) << std::endl;
-      system(skCrypt("pause"));
+      DebugPause();
       SelfDestruct();
       return 1;
   }
@@ -1256,7 +1325,7 @@ int main() {
   SetConsoleColor(7);
 
   if (!AuthenticateLicense()) {
-      system(skCrypt("pause"));
+      DebugPause();
       SelfDestruct();
       return 1;
   }
@@ -1277,7 +1346,7 @@ int main() {
           skCrypt("[-] LOI NGHIEM TRONG: Ban chua bat Ao hoa (VT-x / SVM) trong BIOS!\n[-] Vui long vao BIOS (F2/F10/Del) de bat 'Virtualization Technology' truoc khi dung diagnostic_node.\n") : 
           skCrypt("[-] CRITICAL ERROR: Hardware Virtualization (VT-x / SVM) is disabled in BIOS!\n[-] Please enable 'Virtualization Technology' in BIOS before using.\n"));
       SetConsoleColor(7);
-      system(skCrypt("pause"));
+      DebugPause();
       return 1;
   }
   */
@@ -1322,7 +1391,7 @@ int main() {
         skCrypt("CRITICAL ERROR: Hypervisor connection failed!\nLoi nghiem trong: Khong the ket noi Hypervisor!\n\nPlease run 'GZ-Loader' as Administrator first, then reopen this tool.\nVui long chay 'GZ-Loader' bang quyen Admin truoc, sau do mo lai Tool nay."), 
         skCrypt("GZ-telemetry - HYPERVISOR ERROR"), MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_TOPMOST);
 #endif
-    system(skCrypt("pause"));
+    DebugPause();
     SelfDestruct();
     return 1;
   }
@@ -1391,7 +1460,7 @@ int main() {
   if (!telemetryMemory::AttachToGameStealthily(pid)) {
       SetConsoleColor(12);
       std::cout << skCrypt("\n[-] Critical Communication Error (Stealth Auth Fail)!") << std::endl;
-      system(skCrypt("pause"));
+      DebugPause();
       SelfDestruct();
       return 1;
   }
@@ -1451,7 +1520,7 @@ int main() {
             skCrypt("Visualization bridge host could not be resolved or initialized.\nEnsure Discord is open and Overlay is enabled for ."),
             skCrypt("GZ-telemetry - VISUALIZATION ERROR"), MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_TOPMOST);
 #endif
-        system(skCrypt("pause"));
+        DebugPause();
         SelfDestruct();
         return 1;
     }

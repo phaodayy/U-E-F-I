@@ -34,6 +34,7 @@ void ApplyModernVisualDefaults(OverlayMenu& menu) {
     menu.esp_status_badges = true;
     menu.esp_health_text = true;
     menu.esp_health_display_mode = 0;
+    menu.esp_health_bar_style = 0;
     menu.esp_close_warning = true;
     menu.esp_close_warning_distance = 65.0f;
     menu.esp_offscreen_text = true;
@@ -77,6 +78,7 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("esp_text_bg_alpha")) esp_text_bg_alpha = j["esp_text_bg_alpha"];
             if (j.contains("esp_health_text")) esp_health_text = j["esp_health_text"];
             if (j.contains("esp_health_display_mode")) esp_health_display_mode = j["esp_health_display_mode"];
+            if (j.contains("esp_health_bar_style")) esp_health_bar_style = j["esp_health_bar_style"];
             if (j.contains("esp_aim_warning")) esp_aim_warning = j["esp_aim_warning"];
             if (j.contains("esp_view_direction")) esp_view_direction = j["esp_view_direction"];
             if (j.contains("esp_status_badges")) esp_status_badges = j["esp_status_badges"];

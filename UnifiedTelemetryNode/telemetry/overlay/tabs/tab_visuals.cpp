@@ -1,5 +1,6 @@
 #include "../core/overlay_menu.hpp"
 #include "../core/overlay_asset_animation.hpp"
+#include "../core/overlay_health_bar.hpp"
 #include "../core/overlay_hotkeys.hpp"
 #include "../core/overlay_presets.hpp"
 #include "../core/overlay_texture_cache.hpp"
@@ -86,6 +87,18 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
     const char* healthDisplayItems[] = { Lang.HealthColumn, Lang.HealthTextOnly };
     ImGui::Combo(Lang.HealthDisplay, &g_Menu.esp_health_display_mode,
         healthDisplayItems, IM_ARRAYSIZE(healthDisplayItems));
+    if (g_Menu.esp_health_display_mode == 0) {
+        ImGui::SetNextItemWidth(130);
+        const char* healthStyleItems[] = {
+            skCrypt("Pill"),
+            skCrypt("Segment"),
+            skCrypt("Glass"),
+            skCrypt("Tactical"),
+            skCrypt("Pulse")
+        };
+        ImGui::Combo(Lang.HealthBarStyle, &g_Menu.esp_health_bar_style,
+            healthStyleItems, IM_ARRAYSIZE(healthStyleItems));
+    }
     ImGui::Checkbox(Lang.Distance, &g_Menu.esp_distance);
     ImGui::Checkbox(Lang.Name, &g_Menu.esp_name);
     ImGui::Checkbox(Lang.TeamID, &g_Menu.esp_teamid);
@@ -344,25 +357,17 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
                 DrawPreviewChip(skCrypt("##DragHealthText"), skCrypt("76 HP"), 11.0f,
                     hpColor, &g_Menu.esp_health_pos, 2.0f, previewHealthSim < 0.35f);
             } else {
+                const float previewHealthThickness =
+                    (g_Menu.esp_health_bar_style == 1 || g_Menu.esp_health_bar_style == 3) ? 9.0f : 8.0f;
                 auto healthSlot = previewLayout.TakeBar(
                     PlayerEspLayout::SideFromMenu(g_Menu.esp_health_pos),
-                    8.0f,
+                    previewHealthThickness,
                     4.0f);
                 const ImVec2 hpTop = healthSlot.Min;
                 const ImVec2 hpBot = healthSlot.Max;
-                draw->AddRectFilled(ImVec2(hpTop.x + 1.0f, hpTop.y + 1.0f),
-                    ImVec2(hpBot.x + 1.0f, hpBot.y + 1.0f), IM_COL32(0, 0, 0, 80), 4.0f);
-                draw->AddRectFilled(hpTop, hpBot, IM_COL32(7, 10, 14, 165), 4.0f);
-                draw->AddRect(hpTop, hpBot, IM_COL32(255, 255, 255, 40), 4.0f, 0, 1.0f);
-                if (!healthSlot.Horizontal) {
-                    float hpHeight = (hpBot.y - hpTop.y - 2) * previewHealthSim;
-                    draw->AddRectFilled(ImVec2(hpTop.x + 1, hpBot.y - hpHeight - 1),
-                        ImVec2(hpBot.x - 1, hpBot.y - 1), hpColor, 4.0f);
-                } else {
-                    float hpWidth = (hpBot.x - hpTop.x - 2) * previewHealthSim;
-                    draw->AddRectFilled(ImVec2(hpTop.x + 1, hpTop.y + 1),
-                        ImVec2(hpTop.x + 1 + hpWidth, hpBot.y - 1), hpColor, 4.0f);
-                }
+                OverlayHealthBar::Draw(draw, hpTop, hpBot, previewHealthSim, hpColor,
+                    !healthSlot.Horizontal, g_Menu.esp_health_bar_style, 1.0f,
+                    previewHealthSim < 0.35f);
                 DragPreviewHandle(skCrypt("##DragHealth"), hpTop,
                     ImVec2(hpBot.x - hpTop.x, hpBot.y - hpTop.y), &g_Menu.esp_health_pos);
             }
@@ -458,7 +463,7 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
             TextureInfo* weaponTex = OverlayTextures::GetWeaponImage(skCrypt("M416"));
             if (weaponTex && weaponTex->SRV && g_Menu.esp_weapon_type == 1) {
                 const float iconW = g_Menu.weapon_icon_size * 0.76f;
-                const float frameWidth = static_cast<float>(weaponTex->Width) / static_cast<float>((std::max)(1, weaponTex->Frames));
+                const float frameWidth = static_cast<float>(weaponTex->Width);
                 const float iconH = frameWidth > 0.0f ?
                     iconW * (static_cast<float>(weaponTex->Height) / frameWidth) :
                     g_Menu.weapon_icon_size * 0.32f;
@@ -470,10 +475,12 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
                 ImU32 weaponCol = ColorFromFloats(g_Menu.weapon_color);
                 draw->AddRectFilled(weaponPos, ImVec2(weaponPos.x + iconSize.x, weaponPos.y + iconSize.y),
                     IM_COL32(5, 8, 12, 118), 4.0f);
+                draw->AddRect(weaponPos, ImVec2(weaponPos.x + iconSize.x, weaponPos.y + iconSize.y),
+                    weaponCol, 4.0f, 0, 1.0f);
                 OverlayAssetAnimation::DrawStaticImageRect(draw, weaponTex,
                     ImVec2(weaponPos.x + 3.0f, weaponPos.y + 2.0f),
                     ImVec2(weaponPos.x + iconW + 3.0f, weaponPos.y + iconH + 2.0f),
-                    weaponCol,
+                    IM_COL32(255, 255, 255, 255),
                     0.88f);
                 DragPreviewHandle(skCrypt("##DragWeapon"), weaponPos, iconSize, &g_Menu.esp_weapon_pos);
             } else {
@@ -503,28 +510,33 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
             float* targetCol = bPreviewOccluded ? g_Menu.skeleton_invisible_color : g_Menu.skeleton_visible_color;
             ImU32 uSkelCol = ImColor(ImVec4(targetCol[0], targetCol[1], targetCol[2], targetCol[3]));
 
-            // Points mapping
-            ImVec2 pHead = ImVec2(cursorPos.x + previewW * 0.469f, cursorPos.y + previewH * 0.105f); // Lowered head center further
-            ImVec2 pNeck = ImVec2(cursorPos.x + previewW * 0.469f, cursorPos.y + previewH * 0.145f);
-            ImVec2 pChest = ImVec2(cursorPos.x + previewW * 0.473f, cursorPos.y + previewH * 0.189f);
-            ImVec2 pVaiP = ImVec2(cursorPos.x + previewW * 0.289f, cursorPos.y + previewH * 0.201f);
-            ImVec2 pVaiT = ImVec2(cursorPos.x + previewW * 0.670f, cursorPos.y + previewH * 0.187f);
-            ImVec2 pKhuP = ImVec2(cursorPos.x + previewW * 0.276f, cursorPos.y + previewH * 0.356f);
-            ImVec2 pKhuT = ImVec2(cursorPos.x + previewW * 0.756f, cursorPos.y + previewH * 0.342f);
-            ImVec2 pTayP = ImVec2(cursorPos.x + previewW * 0.145f, cursorPos.y + previewH * 0.483f);
-            ImVec2 pTayT = ImVec2(cursorPos.x + previewW * 0.842f, cursorPos.y + previewH * 0.495f);
-            ImVec2 pEo = ImVec2(cursorPos.x + previewW * 0.486f, cursorPos.y + previewH * 0.363f);
-            ImVec2 pHipsCenter = ImVec2(cursorPos.x + previewW * 0.461f, cursorPos.y + previewH * 0.445f);
-            ImVec2 pHongP = ImVec2(cursorPos.x + previewW * 0.313f, cursorPos.y + previewH * 0.459f);
-            ImVec2 pHongT = ImVec2(cursorPos.x + previewW * 0.613f, cursorPos.y + previewH * 0.465f);
-            ImVec2 pGoiP = ImVec2(cursorPos.x + previewW * 0.383f, cursorPos.y + previewH * 0.699f);
-            ImVec2 pGoiT = ImVec2(cursorPos.x + previewW * 0.633f, cursorPos.y + previewH * 0.707f);
-            ImVec2 pChnP = ImVec2(cursorPos.x + previewW * 0.420f, cursorPos.y + previewH * 0.914f);
-            ImVec2 pChnT = ImVec2(cursorPos.x + previewW * 0.715f, cursorPos.y + previewH * 0.911f);
+            auto P = [&](float x, float y) {
+                return ImVec2(cursorPos.x + previewW * x, cursorPos.y + previewH * y);
+            };
+
+            // Compact rig fitted to the preview mesh silhouette. Keep it inside
+            // the body image so the skeleton does not look offset or oversized.
+            ImVec2 pHead = P(0.500f, 0.112f);
+            ImVec2 pNeck = P(0.500f, 0.166f);
+            ImVec2 pChest = P(0.500f, 0.238f);
+            ImVec2 pVaiP = P(0.382f, 0.232f);
+            ImVec2 pVaiT = P(0.618f, 0.232f);
+            ImVec2 pKhuP = P(0.340f, 0.342f);
+            ImVec2 pKhuT = P(0.660f, 0.342f);
+            ImVec2 pTayP = P(0.304f, 0.456f);
+            ImVec2 pTayT = P(0.696f, 0.456f);
+            ImVec2 pEo = P(0.500f, 0.382f);
+            ImVec2 pHipsCenter = P(0.500f, 0.482f);
+            ImVec2 pHongP = P(0.424f, 0.486f);
+            ImVec2 pHongT = P(0.576f, 0.486f);
+            ImVec2 pGoiP = P(0.446f, 0.690f);
+            ImVec2 pGoiT = P(0.554f, 0.690f);
+            ImVec2 pChnP = P(0.424f, 0.872f);
+            ImVec2 pChnT = P(0.576f, 0.872f);
 
             // Draw Connections
             // pHead exclusively for the Head Circle feature as requested
-            if (g_Menu.esp_head_circle) draw->AddCircle(pHead, previewW * 0.16f, uSkelCol, 16, 1.5f); // Doubled radius from baseline
+            if (g_Menu.esp_head_circle) draw->AddCircle(pHead, previewW * 0.105f, uSkelCol, 16, 1.5f);
 
             // Skeleton starts from pNeck (Chin/Neck) downwards
             draw->AddLine(pNeck, pChest, uSkelCol, 1.5f);

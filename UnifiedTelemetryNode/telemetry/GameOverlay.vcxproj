@@ -112,6 +112,7 @@
     <ClCompile Include="sdk\core\context.cpp" />
     <ClCompile Include="sdk\core\embedded_resources.cpp" />
     <ClCompile Include="sdk\core\fname_utils.cpp" />
+    <ClCompile Include="sdk\core\runtime_offsets.cpp" />
     <ClCompile Include="overlay\entities\entity_aliases.cpp" />
     <ClCompile Include="overlay\loot\loot_debug_renderer.cpp" />
     <ClCompile Include="overlay\loot\loot_esp_renderer.cpp" />
@@ -169,6 +170,7 @@
     <ClInclude Include="sdk\core\telemetry_decrypt.hpp" />
     <ClInclude Include="sdk\core\offsets.hpp" />
     <ClInclude Include="sdk\core\context.hpp" />
+    <ClInclude Include="sdk\core\runtime_offsets.hpp" />
     <ClInclude Include="sdk\memory\scanner.hpp" />
     <ClInclude Include="sdk\core\fname.hpp" />
     <ClInclude Include="sdk\core\gobjects.hpp" />
@@ -181,6 +183,7 @@
     <ClInclude Include="overlay\core\overlay_config_sections.hpp" />
     <ClInclude Include="overlay\core\overlay_hotkeys.hpp" />
     <ClInclude Include="overlay\core\overlay_presets.hpp" />
+    <ClInclude Include="overlay\core\overlay_health_bar.hpp" />
     <ClInclude Include="overlay\core\overlay_texture_cache.hpp" />
     <ClInclude Include="overlay\player\player_esp_layout.hpp" />
     <ClInclude Include="overlay\radar\radar_overlay_renderer.hpp" />

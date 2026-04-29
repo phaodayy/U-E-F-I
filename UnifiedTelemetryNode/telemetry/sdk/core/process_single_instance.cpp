@@ -3,7 +3,6 @@
 #include <tlhelp32.h>
 #include <algorithm>
 #include <cctype>
-#include <fstream>
 #include <string>
 
 namespace {
@@ -63,58 +62,21 @@ bool QueryProcessPath(HANDLE process, std::string& outPath) {
     return true;
 }
 
-bool TerminateProcessById(DWORD pid, const std::string& expectedPath = "") {
-    if (pid == 0 || pid == GetCurrentProcessId()) return false;
-
-    HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_TERMINATE | SYNCHRONIZE,
-                                 FALSE, pid);
-    if (!process) return false;
-
-    std::string processPath;
-    const bool hasPath = QueryProcessPath(process, processPath);
-    if (!expectedPath.empty()) {
-        if (!hasPath || ToLower(processPath) != ToLower(expectedPath)) {
-            CloseHandle(process);
-            return false;
-        }
-    }
-
-    const bool terminated = TerminateProcess(process, 0) != FALSE;
-    if (terminated) {
-        WaitForSingleObject(process, 3000);
-    }
-    CloseHandle(process);
-    return terminated;
-}
-
 std::string LockFilePath() {
     return DirectoryOf(GetCurrentModulePath()) + "\\" + kLockFileName;
 }
 
-bool ReadLockFile(DWORD& pid, std::string& imagePath) {
-    std::ifstream lock(LockFilePath());
-    if (!lock.is_open()) return false;
-    lock >> pid;
-    lock.ignore(1, '\n');
-    std::getline(lock, imagePath);
-    return pid != 0 && !imagePath.empty();
-}
-
-void WriteLockFile() {
-    std::ofstream lock(LockFilePath(), std::ios::trunc);
-    if (!lock.is_open()) return;
-    lock << GetCurrentProcessId() << "\n" << GetCurrentModulePath() << "\n";
-}
-
-void RemoveLockFile() {
-    DeleteFileA(LockFilePath().c_str());
-}
-
-bool TerminateLockedInstance() {
-    DWORD pid = 0;
-    std::string imagePath;
-    if (!ReadLockFile(pid, imagePath)) return false;
-    return TerminateProcessById(pid, imagePath);
+HANDLE OpenTransientLockFile() {
+    const std::string path = LockFilePath();
+    DeleteFileA(path.c_str());
+    return CreateFileA(
+        path.c_str(),
+        GENERIC_READ | DELETE,
+        FILE_SHARE_READ | FILE_SHARE_DELETE,
+        nullptr,
+        CREATE_ALWAYS,
+        FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE,
+        nullptr);
 }
 
 void TerminateGeneratedSiblings() {
@@ -163,8 +125,9 @@ void TerminateGeneratedSiblings() {
 namespace ProcessSingleInstance {
 
 Guard::~Guard() {
-    if (ownsLock_) {
-        RemoveLockFile();
+    if (lock_file_ != INVALID_HANDLE_VALUE) {
+        CloseHandle(lock_file_);
+        lock_file_ = INVALID_HANDLE_VALUE;
     }
     if (mutex_) {
         ReleaseMutex(mutex_);
@@ -173,7 +136,6 @@ Guard::~Guard() {
 }
 
 bool Guard::Acquire() {
-    TerminateLockedInstance();
     TerminateGeneratedSiblings();
 
     for (int attempt = 0; attempt < 2; ++attempt) {
@@ -181,8 +143,7 @@ bool Guard::Acquire() {
         const DWORD error = GetLastError();
 
         if (mutex_ && error != ERROR_ALREADY_EXISTS) {
-            WriteLockFile();
-            ownsLock_ = true;
+            lock_file_ = OpenTransientLockFile();
             return true;
         }
 
@@ -191,7 +152,6 @@ bool Guard::Acquire() {
             mutex_ = nullptr;
         }
 
-        TerminateLockedInstance();
         TerminateGeneratedSiblings();
         Sleep(300);
     }

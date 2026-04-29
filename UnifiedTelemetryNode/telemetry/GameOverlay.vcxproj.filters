@@ -71,6 +71,9 @@
     <ClCompile Include="sdk\core\fname_utils.cpp">
       <Filter>SDK\Core</Filter>
     </ClCompile>
+    <ClCompile Include="sdk\core\runtime_offsets.cpp">
+      <Filter>SDK\Core</Filter>
+    </ClCompile>
     <ClCompile Include="sdk\memory\hypercall_bridge.cpp">
       <Filter>SDK\Memory</Filter>
     </ClCompile>
@@ -206,6 +209,9 @@
     <ClInclude Include="sdk\core\context.hpp">
       <Filter>SDK\Core</Filter>
     </ClInclude>
+    <ClInclude Include="sdk\core\runtime_offsets.hpp">
+      <Filter>SDK\Core</Filter>
+    </ClInclude>
     <ClInclude Include="sdk\memory\scanner.hpp">
       <Filter>SDK\Memory</Filter>
     </ClInclude>
@@ -264,6 +270,9 @@
       <Filter>Overlay\Core</Filter>
     </ClInclude>
     <ClInclude Include="overlay\core\overlay_presets.hpp">
+      <Filter>Overlay\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="overlay\core\overlay_health_bar.hpp">
       <Filter>Overlay\Core</Filter>
     </ClInclude>
     <ClInclude Include="overlay\core\overlay_texture_cache.hpp">

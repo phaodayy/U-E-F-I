@@ -204,7 +204,8 @@ bool OverlayMenu::Initialize(const VisualizationBridgeHost& bridge) {
 
 void OverlayMenu::RenderFrame() {
     extern std::string global_active_key;
-    bool is_authenticated = !global_active_key.empty();
+    extern bool HasActiveLoaderEntitlement();
+    bool is_authenticated = HasActiveLoaderEntitlement();
     OverlayConfigSections::ClampAll(*this);
 
     static bool need_to_release = false;
@@ -267,7 +268,7 @@ void OverlayMenu::RenderFrame() {
 
         static bool items_hotkey_down = false;
         static bool vehicles_hotkey_down = false;
-        const bool allow_quick_toggles = !showmenu && waiting_for_key == nullptr;
+        const bool allow_quick_toggles = is_authenticated && !showmenu && waiting_for_key == nullptr;
         const bool item_toggle_pressed = OverlayHotkeys::ConsumePressed(esp_items_toggle_key, items_hotkey_down);
         const bool vehicle_toggle_pressed = OverlayHotkeys::ConsumePressed(esp_vehicles_toggle_key, vehicles_hotkey_down);
         if (allow_quick_toggles && item_toggle_pressed) esp_items = !esp_items;
@@ -337,8 +338,9 @@ void OverlayMenu::RenderFrame() {
         }
 
         // 1-2 (Weapon), X (Holster), Tab (Bag), M (Map), G (Grenade), F (Interact/Equip)
-        if (telemetryMemory::IsKeyDown('1') || telemetryMemory::IsKeyDown('2') || telemetryMemory::IsKeyDown('X') ||
-            telemetryMemory::IsKeyDown(VK_TAB) || telemetryMemory::IsKeyDown('M') || telemetryMemory::IsKeyDown('G') || telemetryMemory::IsKeyDown('F')) {
+        if (is_authenticated &&
+            (telemetryMemory::IsKeyDown('1') || telemetryMemory::IsKeyDown('2') || telemetryMemory::IsKeyDown('X') ||
+             telemetryMemory::IsKeyDown(VK_TAB) || telemetryMemory::IsKeyDown('M') || telemetryMemory::IsKeyDown('G') || telemetryMemory::IsKeyDown('F'))) {
             MacroEngine::ForceScan();
         }
 

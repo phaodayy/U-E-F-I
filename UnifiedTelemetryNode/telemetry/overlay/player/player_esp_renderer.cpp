@@ -1,5 +1,6 @@
 #include "../core/overlay_menu.hpp"
 #include "../core/colors.hpp"
+#include "../core/overlay_health_bar.hpp"
 #include "player_esp_layout.hpp"
 #include "../core/overlay_asset_animation.hpp"
 #include "../core/overlay_texture_cache.hpp"
@@ -264,6 +265,14 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                         if (foundValidBone) {
                             float boxH = maxY - minY;
                             float boxW = maxX - minX;
+                            const float referenceH = std::fabs(head_s.y - feet_s.y);
+                            const float aspect = boxH > 1.0f ? boxW / boxH : 999.0f;
+                            const bool saneBoneBounds =
+                                referenceH > 8.0f &&
+                                boxH > referenceH * 0.55f &&
+                                boxH < referenceH * 1.70f &&
+                                aspect > 0.12f &&
+                                aspect < 0.78f;
 
                             // Padding for "Breathing Room" (15% Width, 12% Height)
                             float paddingW = (std::max)(boxW * 0.15f, 4.0f);
@@ -275,7 +284,7 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                             finalBoxRight = maxX + paddingW;
 
                             // Sanity check to avoid zero-sized boxes
-                            if (finalBoxBottom - finalBoxTop > 5.0f && finalBoxRight - finalBoxLeft > 2.0f) {
+                            if (saneBoneBounds && finalBoxBottom - finalBoxTop > 5.0f && finalBoxRight - finalBoxLeft > 2.0f) {
                                 useDynamicBox = true;
                             }
                         }
@@ -338,8 +347,6 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                         } else if (healthPercent < 0.70f) {
                             hpColor = IM_COL32(245, 189, 71, 255);
                         }
-                        hpColor = ApplyAlpha(hpColor, alphaMult);
-
                         if (g_Menu.esp_health_display_mode == 1) {
                             char hpText[32];
                             if (player.IsGroggy) {
@@ -357,40 +364,18 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                             DrawTextChip(draw, hpPos, hpText, hpFont, hpColor, alphaMult,
                                 player.IsGroggy || healthPercent < 0.35f);
                         } else {
-                            const float barThickness = std::clamp(boxH * 0.038f, 3.0f, 7.0f);
+                            float barThickness = std::clamp(boxH * 0.045f, 5.0f, 9.0f);
+                            if (g_Menu.esp_health_bar_style == 1 || g_Menu.esp_health_bar_style == 3) {
+                                barThickness = (std::max)(barThickness, 7.0f);
+                            }
                             const float barOffset = std::clamp(boxH * 0.060f, 3.0f, 9.0f);
                             const auto healthSlot = espLayout.TakeBar(
                                 PlayerEspLayout::SideFromMenu(g_Menu.esp_health_pos),
                                 barThickness,
                                 barOffset);
-
-                            auto DrawHealthBarModern = [&](ImVec2 pMin, ImVec2 pMax, bool vertical) {
-                                const float radius = (std::min)(4.0f, (vertical ? (pMax.x - pMin.x) : (pMax.y - pMin.y)) * 0.5f);
-                                draw->AddRectFilled(ImVec2(pMin.x + 1.0f, pMin.y + 1.0f),
-                                    ImVec2(pMax.x + 1.0f, pMax.y + 1.0f),
-                                    IM_COL32(0, 0, 0, AlphaByte(0.22f * alphaMult)), radius);
-                                draw->AddRectFilled(pMin, pMax, IM_COL32(7, 10, 14, AlphaByte(0.64f * alphaMult)), radius);
-                                draw->AddRect(pMin, pMax, IM_COL32(255, 255, 255, AlphaByte(0.10f * alphaMult)), radius, 0, 1.0f);
-
-                                if (vertical) {
-                                    const float h = pMax.y - pMin.y;
-                                    const float barH = h * healthPercent;
-                                    ImVec2 fillMin(pMin.x + 1.0f, pMax.y - barH);
-                                    ImVec2 fillMax(pMax.x - 1.0f, pMax.y - 1.0f);
-                                    draw->AddRectFilled(fillMin, fillMax, hpColor, radius);
-                                    draw->AddRectFilled(fillMin, ImVec2(fillMin.x + (fillMax.x - fillMin.x) * 0.45f, fillMax.y),
-                                        IM_COL32(255, 255, 255, AlphaByte(0.13f * alphaMult)), radius);
-                                } else {
-                                    const float w = pMax.x - pMin.x;
-                                    ImVec2 fillMin(pMin.x + 1.0f, pMin.y + 1.0f);
-                                    ImVec2 fillMax(pMin.x + w * healthPercent, pMax.y - 1.0f);
-                                    draw->AddRectFilled(fillMin, fillMax, hpColor, radius);
-                                    draw->AddRectFilled(fillMin, ImVec2(fillMax.x, fillMin.y + (fillMax.y - fillMin.y) * 0.45f),
-                                        IM_COL32(255, 255, 255, AlphaByte(0.13f * alphaMult)), radius);
-                                }
-                            };
-
-                            DrawHealthBarModern(healthSlot.Min, healthSlot.Max, !healthSlot.Horizontal);
+                            OverlayHealthBar::Draw(draw, healthSlot.Min, healthSlot.Max, healthPercent, hpColor,
+                                !healthSlot.Horizontal, g_Menu.esp_health_bar_style, alphaMult,
+                                player.IsGroggy || healthPercent < 0.35f);
                         }
                     }
 
@@ -399,6 +384,19 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                             if (b1.IsZero() || b2.IsZero()) return;
                             Vector2 s1, s2;
                             if (telemetryContext::WorldToScreen(b1 + delta, s1) && telemetryContext::WorldToScreen(b2 + delta, s2)) {
+                                const float boxH = finalBoxBottom - finalBoxTop;
+                                const float boxW = finalBoxRight - finalBoxLeft;
+                                const float marginX = (std::max)(boxW * 0.38f, 18.0f);
+                                const float marginY = (std::max)(boxH * 0.18f, 18.0f);
+                                auto insideRigBounds = [&](const Vector2& p) {
+                                    return p.x >= finalBoxLeft - marginX && p.x <= finalBoxRight + marginX &&
+                                           p.y >= finalBoxTop - marginY && p.y <= finalBoxBottom + marginY;
+                                };
+                                const float dx = s1.x - s2.x;
+                                const float dy = s1.y - s2.y;
+                                const float lineLen = std::sqrt(dx * dx + dy * dy);
+                                if (!insideRigBounds(s1) || !insideRigBounds(s2) || lineLen > boxH * 0.58f) return;
+
                                 ImU32 skelCol = player.IsVisible ?
                                     ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.skeleton_visible_color) :
                                     ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.skeleton_invisible_color);
@@ -638,7 +636,7 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                                 if (targetWidth < g_Menu.weapon_icon_size * 0.35f) targetWidth = g_Menu.weapon_icon_size * 0.35f;
                                 if (targetWidth > g_Menu.weapon_icon_size) targetWidth = g_Menu.weapon_icon_size;
 
-                                const float frameWidth = static_cast<float>(tex->Width) / static_cast<float>((std::max)(1, tex->Frames));
+                                const float frameWidth = static_cast<float>(tex->Width);
                                 float scale = targetWidth / frameWidth;
                                 float iconW = frameWidth * scale;
                                 float iconH = tex->Height * scale;
@@ -650,10 +648,12 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                                 ImU32 weaponCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.weapon_color);
                                 draw->AddRectFilled(iconPos, ImVec2(iconPos.x + iconW + 6.0f, iconPos.y + iconH + 4.0f),
                                     IM_COL32(5, 8, 12, AlphaByte(0.46f * alphaMult)), 4.0f);
+                                draw->AddRect(iconPos, ImVec2(iconPos.x + iconW + 6.0f, iconPos.y + iconH + 4.0f),
+                                    ApplyAlpha(weaponCol, alphaMult * 0.55f), 4.0f, 0, 1.0f);
                                 OverlayAssetAnimation::DrawStaticImageRect(draw, tex,
                                     ImVec2(iconPos.x + 3.0f, iconPos.y + 2.0f),
                                     ImVec2(iconPos.x + iconW + 3.0f, iconPos.y + iconH + 2.0f),
-                                    weaponCol,
+                                    IM_COL32(255, 255, 255, 255),
                                     alphaMult * 0.88f);
                             } else {
                                 ImVec2 ws = ChipSize(TextSize(player.WeaponName.c_str(), g_Menu.weapon_font_size));

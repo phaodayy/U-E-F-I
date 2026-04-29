@@ -362,6 +362,7 @@ inline void FillVietnamese(Strings& s) {
             s.HoldPanelKey = (const char*)u8"Giữ phím panel";
             s.PanelKey = (const char*)u8"Phím panel";
             s.HealthDisplay = (const char*)u8"Kiểu hiển thị máu";
+            s.HealthBarStyle = (const char*)u8"Kiểu thanh máu";
             s.HealthColumn = (const char*)u8"Dạng cột";
             s.HealthTextOnly = (const char*)u8"Dạng chữ";
             s.Ammo = (const char*)u8"Đạn";

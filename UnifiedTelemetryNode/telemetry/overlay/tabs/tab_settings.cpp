@@ -9,15 +9,18 @@
 // External globals from main.cpp / context.cpp
 extern std::string global_account_token;
 extern std::string global_account_username;
+extern std::string global_account_role;
 extern std::string global_active_key;
 extern std::string g_expiry_str;
 extern std::string global_license_error;
 extern std::string global_config_code;
 extern std::string GetHWID();
+extern bool HasActiveLoaderEntitlement();
 extern bool ParseAuthSessionResponse(const std::string& responseStr, bool allowNoActiveKey);
 extern void SaveLoaderSessionFile();
 extern void ClearLoaderSessionFile();
 extern bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent);
+extern bool DownloadLoaderConfig();
 extern bool HttpJsonPost(const wchar_t* path, const nlohmann::json& requestBody, const std::string& token, std::string& response);
 extern const wchar_t* LOADER_LOGIN_PATH;
 extern const wchar_t* LOADER_REGISTER_PATH;
@@ -25,10 +28,14 @@ extern const wchar_t* LOADER_REGISTER_PATH;
 void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
     auto Lang = Translation::Get();
     float totalWidth = windowSize.x - 60;
-    ImGui::Columns(3, skCrypt("SettingsColumns"), false);
-    ImGui::SetColumnWidth(0, totalWidth / 3.0f);
-    ImGui::SetColumnWidth(1, totalWidth / 3.0f);
-    ImGui::SetColumnWidth(2, totalWidth / 3.0f);
+    bool isLoggedIn = !global_account_token.empty();
+    const int columnCount = isLoggedIn ? 3 : 1;
+    ImGui::Columns(columnCount, skCrypt("SettingsColumns"), false);
+    ImGui::SetColumnWidth(0, isLoggedIn ? totalWidth / 3.0f : totalWidth);
+    if (isLoggedIn) {
+        ImGui::SetColumnWidth(1, totalWidth / 3.0f);
+        ImGui::SetColumnWidth(2, totalWidth / 3.0f);
+    }
 
     // --- COL 1: ACCOUNT & LICENSE ---
     BeginGlassCard(skCrypt("##SetCol1"), Lang.HeaderAccount, ImVec2(totalWidth / 3.0f - 20, 0));
@@ -43,8 +50,6 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
     extern void SaveLoaderSessionFile();
     extern void ClearLoaderSessionFile();
     extern bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent);
-
-    bool isLoggedIn = !global_account_token.empty();
 
     if (!isLoggedIn) {
         static char user_buf[64] = {0};
@@ -68,8 +73,15 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
             std::string resp;
             extern bool HttpJsonPost(const wchar_t* path, const nlohmann::json& requestBody, const std::string& token, std::string& response);
             if (HttpJsonPost(LOADER_LOGIN_PATH, req, "", resp)) {
-                if (ParseAuthSessionResponse(resp, true)) SaveLoaderSessionFile();
-                else global_license_error = resp;
+                if (ParseAuthSessionResponse(resp, true)) {
+                    if (HasActiveLoaderEntitlement()) {
+                        if (DoAPIRequest(global_active_key, GetHWID(), true)) DownloadLoaderConfig();
+                        else global_active_key.clear();
+                    }
+                    SaveLoaderSessionFile();
+                } else {
+                    global_license_error = resp;
+                }
             }
         }
         ImGui::SameLine();
@@ -81,8 +93,15 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
             std::string resp;
             extern bool HttpJsonPost(const wchar_t* path, const nlohmann::json& requestBody, const std::string& token, std::string& response);
             if (HttpJsonPost(LOADER_REGISTER_PATH, req, "", resp)) {
-                if (ParseAuthSessionResponse(resp, true)) SaveLoaderSessionFile();
-                else global_license_error = resp;
+                if (ParseAuthSessionResponse(resp, true)) {
+                    if (HasActiveLoaderEntitlement()) {
+                        if (DoAPIRequest(global_active_key, GetHWID(), true)) DownloadLoaderConfig();
+                        else global_active_key.clear();
+                    }
+                    SaveLoaderSessionFile();
+                } else {
+                    global_license_error = resp;
+                }
             }
         }
     } else {
@@ -109,7 +128,10 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
         if (ImGui::Button(Lang.Logout, ImVec2(-1, 30))) {
             global_account_token.clear();
             global_account_username.clear();
+            global_account_role.clear();
             global_active_key.clear();
+            global_config_code.clear();
+            g_expiry_str = skCrypt("N/A");
             ClearLoaderSessionFile();
         }
     }
@@ -120,6 +142,10 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
     }
 
     ImGui::EndChild();
+    if (!isLoggedIn) {
+        ImGui::Columns(1);
+        return;
+    }
 
     ImGui::NextColumn();
     // --- COL 2: CLOUD CONFIG & SETTINGS ---

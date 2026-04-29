@@ -23,6 +23,11 @@ namespace telemetry_config {
         // Constructor: Tự động mã hóa khi khai báo
         constexpr SecureOffset(uint64_t val) : encrypted_val(val ^ OFFSET_KEY) {}
 
+        __forceinline SecureOffset& operator=(uint64_t val) {
+            encrypted_val = val ^ OFFSET_KEY;
+            return *this;
+        }
+
         // Casting operator: Tự động giải mã khi lấy giá trị (Seamless Integration)
         __forceinline operator uint64_t() const {
              // Sử dụng volatile hoặc ror/rol để chống tối ưu hóa của Compiler nếu cần
@@ -34,6 +39,10 @@ namespace telemetry_config {
     struct SecureOffset32 {
         uint32_t encrypted_val;
         constexpr SecureOffset32(uint32_t v) : encrypted_val(v ^ (uint32_t)OFFSET_KEY) {}
+        __forceinline SecureOffset32& operator=(uint32_t val) {
+            encrypted_val = val ^ (uint32_t)OFFSET_KEY;
+            return *this;
+        }
         __forceinline operator uint32_t() const { return encrypted_val ^ (uint32_t)OFFSET_KEY; }
     };
 
@@ -158,6 +167,17 @@ namespace telemetry_config {
             HealthKey8, HealthKey9, HealthKey10, HealthKey11,
             HealthKey12, HealthKey13, HealthKey14, HealthKey15
         };
+
+        inline void RefreshHealthKeys() {
+            HealthKeys[0] = HealthKey0; HealthKeys[1] = HealthKey1;
+            HealthKeys[2] = HealthKey2; HealthKeys[3] = HealthKey3;
+            HealthKeys[4] = HealthKey4; HealthKeys[5] = HealthKey5;
+            HealthKeys[6] = HealthKey6; HealthKeys[7] = HealthKey7;
+            HealthKeys[8] = HealthKey8; HealthKeys[9] = HealthKey9;
+            HealthKeys[10] = HealthKey10; HealthKeys[11] = HealthKey11;
+            HealthKeys[12] = HealthKey12; HealthKeys[13] = HealthKey13;
+            HealthKeys[14] = HealthKey14; HealthKeys[15] = HealthKey15;
+        }
 
         // --- 8. INVENTORY & STATS ---
         inline SecureOffset LocalPlayers = 0x124172D0; // kd

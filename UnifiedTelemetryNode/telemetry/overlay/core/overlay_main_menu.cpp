@@ -2,7 +2,12 @@
 #include "../translation/translation.hpp"
 #include "../../sdk/core/app_shutdown.hpp"
 #include <protec/skCrypt.h>
+#include <cctype>
 #include <string>
+
+extern std::string global_account_token;
+extern std::string global_active_key;
+extern std::string global_account_role;
 
 void OverlayMenu::RenderMainMenuWindow(ImDrawList* draw, float ScreenWidth, float ScreenHeight) {
     if (!draw) return;
@@ -99,13 +104,31 @@ void OverlayMenu::RenderMainMenuWindow(ImDrawList* draw, float ScreenWidth, floa
             ImGui::SetCursorPos(ImVec2(20, 75));
             ImGui::BeginChild(skCrypt("##MainContent"), ImVec2(windowSize.x - 40, windowSize.y - 150), false, ImGuiWindowFlags_None);
 
-            if      (active_tab == 0) RenderTabVisuals(windowSize);
-            else if (active_tab == 1) RenderTabPrecision(windowSize);
-            else if (active_tab == 2) RenderTabMacro(windowSize);
-            else if (active_tab == 3) RenderTabLoot(windowSize);
-            else if (active_tab == 4) RenderTabRadar(windowSize);
-            else if (active_tab == 5) RenderTabSettings(windowSize);
-            else if (active_tab == 6) RenderTabAdmin(windowSize);
+            const bool hasAccountSession = !global_account_token.empty();
+            const bool hasValidKey = hasAccountSession && !global_active_key.empty();
+            std::string accountRoleLower = global_account_role;
+            for (char& c : accountRoleLower) c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
+            const bool isAdmin = accountRoleLower == skCrypt("admin");
+
+            if (!hasValidKey && active_tab != 5) {
+                active_tab = 5;
+            }
+            if (!isAdmin && active_tab == 6) {
+                active_tab = hasValidKey ? 0 : 5;
+            }
+
+            if (hasValidKey) {
+                if      (active_tab == 0) RenderTabVisuals(windowSize);
+                else if (active_tab == 1) RenderTabPrecision(windowSize);
+                else if (active_tab == 2) RenderTabMacro(windowSize);
+                else if (active_tab == 3) RenderTabLoot(windowSize);
+                else if (active_tab == 4) RenderTabRadar(windowSize);
+                else if (active_tab == 5) RenderTabSettings(windowSize);
+                else if (active_tab == 6 && isAdmin) RenderTabAdmin(windowSize);
+                else RenderTabSettings(windowSize);
+            } else {
+                RenderTabSettings(windowSize);
+            }
 
             ImGui::EndChild(); // MainContent
 
@@ -123,9 +146,8 @@ void OverlayMenu::RenderMainMenuWindow(ImDrawList* draw, float ScreenWidth, floa
             drawList->AddRectFilled(railPos, ImVec2(railPos.x + railSize.x, railPos.y + railSize.y), IM_COL32(20, 40, 80, 100), 22.0f);
             drawList->AddRect(railPos, ImVec2(railPos.x + railSize.x, railPos.y + railSize.y), IM_COL32(0, 200, 255, 60), 22.0f);
 
-            extern std::string global_account_role;
-            bool isAdmin = (global_account_role == skCrypt("admin"));
             int totalTabs = 6 + (isAdmin ? 1 : 0);
+            if (!hasValidKey) totalTabs = 1;
             float navTotalWidth = (110.0f * totalTabs) + (10.0f * (totalTabs - 1));
             ImGui::SetCursorPosX((railSize.x - navTotalWidth) / 2.0f);
 
@@ -152,13 +174,6 @@ void OverlayMenu::RenderMainMenuWindow(ImDrawList* draw, float ScreenWidth, floa
                 ImGui::PopStyleColor(4);
                 ImGui::SameLine(0, 10.0f);
             };
-
-            extern std::string global_active_key;
-            bool hasValidKey = !global_active_key.empty();
-
-            if (!hasValidKey && active_tab != 5) {
-                active_tab = 5; // Force to Account Tab if not authorized
-            }
 
             if (hasValidKey) {
                 BottomTab(Lang.TabVisuals, 0);

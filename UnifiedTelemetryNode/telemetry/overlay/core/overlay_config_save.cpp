@@ -28,6 +28,7 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["esp_text_bg_alpha"] = esp_text_bg_alpha;
         j["esp_health_text"] = esp_health_text;
         j["esp_health_display_mode"] = esp_health_display_mode;
+        j["esp_health_bar_style"] = esp_health_bar_style;
         j["esp_aim_warning"] = esp_aim_warning;
         j["esp_view_direction"] = esp_view_direction;
         j["esp_status_badges"] = esp_status_badges;

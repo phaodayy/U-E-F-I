@@ -82,6 +82,7 @@ public:
   bool esp_speed = false;
   bool esp_ammo = true;
   int esp_health_display_mode = 0;
+  int esp_health_bar_style = 0;
   bool esp_teamid = false;
   bool esp_spectators = true;
   bool esp_rank = false;

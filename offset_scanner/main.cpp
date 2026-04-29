@@ -438,36 +438,36 @@ int main() {
     }
  
     // --- 4. EXPORT TO PUBG_Offsets.h ---
-    std::ofstream hFile("PUBG_Offsets.h");
-    if (hFile.is_open()) {
-        hFile << "#pragma once\n#include <cstdint>\n\n// Standalone offsets mirroring project structure\nnamespace offsets {\n";
+    // std::ofstream hFile("PUBG_Offsets.h");
+    // if (hFile.is_open()) {
+    //     hFile << "#pragma once\n#include <cstdint>\n\n// Standalone offsets mirroring project structure\nnamespace offsets {\n";
         
-        bool exportedAny = false;
-        if (!lines.empty()) {
-            for (const auto& line : lines) {
-                if (line.find("inline uint") != std::string::npos) {
-                    std::string clean = line;
-                    size_t first = clean.find_first_not_of(" ");
-                    if (first != std::string::npos) clean = clean.substr(first);
-                    hFile << "    " << clean << "\n";
-                    exportedAny = true;
-                }
-            }
-        } 
+    //     bool exportedAny = false;
+    //     if (!lines.empty()) {
+    //         for (const auto& line : lines) {
+    //             if (line.find("inline uint") != std::string::npos) {
+    //                 std::string clean = line;
+    //                 size_t first = clean.find_first_not_of(" ");
+    //                 if (first != std::string::npos) clean = clean.substr(first);
+    //                 hFile << "    " << clean << "\n";
+    //                 exportedAny = true;
+    //             }
+    //         }
+    //     }
+
+    //     if (!exportedAny) {
+    //         // FALLBACK: If template failed to produce valid offset lines, export raw results directly
+    //         for (auto const& [name, val] : results) {
+    //             if (val != 0) {
+    //                 hFile << "    inline uint64_t " << name << " = 0x" << std::hex << val << ";\n";
+    //             }
+    //         }
+    //     }
         
-        if (!exportedAny) {
-            // FALLBACK: If template failed to produce valid offset lines, export raw results directly
-            for (auto const& [name, val] : results) {
-                if (val != 0) {
-                    hFile << "    inline uint64_t " << name << " = 0x" << std::hex << val << ";\n";
-                }
-            }
-        }
-        
-        hFile << "}\n";
-        hFile.close();
-        std::cout << "[+] Exported synchronized results to bin/PUBG_Offsets.h\n";
-    }
+    //     hFile << "}\n";
+    //     hFile.close();
+    //     std::cout << "[+] Exported synchronized results to bin/PUBG_Offsets.h\n";
+    // }
  
     std::cout << "\n[*] Offset scanning complete. System ready.\n";
     

@@ -3,121 +3,120 @@
 
 /**
  * @namespace telemetryOffsets
- * @brief Tầng tương thích (Compatibility Layer)
- * Tất cả các giá trị thực tế hiện đã được chuyển sang .shared/telemetry_config.hpp
- * File này chỉ đóng vai trò ánh xạ để không làm hỏng code hiện tại.
+ * Compatibility layer for the shared encrypted offset table.
+ * Keep these as references so runtime signature scans update every caller.
  */
 namespace telemetryOffsets {
     using namespace telemetry_config::offsets;
 
     // --- 1. CORE & ANTI-integrity_monitor ---
-    inline uint64_t XenuineDecrypt = telemetry_config::offsets::XenuineDecrypt;
-    inline uint64_t UWorld = telemetry_config::offsets::UWorld;
-    inline uint64_t GNames = telemetry_config::offsets::GNames;
-    inline uint64_t GObjects = telemetry_config::offsets::GObjects;
-    inline uint64_t GNamesPtr = telemetry_config::offsets::GNamesPtr;
-    inline uint64_t ChunkSize = telemetry_config::offsets::ChunkSize;
-    inline uint64_t ObjID = telemetry_config::offsets::ObjID;
+    inline auto& XenuineDecrypt = telemetry_config::offsets::XenuineDecrypt;
+    inline auto& UWorld = telemetry_config::offsets::UWorld;
+    inline auto& GNames = telemetry_config::offsets::GNames;
+    inline auto& GObjects = telemetry_config::offsets::GObjects;
+    inline auto& GNamesPtr = telemetry_config::offsets::GNamesPtr;
+    inline auto& ChunkSize = telemetry_config::offsets::ChunkSize;
+    inline auto& ObjID = telemetry_config::offsets::ObjID;
 
     // --- 2. GAME CORE ---
-    inline uint64_t GameInstance = telemetry_config::offsets::GameInstance;
-    inline uint64_t GameState = telemetry_config::offsets::GameState;
-    inline uint64_t LocalPlayer = telemetry_config::offsets::LocalPlayer;
-    inline uint64_t PlayerController = telemetry_config::offsets::PlayerController;
-    inline uint64_t AcknowledgedPawn = telemetry_config::offsets::AcknowledgedPawn;
-    inline uint64_t PlayerCameraManager = telemetry_config::offsets::PlayerCameraManager;
-    inline uint64_t MyHUD = telemetry_config::offsets::MyHUD;
-    inline uint64_t PlayerState = telemetry_config::offsets::PlayerState;
-    inline uint64_t CurrentLevel = telemetry_config::offsets::CurrentLevel;
-    inline uint64_t Actors = telemetry_config::offsets::Actors;
-    inline uint64_t RootComponent = telemetry_config::offsets::RootComponent;
+    inline auto& GameInstance = telemetry_config::offsets::GameInstance;
+    inline auto& GameState = telemetry_config::offsets::GameState;
+    inline auto& LocalPlayer = telemetry_config::offsets::LocalPlayer;
+    inline auto& PlayerController = telemetry_config::offsets::PlayerController;
+    inline auto& AcknowledgedPawn = telemetry_config::offsets::AcknowledgedPawn;
+    inline auto& PlayerCameraManager = telemetry_config::offsets::PlayerCameraManager;
+    inline auto& MyHUD = telemetry_config::offsets::MyHUD;
+    inline auto& PlayerState = telemetry_config::offsets::PlayerState;
+    inline auto& CurrentLevel = telemetry_config::offsets::CurrentLevel;
+    inline auto& Actors = telemetry_config::offsets::Actors;
+    inline auto& RootComponent = telemetry_config::offsets::RootComponent;
 
     // --- 3. MESH & VISUALS ---
-    inline uint64_t Mesh = telemetry_config::offsets::Mesh;
-    inline uint64_t Mesh3P = telemetry_config::offsets::Mesh3P;
-    inline uint64_t ComponentLocation = telemetry_config::offsets::ComponentLocation;
-    inline uint64_t ComponentToWorld = telemetry_config::offsets::ComponentToWorld;
-    inline uint64_t BoneArray = telemetry_config::offsets::BoneArray;
-    inline uint64_t LastSubmitTime = telemetry_config::offsets::LastSubmitTime;
-    inline uint64_t LastRenderTimeOnScreen = telemetry_config::offsets::LastRenderTimeOnScreen;
-    inline uint64_t Visibility = telemetry_config::offsets::Visibility;
+    inline auto& Mesh = telemetry_config::offsets::Mesh;
+    inline auto& Mesh3P = telemetry_config::offsets::Mesh3P;
+    inline auto& ComponentLocation = telemetry_config::offsets::ComponentLocation;
+    inline auto& ComponentToWorld = telemetry_config::offsets::ComponentToWorld;
+    inline auto& BoneArray = telemetry_config::offsets::BoneArray;
+    inline auto& LastSubmitTime = telemetry_config::offsets::LastSubmitTime;
+    inline auto& LastRenderTimeOnScreen = telemetry_config::offsets::LastRenderTimeOnScreen;
+    inline auto& Visibility = telemetry_config::offsets::Visibility;
 
     // --- 4. PLAYER INFO ---
-    inline uint64_t TeamNumber = telemetry_config::offsets::TeamNumber;
-    inline uint64_t LastTeamNum = telemetry_config::offsets::LastTeamNum;
-    inline uint64_t SpectatedCount = telemetry_config::offsets::SpectatedCount;
-    inline uint64_t GroggyHealth = telemetry_config::offsets::GroggyHealth;
-    inline uint64_t CharacterName = telemetry_config::offsets::CharacterName;
-    inline uint64_t PlayerName = telemetry_config::offsets::PlayerName;
-    inline uint64_t PlayerStatistics = telemetry_config::offsets::PlayerStatistics;
-    inline uint64_t DamageDealtOnEnemy = telemetry_config::offsets::DamageDealtOnEnemy;
-    inline uint64_t SurvivalTier = telemetry_config::offsets::SurvivalTier;
-    inline uint64_t SurvivalLevel = telemetry_config::offsets::SurvivalLevel;
-    inline uint64_t WeaponProcessor = telemetry_config::offsets::WeaponProcessor;
-    inline uint64_t EquippedWeapons = telemetry_config::offsets::EquippedWeapons;
-    inline uint64_t CurrentWeaponIndex = telemetry_config::offsets::CurrentWeaponIndex;
-    inline uint64_t CurrentAmmoData = telemetry_config::offsets::CurrentAmmoData;
+    inline auto& TeamNumber = telemetry_config::offsets::TeamNumber;
+    inline auto& LastTeamNum = telemetry_config::offsets::LastTeamNum;
+    inline auto& SpectatedCount = telemetry_config::offsets::SpectatedCount;
+    inline auto& GroggyHealth = telemetry_config::offsets::GroggyHealth;
+    inline auto& CharacterName = telemetry_config::offsets::CharacterName;
+    inline auto& PlayerName = telemetry_config::offsets::PlayerName;
+    inline auto& PlayerStatistics = telemetry_config::offsets::PlayerStatistics;
+    inline auto& DamageDealtOnEnemy = telemetry_config::offsets::DamageDealtOnEnemy;
+    inline auto& SurvivalTier = telemetry_config::offsets::SurvivalTier;
+    inline auto& SurvivalLevel = telemetry_config::offsets::SurvivalLevel;
+    inline auto& WeaponProcessor = telemetry_config::offsets::WeaponProcessor;
+    inline auto& EquippedWeapons = telemetry_config::offsets::EquippedWeapons;
+    inline auto& CurrentWeaponIndex = telemetry_config::offsets::CurrentWeaponIndex;
+    inline auto& CurrentAmmoData = telemetry_config::offsets::CurrentAmmoData;
 
     // --- 5. MOVEMENT ---
-    inline uint64_t CharacterMovement = telemetry_config::offsets::CharacterMovement;
-    inline uint64_t LastUpdateVelocity = telemetry_config::offsets::LastUpdateVelocity;
-    inline uint64_t AimOffsets = telemetry_config::offsets::AimOffsets;
-    inline uint64_t AnimScriptInstance = telemetry_config::offsets::AnimScriptInstance;
-    inline uint64_t bIsScoping_CP = telemetry_config::offsets::bIsScoping_CP;
-    inline uint64_t bIsReloading_CP = telemetry_config::offsets::bIsReloading_CP;
+    inline auto& CharacterMovement = telemetry_config::offsets::CharacterMovement;
+    inline auto& LastUpdateVelocity = telemetry_config::offsets::LastUpdateVelocity;
+    inline auto& AimOffsets = telemetry_config::offsets::AimOffsets;
+    inline auto& AnimScriptInstance = telemetry_config::offsets::AnimScriptInstance;
+    inline auto& bIsScoping_CP = telemetry_config::offsets::bIsScoping_CP;
+    inline auto& bIsReloading_CP = telemetry_config::offsets::bIsReloading_CP;
 
     // --- 6. RADAR & HUD ---
-    inline uint64_t Minimap = telemetry_config::offsets::Minimap;
-    inline uint64_t CurrentMinimapViewScale1D = telemetry_config::offsets::CurrentMinimapViewScale;
-    inline uint64_t LastMinimapPos = telemetry_config::offsets::ScreenPosX;
-    inline uint64_t SelectMinimapSizeIndex = telemetry_config::offsets::SelectMinimapSizeIndex;
-    inline uint64_t BlockInputWidgetList = telemetry_config::offsets::BlockInputWidgetList;
-    inline uint64_t WidgetStateMap = telemetry_config::offsets::WidgetStateMap;
-    inline uint64_t Slot = telemetry_config::offsets::Slot;
-    inline uint64_t LayoutData = telemetry_config::offsets::LayoutData;
-    inline uint64_t Alignment = telemetry_config::offsets::Alignment;
-    inline uint64_t MapGrid_Map = telemetry_config::offsets::MapGrid_Map;
-    inline uint64_t WorldToMap = telemetry_config::offsets::WorldToMap;
-    inline uint64_t bShowMouseCursor = telemetry_config::offsets::bShowMouseCursor;
+    inline auto& Minimap = telemetry_config::offsets::Minimap;
+    inline auto& CurrentMinimapViewScale1D = telemetry_config::offsets::CurrentMinimapViewScale;
+    inline auto& LastMinimapPos = telemetry_config::offsets::ScreenPosX;
+    inline auto& SelectMinimapSizeIndex = telemetry_config::offsets::SelectMinimapSizeIndex;
+    inline auto& BlockInputWidgetList = telemetry_config::offsets::BlockInputWidgetList;
+    inline auto& WidgetStateMap = telemetry_config::offsets::WidgetStateMap;
+    inline auto& Slot = telemetry_config::offsets::Slot;
+    inline auto& LayoutData = telemetry_config::offsets::LayoutData;
+    inline auto& Alignment = telemetry_config::offsets::Alignment;
+    inline auto& MapGrid_Map = telemetry_config::offsets::MapGrid_Map;
+    inline auto& WorldToMap = telemetry_config::offsets::WorldToMap;
+    inline auto& bShowMouseCursor = telemetry_config::offsets::bShowMouseCursor;
 
     // --- 7. HEALTH LOGIC (Fixing mapping to match 2603 standard) ---
-    inline uint64_t Health3 = telemetry_config::offsets::Health3;
-    inline uint64_t Health4 = telemetry_config::offsets::Health4;
-    inline uint64_t Health5 = telemetry_config::offsets::Health5;
-    inline uint64_t Health6 = telemetry_config::offsets::Health6;
+    inline auto& Health3 = telemetry_config::offsets::Health3;
+    inline auto& Health4 = telemetry_config::offsets::Health4;
+    inline auto& Health5 = telemetry_config::offsets::Health5;
+    inline auto& Health6 = telemetry_config::offsets::Health6;
 
     // --- 8. ITEM SYSTEM ---
-    inline uint64_t InventoryFacade = telemetry_config::offsets::InventoryFacade;
-    inline uint64_t Inventory = telemetry_config::offsets::Inventory;
-    inline uint64_t InventoryItems = telemetry_config::offsets::InventoryItems;
-    inline uint64_t Equipment = telemetry_config::offsets::Equipment;
-    inline uint64_t ItemsArray = telemetry_config::offsets::ItemsArray;
-    inline uint64_t ItemTable = telemetry_config::offsets::ItemTable;
-    inline uint64_t ItemID = telemetry_config::offsets::ItemID;
-    inline uint64_t Durability = telemetry_config::offsets::Durability;
-    inline uint64_t Durabilitymax = telemetry_config::offsets::Durabilitymax;
+    inline auto& InventoryFacade = telemetry_config::offsets::InventoryFacade;
+    inline auto& Inventory = telemetry_config::offsets::Inventory;
+    inline auto& InventoryItems = telemetry_config::offsets::InventoryItems;
+    inline auto& Equipment = telemetry_config::offsets::Equipment;
+    inline auto& ItemsArray = telemetry_config::offsets::ItemsArray;
+    inline auto& ItemTable = telemetry_config::offsets::ItemTable;
+    inline auto& ItemID = telemetry_config::offsets::ItemID;
+    inline auto& Durability = telemetry_config::offsets::Durability;
+    inline auto& Durabilitymax = telemetry_config::offsets::Durabilitymax;
 
     // Health Keys Redirection (pointing to latest HealthKey names)
-    inline uint32_t HealthKey0 = telemetry_config::offsets::HealthKey0;
-    inline uint32_t HealthKey1 = telemetry_config::offsets::HealthKey1;
-    inline uint32_t HealthKey2 = telemetry_config::offsets::HealthKey2;
-    inline uint32_t HealthKey3 = telemetry_config::offsets::HealthKey3;
-    inline uint32_t HealthKey4 = telemetry_config::offsets::HealthKey4;
-    inline uint32_t HealthKey5 = telemetry_config::offsets::HealthKey5;
-    inline uint32_t HealthKey6 = telemetry_config::offsets::HealthKey6;
-    inline uint32_t HealthKey7 = telemetry_config::offsets::HealthKey7;
-    inline uint32_t HealthKey8 = telemetry_config::offsets::HealthKey8;
-    inline uint32_t HealthKey9 = telemetry_config::offsets::HealthKey9;
-    inline uint32_t HealthKey10 = telemetry_config::offsets::HealthKey10;
-    inline uint32_t HealthKey11 = telemetry_config::offsets::HealthKey11;
-    inline uint32_t HealthKey12 = telemetry_config::offsets::HealthKey12;
-    inline uint32_t HealthKey13 = telemetry_config::offsets::HealthKey13;
-    inline uint32_t HealthKey14 = telemetry_config::offsets::HealthKey14;
-    inline uint32_t HealthKey15 = telemetry_config::offsets::HealthKey15;
+    inline auto& HealthKey0 = telemetry_config::offsets::HealthKey0;
+    inline auto& HealthKey1 = telemetry_config::offsets::HealthKey1;
+    inline auto& HealthKey2 = telemetry_config::offsets::HealthKey2;
+    inline auto& HealthKey3 = telemetry_config::offsets::HealthKey3;
+    inline auto& HealthKey4 = telemetry_config::offsets::HealthKey4;
+    inline auto& HealthKey5 = telemetry_config::offsets::HealthKey5;
+    inline auto& HealthKey6 = telemetry_config::offsets::HealthKey6;
+    inline auto& HealthKey7 = telemetry_config::offsets::HealthKey7;
+    inline auto& HealthKey8 = telemetry_config::offsets::HealthKey8;
+    inline auto& HealthKey9 = telemetry_config::offsets::HealthKey9;
+    inline auto& HealthKey10 = telemetry_config::offsets::HealthKey10;
+    inline auto& HealthKey11 = telemetry_config::offsets::HealthKey11;
+    inline auto& HealthKey12 = telemetry_config::offsets::HealthKey12;
+    inline auto& HealthKey13 = telemetry_config::offsets::HealthKey13;
+    inline auto& HealthKey14 = telemetry_config::offsets::HealthKey14;
+    inline auto& HealthKey15 = telemetry_config::offsets::HealthKey15;
 
     // --- 9. MISC ---
-    inline uint64_t Gender = telemetry_config::offsets::Gender;
-    inline uint64_t SPOOFCALL = telemetry_config::offsets::SPOOFCALL_GADGET;
+    inline auto& Gender = telemetry_config::offsets::Gender;
+    inline auto& SPOOFCALL = telemetry_config::offsets::SPOOFCALL_GADGET;
 
     inline uint32_t DecryptCIndex(uint32_t value) {
         return telemetry_config::decrypt_cindex(value);

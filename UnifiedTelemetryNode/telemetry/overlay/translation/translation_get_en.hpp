@@ -350,6 +350,7 @@ inline void FillEnglish(Strings& s) {
             s.HoldPanelKey = skCrypt("Hold Panel Key");
             s.PanelKey = skCrypt("Panel Key");
             s.HealthDisplay = skCrypt("Health Display");
+            s.HealthBarStyle = skCrypt("Health Bar Style");
             s.HealthColumn = skCrypt("Column");
             s.HealthTextOnly = skCrypt("Text");
             s.Ammo = skCrypt("Ammo");

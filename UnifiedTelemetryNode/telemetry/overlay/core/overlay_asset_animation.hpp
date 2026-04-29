@@ -40,8 +40,7 @@ inline ImVec2 FitSize(const TextureInfo* icon, float targetSize) {
         return ImVec2(0.0f, 0.0f);
     }
 
-    const int frameCount = (std::max)(1, icon->Frames);
-    const float frameWidth = static_cast<float>(icon->Width) / static_cast<float>(frameCount);
+    const float frameWidth = static_cast<float>(icon->Width);
     float width = targetSize;
     float height = targetSize;
     const float aspect = frameWidth / static_cast<float>(icon->Height);

@@ -15,7 +15,7 @@ public:
 
 private:
     HANDLE mutex_ = nullptr;
-    bool ownsLock_ = false;
+    HANDLE lock_file_ = INVALID_HANDLE_VALUE;
 };
 
 } // namespace ProcessSingleInstance
