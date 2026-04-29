@@ -284,7 +284,7 @@ int main() {
     // --- 6. ITEMS & INVENTORY ---
     scanDisp("Inventory", "F7 40 08 00 00 00 20 75 12 48 8B 83 ?? ?? ?? ??", 12);
     scanDisp("InventoryItemCount", "48 8B BB ?? ?? ?? ?? 8B B3 ?? ?? ?? ?? 85 F6 0F 85", 9);
-    scanDisp("Equipment", "F7 40 08 00 00 00 20 75 12 48 8B 83 ?? ?? ?? ??", 12); // Note: Multi-match possible, Scanner picks first valid
+    scanDisp("Equipment", "F7 40 08 00 00 00 20 75 12 48 8B 83 ?? ?? ?? ??", 12); 
     scanDisp("ItemsArray", "48 8B 91 ?? ?? ?? ?? 48 8B D9 E8 ?? ?? ?? ?? 48 8B 93 ?? ?? ?? ??", 19);
     scanDisp("ItemID", "F2 0F 10 87 ?? ?? ?? ?? F2 0F 11 03 8B 87 ?? ?? ?? ??", 14);
     scanDisp("ItemTable", "4C 8B 8D C0 00 00 00 88 44 24 40 48 8B 85 ?? ?? ?? ??", 14);
@@ -397,19 +397,17 @@ int main() {
         std::cout << "[KEY]  HealthKey2: 0x" << std::hex << results["HealthKey2"] << "\n";
     }
 
-    // --- 3. AUTO-UPDATE pubg_config.hpp ---
+    // --- 3. AUTO-UPDATE telemetry_config.hpp ---
     std::string configPath = "../UnifiedTelemetryNode/.shared/telemetry_config.hpp";
     std::vector<std::string> lines;
     std::ifstream inFile(configPath);
     if (!inFile.is_open()) {
-        // Try alternate path if running from bin/
         configPath = "../../UnifiedTelemetryNode/.shared/telemetry_config.hpp";
         inFile.open(configPath);
     }
  
     if (inFile.is_open()) {
         std::string line;
-        int updates = 0;
         while (std::getline(inFile, line)) {
             bool matched = false;
             for (auto const& [name, val] : results) {
@@ -420,57 +418,72 @@ int main() {
                 {
                     char newline[512];
                     if (val > 0xFFFFFFFF)
-                        sprintf_s(newline, "        inline uint64_t %s = 0x%llX;", name.c_str(), val);
+                        sprintf_s(newline, "        inline SecureOffset %s = 0x%llX;", name.c_str(), val);
                     else
-                        sprintf_s(newline, "        inline uint32_t %s = 0x%X;", name.c_str(), (uint32_t)val);
+                        sprintf_s(newline, "        inline SecureOffset32 %s = 0x%X;", name.c_str(), (uint32_t)val);
                     lines.push_back(newline);
                     matched = true;
-                    updates++;
                     break;
                 }
             }
             if (!matched) lines.push_back(line);
         }
         inFile.close();
-        std::cout << "[+] Template sync: " << updates << " offsets updated in memory.\n";
+        
+        // Ghi đè kết quả mới vào telemetry_config.hpp
+        std::ofstream outFile(configPath);
+        if (outFile.is_open()) {
+            for (const auto& l : lines) outFile << l << "\n";
+            outFile.close();
+            std::cout << "[+] Template sync: Successfully updated telemetry_config.hpp\n";
+        }
     } else {
         std::cout << "\n[!] WARNING: Could not find telemetry_config.hpp for mirroring. Using raw fallback.\n";
     }
  
     // --- 4. EXPORT TO PUBG_Offsets.h ---
-    // std::ofstream hFile("PUBG_Offsets.h");
-    // if (hFile.is_open()) {
-    //     hFile << "#pragma once\n#include <cstdint>\n\n// Standalone offsets mirroring project structure\nnamespace offsets {\n";
+    std::ofstream hFile("bin/PUBG_Offsets.h");
+    if (hFile.is_open()) {
+        hFile << "#pragma once\n#include <cstdint>\n\n// Standalone offsets mirroring project structure\nnamespace offsets {\n";
         
-    //     bool exportedAny = false;
-    //     if (!lines.empty()) {
-    //         for (const auto& line : lines) {
-    //             if (line.find("inline uint") != std::string::npos) {
-    //                 std::string clean = line;
-    //                 size_t first = clean.find_first_not_of(" ");
-    //                 if (first != std::string::npos) clean = clean.substr(first);
-    //                 hFile << "    " << clean << "\n";
-    //                 exportedAny = true;
-    //             }
-    //         }
-    //     }
+        bool exportedAny = false;
+        if (!lines.empty()) {
+            for (const auto& line : lines) {
+                if (line.find("inline uint") != std::string::npos || line.find("inline SecureOffset") != std::string::npos) {
+                    std::string clean = line;
+                    size_t first = clean.find_first_not_of(" ");
+                    if (first != std::string::npos) clean = clean.substr(first);
+                    
+                    if (clean.find("SecureOffset") != std::string::npos) {
+                        size_t pos = clean.find("SecureOffset");
+                        if (clean.find("SecureOffset32") != std::string::npos)
+                            clean.replace(pos, 14, "uint32_t");
+                        else
+                            clean.replace(pos, 12, "uint64_t");
+                    }
+                    hFile << "    " << clean << "\n";
+                    exportedAny = true;
+                }
+            }
+        }
 
-    //     if (!exportedAny) {
-    //         // FALLBACK: If template failed to produce valid offset lines, export raw results directly
-    //         for (auto const& [name, val] : results) {
-    //             if (val != 0) {
-    //                 hFile << "    inline uint64_t " << name << " = 0x" << std::hex << val << ";\n";
-    //             }
-    //         }
-    //     }
+        if (!exportedAny) {
+            for (auto const& [name, val] : results) {
+                if (val != 0) {
+                    if (val > 0xFFFFFFFF)
+                        hFile << "    inline uint64_t " << name << " = 0x" << std::hex << val << ";\n";
+                    else
+                        hFile << "    inline uint32_t " << name << " = 0x" << std::hex << (uint32_t)val << ";\n";
+                }
+            }
+        }
         
-    //     hFile << "}\n";
-    //     hFile.close();
-    //     std::cout << "[+] Exported synchronized results to bin/PUBG_Offsets.h\n";
-    // }
+        hFile << "}\n";
+        hFile.close();
+        std::cout << "[+] Exported synchronized results to bin/PUBG_Offsets.h\n";
+    }
  
     std::cout << "\n[*] Offset scanning complete. System ready.\n";
-    
     std::cout << "[!] This window will close automatically in 10 seconds...\n";
     for (int i = 10; i > 0; --i) {
         std::cout << "\rClosing in: " << i << " seconds...   " << std::flush;
@@ -478,4 +491,3 @@ int main() {
     }
     return 0;
 }
-

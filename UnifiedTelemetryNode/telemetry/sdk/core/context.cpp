@@ -38,6 +38,7 @@ extern std::string global_account_role;
 
 namespace {
     constexpr float kOverlayVisibilityThreshold = 0.05f;
+    const char* g_LastInitializeStatus = "not-started";
 
     struct OverlayBoneIndices {
         int head = 6;
@@ -350,6 +351,37 @@ namespace telemetryContext {
 
     uint64_t GetBaseAddress() { return telemetryMemory::g_BaseAddress; }
 
+    const char* GetLastInitializeStatus() {
+        return g_LastInitializeStatus;
+    }
+
+    bool TryInitializeWorldFromCurrentOffsets(uint64_t baseAddress) {
+        if (!baseAddress) {
+            g_LastInitializeStatus = "base-address-empty";
+            return false;
+        }
+
+        if (!telemetryDecrypt::Initialize(telemetryMemory::ReadMemory, baseAddress, telemetryOffsets::XenuineDecrypt)) {
+            g_LastInitializeStatus = "decrypt-init-failed";
+            return false;
+        }
+
+        uint64_t rawUWorld = 0;
+        if (!telemetryMemory::ReadMemory(baseAddress + telemetryOffsets::UWorld, &rawUWorld, sizeof(uint64_t))) {
+            g_LastInitializeStatus = "uworld-read-failed";
+            return false;
+        }
+
+        G_UWorld = telemetryDecrypt::Xe(rawUWorld);
+        if (G_UWorld > 0x1000000) {
+            g_LastInitializeStatus = "ready";
+            return true;
+        }
+
+        g_LastInitializeStatus = rawUWorld ? "uworld-decrypt-invalid" : "uworld-empty";
+        return false;
+    }
+
     bool WorldToScreen(Vector3 world_pos, Vector2& screen_pos) {
         const float PI_val = 3.14159265f;
         float radPitch = G_CameraRotation.x * PI_val / 180.0f;
@@ -544,31 +576,56 @@ namespace telemetryContext {
     }
 
     bool Initialize(uint32_t process_id, uint64_t base_address) {
+        static uint32_t lastScanPid = 0;
+        static uint64_t lastScanBase = 0;
+        static bool scannedRuntimeForProcess = false;
+
         telemetryMemory::g_ProcessId = process_id;
         telemetryMemory::g_BaseAddress = base_address;
-        telemetryMemory::RefreshProcessContext();
+        if (!telemetryMemory::RefreshProcessContext()) {
+            g_LastInitializeStatus = "process-context-refresh-failed";
+            return false;
+        }
         if (telemetryMemory::g_BaseAddress == 0) {
             telemetryMemory::g_BaseAddress = base_address;
         }
-
-        const bool usingRuntimeSignatures = telemetryRuntimeOffsets::ApplyRuntimeScan(telemetryMemory::g_BaseAddress);
-#ifdef _DEBUG
-        const auto& runtimeReport = telemetryRuntimeOffsets::GetLastReport();
-        std::cout << skCrypt("[INIT] offset source=")
-                  << (usingRuntimeSignatures ? skCrypt("signature-scan") : skCrypt("compiled-static"))
-                  << skCrypt(" scanned=") << (runtimeReport.Scanned ? skCrypt("yes") : skCrypt("no"))
-                  << skCrypt(" applied=") << runtimeReport.Applied
-                  << skCrypt(" required=") << runtimeReport.RequiredFound
-                  << skCrypt("/") << runtimeReport.RequiredTotal << std::endl;
-#endif
-
-        if (!telemetryDecrypt::Initialize(telemetryMemory::ReadMemory, telemetryMemory::g_BaseAddress, telemetryOffsets::XenuineDecrypt)) return false;
-
-        uint64_t rawUWorld = 0;
-        if (telemetryMemory::ReadMemory(telemetryMemory::g_BaseAddress + telemetryOffsets::UWorld, &rawUWorld, sizeof(uint64_t))) {
-            G_UWorld = telemetryDecrypt::Xe(rawUWorld);
-            if (G_UWorld > 0x1000000) return true;
+        if (telemetryMemory::g_BaseAddress == 0) {
+            g_LastInitializeStatus = "base-address-empty";
+            return false;
         }
+
+        if (lastScanPid != process_id || lastScanBase != telemetryMemory::g_BaseAddress) {
+            lastScanPid = process_id;
+            lastScanBase = telemetryMemory::g_BaseAddress;
+            scannedRuntimeForProcess = false;
+        }
+
+        if (TryInitializeWorldFromCurrentOffsets(telemetryMemory::g_BaseAddress)) {
+#ifdef _DEBUG
+            std::cout << skCrypt("[INIT] offset source=compiled-static status=ready") << std::endl;
+#endif
+            return true;
+        }
+
+        if (!scannedRuntimeForProcess) {
+            const char* preScanStatus = g_LastInitializeStatus;
+            const bool usingRuntimeSignatures = telemetryRuntimeOffsets::ApplyRuntimeScan(telemetryMemory::g_BaseAddress);
+            scannedRuntimeForProcess = true;
+#ifdef _DEBUG
+            const auto& runtimeReport = telemetryRuntimeOffsets::GetLastReport();
+            std::cout << skCrypt("[INIT] offset source=")
+                      << (usingRuntimeSignatures ? skCrypt("signature-scan") : skCrypt("compiled-static"))
+                      << skCrypt(" pre_scan_status=") << preScanStatus
+                      << skCrypt(" scanned=") << (runtimeReport.Scanned ? skCrypt("yes") : skCrypt("no"))
+                      << skCrypt(" applied=") << runtimeReport.Applied
+                      << skCrypt(" required=") << runtimeReport.RequiredFound
+                      << skCrypt("/") << runtimeReport.RequiredTotal << std::endl;
+#endif
+            if (usingRuntimeSignatures && TryInitializeWorldFromCurrentOffsets(telemetryMemory::g_BaseAddress)) {
+                return true;
+            }
+        }
+
         return false;
     }
 
@@ -1010,7 +1067,7 @@ namespace telemetryContext {
                             if (rawWeap.find(skCrypt("Item_Weapon_")) == 0) rawWeap.erase(0, 12);
                             if (rawWeap.length() >= 2 && rawWeap.substr(rawWeap.length() - 2) == skCrypt("_C")) rawWeap.erase(rawWeap.length() - 2);
                             
-                            if (rawWeap == skCrypt("HK416") || rawWeap == skCrypt("DuncansHK416")) rawWeap = skCrypt("M416");
+                            if (rawWeap == skCrypt("HK416") || rawWeap == skCrypt("DuncansHK416") || rawWeap == skCrypt("Duncans_M416")) rawWeap = skCrypt("M416");
                             else if (rawWeap == skCrypt("AK47") || rawWeap == skCrypt("LunchmeatsAK47")) rawWeap = skCrypt("AKM");
                             else if (rawWeap == skCrypt("MadsFNFal") || rawWeap == skCrypt("FNFal")) rawWeap = skCrypt("SLR");
                             else if (rawWeap == skCrypt("MadsQBU88")) rawWeap = skCrypt("QBU");

@@ -1473,10 +1473,37 @@ int main() {
   std::cout << "\n";
   SetConsoleColor(14);
   int sync_count = 0;
+  ULONGLONG engine_wait_started = GetTickCount64();
+  constexpr ULONGLONG kEngineWaitDiagnosticMs = 30000;
   while (!telemetryContext::Initialize(pid, base)) {
       sync_count++;
       std::cout << (g_is_vietnamese ? skCrypt("\r[*] Dang cho game san sang qua hyper [") : skCrypt("\r[*] Waiting for hyper-backed game state [")) << sync_count << skCrypt("]...   ") << std::flush;
       if (sync_count % 5 == 0) {
+          query_process_data_packet live_data = {};
+          const bool live_ok = telemetryHyperProcess::QueryProcessData(pid, &live_data);
+          if (live_ok && live_data.process_id != 0) {
+              const uint64_t live_base = reinterpret_cast<uint64_t>(live_data.base_address);
+              std::cout << skCrypt("\n[DEBUG][ENGINE] status=") << telemetryContext::GetLastInitializeStatus()
+                        << skCrypt(" pid=") << live_data.process_id
+                        << skCrypt(" cr3=0x") << std::hex << live_data.cr3
+                        << skCrypt(" base=0x") << live_base << std::dec << std::endl;
+              if (live_data.cr3 != telemetryMemory::g_ProcessCr3 || live_base != telemetryMemory::g_BaseAddress) {
+                  telemetryMemory::g_ProcessCr3 = live_data.cr3;
+                  telemetryMemory::g_BaseAddress = live_base;
+                  telemetryMemory::g_LastRefreshTime = 0;
+                  base = live_base;
+                  std::cout << skCrypt("[DEBUG][ENGINE] refreshed process context") << std::endl;
+              }
+          } else {
+              std::cout << skCrypt("\n[DEBUG][ENGINE] status=") << telemetryContext::GetLastInitializeStatus()
+                        << skCrypt(" process query failed; returning to PID wait may be needed") << std::endl;
+          }
+      }
+      if (GetTickCount64() - engine_wait_started > kEngineWaitDiagnosticMs) {
+          std::cout << skCrypt("\n[DEBUG][ENGINE] still waiting after 30s; last_status=")
+                    << telemetryContext::GetLastInitializeStatus()
+                    << skCrypt(". If the game is still loading, enter lobby/training; otherwise restart the game process.") << std::endl;
+          engine_wait_started = GetTickCount64();
       }
       Sleep(1000 + (rand() % 200));
   }

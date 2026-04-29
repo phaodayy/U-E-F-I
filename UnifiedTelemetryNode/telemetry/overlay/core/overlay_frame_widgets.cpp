@@ -88,7 +88,7 @@ void DrawPanelShell(ImDrawList* draw, ImVec2 pos, ImVec2 size, const char* title
 
     char header[128];
     sprintf_s(header, sizeof(header), skCrypt("%s  %d"), title, count);
-    DrawPanelText(draw, 14.0f, ImVec2(pos.x + 12.0f, pos.y + 9.0f), accent, header);
+    DrawPanelText(draw, 16.0f, ImVec2(pos.x + 12.0f, pos.y + 8.0f), accent, header);
 }
 
 std::string PlayerStatusText(const PlayerPanelRow& row) {
@@ -294,9 +294,10 @@ void OverlayMenu::RenderSpectatorThreatList(ImDrawList* draw,
         });
 
     const float margin = 20.0f;
-    const float panelW = std::clamp(ScreenWidth * 0.86f, 760.0f, 1240.0f);
+    const float panelMaxW = (std::max)(640.0f, ScreenWidth - margin * 2.0f);
+    const float panelW = std::clamp(ScreenWidth * 0.94f, 900.0f, panelMaxW);
     const float panelX = (ScreenWidth - panelW) * 0.5f;
-    float nextY = 72.0f;
+    float nextY = 44.0f;
 
     if (esp_spectator_list && (!spectators.empty() || totalSpectators > 0)) {
         const float specW = (std::min)(420.0f, panelW);
@@ -335,9 +336,12 @@ void OverlayMenu::RenderSpectatorThreatList(ImDrawList* draw,
 
     if (!player_list_enabled || players.empty()) return;
 
-    const float rowH = 24.0f;
-    const float headerH = 60.0f;
-    const int maxRows = (std::max)(8, (std::min)(32,
+    const float rowH = 30.0f;
+    const float headerH = 70.0f;
+    const float headerFont = 12.5f;
+    const float rowFont = 14.0f;
+    const float smallFont = 13.0f;
+    const int maxRows = (std::max)(8, (std::min)(48,
         static_cast<int>((ScreenHeight - nextY - headerH - margin) / rowH)));
     const int rows = (std::min)(static_cast<int>(players.size()), maxRows);
     const float panelH = headerH + rows * rowH + 9.0f;
@@ -349,21 +353,21 @@ void OverlayMenu::RenderSpectatorThreatList(ImDrawList* draw,
     const float x = panelPos.x;
     const float sx = panelW / 1180.0f;
     auto cx = [&](float value) { return x + value * sx; };
-    const float yHead = panelPos.y + 38.0f;
-    DrawPanelText(draw, 11.0f, ImVec2(cx(14.0f), yHead), IM_COL32(125, 145, 170, 255), skCrypt("T"));
-    DrawPanelText(draw, 11.0f, ImVec2(cx(58.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.Name);
-    DrawPanelText(draw, 11.0f, ImVec2(cx(225.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.Distance);
-    DrawPanelText(draw, 11.0f, ImVec2(cx(280.0f), yHead), IM_COL32(125, 145, 170, 255), skCrypt("HP"));
-    DrawPanelText(draw, 11.0f, ImVec2(cx(350.0f), yHead), IM_COL32(125, 145, 170, 255), skCrypt("K"));
-    DrawPanelText(draw, 11.0f, ImVec2(cx(385.0f), yHead), IM_COL32(125, 145, 170, 255), skCrypt("DMG"));
-    DrawPanelText(draw, 11.0f, ImVec2(cx(445.0f), yHead), IM_COL32(125, 145, 170, 255), skCrypt("Lv"));
-    DrawPanelText(draw, 11.0f, ImVec2(cx(485.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.Ammo);
-    DrawPanelText(draw, 11.0f, ImVec2(cx(545.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.Weapon);
-    DrawPanelText(draw, 11.0f, ImVec2(cx(655.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.HelmetShort);
-    DrawPanelText(draw, 11.0f, ImVec2(cx(765.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.VestShort);
-    DrawPanelText(draw, 11.0f, ImVec2(cx(875.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.BackpackShort);
-    DrawPanelText(draw, 11.0f, ImVec2(cx(985.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.State);
-    draw->AddLine(ImVec2(x + 9.0f, yHead + 17.0f), ImVec2(x + panelW - 9.0f, yHead + 17.0f),
+    const float yHead = panelPos.y + 43.0f;
+    DrawPanelText(draw, headerFont, ImVec2(cx(14.0f), yHead), IM_COL32(125, 145, 170, 255), skCrypt("T"));
+    DrawPanelText(draw, headerFont, ImVec2(cx(58.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.Name);
+    DrawPanelText(draw, headerFont, ImVec2(cx(225.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.Distance);
+    DrawPanelText(draw, headerFont, ImVec2(cx(280.0f), yHead), IM_COL32(125, 145, 170, 255), skCrypt("HP"));
+    DrawPanelText(draw, headerFont, ImVec2(cx(350.0f), yHead), IM_COL32(125, 145, 170, 255), skCrypt("K"));
+    DrawPanelText(draw, headerFont, ImVec2(cx(385.0f), yHead), IM_COL32(125, 145, 170, 255), skCrypt("DMG"));
+    DrawPanelText(draw, headerFont, ImVec2(cx(445.0f), yHead), IM_COL32(125, 145, 170, 255), skCrypt("Lv"));
+    DrawPanelText(draw, headerFont, ImVec2(cx(485.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.Ammo);
+    DrawPanelText(draw, headerFont, ImVec2(cx(545.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.Weapon);
+    DrawPanelText(draw, headerFont, ImVec2(cx(655.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.HelmetShort);
+    DrawPanelText(draw, headerFont, ImVec2(cx(765.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.VestShort);
+    DrawPanelText(draw, headerFont, ImVec2(cx(875.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.BackpackShort);
+    DrawPanelText(draw, headerFont, ImVec2(cx(985.0f), yHead), IM_COL32(125, 145, 170, 255), Lang.State);
+    draw->AddLine(ImVec2(x + 9.0f, yHead + 20.0f), ImVec2(x + panelW - 9.0f, yHead + 20.0f),
         IM_COL32(255, 255, 255, 28), 1.0f);
 
     float y = panelPos.y + headerH;
@@ -395,26 +399,26 @@ void OverlayMenu::RenderSpectatorThreatList(ImDrawList* draw,
             sprintf_s(ammoBuf, sizeof(ammoBuf), skCrypt("-"));
         }
 
-        const std::string name = FitPanelText(row.Name, 12.0f, 138.0f);
-        const std::string weapon = FitPanelText(row.Weapon, 12.0f, 92.0f * sx);
-        const std::string helmet = FitPanelText(GearText(row.HelmetLevel, row.HelmetDurability, skCrypt("H")), 11.5f, 98.0f * sx);
-        const std::string vest = FitPanelText(GearText(row.VestLevel, row.VestDurability, skCrypt("V")), 11.5f, 98.0f * sx);
-        const std::string pack = FitPanelText(GearText(row.BackpackLevel, row.BackpackDurability, skCrypt("B")), 11.5f, 98.0f * sx);
-        const std::string state = FitPanelText(PlayerStatusText(row), 11.0f, 150.0f * sx);
+        const std::string name = FitPanelText(row.Name, rowFont, 158.0f * sx);
+        const std::string weapon = FitPanelText(row.Weapon, rowFont, 100.0f * sx);
+        const std::string helmet = FitPanelText(GearText(row.HelmetLevel, row.HelmetDurability, skCrypt("H")), smallFont, 100.0f * sx);
+        const std::string vest = FitPanelText(GearText(row.VestLevel, row.VestDurability, skCrypt("V")), smallFont, 100.0f * sx);
+        const std::string pack = FitPanelText(GearText(row.BackpackLevel, row.BackpackDurability, skCrypt("B")), smallFont, 100.0f * sx);
+        const std::string state = FitPanelText(PlayerStatusText(row), smallFont, 150.0f * sx);
 
-        DrawPanelText(draw, 12.0f, ImVec2(cx(15.0f), y + 2.0f), rowCol, teamBuf);
-        DrawPanelText(draw, 12.0f, ImVec2(cx(58.0f), y + 2.0f), rowCol, name.c_str());
-        DrawPanelText(draw, 12.0f, ImVec2(cx(225.0f), y + 2.0f), IM_COL32(190, 210, 230, 255), distBuf);
-        DrawHealthMiniBar(draw, ImVec2(cx(280.0f), y + 8.0f), 58.0f * sx, row.HP, row.IsGroggy);
-        DrawPanelText(draw, 12.0f, ImVec2(cx(350.0f), y + 2.0f), IM_COL32(255, 210, 80, 255), killBuf);
-        DrawPanelText(draw, 12.0f, ImVec2(cx(385.0f), y + 2.0f), IM_COL32(255, 140, 80, 255), damageBuf);
-        DrawPanelText(draw, 12.0f, ImVec2(cx(445.0f), y + 2.0f), IM_COL32(110, 230, 255, 255), levelBuf);
-        DrawPanelText(draw, 12.0f, ImVec2(cx(485.0f), y + 2.0f), IM_COL32(238, 238, 178, 255), ammoBuf);
-        DrawPanelText(draw, 12.0f, ImVec2(cx(545.0f), y + 2.0f), IM_COL32(190, 236, 255, 255), weapon.c_str());
-        DrawPanelText(draw, 11.5f, ImVec2(cx(655.0f), y + 3.0f), IM_COL32(170, 220, 255, 255), helmet.c_str());
-        DrawPanelText(draw, 11.5f, ImVec2(cx(765.0f), y + 3.0f), IM_COL32(180, 235, 190, 255), vest.c_str());
-        DrawPanelText(draw, 11.5f, ImVec2(cx(875.0f), y + 3.0f), IM_COL32(225, 205, 135, 255), pack.c_str());
-        DrawPanelText(draw, 11.0f, ImVec2(cx(985.0f), y + 3.0f), rowCol, state.c_str());
+        DrawPanelText(draw, rowFont, ImVec2(cx(15.0f), y + 4.0f), rowCol, teamBuf);
+        DrawPanelText(draw, rowFont, ImVec2(cx(58.0f), y + 4.0f), rowCol, name.c_str());
+        DrawPanelText(draw, rowFont, ImVec2(cx(225.0f), y + 4.0f), IM_COL32(190, 210, 230, 255), distBuf);
+        DrawHealthMiniBar(draw, ImVec2(cx(280.0f), y + 12.0f), 64.0f * sx, row.HP, row.IsGroggy);
+        DrawPanelText(draw, rowFont, ImVec2(cx(350.0f), y + 4.0f), IM_COL32(255, 210, 80, 255), killBuf);
+        DrawPanelText(draw, rowFont, ImVec2(cx(385.0f), y + 4.0f), IM_COL32(255, 140, 80, 255), damageBuf);
+        DrawPanelText(draw, rowFont, ImVec2(cx(445.0f), y + 4.0f), IM_COL32(110, 230, 255, 255), levelBuf);
+        DrawPanelText(draw, rowFont, ImVec2(cx(485.0f), y + 4.0f), IM_COL32(238, 238, 178, 255), ammoBuf);
+        DrawPanelText(draw, rowFont, ImVec2(cx(545.0f), y + 4.0f), IM_COL32(190, 236, 255, 255), weapon.c_str());
+        DrawPanelText(draw, smallFont, ImVec2(cx(655.0f), y + 5.0f), IM_COL32(170, 220, 255, 255), helmet.c_str());
+        DrawPanelText(draw, smallFont, ImVec2(cx(765.0f), y + 5.0f), IM_COL32(180, 235, 190, 255), vest.c_str());
+        DrawPanelText(draw, smallFont, ImVec2(cx(875.0f), y + 5.0f), IM_COL32(225, 205, 135, 255), pack.c_str());
+        DrawPanelText(draw, smallFont, ImVec2(cx(985.0f), y + 5.0f), rowCol, state.c_str());
         y += rowH;
     }
 }

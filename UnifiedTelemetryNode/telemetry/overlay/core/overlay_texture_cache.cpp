@@ -105,6 +105,7 @@ std::string WeaponAssetAlias(const std::string& weaponName) {
         { "decoygrenade", "诱饵手雷" },
         { "deserteagle", "沙漠之鹰" },
         { "dp12", "DBS" },
+        { "duncansm416", "M416" },
         { "duncanshk416", "M416" },
         { "famas", "FAMASI" },
         { "famasg2", "FAMASI" },
@@ -417,10 +418,26 @@ TextureInfo* GetWeaponImage(const std::string& weaponName) {
     int h = 0;
     int frames = 1;
 
+    const char* weaponFolders[] = {
+        skCrypt("Weapon"),
+        skCrypt("Gun/AR"),
+        skCrypt("Gun/DMR"),
+        skCrypt("Gun/HG"),
+        skCrypt("Gun/LMG"),
+        skCrypt("Gun/Melee"),
+        skCrypt("Gun/SG"),
+        skCrypt("Gun/SMG"),
+        skCrypt("Gun/Special"),
+        skCrypt("Gun/SR"),
+        skCrypt("Gun/Throw")
+    };
+
     for (const std::string& candidate : WeaponIconCandidates(weaponName)) {
-        if (LoadTextureFromAssetFolders("Weapon", candidate, &srv, &w, &h, &frames)) {
-            g_weaponImages[weaponName] = { srv, w, h, frames };
-            return &g_weaponImages[weaponName];
+        for (const char* folder : weaponFolders) {
+            if (LoadTextureFromAssetFolders(folder, candidate, &srv, &w, &h, &frames)) {
+                g_weaponImages[weaponName] = { srv, w, h, frames };
+                return &g_weaponImages[weaponName];
+            }
         }
     }
 

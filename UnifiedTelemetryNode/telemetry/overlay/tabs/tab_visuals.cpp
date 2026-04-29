@@ -104,6 +104,11 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
     ImGui::Checkbox(Lang.TeamID, &g_Menu.esp_teamid);
     ImGui::Checkbox(Lang.KillCount, &g_Menu.esp_killcount);
     ImGui::Checkbox(Lang.Damage, &g_Menu.esp_damage);
+    ImGui::Checkbox(Lang.Weapon, &g_Menu.esp_weapon);
+    ImGui::SetNextItemWidth(130);
+    const char* weaponDisplayItems[] = { skCrypt("Text"), skCrypt("Icon") };
+    ImGui::Combo(skCrypt("Weapon Display"), &g_Menu.esp_weapon_type,
+        weaponDisplayItems, IM_ARRAYSIZE(weaponDisplayItems));
     ImGui::Checkbox(Lang.Ammo, &g_Menu.esp_ammo);
     ImGui::Checkbox(Lang.Speed, &g_Menu.esp_speed);
     ImGui::Checkbox(Lang.Rank, &g_Menu.esp_rank);
@@ -410,7 +415,7 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
         }
 
         if (g_Menu.esp_close_warning) {
-            DrawPreviewChip(skCrypt("##DragClose"), skCrypt("! 42m"),
+            DrawPreviewChip(skCrypt("##DragClose"), skCrypt("!"),
                 (std::max)(10.0f, g_Menu.spectated_font_size - 1.0f),
                 ColorFromFloats(g_Menu.close_warning_color), &g_Menu.esp_spectated_pos, 1.0f, true);
         }

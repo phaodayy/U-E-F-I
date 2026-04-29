@@ -532,8 +532,7 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
 
                     if (g_Menu.esp_close_warning && !player.IsTeammate &&
                         player.Distance > 0.0f && player.Distance <= g_Menu.esp_close_warning_distance) {
-                        char closeText[32];
-                        sprintf_s(closeText, sizeof(closeText), skCrypt("! %dm"), static_cast<int>(player.Distance));
+                        const char* closeText = skCrypt("!");
                         const float closeFont = (std::max)(10.0f, g_Menu.spectated_font_size - 1.0f);
                         ImVec2 closeSize = ChipSize(TextSize(closeText, closeFont));
                         ImVec2 closePos = espLayout.Take(

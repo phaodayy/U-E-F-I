@@ -22,6 +22,7 @@ void ClampPlayer(OverlayMenu& menu) {
     menu.esp_text_bg_alpha = std::clamp(menu.esp_text_bg_alpha, 0.0f, 0.70f);
     menu.esp_health_display_mode = std::clamp(menu.esp_health_display_mode, 0, 1);
     menu.esp_health_bar_style = std::clamp(menu.esp_health_bar_style, 0, 4);
+    menu.esp_weapon_type = std::clamp(menu.esp_weapon_type, 0, 1);
     menu.snapline_type = std::clamp(menu.snapline_type, 0, 3);
     menu.esp_view_direction_length = std::clamp(menu.esp_view_direction_length, 5.0f, 120.0f);
     menu.esp_close_warning_distance = std::clamp(menu.esp_close_warning_distance, 10.0f, 150.0f);

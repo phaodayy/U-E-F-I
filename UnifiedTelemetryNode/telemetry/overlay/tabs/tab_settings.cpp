@@ -29,16 +29,16 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
     auto Lang = Translation::Get();
     float totalWidth = windowSize.x - 60;
     bool isLoggedIn = !global_account_token.empty();
-    const int columnCount = isLoggedIn ? 3 : 1;
-    ImGui::Columns(columnCount, skCrypt("SettingsColumns"), false);
-    ImGui::SetColumnWidth(0, isLoggedIn ? totalWidth / 3.0f : totalWidth);
     if (isLoggedIn) {
+        ImGui::Columns(3, skCrypt("SettingsColumns"), false);
+        ImGui::SetColumnWidth(0, totalWidth / 3.0f);
         ImGui::SetColumnWidth(1, totalWidth / 3.0f);
         ImGui::SetColumnWidth(2, totalWidth / 3.0f);
     }
 
     // --- COL 1: ACCOUNT & LICENSE ---
-    BeginGlassCard(skCrypt("##SetCol1"), Lang.HeaderAccount, ImVec2(totalWidth / 3.0f - 20, 0));
+    const float accountCardWidth = isLoggedIn ? totalWidth / 3.0f - 20.0f : totalWidth - 20.0f;
+    BeginGlassCard(skCrypt("##SetCol1"), Lang.HeaderAccount, ImVec2(accountCardWidth, 0));
     
     extern std::string global_account_token;
     extern std::string global_account_username;
@@ -143,7 +143,6 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
 
     ImGui::EndChild();
     if (!isLoggedIn) {
-        ImGui::Columns(1);
         return;
     }
 

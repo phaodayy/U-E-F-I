@@ -131,6 +131,7 @@ extern float G_CamFOV;
 
 namespace telemetryContext {
     bool Initialize(uint32_t process_id, uint64_t base_address);
+    const char* GetLastInitializeStatus();
     void UpdateGameData();
     void UpdateCamera();
     bool ReadMemory(uint64_t src, void* dest, uint64_t size);
