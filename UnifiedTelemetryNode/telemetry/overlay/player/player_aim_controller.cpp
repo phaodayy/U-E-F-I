@@ -5,6 +5,39 @@
 #include <cmath>
 #include <vector>
 
+#include <protec/skCrypt.h>
+
+class PIDController {
+public:
+    float kp, ki, kd;
+    float last_error = 0;
+    float integral = 0;
+
+    PIDController(float p = 0.4f, float i = 0.01f, float d = 0.05f) : kp(p), ki(i), kd(d) {}
+
+    void init(float p, float i, float d) {
+        kp = p; ki = i; kd = d;
+        last_error = 0;
+        integral = 0;
+    }
+
+    float compute(float error, float dt = 0.01f) {
+        integral += error * dt;
+        float derivative = (error - last_error) / dt;
+        float output = kp * error + ki * integral + kd * derivative;
+        last_error = error;
+        return output;
+    }
+
+    void clear() {
+        last_error = 0;
+        integral = 0;
+    }
+};
+
+static PIDController AimPidX(0.4f, 0.01f, 0.05f);
+static PIDController AimPidY(0.4f, 0.01f, 0.05f);
+
 void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>& localPlayers,
     const Vector2& local_feet_s, bool hasLocalS, float ScreenCenterX,
     float ScreenCenterY, float ScreenHeight, bool is_authenticated) {
@@ -144,27 +177,31 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
         }
 
         // --- 2. APPLY precision_calibration MOVEMENT ---
-        // Finalize the mouse movement after all player iteration is DONE.
         if (is_authenticated && bestTarget) {
-            float moveX = (bestScreenPos.x - ScreenCenterX);
-            float moveY = (bestScreenPos.y - ScreenCenterY);
+            float errorX = (bestScreenPos.x - ScreenCenterX);
+            float errorY = (bestScreenPos.y - ScreenCenterY);
 
-            if (activeConfig.smooth > 1.0f) {
-                const float moveLen = std::sqrt((moveX * moveX) + (moveY * moveY));
-                const float nearFactor = std::clamp(moveLen / 160.0f, 0.0f, 1.0f);
-                float smoothDivisor = activeConfig.smooth;
-                if (aim_smooth_curve == 1) {
-                    smoothDivisor *= 0.72f + nearFactor * 0.28f;
-                } else if (aim_smooth_curve == 2) {
-                    smoothDivisor *= 1.30f - nearFactor * 0.35f;
-                } else if (aim_smooth_curve == 3) {
-                    smoothDivisor *= 0.62f;
-                }
-                smoothDivisor = (std::max)(1.0f, smoothDivisor);
-                moveX /= smoothDivisor;
-                moveY /= smoothDivisor;
-            }
+            // Use PID for smoother movement (Ref: AimBot.h / Visuals.cpp PID Logic)
+            float moveX = AimPidX.compute(errorX, 0.01f); 
+            float moveY = AimPidY.compute(errorY, 0.01f);
+
+            // Apply smoothing divisor from config as a global scale
+            float smoothFactor = (std::max)(1.0f, activeConfig.smooth);
+            
+            // Dynamic scale based on distance to center (makes final lock gentle)
+            const float moveLen = std::sqrt((errorX * errorX) + (errorY * errorY));
+            const float nearFactor = std::clamp(moveLen / 100.0f, 0.5f, 1.0f);
+            
+            moveX /= (smoothFactor * nearFactor);
+            moveY /= (smoothFactor * nearFactor);
+
+            // Final safety clamp to prevent wild jumps
+            moveX = std::clamp(moveX, -150.0f, 150.0f);
+            moveY = std::clamp(moveY, -150.0f, 150.0f);
 
             telemetryMemory::MoveMouse((long)moveX, (long)moveY);
+        } else {
+            AimPidX.clear();
+            AimPidY.clear();
         }
 }

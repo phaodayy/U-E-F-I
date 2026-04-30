@@ -225,10 +225,25 @@ namespace telemetryMemory {
     }
 
     inline bool MoveMouse(long x, long y, unsigned short flags = 0) {
-        (void)x;
-        (void)y;
-        (void)flags;
-        return false;
+        if (x == 0 && y == 0 && flags == 0) return true;
+
+        // Try Hypervisor-level injection first (Ring -1)
+        if (VMouseClient::Move(static_cast<int>(x), static_cast<int>(y), flags)) {
+            return true;
+        }
+
+        // Fallback to standard SendInput if Hypervisor injection is not available
+        INPUT input{};
+        input.type = INPUT_MOUSE;
+        input.mi.dx = static_cast<LONG>(x);
+        input.mi.dy = static_cast<LONG>(y);
+        input.mi.dwFlags = MOUSEEVENTF_MOVE | (flags == 1 ? MOUSEEVENTF_LEFTDOWN : (flags == 2 ? MOUSEEVENTF_LEFTUP : 0));
+        
+        // Handle explicit clicks if flags are provided (simplification)
+        if (flags & MOUSEEVENTF_LEFTDOWN) input.mi.dwFlags |= MOUSEEVENTF_LEFTDOWN;
+        if (flags & MOUSEEVENTF_LEFTUP) input.mi.dwFlags |= MOUSEEVENTF_LEFTUP;
+
+        return SendInput(1, &input, sizeof(INPUT)) == 1;
     }
 
     inline bool AttachToGameStealthily(uint32_t pid) {

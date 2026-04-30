@@ -1202,7 +1202,7 @@ public:
             const long outY = static_cast<long>(std::llround(moveYWithRemainder));
             if (outX != 0 || outY != 0)
             {
-                const bool sent = SendInputMacro::Move(outX, outY);
+                const bool sent = telemetryMemory::MoveMouse(outX, outY);
                 if (sent)
                 {
                     pixel_remainder_x = (moveX + pixel_remainder_x) - static_cast<float>(outX);
