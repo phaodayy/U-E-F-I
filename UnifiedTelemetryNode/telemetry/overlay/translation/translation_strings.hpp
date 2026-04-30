@@ -288,7 +288,6 @@ namespace Translation {
         const char* Password;
         const char* Login;
         const char* Logout;
-        const char* Register;
         const char* ActivateKey;
         const char* Expiry;
         const char* ConfigCode;

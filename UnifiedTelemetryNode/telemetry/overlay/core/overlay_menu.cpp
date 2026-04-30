@@ -10,7 +10,6 @@
 #include <string>
 
 extern const wchar_t* LOADER_LOGIN_PATH;
-extern const wchar_t* LOADER_REGISTER_PATH;
 #include <algorithm>
 #include <cmath>
 #include <chrono>

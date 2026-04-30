@@ -24,7 +24,6 @@ extern bool DoAPIRequest(const std::string& key, const std::string& hwid, bool s
 extern bool DownloadLoaderConfig();
 extern bool HttpJsonPost(const wchar_t* path, const nlohmann::json& requestBody, const std::string& token, std::string& response);
 extern const wchar_t* LOADER_LOGIN_PATH;
-extern const wchar_t* LOADER_REGISTER_PATH;
 
 void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
     auto Lang = Translation::Get();
@@ -67,7 +66,7 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
 
         ImGui::Spacing();
         
-        if (ImGui::Button(Lang.Login, ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 5, 35))) {
+        if (ImGui::Button(Lang.Login, ImVec2(-1, 35))) {
             nlohmann::json req;
             req["username"] = user_buf;
             req["password"] = pass_buf;
@@ -75,25 +74,6 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
             std::string resp;
             extern bool HttpJsonPost(const wchar_t* path, const nlohmann::json& requestBody, const std::string& token, std::string& response);
             if (HttpJsonPost(LOADER_LOGIN_PATH, req, "", resp)) {
-                if (ParseAuthSessionResponse(resp, true)) {
-                    if (HasActiveLoaderEntitlement()) {
-                        DownloadLoaderConfig();
-                    }
-                    SaveLoaderSessionFile();
-                } else {
-                    global_license_error = resp;
-                }
-            }
-        }
-        ImGui::SameLine();
-        if (ImGui::Button(Lang.Register, ImVec2(-1, 35))) {
-            nlohmann::json req;
-            req["username"] = user_buf;
-            req["password"] = pass_buf;
-            req["hwid"] = GetHWID();
-            std::string resp;
-            extern bool HttpJsonPost(const wchar_t* path, const nlohmann::json& requestBody, const std::string& token, std::string& response);
-            if (HttpJsonPost(LOADER_REGISTER_PATH, req, "", resp)) {
                 if (ParseAuthSessionResponse(resp, true)) {
                     if (HasActiveLoaderEntitlement()) {
                         DownloadLoaderConfig();

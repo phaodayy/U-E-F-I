@@ -403,7 +403,6 @@ inline void FillEnglish(Strings& s) {
             s.Password = skCrypt("Password");
             s.Login = skCrypt("Login");
             s.Logout = skCrypt("Logout");
-            s.Register = skCrypt("Register");
             s.ActivateKey = skCrypt("Activate Key");
             s.Expiry = skCrypt("Expiry Date");
             s.ConfigCode = skCrypt("Config Code");

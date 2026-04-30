@@ -88,7 +88,6 @@ bool aggressive_copy(const std::string& src, const std::string& dst) {
 namespace auth {
     constexpr const wchar_t* kHost = L"licensing-backend.donghiem114.workers.dev";
     constexpr const wchar_t* kUserAgent = L"GZ-Account-Loader";
-    constexpr const wchar_t* kRegisterPath = L"/loader/register";
     constexpr const wchar_t* kLoginPath = L"/loader/login";
     constexpr const wchar_t* kMePath = L"/loader/me";
     constexpr const wchar_t* kActivatePath = L"/loader/keys/activate";
@@ -353,25 +352,20 @@ namespace auth {
         kIdKeyEdit = 1003,
         kIdOk = 1004,
         kIdCancel = 1005,
-        kIdRegister = 1006,
-        kIdEmailEdit = 1007,
         kIdRedeem = 1008,
         kIdContinue = 1009
     };
 
     struct AuthDialogState {
         bool key_mode = false;
-        bool register_request = false;
         bool done = false;
         bool ok = false;
         HWND user_edit = nullptr;
         HWND password_edit = nullptr;
         HWND key_edit = nullptr;
-        HWND email_edit = nullptr;
         std::string username;
         std::string password;
         std::string key;
-        std::string email;
     };
 
     std::string window_text(HWND hwnd) {
@@ -434,11 +428,8 @@ namespace auth {
                 state->user_edit = create_edit(hwnd, kIdUserEdit, 128, 22, 232, 24, false);
                 create_label(hwnd, "Mat khau", 24, 60, 120, 20);
                 state->password_edit = create_edit(hwnd, kIdPasswordEdit, 128, 58, 232, 24, true);
-                create_label(hwnd, "Email", 24, 96, 120, 20);
-                state->email_edit = create_edit(hwnd, kIdEmailEdit, 128, 94, 232, 24, false);
-                create_button(hwnd, kIdOk, "Dang nhap", 98, 140, 82, 28);
-                create_button(hwnd, kIdRegister, "Dang ki", 188, 140, 82, 28);
-                create_button(hwnd, kIdCancel, "Huy", 278, 140, 82, 28);
+                create_button(hwnd, kIdOk, "Dang nhap", 188, 104, 82, 28);
+                create_button(hwnd, kIdCancel, "Huy", 278, 104, 82, 28);
                 SetFocus(state->user_edit);
             }
             return 0;
@@ -456,28 +447,10 @@ namespace auth {
                 } else {
                     state->username = window_text(state->user_edit);
                     state->password = window_text(state->password_edit);
-                    state->email = window_text(state->email_edit);
                     if (state->username.empty() || state->password.empty()) {
                         MessageBoxA(hwnd, "Vui long nhap tai khoan va mat khau.", "GZ Loader", MB_ICONWARNING | MB_OK);
                         return 0;
                     }
-                    state->register_request = false;
-                }
-                state->ok = true;
-                state->done = true;
-                DestroyWindow(hwnd);
-                return 0;
-
-            case kIdRegister:
-                if (!state->key_mode) {
-                    state->username = window_text(state->user_edit);
-                    state->password = window_text(state->password_edit);
-                    state->email = window_text(state->email_edit);
-                    if (state->username.empty() || state->password.empty()) {
-                        MessageBoxA(hwnd, "Vui long nhap tai khoan va mat khau.", "GZ Loader", MB_ICONWARNING | MB_OK);
-                        return 0;
-                    }
-                    state->register_request = true;
                 }
                 state->ok = true;
                 state->done = true;
@@ -525,7 +498,7 @@ namespace auth {
         }
 
         const int width = 400;
-        const int height = state.key_mode ? 170 : 225;
+        const int height = state.key_mode ? 170 : 185;
         const int x = (GetSystemMetrics(SM_CXSCREEN) - width) / 2;
         const int y = (GetSystemMetrics(SM_CYSCREEN) - height) / 2;
         HWND hwnd = CreateWindowExA(WS_EX_DLGMODALFRAME,
@@ -653,7 +626,7 @@ namespace auth {
         return state.action;
     }
 
-    bool login_or_register(Session& session, const std::string& hwid) {
+    bool login(Session& session, const std::string& hwid) {
         AuthDialogState input;
         if (!show_auth_dialog(input)) return false;
 
@@ -661,20 +634,16 @@ namespace auth {
         request["username"] = input.username;
         request["password"] = input.password;
         request["hwid"] = hwid;
-        if (input.register_request && !input.email.empty()) {
-            request["email"] = input.email;
-        }
 
         std::string response;
-        const wchar_t* path = input.register_request ? kRegisterPath : kLoginPath;
-        if (!post_json(path, request, "", response)) {
+        if (!post_json(kLoginPath, request, "", response)) {
             MessageBoxA(nullptr, "Khong ket noi duoc may chu tai khoan.", "GZ Loader", MB_ICONERROR | MB_OK);
             return false;
         }
 
         nlohmann::json json = nlohmann::json::parse(response, nullptr, false);
         if (!json.is_object() || !json.contains("token")) {
-            MessageBoxA(nullptr, response.c_str(), input.register_request ? "Dang ki that bai" : "Dang nhap that bai", MB_ICONERROR | MB_OK);
+            MessageBoxA(nullptr, response.c_str(), "Dang nhap that bai", MB_ICONERROR | MB_OK);
             return false;
         }
 
@@ -723,7 +692,7 @@ namespace auth {
             return true;
         }
 
-        if (!login_or_register(session, hwid)) return false;
+        if (!login(session, hwid)) return false;
 
         if (session.active) {
             const int action = show_status_dialog(session);

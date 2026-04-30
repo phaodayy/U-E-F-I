@@ -213,7 +213,6 @@ uint64_t g_last_tick_count = 0;
 extern const wchar_t* LICENSE_API_HOST = L"licensing-backend.donghiem114.workers.dev";
 extern const wchar_t* LICENSE_ACTIVATE_PATH = L"/public/activate";
 extern const wchar_t* LICENSE_HEARTBEAT_PATH = L"/public/heartbeat";
-extern const wchar_t* LOADER_REGISTER_PATH = L"/loader/register";
 extern const wchar_t* LOADER_LOGIN_PATH = L"/loader/login";
 extern const wchar_t* LOADER_ME_PATH = L"/loader/me";
 extern const wchar_t* LOADER_KEY_ACTIVATE_PATH = L"/loader/keys/activate";
@@ -913,7 +912,6 @@ bool ParseAuthSessionResponse(const std::string& responseStr, bool allowNoActive
 
     if (!topStatus.empty() &&
         topStatus != skCrypt("OK") &&
-        topStatus != skCrypt("REGISTERED") &&
         topStatus != skCrypt("ACTIVATED")) {
         global_license_error = topStatus;
         return false;
@@ -963,12 +961,8 @@ bool TryResumeLoaderAccount(const std::string& hwid) {
 
 bool PromptLoaderAccountLogin(const std::string& hwid) {
     SetConsoleColor(11);
-    std::cout << skCrypt("\n[1] Dang nhap tai khoan\n[2] Tao tai khoan moi\n> ");
+    std::cout << skCrypt("\nDang nhap tai khoan\n");
     SetConsoleColor(15);
-
-    std::string choice;
-    std::getline(std::cin, choice);
-    bool registering = choice == skCrypt("2");
 
     std::string username;
     std::string password;
@@ -983,7 +977,7 @@ bool PromptLoaderAccountLogin(const std::string& hwid) {
     requestJson[skCrypt("hwid")] = hwid;
 
     std::string responseStr;
-    if (!HttpJsonPost(registering ? LOADER_REGISTER_PATH : LOADER_LOGIN_PATH, requestJson, skCrypt(""), responseStr)) {
+    if (!HttpJsonPost(LOADER_LOGIN_PATH, requestJson, skCrypt(""), responseStr)) {
         global_license_error = g_is_vietnamese ? skCrypt("Khong ket noi duoc may chu tai khoan.") : skCrypt("Cannot connect to account server.");
         return false;
     }

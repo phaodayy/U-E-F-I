@@ -265,7 +265,6 @@ inline void FillVietnamese(Strings& s) {
         s.Password = (const char*)u8"Mật khẩu";
         s.Login = (const char*)u8"Đăng nhập";
         s.Logout = (const char*)u8"Đăng xuất";
-        s.Register = (const char*)u8"Đăng ký";
         s.ActivateKey = (const char*)u8"Kích hoạt Key";
         s.Expiry = (const char*)u8"Hạn dùng";
         s.ConfigCode = (const char*)u8"Mã Config";
