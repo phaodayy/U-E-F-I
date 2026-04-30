@@ -24,7 +24,7 @@ void OverlayMenu::RenderTabMacro(ImVec2 windowSize) {
     ImGui::NextColumn();
     // Col 2: Settings
     BeginGlassCard(skCrypt("##MacroCol2"), Lang.HeaderPrecisionSettings, ImVec2(totalWidth / 3.0f - 20, 0));
-    ImGui::SliderFloat(Lang.MacroStrength, &g_Menu.macro_overlay_color[3], 0.1f, 2.0f, skCrypt("%.2f")); // Using alpha as strength stub if member missing
+    ImGui::SliderFloat(Lang.MacroStrength, &g_Menu.macro_recoil_strength, 1.0f, 100.0f, skCrypt("%.0f")); 
     ImGui::Checkbox(Lang.ShowMacroOSD, &g_Menu.show_macro_overlay);
     ImGui::ColorEdit4(Lang.OsdColor, g_Menu.macro_overlay_color, ImGuiColorEditFlags_NoInputs);
     ImGui::Separator();

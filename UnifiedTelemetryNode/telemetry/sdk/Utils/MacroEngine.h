@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <vector>
 #include "../core/context.hpp"
+#include "../../overlay/core/overlay_menu.hpp"
 #include "../core/embedded_resources.hpp"
 #include "../core/fname.hpp"
 #include "../memory/memory.hpp"
@@ -104,6 +105,7 @@ public:
     static inline float pixel_remainder_y = 0.0f;
     static inline float last_recoil_pitch = 0.0f;
     static inline float last_recoil_yaw = 0.0f;
+    static inline float last_vec_y = 0.0f;
     static inline bool trigger_firing = false;
     static inline ULONGLONG last_debug_state_tick = 0;
     static inline ULONGLONG last_debug_gate_tick = 0;
@@ -945,6 +947,7 @@ public:
         pixel_remainder_y = 0.0f;
         last_recoil_pitch = 0.0f;
         last_recoil_yaw = 0.0f;
+        last_vec_y = 0.0f;
         bullet_index = 0;
     }
 
@@ -1095,11 +1098,13 @@ public:
             last_fire_time = now;
 
             const AngleRotation recoilRot = telemetryMemory::Read<AngleRotation>(anim + telemetry_config::offsets::RecoilADSRotation_CP);
-            
+            const AngleRotation ctrlRot = telemetryMemory::Read<AngleRotation>(anim + telemetry_config::offsets::ControlRotation_CP);
+            const Vector3 recoilVec = telemetryMemory::Read<Vector3>(anim + telemetry_config::offsets::RecoilValueVector);
+
             static ULONGLONG lastRecoilLog = 0;
             if (now - lastRecoilLog > 100) {
                 lastRecoilLog = now;
-                std::cout << "[RECOIL][RAW] Pitch=" << recoilRot.Pitch << " Yaw=" << recoilRot.Yaw << " Roll=" << recoilRot.Roll << std::endl;
+                std::cout << "[RECOIL][RAW] Pitch=" << recoilRot.Pitch << " CtrlP=" << ctrlRot.Pitch << " VecY=" << recoilVec.y << std::endl;
             }
 
             if (!std::isfinite(recoilRot.Yaw) || !std::isfinite(recoilRot.Pitch))
@@ -1136,14 +1141,24 @@ public:
             else if (characterState == 2 && current_gun_data.contains("z")) p_m = current_gun_data["z"].get<float>();
 
             const float sens = GetSensMultiplier();
-            float moveY = pitchDelta * profile.angleToPixelY * profile.pitchGain * sens * profile.multiplier * res_scale_y * p_m;
-            float moveX = 0.0f; // Disabled horizontal compensation per user request to avoid screen shaking
+            
+            // Re-enabled menu settings with 0-100 scale interpretation
+            // multiplier and pitchGain now act as percentages (0-100)
+            float strengthY = (g_Menu.macro_recoil_strength / 100.0f);
+            
+            float moveY = pitchDelta * 50.0f * strengthY * sens * res_scale_y * p_m;
+            float moveX = 0.0f; 
+
+            // Combined with Vector Recoil
+            float vecDelta = recoilVec.y - last_vec_y;
+            if (std::abs(vecDelta) < 10.0f && std::abs(vecDelta) > 0.001f) {
+                moveY += vecDelta * 1.2f * strengthY * sens; 
+            }
+            last_vec_y = recoilVec.y;
 
             if (macro_humanize)
             {
-                const int rnd = rand() % 1001;
-                const float ratio = static_cast<float>(rnd) / 1000.0f;
-                const float yFactor = profile.humanizeMin + ((profile.humanizeMax - profile.humanizeMin) * ratio);
+                const float yFactor = 0.98f + (static_cast<float>(rand() % 41) / 1000.0f);
                 moveY *= yFactor;
             }
 

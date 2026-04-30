@@ -152,6 +152,7 @@ public:
   bool macro_humanize = true;
   bool macro_ads_only = true;
   bool show_macro_overlay = true;
+  float macro_recoil_strength = 50.0f;
   float macro_overlay_color[4] = { 0.0f, 1.0f, 0.8f, 1.0f };
   AimConfig aim_configs[9];
   int aim_category_idx = 8;
