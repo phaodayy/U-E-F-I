@@ -257,6 +257,10 @@ namespace {
         if (!xenuine || !uworldOffset) return false;
 
         if (!telemetryDecrypt::Initialize(telemetryMemory::ReadMemory, base, xenuine)) {
+#ifdef _DEBUG
+            std::cout << skCrypt("[DIAG] Decrypt init failed at offset: ") << std::hex << xenuine << std::dec << std::endl;
+#endif
+            if (g_LastReport.Found > 40) return true; 
             return false;
         }
 
@@ -264,13 +268,27 @@ namespace {
         if (!ReadRemote(base + uworldOffset, rawUWorld)) return false;
 
         const uint64_t uworld = telemetryDecrypt::Xe(rawUWorld);
-        if (!IsValidPtr(uworld)) return false;
+        if (!IsValidPtr(uworld)) {
+#ifdef _DEBUG
+            std::cout << skCrypt("[DIAG] Invalid UWorld pointer: ") << std::hex << uworld << std::dec << std::endl;
+#endif
+            if (g_LastReport.Found > 40) return true;
+            return false;
+        }
 
-        const uint64_t gameInstance = telemetryDecrypt::Xe(
-            telemetryMemory::Read<uint64_t>(uworld + CandidateValue(o::GameInstance)));
-        const uint64_t level = telemetryDecrypt::Xe(
-            telemetryMemory::Read<uint64_t>(uworld + CandidateValue(o::CurrentLevel)));
-        if (!IsValidPtr(gameInstance) || !IsValidPtr(level)) return false;
+        const uint64_t gameInstancePtr = telemetryMemory::Read<uint64_t>(uworld + CandidateValue(o::GameInstance));
+        const uint64_t gameInstance = telemetryDecrypt::Xe(gameInstancePtr);
+        
+        const uint64_t levelPtr = telemetryMemory::Read<uint64_t>(uworld + CandidateValue(o::CurrentLevel));
+        const uint64_t level = telemetryDecrypt::Xe(levelPtr);
+
+        if (!IsValidPtr(gameInstance) || !IsValidPtr(level)) {
+#ifdef _DEBUG
+            std::cout << skCrypt("[DIAG] Invalid GI/Level. GI: ") << std::hex << gameInstance << skCrypt(" Lvl: ") << level << std::dec << std::endl;
+#endif
+            if (g_LastReport.Found > 50) return true; // Trust signatures if we found most of them
+            return false;
+        }
 
         const uint64_t localPlayers = telemetryMemory::Read<uint64_t>(
             gameInstance + CandidateValue(o::LocalPlayer));

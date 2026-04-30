@@ -45,7 +45,7 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
 
         // --- 0. precision_calibration & MACRO SYNC ---
         // Weapon Check: Only aim if holding a weapon
-        bool isHolstered = (MacroEngine::current_weapon_name == "" || MacroEngine::current_weapon_name == "None" || MacroEngine::current_weapon_name == "Holstered");
+        bool isHolstered = (MacroEngine::current_weapon_name == "" || MacroEngine::current_weapon_name == skCrypt("None") || MacroEngine::current_weapon_name == skCrypt("Holstered"));
         int category = (int)MacroEngine::current_category; // CAT_AR=0...CAT_NONE=8
 
         // Pick the active category config (Default GLOBAL=8 if not matched)
@@ -151,9 +151,19 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
                             Vector2 targetScreen = selected.screen;
 
                             if (activeConfig.prediction) {
-                                float travelTime = player.Distance / 800.0f;
+                                float bulletSpeed = 800.0f; // Default rifle speed
+                                if (category == 5) bulletSpeed = 400.0f; // Shotgun
+                                if (category == 7) bulletSpeed = 100.0f; // Panzerfaust
+                                
+                                float travelTime = player.Distance / (bulletSpeed * 100.0f); // Distance in cm, speed in m/s
                                 targetWorld += (player.Velocity * travelTime);
-                                // Refresh screen pos with prediction
+                                
+                                // Bù trọng lực cho Panzerfaust (Projectile bay chậm nên rơi nhanh)
+                                if (category == 7) {
+                                    float gravity = 9.8f * 100.0f; // cm/s^2
+                                    targetWorld.z += 0.5f * gravity * (travelTime * travelTime);
+                                }
+                                
                                 telemetryContext::WorldToScreen(targetWorld, targetScreen);
                             }
 
@@ -176,31 +186,37 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
 
         }
 
-        // --- 2. APPLY precision_calibration MOVEMENT ---
-        if (is_authenticated && bestTarget) {
+        // --- 2. APPLY precision_calibration MOVEMENT (Flick & Return for Shotgun & Panzer ONLY) ---
+        static float totalFlickX = 0;
+        static float totalFlickY = 0;
+        static bool isFlicking = false;
+
+        // 5 = CAT_SG, 7 = CAT_PANZER
+        if (is_authenticated && bestTarget && (category == 5 || category == 7)) { 
             float errorX = (bestScreenPos.x - ScreenCenterX);
             float errorY = (bestScreenPos.y - ScreenCenterY);
 
-            // Use PID for smoother movement (Ref: AimBot.h / Visuals.cpp PID Logic)
-            float moveX = AimPidX.compute(errorX, 0.01f); 
-            float moveY = AimPidY.compute(errorY, 0.01f);
-
-            // Apply smoothing divisor from config as a global scale
-            float smoothFactor = (std::max)(1.0f, activeConfig.smooth);
+            // Trigger Flick on Key Down
+            if (!isFlicking) {
+                // One-time snap to target (Flick)
+                telemetryMemory::MoveMouse((long)errorX, (long)errorY);
+                totalFlickX = errorX;
+                totalFlickY = errorY;
+                isFlicking = true;
+            }
+        } 
+        
+        // Reset and Return when key is released
+        const bool aimKeyDown = (activeKey != 0 && telemetryMemory::IsKeyDown(activeKey)) ||
+                                (aim_key2 != 0 && telemetryMemory::IsKeyDown(aim_key2));
+                                
+        if (!aimKeyDown && isFlicking) {
+            // Return to original position accurately
+            telemetryMemory::MoveMouse((long)-totalFlickX, (long)-totalFlickY);
+            totalFlickX = 0;
+            totalFlickY = 0;
+            isFlicking = false;
             
-            // Dynamic scale based on distance to center (makes final lock gentle)
-            const float moveLen = std::sqrt((errorX * errorX) + (errorY * errorY));
-            const float nearFactor = std::clamp(moveLen / 100.0f, 0.5f, 1.0f);
-            
-            moveX /= (smoothFactor * nearFactor);
-            moveY /= (smoothFactor * nearFactor);
-
-            // Final safety clamp to prevent wild jumps
-            moveX = std::clamp(moveX, -150.0f, 150.0f);
-            moveY = std::clamp(moveY, -150.0f, 150.0f);
-
-            telemetryMemory::MoveMouse((long)moveX, (long)moveY);
-        } else {
             AimPidX.clear();
             AimPidY.clear();
         }

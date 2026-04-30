@@ -27,7 +27,7 @@ namespace fs = std::filesystem;
 
 enum WeaponCategory
 {
-    CAT_AR, CAT_SR, CAT_DMR, CAT_SMG, CAT_LMG, CAT_SG, CAT_PT, CAT_OTHER, CAT_NONE
+    CAT_AR, CAT_SR, CAT_DMR, CAT_SMG, CAT_LMG, CAT_SG, CAT_PT, CAT_PANZER, CAT_OTHER, CAT_NONE
 };
 
 class MacroEngine
@@ -517,6 +517,7 @@ public:
         if (name == skCrypt("m249") || name == skCrypt("dp28") || name == skCrypt("mg3")) return CAT_LMG;
         if (name == skCrypt("s12k") || name == skCrypt("s1897") || name == skCrypt("s686") || name == skCrypt("dbs") || name == skCrypt("o12")) return CAT_SG;
         if (name == skCrypt("p18c") || name == skCrypt("p1911") || name == skCrypt("p92") || name == skCrypt("r1895") || name == skCrypt("r45") || name == skCrypt("deagle") || name == skCrypt("skorpion")) return CAT_PT;
+        if (name.find(skCrypt("panzerfaust")) != std::string::npos) return CAT_PANZER;
         return CAT_NONE;
     }
 
@@ -752,7 +753,7 @@ public:
 
     static void TryHotReloadCurrentWeapon()
     {
-        if (!prefer_external_data || current_weapon_name.empty() || current_weapon_name == "None")
+        if (!prefer_external_data || current_weapon_name.empty() || current_weapon_name == skCrypt("None"))
         {
             return;
         }
@@ -834,7 +835,7 @@ public:
                 if (!itemID) continue;
 
                 const std::string name = FNameUtils::GetNameFast(itemID);
-                if (!name.empty() && name.find("Attach") != std::string::npos)
+                if (!name.empty() && name.find(skCrypt("Attach")) != std::string::npos)
                 {
                     ClassifyAttachment(name);
                 }
@@ -844,23 +845,23 @@ public:
 
     static float GetSensMultiplier()
     {
-        if (global_config.is_null() || !global_config.contains("sensitivity"))
+        if (global_config.is_null() || !global_config.contains(skCrypt("sensitivity")))
         {
             return 1.0f;
         }
 
-        auto& sens = global_config["sensitivity"];
-        std::string key = "none";
+        auto& sens = global_config[skCrypt("sensitivity")];
+        std::string key = skCrypt("none");
         switch (current_scope)
         {
-        case 1: key = "reddot"; break;
-        case 2: key = "holosight"; break;
-        case 3: key = "2x"; break;
-        case 4: key = "3x"; break;
-        case 5: key = "4x"; break;
-        case 6: key = "6x"; break;
-        case 7: key = "8x"; break;
-        case 8: key = "15x"; break;
+        case 1: key = skCrypt("reddot"); break;
+        case 2: key = skCrypt("holosight"); break;
+        case 3: key = skCrypt("2x"); break;
+        case 4: key = skCrypt("3x"); break;
+        case 5: key = skCrypt("4x"); break;
+        case 6: key = skCrypt("6x"); break;
+        case 7: key = skCrypt("8x"); break;
+        case 8: key = skCrypt("15x"); break;
         default: break;
         }
 
@@ -876,7 +877,7 @@ public:
             }
         }
 
-        if (telemetryMemory::IsKeyDown(VK_SHIFT) && sens.contains("shift"))
+        if (telemetryMemory::IsKeyDown(VK_SHIFT) && sens.contains(skCrypt("shift")))
         {
             try
             {
@@ -926,6 +927,10 @@ public:
             current_category = GetCategoryByName(normalized);
             UpdateAttachments(weapon);
             bullet_index = 0;
+
+            if (!current_weapon_name.empty() && current_weapon_name != "None") {
+                std::cout << skCrypt("[WEAPON] Now holding: ") << current_weapon_name << std::endl;
+            }
         }
     }
 
@@ -954,6 +959,7 @@ public:
     static void Update()
     {
         const ULONGLONG updateNow = GetTickCount64();
+        /*
         if (macro_enabled != last_debug_macro_enabled ||
             (macro_enabled && updateNow - last_debug_state_tick > 2000))
         {
@@ -968,6 +974,7 @@ public:
                 << " humanize=" << (macro_humanize ? 1 : 0)
                 << std::endl;
         }
+        */
 
         if (!G_LocalPawn || !macro_enabled)
         {
@@ -1061,6 +1068,7 @@ public:
             !telemetryMemory::IsKeyDown(VK_TAB) &&
             !telemetryMemory::IsKeyDown(VK_ESCAPE);
 
+        /*
         if (macro_enabled && now - last_debug_gate_tick > 1000)
         {
             last_debug_gate_tick = now;
@@ -1075,6 +1083,7 @@ public:
                 << " weapon=" << normalized
                 << std::endl;
         }
+        */
 
         const ActiveProfile profile = GetActiveProfile();
         bool isSR = (current_category == CAT_SR);
@@ -1101,11 +1110,12 @@ public:
             const AngleRotation ctrlRot = telemetryMemory::Read<AngleRotation>(anim + telemetry_config::offsets::ControlRotation_CP);
             const Vector3 recoilVec = telemetryMemory::Read<Vector3>(anim + telemetry_config::offsets::RecoilValueVector);
 
-            static ULONGLONG lastRecoilLog = 0;
+            /*
             if (now - lastRecoilLog > 100) {
                 lastRecoilLog = now;
                 std::cout << "[RECOIL][RAW] Pitch=" << recoilRot.Pitch << " CtrlP=" << ctrlRot.Pitch << " VecY=" << recoilVec.y << std::endl;
             }
+            */
 
             if (!std::isfinite(recoilRot.Yaw) || !std::isfinite(recoilRot.Pitch))
             {
@@ -1137,8 +1147,8 @@ public:
             last_recoil_yaw = recoilRot.Yaw;
 
             float p_m = 1.0f;
-            if (characterState == 1 && current_gun_data.contains("c")) p_m = current_gun_data["c"].get<float>();
-            else if (characterState == 2 && current_gun_data.contains("z")) p_m = current_gun_data["z"].get<float>();
+            if (characterState == 1 && current_gun_data.contains(skCrypt("c"))) p_m = current_gun_data[skCrypt("c")].get<float>();
+            else if (characterState == 2 && current_gun_data.contains(skCrypt("z"))) p_m = current_gun_data[skCrypt("z")].get<float>();
 
             const float sens = GetSensMultiplier();
             
@@ -1213,12 +1223,12 @@ public:
                 if (!sent || now - last_debug_sendinput_tick > 500)
                 {
                     last_debug_sendinput_tick = now;
-                    std::cout << "[MACRO][SENDINPUT] move=(" << outX << "," << outY << ")"
-                        << " ok=" << (sent ? 1 : 0)
-                        << " err=" << SendInputMacro::LastErrorCode()
-                        << " raw=(" << moveX << "," << moveY << ")"
-                        << " rem=(" << pixel_remainder_x << "," << pixel_remainder_y << ")"
-                        << " moved_total=(" << angle_moved_x << "," << angle_moved_y << ")"
+                    std::cout << skCrypt("[MACRO][SENDINPUT] move=(") << outX << skCrypt(",") << outY << skCrypt(")")
+                        << skCrypt(" ok=") << (sent ? 1 : 0)
+                        << skCrypt(" err=") << SendInputMacro::LastErrorCode()
+                        << skCrypt(" raw=(") << moveX << skCrypt(",") << moveY << skCrypt(")")
+                        << skCrypt(" rem=(") << pixel_remainder_x << skCrypt(",") << pixel_remainder_y << skCrypt(")")
+                        << skCrypt(" moved_total=(") << angle_moved_x << skCrypt(",") << angle_moved_y << skCrypt(")")
                         << std::endl;
                 }
             }
@@ -1230,9 +1240,9 @@ public:
                 if (std::fabs(moveY) > 0.01f && now - last_debug_sendinput_tick > 500)
                 {
                     last_debug_sendinput_tick = now;
-                    std::cout << "[MACRO][SENDINPUT] pending_vertical raw=(" << moveX << "," << moveY << ")"
-                        << " rem=(" << pixel_remainder_x << "," << pixel_remainder_y << ")"
-                        << " rounded=(0,0)"
+                    std::cout << skCrypt("[MACRO][SENDINPUT] pending_vertical raw=(") << moveX << skCrypt(",") << moveY << skCrypt(")")
+                        << skCrypt(" rem=(") << pixel_remainder_x << skCrypt(",") << pixel_remainder_y << skCrypt(")")
+                        << skCrypt(" rounded=(0,0)")
                         << std::endl;
                 }
             }

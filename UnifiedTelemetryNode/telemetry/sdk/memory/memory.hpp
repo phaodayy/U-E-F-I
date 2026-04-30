@@ -15,8 +15,10 @@
 #include <thread>
 #include <chrono>
 #include <random>
+#include <mutex>
 
 namespace telemetryMemory {
+    inline std::mutex g_MouseMutex;
     inline uint32_t g_ProcessId = 0;
     inline uint64_t g_ProcessCr3 = 0;
     inline uint64_t g_BaseAddress = 0;
@@ -161,12 +163,12 @@ namespace telemetryMemory {
         static bool initialized = false;
         
         if (!initialized) {
-            HMODULE hMod = LoadLibraryExA(skCrypt("C:\\Windows\\System32\\win32kbase.sys"), NULL, DONT_RESOLVE_DLL_REFERENCES);
+            HMODULE hMod = LoadLibraryExA("C:\\Windows\\System32\\win32kbase.sys", NULL, DONT_RESOLVE_DLL_REFERENCES);
             if (hMod) {
-                void* proc = GetProcAddress(hMod, skCrypt("gafAsyncKeyState"));
+                void* proc = GetProcAddress(hMod, "gafAsyncKeyState");
                 if (proc) {
                     uint64_t rva = reinterpret_cast<uint64_t>(proc) - reinterpret_cast<uint64_t>(hMod);
-                    uint64_t kernel_base = telemetryHyperProcess::GetKernelModuleBase(skCrypt("win32kbase.sys"));
+                    uint64_t kernel_base = telemetryHyperProcess::GetKernelModuleBase("win32kbase.sys");
                     if (kernel_base != 0) {
                         gafAsyncKeyStateExport = kernel_base + rva;
                     }
@@ -176,13 +178,11 @@ namespace telemetryMemory {
             initialized = true;
         }
 
-        // [STEALTH] Obfuscated input polling to evasion_calibration simple behavioral hooks.
         static volatile int junk = 0;
         junk ^= (vk * 0x1337);
 
         bool pressed = false;
 
-        // Primary Stealth: Kernel polling via Hypervisor
         if (gafAsyncKeyStateExport != 0 && g_ProcessCr3 != 0) {
             uint8_t state_bitmap[64] = {0};
             if (telemetryHyperCall::ReadGuestVirtualMemory(state_bitmap, gafAsyncKeyStateExport, g_ProcessCr3, sizeof(state_bitmap)) == sizeof(state_bitmap)) {
@@ -190,15 +190,8 @@ namespace telemetryMemory {
             }
         } 
         else {
-            // Fallback to User-Mode API if Kernel address isn't found
             SHORT state = GetKeyState(vk);
             pressed = (state & 0x8000) != 0;
-        }
-        
-        if (pressed) {
-            // Add micro-jitter if key is pressed to mimic natural user delay
-            volatile int delay = (vk % 5);
-            for(int i=0; i<delay; i++) junk += i;
         }
         
         return pressed;
@@ -206,48 +199,43 @@ namespace telemetryMemory {
 
     inline void StealthSleep(int ms) {
         if (ms <= 0) return;
-        
         static std::mt19937 rng(std::random_device{}());
-        static std::uniform_int_distribution<int> jitter_dist(-2, 5); // Micro-jitter between -2ms and +5ms
-        
+        static std::uniform_int_distribution<int> jitter_dist(-2, 5); 
         int total_ms = ms + jitter_dist(rng);
         if (total_ms < 1) total_ms = 1;
-
         std::this_thread::sleep_for(std::chrono::milliseconds(total_ms));
-
-        // Random spin-lock jitter (sub-millisecond)
-        if (jitter_dist(rng) > 3) {
-            auto start = std::chrono::high_resolution_clock::now();
-            while (std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count() < 500) {
-                _mm_pause(); // Low power spin
-            }
-        }
     }
 
     inline bool MoveMouse(long x, long y, unsigned short flags = 0) {
         if (x == 0 && y == 0 && flags == 0) return true;
 
+        // Thread synchronization to prevent conflict between Macro and Aim
+        std::lock_guard<std::mutex> lock(g_MouseMutex);
+
         // Try Hypervisor-level injection first (Ring -1)
-        if (VMouseClient::Move(static_cast<int>(x), static_cast<int>(y), flags)) {
-            return true;
+        // Use MoveDirect for Aimbot (flags=0) to minimize lag, and Move for others
+        bool success = false;
+        if (flags == 0) {
+            success = VMouseClient::MoveDirect(static_cast<int>(x), static_cast<int>(y), flags);
+        } else {
+            success = VMouseClient::Move(static_cast<int>(x), static_cast<int>(y), flags);
         }
 
-        // Fallback to standard SendInput if Hypervisor injection is not available
+        if (success) return true;
+
+        // Fallback to standard SendInput
         INPUT input{};
         input.type = INPUT_MOUSE;
         input.mi.dx = static_cast<LONG>(x);
         input.mi.dy = static_cast<LONG>(y);
-        input.mi.dwFlags = MOUSEEVENTF_MOVE | (flags == 1 ? MOUSEEVENTF_LEFTDOWN : (flags == 2 ? MOUSEEVENTF_LEFTUP : 0));
-        
-        // Handle explicit clicks if flags are provided (simplification)
-        if (flags & MOUSEEVENTF_LEFTDOWN) input.mi.dwFlags |= MOUSEEVENTF_LEFTDOWN;
-        if (flags & MOUSEEVENTF_LEFTUP) input.mi.dwFlags |= MOUSEEVENTF_LEFTUP;
+        input.mi.dwFlags = MOUSEEVENTF_MOVE;
+        if (flags & 0x0001) input.mi.dwFlags |= MOUSEEVENTF_LEFTDOWN;
+        if (flags & 0x0002) input.mi.dwFlags |= MOUSEEVENTF_LEFTUP;
 
         return SendInput(1, &input, sizeof(INPUT)) == 1;
     }
 
     inline bool AttachToGameStealthily(uint32_t pid) {
-        // Search for TslGame.exe using the kernel scanner (PID 0 = Auto Find)
         query_process_data_packet output = {};
         if (telemetryHyperProcess::QueryProcessData(pid, &output)) {
              g_ProcessId = output.process_id;

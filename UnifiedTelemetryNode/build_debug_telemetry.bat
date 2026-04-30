@@ -30,7 +30,7 @@ set "INT_DIR=%CD%\telemetry\script_build\Debug"
 if not exist "!STAGING_DIR!" mkdir "!STAGING_DIR!"
 
 echo [*] Rebuilding GameOverlay (Debug)...
-"!MSBUILD_PATH!" "phao_final.sln" /t:GameOverlay:Rebuild /p:Configuration=Debug /p:Platform=x64 /p:VcpkgApplocalDeps=false "/p:OutDir=!STAGING_DIR!\\" "/p:IntDir=!INT_DIR!\\" /m /verbosity:minimal
+"!MSBUILD_PATH!" "phao_final.sln" /t:GameOverlay:rebuild /p:Configuration=Debug /p:Platform=x64 /p:VcpkgApplocalDeps=false "/p:OutDir=!STAGING_DIR!\\" "/p:IntDir=!INT_DIR!\\" /m /verbosity:minimal
 
 if errorlevel 1 (
     echo [ERROR] Build failed.

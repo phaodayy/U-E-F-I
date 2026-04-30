@@ -373,9 +373,21 @@ namespace telemetryContext {
         }
 
         G_UWorld = telemetryDecrypt::Xe(rawUWorld);
+#ifdef _DEBUG
+        if (rawUWorld != 0) {
+            std::cout << skCrypt("[DIAG] UWorld Attempt: ") << std::hex << G_UWorld << skCrypt(" (raw: ") << rawUWorld << skCrypt(")") << std::dec << std::endl;
+        }
+#endif
         if (G_UWorld > 0x1000000) {
-            g_LastInitializeStatus = "ready";
-            return true;
+            // DEEP VERIFICATION: Check if PersistentLevel is also a valid pointer
+            uint64_t rawLevel = 0;
+            if (telemetryMemory::ReadMemory(G_UWorld + telemetryOffsets::CurrentLevel, &rawLevel, sizeof(uint64_t))) {
+                uint64_t level = telemetryDecrypt::Xe(rawLevel);
+                if (level > 0x1000000) {
+                    g_LastInitializeStatus = "ready";
+                    return true;
+                }
+            }
         }
 
         g_LastInitializeStatus = rawUWorld ? "uworld-decrypt-invalid" : "uworld-empty";

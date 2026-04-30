@@ -841,7 +841,7 @@ bool UploadLoaderConfig() {
     if (configJson.is_discarded() || !configJson.is_object()) return false;
 
     nlohmann::json requestJson;
-    requestJson["config"] = configJson;
+    requestJson[skCrypt("config")] = configJson;
 
     std::string responseStr;
     if (!HttpJsonPut(LOADER_CONFIG_PATH, requestJson, global_account_token, responseStr)) return false;
@@ -866,7 +866,7 @@ bool ImportLoaderConfigCode(const std::string& code) {
     if (global_account_token.empty() || code.empty()) return false;
 
     nlohmann::json requestJson;
-    requestJson["code"] = code;
+    requestJson[skCrypt("code")] = code;
 
     std::string responseStr;
     if (!HttpJsonPost(LOADER_CONFIG_IMPORT_PATH, requestJson, global_account_token, responseStr)) return false;
@@ -978,9 +978,9 @@ bool PromptLoaderAccountLogin(const std::string& hwid) {
     std::getline(std::cin, password);
 
     nlohmann::json requestJson;
-    requestJson["username"] = username;
-    requestJson["password"] = password;
-    requestJson["hwid"] = hwid;
+    requestJson[skCrypt("username")] = username;
+    requestJson[skCrypt("password")] = password;
+    requestJson[skCrypt("hwid")] = hwid;
 
     std::string responseStr;
     if (!HttpJsonPost(registering ? LOADER_REGISTER_PATH : LOADER_LOGIN_PATH, requestJson, skCrypt(""), responseStr)) {
@@ -1019,14 +1019,17 @@ bool AuthenticateLicense() {
 void LicenseHeartbeatLoop() {
     std::string hwid = GetHWID();
     uint64_t last_net_check_tick = GetTickCount64();
+    
+    // Khởi tạo thời gian kiểm tra ngẫu nhiên đầu tiên (180s - 300s)
+    uint64_t next_check_ms = (180 + (rand() % 121)) * 1000;
 
     while (true) {
-        Sleep(1000 * 5); // Kiểm tra đếm ngược cực chuẩn mỗi 5 giây
+        Sleep(1000 * 5); // Kiểm tra trạng thái local mỗi 5s
         
         uint64_t current_tick = GetTickCount64();
         uint64_t elapsed_seconds = (current_tick - g_last_tick_count) / 1000;
 
-        // 1. Kiểm tra đếm ngược Real-time (Relative from Server)
+        // 1. Kiểm tra đếm ngược Real-time (Thời gian thực từ Server)
         if (g_remaining_seconds > 0 && elapsed_seconds >= g_remaining_seconds) {
             SetConsoleColor(12);
             std::cout << (g_is_vietnamese ? skCrypt("\n\n[!!!] THOI GIAN SU DUNG DA HET (Real-time Expiry).\n") : skCrypt("\n\n[!!!] SUBSCRIPTION ENDED (Real-time Expiry).\n"));
@@ -1035,19 +1038,24 @@ void LicenseHeartbeatLoop() {
             exit(1);
         }
 
-        // 2. Kiểm tra mạng định kỳ (đề phòng Admin thu hồi Key) - 10 phút/lần
-        if ((current_tick - last_net_check_tick) >= (600 * 1000)) {
+        // 2. Kiểm tra mạng định kỳ (Jitter: 3-5 phút/lần) để tránh bị phát hiện pattern
+        if ((current_tick - last_net_check_tick) >= next_check_ms) {
             if (HasActiveLoaderEntitlement()) {
                 bool heartbeatOk = DoAPIRequest(global_active_key, hwid, true);
-                if (!heartbeatOk && !global_license_error.empty()) {
+                
+                // Nếu bị máy khác chiếm quyền hoặc key bị thu hồi
+                if (!heartbeatOk && (!global_license_error.empty() || global_active_key.empty())) {
                     SetConsoleColor(12);
-                    std::cout << (g_is_vietnamese ? skCrypt("\n\n[!!!] LICENSE KHONG CON HOP LE: ") : skCrypt("\n\n[!!!] LICENSE IS NO LONGER VALID: ")) << global_license_error << std::endl;
+                    std::cout << (g_is_vietnamese ? skCrypt("\n\n[!!!] PHIEN DANG NHAP DA BI THAY THE HOAC LICENSE KHONG CON HOP LE.\n") : skCrypt("\n\n[!!!] SESSION REPLACED OR LICENSE INVALID.\n"));
                     SetConsoleColor(7);
-                    Sleep(5000);
+                    Sleep(3000);
                     exit(1);
                 }
             }
+            
+            // Cập nhật lại mốc thời gian và tính toán khoảng thời gian ngẫu nhiên mới cho lần sau
             last_net_check_tick = current_tick;
+            next_check_ms = (180 + (rand() % 121)) * 1000; 
         }
     }
 }
@@ -1209,9 +1217,9 @@ struct ProcessPickDebugInfo {
 };
 
 void CleanUpEFITraces() {
-#ifdef _DEBUG
+  /*
   std::cout << skCrypt("[BOOT-SAFETY] EFI cleanup is disabled in telemetry to avoid boot/BIOS side effects.") << std::endl;
-#endif
+  */
   return;
 
 #if 0
@@ -1292,16 +1300,7 @@ int main() {
 
   EnsureLoaderConsole();
   protec::scan_detection_time = 1000;
-#ifdef _DEBUG
-  const auto hardening = protec::apply_baseline_hardening();
-  std::cout << skCrypt("[DEBUG][PROTEC] baseline=")
-            << (hardening.heap_termination_enabled ? skCrypt("heap-ok") : skCrypt("heap-fail"))
-            << skCrypt(" dll-search=")
-            << (hardening.dll_search_order_hardened ? skCrypt("ok") : skCrypt("off"))
-            << std::endl;
-#else
   protec::apply_baseline_hardening();
-#endif
   srand((unsigned int)GetTickCount64());
   protec::start_protect(false);
   SelfRename();
@@ -1361,13 +1360,6 @@ int main() {
       return (DWORD)0;
   }, NULL, 0, NULL);
 
-  srand((unsigned int)GetTickCount64());
-  
-  char rand_title[16] = { 0 };
-  for (int i = 0; i < 15; i++) rand_title[i] = (rand() % 26) + 'a';
-  SetConsoleTitleA(rand_title);
-
-
   TypewriterPrint("\n[", 10, 8);
   TypewriterPrint("2", 10, 11);
   TypewriterPrint("] ", 10, 8);
@@ -1404,12 +1396,15 @@ int main() {
   // (Removed VMouse KDU Loading as Logitech G-Hub is used instead)
 
   
-  TypewriterPrint("\n[", 10, 8);
-  TypewriterPrint("3", 10, 11);
-  TypewriterPrint("] ", 10, 8);
-  TypewriterPrint(g_is_vietnamese ? skCrypt("Waiting for telemetry (TslGame.exe)...") : skCrypt("Waiting for telemetry (TslGame.exe)..."), 30, 14);
-  
-  DWORD pid = 0;
+  // std::cout << "\n";
+    Sleep(500);
+    
+    TypewriterPrint("\n[", 10, 8);
+    TypewriterPrint("3", 10, 11);
+    TypewriterPrint("] ", 10, 8);
+    TypewriterPrint(g_is_vietnamese ? skCrypt("Waiting for telemetry (TslGame.exe)...") : skCrypt("Waiting for telemetry (TslGame.exe)..."), 30, 14);
+
+    DWORD pid = 0;
   int wait_pid_count = 0;
   constexpr ULONGLONG kPidSettleDelayMs = 3000;
   ULONGLONG first_candidate_tick = 0;
@@ -1481,26 +1476,28 @@ int main() {
   while (!telemetryContext::Initialize(pid, base)) {
       sync_count++;
       const std::string initStatus = telemetryContext::GetLastInitializeStatus();
-      std::cout << (g_is_vietnamese ? skCrypt("\r[*] Dang cho game san sang qua hyper [") : skCrypt("\r[*] Waiting for hyper-backed game state [")) << sync_count << skCrypt("]...   ") << std::flush;
+      
+      // If we are stuck in decrypt-init-failed, show it clearly
+      if (initStatus == skCrypt("decrypt-init-failed")) {
+          std::cout << (g_is_vietnamese ? skCrypt("\r[*] Game dang khoi tao vung nho bao mat... [") : skCrypt("\r[*] Game is initializing secure memory... [")) << sync_count << skCrypt("]   ") << std::flush;
+          Sleep(1500); // Wait a bit longer for game to settle
+      } else {
+          std::cout << (g_is_vietnamese ? skCrypt("\r[*] Dang cho game san sang qua hyper [") : skCrypt("\r[*] Waiting for hyper-backed game state [")) << sync_count << skCrypt("]...   ") << std::flush;
+          Sleep(800);
+      }
+
       if (sync_count % 5 == 0) {
           query_process_data_packet live_data = {};
           const bool live_ok = telemetryHyperProcess::QueryProcessData(pid, &live_data);
           if (live_ok && live_data.process_id != 0) {
               const uint64_t live_base = reinterpret_cast<uint64_t>(live_data.base_address);
-              std::cout << skCrypt("\n[DEBUG][ENGINE] status=") << telemetryContext::GetLastInitializeStatus()
-                        << skCrypt(" pid=") << live_data.process_id
-                        << skCrypt(" cr3=0x") << std::hex << live_data.cr3
-                        << skCrypt(" base=0x") << live_base << std::dec << std::endl;
+              // Silent refresh check
               if (live_data.cr3 != telemetryMemory::g_ProcessCr3 || live_base != telemetryMemory::g_BaseAddress) {
                   telemetryMemory::g_ProcessCr3 = live_data.cr3;
                   telemetryMemory::g_BaseAddress = live_base;
                   telemetryMemory::g_LastRefreshTime = 0;
                   base = live_base;
-                  std::cout << skCrypt("[DEBUG][ENGINE] refreshed process context") << std::endl;
               }
-          } else {
-              std::cout << skCrypt("\n[DEBUG][ENGINE] status=") << telemetryContext::GetLastInitializeStatus()
-                        << skCrypt(" process query failed; returning to PID wait may be needed") << std::endl;
           }
       }
       if (initStatus == skCrypt("ready")) {
@@ -1520,12 +1517,14 @@ int main() {
           DebugPause();
           return 1;
       }
+      /*
       if (GetTickCount64() - engine_wait_started > kEngineWaitDiagnosticMs) {
           std::cout << skCrypt("\n[DEBUG][ENGINE] still waiting after 30s; last_status=")
                     << telemetryContext::GetLastInitializeStatus()
                     << skCrypt(". Retrying runtime scan periodically; if this repeats, restart the game process.") << std::endl;
           engine_wait_started = GetTickCount64();
       }
+      */
       Sleep(1000 + (rand() % 200));
   }
   std::cout << (g_is_vietnamese ? skCrypt("\n[+] Ket noi hyper thanh cong, hay vao game de trai nghiem!") : skCrypt("\n[+] Hyper connection ready!")) << std::endl;
@@ -1580,23 +1579,19 @@ int main() {
     std::cout << skCrypt("[DKOM] EPROCESS Address: 0x") << std::hex << our_eprocess << std::dec << std::endl;
     if (our_eprocess) {
         bool result = telemetryHyperProcess::UnlinkProcessDKOM(our_eprocess);
-        std::cout << skCrypt("[DKOM] UnlinkProcess result: ") << (result ? "SUCCESS" : "FAILED") << std::endl;
+        std::cout << skCrypt("[DKOM] UnlinkProcess result: ") << (result ? skCrypt("SUCCESS") : skCrypt("FAILED")) << std::endl;
     } else {
         std::cout << skCrypt("[DKOM] FAILED: Could not find our EPROCESS!") << std::endl;
     }
     // [ANTI-DUMP] Safe Erasing DOS headers (Now compatible with DirectX)
     protec::erase_pe_header();
     
-#ifdef _DEBUG
     std::cout << (g_is_vietnamese ? skCrypt("\n[+] He thong da san sang! Hay mo game telemetry.") : skCrypt("\n[+] System Ready! Please open telemetry.")) << std::endl;
     std::cout << (g_is_vietnamese ? skCrypt("[+] Bam [F5] de Dong/Mo Menu | Bam [F11] de Tat Tool") : skCrypt("[+] F5: Menu | F11: Clean Exit")) << std::endl;
-    std::cout << skCrypt("[DEBUG] Running in development mode. Console will remain open.\n");
-#else
     // RELEASE MODE: Use Bilingual System Modal (Top 1) MessageBox
     MessageBoxA(NULL, 
         skCrypt("System Ready! Please open telemetry.\nHe thong da san sang! Hay mo game telemetry.\n\nPress [F5] for Menu. / Bam [F5] de Dong/Mo Menu."), 
         skCrypt("GZ-telemetry - System Ready"), MB_OK | MB_ICONINFORMATION | MB_SYSTEMMODAL | MB_SETFOREGROUND | MB_TOPMOST);
-#endif
 
     CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)[](LPVOID) {
         while (true) {

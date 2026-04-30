@@ -11,12 +11,21 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     float totalWidth = windowSize.x - 60;
 
     const char* aimCategories[] = {
-        skCrypt("AR"), skCrypt("SR"), skCrypt("DMR"), skCrypt("SMG"),
-        skCrypt("Shotgun"), skCrypt("Pistol"), skCrypt("Melee"),
-        skCrypt("Throwable"), skCrypt("Global")
+        skCrypt("Shotgun (Flick)"), skCrypt("Panzerfaust (Flick)"),
+        skCrypt("AR (Disabled)"), skCrypt("SR (Disabled)"), 
+        skCrypt("DMR (Disabled)"), skCrypt("SMG (Disabled)"),
+        skCrypt("Pistol (Disabled)"), skCrypt("Global Settings")
     };
-    g_Menu.aim_category_idx = std::clamp(g_Menu.aim_category_idx, 0, 8);
-    AimConfig* pCfg = &g_Menu.aim_configs[g_Menu.aim_category_idx];
+
+    // Mapping menu index to actual WeaponCategory enum values
+    // Menu Index 0 -> Shotgun (5)
+    // Menu Index 1 -> Panzer (7)
+    int actualCategory = 8; // Default to Global/Other
+    if (g_Menu.aim_category_idx == 0) actualCategory = 5;      // Shotgun
+    else if (g_Menu.aim_category_idx == 1) actualCategory = 7; // Panzerfaust
+    else actualCategory = g_Menu.aim_category_idx; // Others
+
+    AimConfig* pCfg = &g_Menu.aim_configs[actualCategory];
 
     const char* keyLabels[] = { "NONE", "MOUSE LEFT", "MOUSE RIGHT", "L-ALT", "L-SHIFT", "X", "V" };
     int keyVals[] = { 0, VK_LBUTTON, VK_RBUTTON, VK_LMENU, VK_LSHIFT, 'X', 'V' };
@@ -81,9 +90,22 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     BeginGlassCard(skCrypt("##AimCol2"), Lang.HeaderPrecisionSettings, ImVec2(totalWidth / 3.0f - 20, 0));
     ImGui::TextDisabled("%s", Lang.ShowcaseAimProfiles);
     ImGui::SetNextItemWidth(-1);
-    ImGui::Combo(skCrypt("##AimProfileCategory"), &g_Menu.aim_category_idx, aimCategories, IM_ARRAYSIZE(aimCategories));
-    pCfg = &g_Menu.aim_configs[g_Menu.aim_category_idx];
-    ImGui::Checkbox(skCrypt("Enable Profile"), &pCfg->enabled);
+    if (ImGui::Combo(skCrypt("##AimProfileCategory"), &g_Menu.aim_category_idx, aimCategories, IM_ARRAYSIZE(aimCategories))) {
+        // Refresh mapping after selection
+        if (g_Menu.aim_category_idx == 0) actualCategory = 5;
+        else if (g_Menu.aim_category_idx == 1) actualCategory = 7;
+        else actualCategory = g_Menu.aim_category_idx;
+        pCfg = &g_Menu.aim_configs[actualCategory];
+    }
+    
+    if (g_Menu.aim_category_idx > 1 && g_Menu.aim_category_idx < 7) {
+        ImGui::TextColored(ImVec4(1, 0, 0, 1), skCrypt("(!) AIMBOT IS DISABLED FOR THIS WEAPON"));
+        ImGui::TextDisabled(skCrypt("Only Shotgun and Panzerfaust support Flick Aim."));
+    } else {
+        ImGui::TextColored(ImVec4(0, 1, 0, 1), skCrypt("[ACTIVE] Flick & Return Mode Enabled"));
+    }
+
+    ImGui::Checkbox(skCrypt("Enable Flick Profile"), &pCfg->enabled);
     ImGui::Checkbox(Lang.AimPrediction, &pCfg->prediction);
     ImGui::Checkbox(Lang.AimVisible, &g_Menu.aim_visible_only);
 
