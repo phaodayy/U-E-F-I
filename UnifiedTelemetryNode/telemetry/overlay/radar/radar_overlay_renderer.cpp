@@ -522,6 +522,43 @@ float MiniMapDiv(float screenWidth, float screenHeight, bool expanded) {
     return 258.0f;
 }
 
+float CurrentMiniMapViewScale() {
+    float scale = G_Radar.CurrentMinimapViewScale;
+    if (!std::isfinite(scale) || scale < 0.01f || scale > 20.0f) {
+        return 1.0f;
+    }
+    return std::clamp(scale, 0.65f, 2.50f);
+}
+
+float ExpandedMiniMapScale(float rawScale, bool expanded) {
+    if (!expanded) return 1.0f;
+    constexpr float kDefaultExpandedScale = 1.7692308f;
+    return std::clamp((std::max)(rawScale, kDefaultExpandedScale), 1.0f, 2.50f);
+}
+
+float SmoothStepValue(float current, float target, float factor) {
+    if (!std::isfinite(current) || !std::isfinite(target)) return target;
+    return current + (target - current) * std::clamp(factor, 0.0f, 1.0f);
+}
+
+float BigMapSmoothingFactor(uint64_t nowMs) {
+    static uint64_t lastTick = 0;
+    if (lastTick == 0) {
+        lastTick = nowMs;
+        return 1.0f;
+    }
+    const float dt = std::clamp(static_cast<float>(nowMs - lastTick) / 1000.0f, 0.0f, 0.10f);
+    lastTick = nowMs;
+    return 1.0f - std::exp(-dt * 14.0f);
+}
+
+float MiniMapWorldRange(float sizeScale, bool expanded) {
+    if (!expanded) return 20000.0f;
+    const float overviewScale = 1.0f + (std::max)(0.0f, sizeScale - 1.0f) * 2.0f;
+    const float range = 20000.0f * overviewScale;
+    return std::clamp(range, 12000.0f, 90000.0f);
+}
+
 bool HasMiniMapProfile(float screenWidth, float screenHeight) {
     return (screenWidth == 1280.0f && screenHeight == 720.0f) ||
         (screenWidth == 1280.0f && screenHeight == 768.0f) ||
@@ -551,19 +588,19 @@ ImVec2 ClampToMiniMap(const ImVec2& point, float left, float top, float right, f
         std::clamp(point.y, top + 2.0f, bottom - 2.0f));
 }
 
-ImVec2 MiniMapRayEnd(const ImVec2& start, float yaw, float lengthMeters, float mapDiv,
+ImVec2 MiniMapRayEnd(const ImVec2& start, float yaw, float lengthMeters, float mapDiv, float worldRange,
                      float left, float top, float right, float bottom) {
     constexpr float kDegToRad = 0.01745329251994f;
     const float radians = NormalizeAngle(yaw) * kDegToRad;
     const float worldLength = lengthMeters * 100.0f;
     const ImVec2 end(
-        start.x + std::cos(radians) * (worldLength / 20000.0f) * mapDiv,
-        start.y + std::sin(radians) * (worldLength / 20000.0f) * mapDiv);
+        start.x + std::cos(radians) * (worldLength / worldRange) * mapDiv,
+        start.y + std::sin(radians) * (worldLength / worldRange) * mapDiv);
     return ClampToMiniMap(end, left, top, right, bottom);
 }
 
 void DrawMiniMapAimRay(ImDrawList* draw, const OverlayMenu& menu, const PlayerData& player,
-                       const ImVec2& marker, float mapDiv,
+                       const ImVec2& marker, float mapDiv, float worldRange,
                        float left, float top, float right, float bottom) {
     if (player.IsTeammate || !player.HasAimYaw) return;
 
@@ -572,7 +609,7 @@ void DrawMiniMapAimRay(ImDrawList* draw, const OverlayMenu& menu, const PlayerDa
 
     if (menu.minimap_show_direction) {
         const ImVec2 viewEnd = MiniMapRayEnd(marker, yaw, menu.minimap_view_ray_length,
-            mapDiv, left, top, right, bottom);
+            mapDiv, worldRange, left, top, right, bottom);
         ImU32 viewCol = ImGui::ColorConvertFloat4ToU32(ImVec4(
             menu.view_direction_color[0], menu.view_direction_color[1],
             menu.view_direction_color[2], menu.view_direction_color[3]));
@@ -592,7 +629,7 @@ void DrawMiniMapAimRay(ImDrawList* draw, const OverlayMenu& menu, const PlayerDa
     const float pulse = 1.0f - (ageMs / flashMs);
     const float alpha = std::clamp(0.25f + pulse * 0.75f, 0.0f, 1.0f);
     const ImVec2 fireEnd = MiniMapRayEnd(marker, yaw, menu.minimap_fire_ray_length,
-        mapDiv, left, top, right, bottom);
+        mapDiv, worldRange, left, top, right, bottom);
     ImU32 fireCol = ImGui::ColorConvertFloat4ToU32(ImVec4(
         menu.aim_warning_color[0], menu.aim_warning_color[1],
         menu.aim_warning_color[2], menu.aim_warning_color[3]));
@@ -614,7 +651,28 @@ void Draw(ImDrawList* draw, OverlayMenu& menu, const std::vector<PlayerData>& pl
 
     const float screenWidth = menu.ScreenWidth;
     const float screenHeight = menu.ScreenHeight;
-    const bool expandedMiniMap = G_Radar.SelectMinimapSizeIndex > 0;
+    const float miniMapViewScale = CurrentMiniMapViewScale();
+    const ULONGLONG nowMs = GetTickCount64();
+    static bool forcedMiniMapRoomOpen = false;
+    static bool previousNDown = false;
+    static ULONGLONG lastMiniMapToggleMs = 0;
+    static ULONGLONG lastMiniMapReleaseMs = 0;
+    const bool keyMiniMapPressed = telemetryMemory::IsKeyDown('N');
+    if (keyMiniMapPressed && !previousNDown &&
+        nowMs - lastMiniMapToggleMs > 450 &&
+        (lastMiniMapReleaseMs == 0 || nowMs - lastMiniMapReleaseMs > 80)) {
+        forcedMiniMapRoomOpen = !forcedMiniMapRoomOpen;
+        previousNDown = true;
+        lastMiniMapToggleMs = nowMs;
+    }
+    if (!keyMiniMapPressed && previousNDown) {
+        previousNDown = false;
+        lastMiniMapReleaseMs = nowMs;
+    }
+
+    const bool gameMiniMapExpanded = G_Radar.SelectMinimapSizeIndex > 0 || miniMapViewScale > 1.05f;
+    const bool expandedMiniMap = forcedMiniMapRoomOpen || gameMiniMapExpanded;
+    const float miniMapSizeScale = ExpandedMiniMapScale(miniMapViewScale, expandedMiniMap);
     const bool hasHudMiniMapRect = G_Radar.ScreenPosX > 1.0f && G_Radar.ScreenPosY > 1.0f &&
         G_Radar.ScreenSize > 40.0f && G_Radar.ScreenSizeY > 40.0f;
     const bool hasPaodProfile = HasMiniMapProfile(screenWidth, screenHeight);
@@ -630,26 +688,28 @@ void Draw(ImDrawList* draw, OverlayMenu& menu, const std::vector<PlayerData>& pl
         const ImVec2 mapCenter = MiniMapCenter(screenWidth, screenHeight, expandedMiniMap);
         centerX = screenWidth * mapCenter.x + menu.radar_offset_x;
         centerY = screenHeight * mapCenter.y + menu.radar_offset_y;
-        mapDiv = MiniMapDiv(screenWidth, screenHeight, expandedMiniMap) * menu.radar_zoom_multiplier;
+        mapDiv = MiniMapDiv(screenWidth, screenHeight, expandedMiniMap) *
+            miniMapSizeScale * menu.radar_zoom_multiplier;
         miniLeft = centerX - mapDiv;
         miniTop = centerY - mapDiv;
         miniRight = centerX + mapDiv;
         miniBottom = centerY + mapDiv;
     } else if (hasHudMiniMapRect) {
-        const float radarW = G_Radar.ScreenSize;
-        const float radarH = G_Radar.ScreenSizeY;
-        centerX = G_Radar.ScreenPosX + radarW * 0.5f + menu.radar_offset_x;
-        centerY = G_Radar.ScreenPosY + radarH * 0.5f + menu.radar_offset_y;
+        const float radarW = G_Radar.ScreenSize * miniMapSizeScale;
+        const float radarH = G_Radar.ScreenSizeY * miniMapSizeScale;
+        centerX = G_Radar.ScreenPosX + G_Radar.ScreenSize * 0.5f + menu.radar_offset_x;
+        centerY = G_Radar.ScreenPosY + G_Radar.ScreenSizeY * 0.5f + menu.radar_offset_y;
         mapDiv = (radarW < radarH ? radarW : radarH) * 0.5f * menu.radar_zoom_multiplier;
-        miniLeft = G_Radar.ScreenPosX;
-        miniTop = G_Radar.ScreenPosY;
-        miniRight = G_Radar.ScreenPosX + radarW;
-        miniBottom = G_Radar.ScreenPosY + radarH;
+        miniLeft = centerX - radarW * 0.5f;
+        miniTop = centerY - radarH * 0.5f;
+        miniRight = centerX + radarW * 0.5f;
+        miniBottom = centerY + radarH * 0.5f;
     } else {
         const ImVec2 mapCenter = MiniMapCenter(screenWidth, screenHeight, expandedMiniMap);
         centerX = screenWidth * mapCenter.x + menu.radar_offset_x;
         centerY = screenHeight * mapCenter.y + menu.radar_offset_y;
-        mapDiv = MiniMapDiv(screenWidth, screenHeight, expandedMiniMap) * menu.radar_zoom_multiplier;
+        mapDiv = MiniMapDiv(screenWidth, screenHeight, expandedMiniMap) *
+            miniMapSizeScale * menu.radar_zoom_multiplier;
         miniLeft = centerX - mapDiv;
         miniTop = centerY - mapDiv;
         miniRight = centerX + mapDiv;
@@ -657,12 +717,49 @@ void Draw(ImDrawList* draw, OverlayMenu& menu, const std::vector<PlayerData>& pl
     }
 
     if (mapDiv < 50.0f) mapDiv = 50.0f;
+    const float maxMapDiv = (std::min)(screenWidth, screenHeight) * 0.48f;
+    if (mapDiv > maxMapDiv) {
+        mapDiv = maxMapDiv;
+        miniLeft = centerX - mapDiv;
+        miniTop = centerY - mapDiv;
+        miniRight = centerX + mapDiv;
+        miniBottom = centerY + mapDiv;
+    }
+    const float worldRange = MiniMapWorldRange(miniMapSizeScale, expandedMiniMap);
+
+#ifdef _DEBUG
+    static uint64_t lastMiniMapScaleLogMs = 0;
+    static float lastLoggedMiniMapScale = 0.0f;
+    static bool lastLoggedMiniMapExpanded = false;
+    const bool miniMapScaleChanged = std::fabs(miniMapSizeScale - lastLoggedMiniMapScale) > 0.03f ||
+        expandedMiniMap != lastLoggedMiniMapExpanded;
+    if ((keyMiniMapPressed || miniMapScaleChanged) && nowMs - lastMiniMapScaleLogMs > 450) {
+        lastMiniMapScaleLogMs = nowMs;
+        lastLoggedMiniMapScale = miniMapSizeScale;
+        lastLoggedMiniMapExpanded = expandedMiniMap;
+        std::cout << "[DEBUG][MINIMAP_SCALE] key_n=" << (keyMiniMapPressed ? 1 : 0)
+            << " forced=" << (forcedMiniMapRoomOpen ? 1 : 0)
+            << " game_expanded=" << (gameMiniMapExpanded ? 1 : 0)
+            << " visible=" << (G_Radar.IsMiniMapVisible ? 1 : 0)
+            << " size_index=" << G_Radar.SelectMinimapSizeIndex
+            << " raw_scale=" << G_Radar.CurrentMinimapViewScale
+            << " used_scale=" << miniMapViewScale
+            << " size_scale=" << miniMapSizeScale
+            << " expanded=" << (expandedMiniMap ? 1 : 0)
+            << " map_div=" << mapDiv
+            << " world_range=" << worldRange
+            << " px_per_world=" << (mapDiv / worldRange)
+            << " rect=(" << miniLeft << "," << miniTop << "," << miniRight << "," << miniBottom << ")"
+            << " hud_rect=(" << G_Radar.ScreenPosX << "," << G_Radar.ScreenPosY
+            << "," << G_Radar.ScreenSize << "," << G_Radar.ScreenSizeY << ")"
+            << std::endl;
+    }
+#endif
 
     static bool forcedWorldMapOpen = false;
     static bool previousMDown = false;
     static ULONGLONG lastMapToggleMs = 0;
     static ULONGLONG lastMapReleaseMs = 0;
-    const ULONGLONG nowMs = GetTickCount64();
     const bool keyWorldMapPressed = telemetryMemory::IsKeyDown('M');
     if (keyWorldMapPressed && !previousMDown &&
         nowMs - lastMapToggleMs > 900 &&
@@ -670,10 +767,6 @@ void Draw(ImDrawList* draw, OverlayMenu& menu, const std::vector<PlayerData>& pl
         forcedWorldMapOpen = !forcedWorldMapOpen;
         previousMDown = true;
         lastMapToggleMs = nowMs;
-#ifdef _DEBUG
-        std::cout << "[DEBUG][BIGMAP] toggle=" << (forcedWorldMapOpen ? "on" : "off")
-            << " key=M" << std::endl;
-#endif
     }
     if (!keyWorldMapPressed && previousMDown) {
         previousMDown = false;
@@ -689,37 +782,6 @@ void Draw(ImDrawList* draw, OverlayMenu& menu, const std::vector<PlayerData>& pl
         G_Radar.MapWorldSize > 1000.0f;
     bool worldMapDrawn = false;
 
-#ifdef _DEBUG
-    static ULONGLONG lastBigMapDebugLog = 0;
-    const bool shouldLogBigMap = (nowMs - lastBigMapDebugLog > 1000);
-    if (shouldLogBigMap) {
-        lastBigMapDebugLog = nowMs;
-        const char* reason = "ready";
-        if (!menu.bigmap_enabled) {
-            reason = "menu-disabled";
-        } else if (!G_Radar.IsWorldMapVisible && !forcedWorldMapOpen) {
-            reason = "not-visible-and-not-forced";
-        } else if (G_Radar.MapWorldSize <= 1000.0f) {
-            reason = "map-size-missing";
-        }
-        std::cout << "[DEBUG][BIGMAP] enabled=" << (menu.bigmap_enabled ? 1 : 0)
-            << " hud_visible=" << (G_Radar.IsWorldMapVisible ? 1 : 0)
-            << " forced=" << (forcedWorldMapOpen ? 1 : 0)
-            << " key_m=" << (keyWorldMapPressed ? 1 : 0)
-            << " can_draw=" << (canDrawWorldMap ? 1 : 0)
-            << " reason=" << reason
-            << " players=" << players.size()
-            << " map_size=" << G_Radar.MapWorldSize
-            << " origin=(" << G_Radar.WorldOriginLocation.x << "," << G_Radar.WorldOriginLocation.y << ")"
-            << " center=(" << G_Radar.WorldCenterLocation.x << "," << G_Radar.WorldCenterLocation.y << ")"
-            << " factored=" << G_Radar.MapSizeFactored
-            << " zoom=" << G_Radar.WorldMapZoomFactor
-            << " widget_rect=(" << G_Radar.WorldMapX << "," << G_Radar.WorldMapY
-            << "," << G_Radar.WorldMapWidth << "," << G_Radar.WorldMapHeight << ")"
-            << std::endl;
-    }
-#endif
-
     if (canDrawWorldMap) {
         BigMapRect bigMapRect{};
         if (G_Radar.IsWorldMapVisible) {
@@ -731,39 +793,53 @@ void Draw(ImDrawList* draw, OverlayMenu& menu, const std::vector<PlayerData>& pl
             bigMapRect = { worldLeft, worldTop, worldLeft + baseMapSize, worldTop + baseMapSize };
         }
 
-        if (!IsValidBigMapRect(bigMapRect)) {
-#ifdef _DEBUG
-            std::cout << "[DEBUG][BIGMAP] invalid_rect=(" << bigMapRect.left << "," << bigMapRect.top
-                << "," << bigMapRect.right << "," << bigMapRect.bottom << ")" << std::endl;
-#endif
-        } else {
-            int eligiblePlayers = 0;
-            int projectedPlayers = 0;
+        if (IsValidBigMapRect(bigMapRect)) {
+            static bool bigMapSmoothReady = false;
+            static float smoothMapSizeFactored = 0.0f;
+            static Vector3 smoothWorldCenter = { 0.0f, 0.0f, 0.0f };
+            const float smoothFactor = BigMapSmoothingFactor(nowMs);
+            const bool resetBigMapSmoothing = !bigMapSmoothReady ||
+                !std::isfinite(smoothMapSizeFactored) ||
+                smoothMapSizeFactored <= 1000.0f ||
+                std::fabs(smoothMapSizeFactored - G_Radar.MapSizeFactored) > G_Radar.MapWorldSize ||
+                !std::isfinite(smoothWorldCenter.x) ||
+                !std::isfinite(smoothWorldCenter.y) ||
+                std::fabs(smoothWorldCenter.x - G_Radar.WorldCenterLocation.x) > G_Radar.MapWorldSize ||
+                std::fabs(smoothWorldCenter.y - G_Radar.WorldCenterLocation.y) > G_Radar.MapWorldSize;
+            if (resetBigMapSmoothing) {
+                smoothMapSizeFactored = G_Radar.MapSizeFactored;
+                smoothWorldCenter = G_Radar.WorldCenterLocation;
+                bigMapSmoothReady = true;
+            } else {
+                smoothMapSizeFactored = SmoothStepValue(smoothMapSizeFactored,
+                    G_Radar.MapSizeFactored, smoothFactor);
+                smoothWorldCenter.x = SmoothStepValue(smoothWorldCenter.x,
+                    G_Radar.WorldCenterLocation.x, smoothFactor);
+                smoothWorldCenter.y = SmoothStepValue(smoothWorldCenter.y,
+                    G_Radar.WorldCenterLocation.y, smoothFactor);
+            }
+
+            const float savedMapSizeFactored = G_Radar.MapSizeFactored;
+            const Vector3 savedWorldCenter = G_Radar.WorldCenterLocation;
+            G_Radar.MapSizeFactored = smoothMapSizeFactored;
+            G_Radar.WorldCenterLocation = smoothWorldCenter;
+
             DrawBigMapItems(draw, menu, bigMapRect);
 
             for (const auto& player : players) {
                 if (!ShouldDrawPlayer(menu, player)) continue;
-                ++eligiblePlayers;
                 float mapX = 0.0f;
                 float mapY = 0.0f;
                 if (!WorldToBigMapScreen(bigMapRect, player.Position, mapX, mapY)) continue;
-                ++projectedPlayers;
                 DrawBigMapAimRay(draw, menu, player, bigMapRect, ImVec2(mapX, mapY));
                 DrawBigMapMarker(draw, menu, player, mapX, mapY);
             }
+
+            G_Radar.MapSizeFactored = savedMapSizeFactored;
+            G_Radar.WorldCenterLocation = savedWorldCenter;
+
             DrawBigMapLegend(draw, menu, bigMapRect);
             worldMapDrawn = true;
-
-#ifdef _DEBUG
-            if (shouldLogBigMap) {
-                std::cout << "[DEBUG][BIGMAP_DRAW] rect=(" << bigMapRect.left << "," << bigMapRect.top
-                    << "," << bigMapRect.right << "," << bigMapRect.bottom << ")"
-                    << " eligible=" << eligiblePlayers
-                    << " projected=" << projectedPlayers
-                    << " dropped=" << (eligiblePlayers - projectedPlayers)
-                    << std::endl;
-            }
-#endif
         }
     }
 
@@ -772,16 +848,15 @@ void Draw(ImDrawList* draw, OverlayMenu& menu, const std::vector<PlayerData>& pl
 
     for (const auto& player : players) {
         if (!ShouldDrawPlayer(menu, player)) continue;
-        const float worldRange = expandedMiniMap ? 37000.0f : 20000.0f;
         const float dx = player.Position.x - G_LocalPlayerPos.x;
         const float dy = player.Position.y - G_LocalPlayerPos.y;
         if (dx > worldRange || dx < -worldRange || dy > worldRange || dy < -worldRange) continue;
 
-        const float finalX = roundf(dx / 20000.0f * mapDiv) + centerX;
-        const float finalY = roundf(dy / 20000.0f * mapDiv) + centerY;
+        const float finalX = roundf(dx / worldRange * mapDiv) + centerX;
+        const float finalY = roundf(dy / worldRange * mapDiv) + centerY;
         const float clampedX = std::clamp(finalX, miniLeft + 3.0f, miniRight - 3.0f);
         const float clampedY = std::clamp(finalY, miniTop + 3.0f, miniBottom - 3.0f);
-        DrawMiniMapAimRay(draw, menu, player, ImVec2(clampedX, clampedY), mapDiv,
+        DrawMiniMapAimRay(draw, menu, player, ImVec2(clampedX, clampedY), mapDiv, worldRange,
             miniLeft, miniTop, miniRight, miniBottom);
         DrawTeamMarker(draw, clampedX, clampedY, player.TeamID,
             GetTeamColor(menu, player.TeamID), menu.radar_dot_size);

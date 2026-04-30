@@ -751,11 +751,6 @@ namespace telemetryContext {
             G_Radar.WorldMapWidth = 0.0f;
             G_Radar.WorldMapHeight = 0.0f;
 
-            float worldRawLeft = 0.0f;
-            float worldRawTop = 0.0f;
-            float worldAlignX = 0.5f;
-            float worldAlignY = 0.5f;
-
             if (G_LocalHUD) {
                 uint64_t widgetListAddress = G_LocalHUD + telemetryOffsets::BlockInputWidgetList;
                 uint32_t widgetCount = Read<uint32_t>(widgetListAddress + 0x8);
@@ -796,16 +791,26 @@ namespace telemetryContext {
                             G_Radar.IsMiniMapVisible = IsSlateVisible(visibility);
                             G_Radar.SelectMinimapSizeIndex = Read<int>(widget + telemetryOffsets::SelectMinimapSizeIndex);
                             G_Radar.MiniMapSizeIndex = G_Radar.SelectMinimapSizeIndex;
-                            G_Radar.CurrentMinimapViewScale = Read<float>(widget + telemetryOffsets::CurrentMinimapViewScale1D);
+                            const float rawMiniMapViewScale = Read<float>(widget + telemetryOffsets::CurrentMinimapViewScale1D);
+                            G_Radar.CurrentMinimapViewScale =
+                                (std::isfinite(rawMiniMapViewScale) && rawMiniMapViewScale > 0.01f && rawMiniMapViewScale < 20.0f)
+                                    ? rawMiniMapViewScale
+                                    : 1.0f;
 
                             const uint64_t slot = Read<uint64_t>(widget + telemetryOffsets::Slot);
+                            float left = 0.0f;
+                            float top = 0.0f;
+                            float width = 0.0f;
+                            float height = 0.0f;
+                            float alignX = 0.5f;
+                            float alignY = 0.5f;
                             if (slot) {
-                                const float left = Read<float>(slot + telemetryOffsets::LayoutData + 0x0);
-                                const float top = Read<float>(slot + telemetryOffsets::LayoutData + 0x4);
-                                const float width = Read<float>(slot + telemetryOffsets::LayoutData + 0x8);
-                                const float height = Read<float>(slot + telemetryOffsets::LayoutData + 0xC);
-                                const float alignX = Read<float>(slot + telemetryOffsets::LayoutData + telemetryOffsets::Alignment + 0x0);
-                                const float alignY = Read<float>(slot + telemetryOffsets::LayoutData + telemetryOffsets::Alignment + 0x4);
+                                left = Read<float>(slot + telemetryOffsets::LayoutData + 0x0);
+                                top = Read<float>(slot + telemetryOffsets::LayoutData + 0x4);
+                                width = Read<float>(slot + telemetryOffsets::LayoutData + 0x8);
+                                height = Read<float>(slot + telemetryOffsets::LayoutData + 0xC);
+                                alignX = Read<float>(slot + telemetryOffsets::LayoutData + telemetryOffsets::Alignment + 0x0);
+                                alignY = Read<float>(slot + telemetryOffsets::LayoutData + telemetryOffsets::Alignment + 0x4);
 
                                 float resolvedX = 0.0f;
                                 float resolvedY = 0.0f;
@@ -820,6 +825,31 @@ namespace telemetryContext {
                                     G_Radar.AlignmentY = alignY;
                                 }
                             }
+
+#ifdef _DEBUG
+                            static ULONGLONG lastMiniMapWidgetLog = 0;
+                            static float lastMiniMapWidgetScale = 0.0f;
+                            static int lastMiniMapSizeIndex = -1;
+                            const bool keyMiniMapPressed = telemetryMemory::IsKeyDown('N');
+                            const bool scaleChanged = std::fabs(G_Radar.CurrentMinimapViewScale - lastMiniMapWidgetScale) > 0.03f ||
+                                G_Radar.SelectMinimapSizeIndex != lastMiniMapSizeIndex;
+                            if ((keyMiniMapPressed || scaleChanged) && now - lastMiniMapWidgetLog > 450) {
+                                lastMiniMapWidgetLog = now;
+                                lastMiniMapWidgetScale = G_Radar.CurrentMinimapViewScale;
+                                lastMiniMapSizeIndex = G_Radar.SelectMinimapSizeIndex;
+                                std::cout << "[DEBUG][MINIMAP_WIDGET] key_n=" << (keyMiniMapPressed ? 1 : 0)
+                                    << " visible=" << (G_Radar.IsMiniMapVisible ? 1 : 0)
+                                    << " size_index=" << G_Radar.SelectMinimapSizeIndex
+                                    << " raw_scale=" << rawMiniMapViewScale
+                                    << " used_scale=" << G_Radar.CurrentMinimapViewScale
+                                    << " slot=0x" << std::hex << slot << std::dec
+                                    << " layout=(" << left << "," << top << "," << width << "," << height << ")"
+                                    << " align=(" << alignX << "," << alignY << ")"
+                                    << " rect=(" << G_Radar.ScreenPosX << "," << G_Radar.ScreenPosY
+                                    << "," << G_Radar.ScreenSize << "," << G_Radar.ScreenSizeY << ")"
+                                    << std::endl;
+                            }
+#endif
                             continue;
                         }
 
@@ -854,11 +884,6 @@ namespace telemetryContext {
                                 G_Radar.WorldMapWidth = width;
                                 G_Radar.WorldMapHeight = height;
 
-                                worldRawLeft = left;
-                                worldRawTop = top;
-                                worldAlignX = alignX;
-                                worldAlignY = alignY;
-
                                 const float layoutZoom = width / 1080.0f;
                                 const float zoomState = Read<float>(widget + 0xA28);
                                 G_Radar.WorldMapZoomFactor = (layoutZoom > 0.001f)
@@ -883,42 +908,22 @@ namespace telemetryContext {
 
             if (now - lastMapInfoUpdate > 3000 || G_Radar.MapWorldSize <= 0.0f) {
                 lastMapInfoUpdate = now;
-                const uint32_t mapObjId = telemetryOffsets::DecryptCIndex(Read<uint32_t>(G_UWorld + telemetryOffsets::ObjID));
-                const std::string mapName = FNameUtils::GetNameFast(mapObjId);
+                const std::string mapName = FNameUtils::GetNameFast(
+                    telemetryOffsets::DecryptCIndex(Read<uint32_t>(G_UWorld + telemetryOffsets::ObjID)));
                 G_Radar.MapWorldSize = GetMapWorldSize(mapName);
 
                 const int32_t worldOriginRawX = Read<int32_t>(G_UWorld + telemetryOffsets::WorldToMap);
                 const int32_t worldOriginRawY = Read<int32_t>(G_UWorld + telemetryOffsets::WorldToMap + 0x4);
                 float worldOriginX = static_cast<float>(worldOriginRawX);
                 float worldOriginY = static_cast<float>(worldOriginRawY);
-                const char* worldOriginSource = "WorldToMap-i32";
 
                 if (worldOriginRawX < -1000000 || worldOriginRawX > 1000000 ||
                     worldOriginRawY < -1000000 || worldOriginRawY > 1000000) {
                     worldOriginX = 0.0f;
                     worldOriginY = 0.0f;
-                    worldOriginSource = "WorldToMap-i32-invalid";
                 }
 
                 G_Radar.WorldOriginLocation = { worldOriginX, worldOriginY, 0.0f };
-
-#ifdef _DEBUG
-                std::cout << "[DEBUG][MAP] name=" << mapName
-                    << " obj=0x" << std::hex << mapObjId << std::dec
-                    << " size=" << G_Radar.MapWorldSize
-                    << " origin=(" << G_Radar.WorldOriginLocation.x << "," << G_Radar.WorldOriginLocation.y << ")"
-                    << " origin_source=" << worldOriginSource
-                    << " origin_raw=(" << worldOriginRawX << "," << worldOriginRawY << ")"
-                    << " minimap_visible=" << (G_Radar.IsMiniMapVisible ? 1 : 0)
-                    << " world_visible=" << (G_Radar.IsWorldMapVisible ? 1 : 0)
-                    << " widget_rect=(" << G_Radar.WorldMapX << "," << G_Radar.WorldMapY
-                    << "," << G_Radar.WorldMapWidth << "," << G_Radar.WorldMapHeight << ")"
-                    << " widget_raw=(" << worldRawLeft << "," << worldRawTop
-                    << ") align=(" << worldAlignX << "," << worldAlignY << ")"
-                    << " zoom=" << G_Radar.WorldMapZoomFactor
-                    << " position=(" << G_Radar.WorldMapPosition.x << "," << G_Radar.WorldMapPosition.y << ")"
-                    << std::endl;
-#endif
             }
 
             if (G_Radar.WorldMapZoomFactor <= 0.001f) {
@@ -934,20 +939,6 @@ namespace telemetryContext {
                 };
             }
 
-#ifdef _DEBUG
-            static ULONGLONG lastWorldMapStateLog = 0;
-            if (now - lastWorldMapStateLog > 3000) {
-                lastWorldMapStateLog = now;
-                std::cout << "[DEBUG][MAP_STATE] world_visible=" << (G_Radar.IsWorldMapVisible ? 1 : 0)
-                    << " map_size=" << G_Radar.MapWorldSize
-                    << " zoom=" << G_Radar.WorldMapZoomFactor
-                    << " factored=" << G_Radar.MapSizeFactored
-                    << " center=(" << G_Radar.WorldCenterLocation.x << "," << G_Radar.WorldCenterLocation.y << ")"
-                    << " rect=(" << G_Radar.WorldMapX << "," << G_Radar.WorldMapY
-                    << "," << G_Radar.WorldMapWidth << "," << G_Radar.WorldMapHeight << ")"
-                    << std::endl;
-            }
-#endif
         }
 
         // Dynamic fallback when HUD widget is not ready

@@ -145,3 +145,22 @@ GameBase (Base = ImageBase of TslGame.exe)
             │   └─ Actor[i+1] …
             │
             └─ Actors_Count  @ Actors + 0x8  (int, max 2000)
+// =================================== [ MAP / RADAR USAGE ] ===================================
+// @ MapName             : Lay tu ObjID cua UWorld -> DecryptCIndex -> GNames.
+// @ MapWorldSize        : Chon theo MapName. Vi du Range/Summerland/Italy = 101175,
+//                         Baltic/Desert/Tiger/Kiki/Neon/DihorOtok = 408000,
+//                         Heaven/Boardwalk/Narrows/Pinnacle = 51420,
+//                         Savage = 202387.5, Chimera = 152950.
+// @ WorldToMap          : Doc tai UWorld + [Offset::WorldToMap] bang int32 X/Y,
+//                         khong doc float va khong fallback sang offset co dinh khac.
+// @ WorldOriginLocation : { (float)WorldToMapX, (float)WorldToMapY, 0 }.
+// @ WorldMapWidget      : Tim widget world map dang visible, lay Slot/LayoutData de biet zoom,
+//                         alignment, size cua map UI.
+// @ WorldMapPosition    : Tinh tu Layout.Right/Bottom + Alignment - Layout.Left/Top.
+// @ MapSizeFactored     : MapWorldSize / WorldMapZoomFactor.
+// @ WorldCenterLocation : MapWorldSize * (1 + WorldMapPosition.X/Y).
+// @ BigMap Projection   : ScreenCenter + ((ActorLocation + WorldOriginLocation - WorldCenterLocation)
+//                         / MapSizeFactored) * ScreenHalfHeight.
+// @ Hotkey              : M dang dung dang toggle bat/tat big map overlay, khong can giu phim.
+// @ Console             : Khong log map moi frame de tranh nang console; chi bat log tam thoi khi can debug.
+// =============================================================================================
