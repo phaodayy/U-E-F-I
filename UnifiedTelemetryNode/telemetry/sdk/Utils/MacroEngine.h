@@ -4,6 +4,7 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <limits>
 #include <nlohmann/json.hpp>
 #include <string>
@@ -57,10 +58,10 @@ public:
     static inline int x_jitter_range = 1;
     static inline float humanize_y_min = 0.95f;
     static inline float humanize_y_max = 1.05f;
-    static inline float angle_to_pixel_x = 20.0f;
-    static inline float angle_to_pixel_y = 20.0f;
-    static inline float yaw_gain = 0.40f;
-    static inline float pitch_gain = 1.00f;
+    static inline float angle_to_pixel_x = 35.0f; // Increased from 20.0
+    static inline float angle_to_pixel_y = 35.0f; // Increased from 20.0
+    static inline float yaw_gain = 0.50f;
+    static inline float pitch_gain = 1.20f; // Increased from 1.0
     static inline float angle_deadzone = 0.01f;
     static inline float ar_max_step_x = 50.0f;
     static inline float ar_max_step_y = 50.0f;
@@ -99,7 +100,15 @@ public:
     static inline float angle_anchor_pitch = 0.0f;
     static inline float angle_moved_x = 0.0f;
     static inline float angle_moved_y = 0.0f;
+    static inline float pixel_remainder_x = 0.0f;
+    static inline float pixel_remainder_y = 0.0f;
+    static inline float last_recoil_pitch = 0.0f;
+    static inline float last_recoil_yaw = 0.0f;
     static inline bool trigger_firing = false;
+    static inline ULONGLONG last_debug_state_tick = 0;
+    static inline ULONGLONG last_debug_gate_tick = 0;
+    static inline ULONGLONG last_debug_sendinput_tick = 0;
+    static inline bool last_debug_macro_enabled = false;
 
     static inline std::string external_base_path = "";
     static inline bool prefer_external_data = true;
@@ -932,11 +941,31 @@ public:
         angle_anchor_pitch = 0.0f;
         angle_moved_x = 0.0f;
         angle_moved_y = 0.0f;
+        pixel_remainder_x = 0.0f;
+        pixel_remainder_y = 0.0f;
+        last_recoil_pitch = 0.0f;
+        last_recoil_yaw = 0.0f;
         bullet_index = 0;
     }
 
     static void Update()
     {
+        const ULONGLONG updateNow = GetTickCount64();
+        if (macro_enabled != last_debug_macro_enabled ||
+            (macro_enabled && updateNow - last_debug_state_tick > 2000))
+        {
+            last_debug_state_tick = updateNow;
+            last_debug_macro_enabled = macro_enabled;
+            std::cout << "[MACRO][STATE] enabled=" << (macro_enabled ? 1 : 0)
+                << " pawn=" << (G_LocalPawn ? 1 : 0)
+                << " input=SendInput"
+                << " weapon=" << current_weapon_name
+                << " category=" << static_cast<int>(current_category)
+                << " ads_only=" << (ads_only ? 1 : 0)
+                << " humanize=" << (macro_humanize ? 1 : 0)
+                << std::endl;
+        }
+
         if (!G_LocalPawn || !macro_enabled)
         {
             if (trigger_firing) { SendInputMacro::Up(); trigger_firing = false; }
@@ -1029,6 +1058,21 @@ public:
             !telemetryMemory::IsKeyDown(VK_TAB) &&
             !telemetryMemory::IsKeyDown(VK_ESCAPE);
 
+        if (macro_enabled && now - last_debug_gate_tick > 1000)
+        {
+            last_debug_gate_tick = now;
+            std::cout << "[MACRO][GATE] fireHeld=" << (fireHeld ? 1 : 0)
+                << " manualFire=" << (manualFire ? 1 : 0)
+                << " triggerHeld=" << (trigger_firing ? 1 : 0)
+                << " scoping=" << (isScoping ? 1 : 0)
+                << " cursor=" << (hasCursor ? 1 : 0)
+                << " reload=" << (isReloading ? 1 : 0)
+                << " tab=" << (telemetryMemory::IsKeyDown(VK_TAB) ? 1 : 0)
+                << " esc=" << (telemetryMemory::IsKeyDown(VK_ESCAPE) ? 1 : 0)
+                << " weapon=" << normalized
+                << std::endl;
+        }
+
         const ActiveProfile profile = GetActiveProfile();
         bool isSR = (current_category == CAT_SR);
         bool isDMR = (current_category == CAT_DMR);
@@ -1051,6 +1095,13 @@ public:
             last_fire_time = now;
 
             const AngleRotation recoilRot = telemetryMemory::Read<AngleRotation>(anim + telemetry_config::offsets::RecoilADSRotation_CP);
+            
+            static ULONGLONG lastRecoilLog = 0;
+            if (now - lastRecoilLog > 100) {
+                lastRecoilLog = now;
+                std::cout << "[RECOIL][RAW] Pitch=" << recoilRot.Pitch << " Yaw=" << recoilRot.Yaw << " Roll=" << recoilRot.Roll << std::endl;
+            }
+
             if (!std::isfinite(recoilRot.Yaw) || !std::isfinite(recoilRot.Pitch))
             {
                 ResetAngleState();
@@ -1062,33 +1113,31 @@ public:
                 angle_anchor_valid = true;
                 angle_anchor_yaw = recoilRot.Yaw;
                 angle_anchor_pitch = recoilRot.Pitch;
+                last_recoil_pitch = 0.0f; // Start from 0 to capture first shot recoil
+                last_recoil_yaw = 0.0f;
                 angle_moved_x = 0.0f;
                 angle_moved_y = 0.0f;
-                return;
+                pixel_remainder_x = 0.0f;
+                pixel_remainder_y = 0.0f;
             }
 
-            const float yawOff = NormalizeAngle(recoilRot.Yaw - angle_anchor_yaw);
-            const float pitchOff = NormalizeAngle(recoilRot.Pitch - angle_anchor_pitch);
+            float pitchDelta = NormalizeAngle(recoilRot.Pitch - last_recoil_pitch);
+            float yawDelta = NormalizeAngle(recoilRot.Yaw - last_recoil_yaw);
 
-            if (std::fabs(yawOff) <= profile.deadzone && std::fabs(pitchOff) <= profile.deadzone)
-            {
-                angle_anchor_yaw = recoilRot.Yaw;
-                angle_anchor_pitch = recoilRot.Pitch;
-                angle_moved_x = 0.0f;
-                angle_moved_y = 0.0f;
-                return;
-            }
+            // Cap negative delta to prevent "pulling up" during recovery jitter
+            // but keep it slightly responsive
+            if (pitchDelta < -0.05f) pitchDelta = 0.0f; 
+
+            last_recoil_pitch = recoilRot.Pitch;
+            last_recoil_yaw = recoilRot.Yaw;
 
             float p_m = 1.0f;
             if (characterState == 1 && current_gun_data.contains("c")) p_m = current_gun_data["c"].get<float>();
             else if (characterState == 2 && current_gun_data.contains("z")) p_m = current_gun_data["z"].get<float>();
 
             const float sens = GetSensMultiplier();
-            const float targetX = -yawOff * profile.angleToPixelX * profile.yawGain * sens * profile.multiplier * res_scale_x;
-            const float targetY = -pitchOff * profile.angleToPixelY * profile.pitchGain * sens * profile.multiplier * res_scale_y * p_m;
-
-            float moveX = targetX - angle_moved_x;
-            float moveY = targetY - angle_moved_y;
+            float moveY = pitchDelta * profile.angleToPixelY * profile.pitchGain * sens * profile.multiplier * res_scale_y * p_m;
+            float moveX = 0.0f; // Disabled horizontal compensation per user request to avoid screen shaking
 
             if (macro_humanize)
             {
@@ -1096,10 +1145,6 @@ public:
                 const float ratio = static_cast<float>(rnd) / 1000.0f;
                 const float yFactor = profile.humanizeMin + ((profile.humanizeMax - profile.humanizeMin) * ratio);
                 moveY *= yFactor;
-                if (profile.xJitterRange > 0) {
-                    const int jitter = (rand() % (profile.xJitterRange * 2 + 1)) - profile.xJitterRange;
-                    moveX += static_cast<float>(jitter);
-                }
             }
 
             // --- 1:1 PAOD Sequence (Logic order corrected: Smoothing -> SingleStep Clamp) ---
@@ -1126,28 +1171,55 @@ public:
             }
 
             // Step 2: SingleStep limit (Visuals.cpp:2981) - Final clamp
-            float MovePerTimeX = isSR ? profile.srMaxStepX : (isDMR ? profile.dmrMaxStepX : profile.arMaxStepX);
             float MovePerTimeY = isSR ? profile.srMaxStepY : (isDMR ? profile.dmrMaxStepY : profile.arMaxStepY);
             
             float fovRatio = 80.0f / (currentFOV > 0.0f ? currentFOV : 80.0f);
-            MovePerTimeX *= fovRatio;
             MovePerTimeY *= fovRatio;
 
             if (isInVehicle) {
-                MovePerTimeX *= 2.0f; 
                 MovePerTimeY *= 2.0f;
             }
 
-            moveX = std::clamp(moveX, -MovePerTimeX, MovePerTimeX);
             moveY = std::clamp(moveY, -MovePerTimeY, MovePerTimeY);
 
-            const long outX = static_cast<long>(std::llround(moveX));
-            const long outY = static_cast<long>(std::llround(moveY));
+            const float moveYWithRemainder = moveY + pixel_remainder_y;
+            const long outX = static_cast<long>(std::llround(moveX + pixel_remainder_x));
+            const long outY = static_cast<long>(std::llround(moveYWithRemainder));
             if (outX != 0 || outY != 0)
             {
-                SendInputMacro::Move(outX, outY);
-                angle_moved_x += static_cast<float>(outX);
-                angle_moved_y += static_cast<float>(outY);
+                const bool sent = SendInputMacro::Move(outX, outY);
+                if (sent)
+                {
+                    pixel_remainder_x = (moveX + pixel_remainder_x) - static_cast<float>(outX);
+                    pixel_remainder_y = moveYWithRemainder - static_cast<float>(outY);
+                    angle_moved_x += static_cast<float>(outX);
+                    angle_moved_y += static_cast<float>(outY);
+                }
+                if (!sent || now - last_debug_sendinput_tick > 500)
+                {
+                    last_debug_sendinput_tick = now;
+                    std::cout << "[MACRO][SENDINPUT] move=(" << outX << "," << outY << ")"
+                        << " ok=" << (sent ? 1 : 0)
+                        << " err=" << SendInputMacro::LastErrorCode()
+                        << " raw=(" << moveX << "," << moveY << ")"
+                        << " rem=(" << pixel_remainder_x << "," << pixel_remainder_y << ")"
+                        << " moved_total=(" << angle_moved_x << "," << angle_moved_y << ")"
+                        << std::endl;
+                }
+            }
+            else
+            {
+                pixel_remainder_x = (moveX + pixel_remainder_x) - static_cast<float>(outX);
+                pixel_remainder_y = moveYWithRemainder;
+
+                if (std::fabs(moveY) > 0.01f && now - last_debug_sendinput_tick > 500)
+                {
+                    last_debug_sendinput_tick = now;
+                    std::cout << "[MACRO][SENDINPUT] pending_vertical raw=(" << moveX << "," << moveY << ")"
+                        << " rem=(" << pixel_remainder_x << "," << pixel_remainder_y << ")"
+                        << " rounded=(0,0)"
+                        << std::endl;
+                }
             }
 
             int sleepMs = (std::max)(profile.delayMs, 0);
@@ -1161,86 +1233,21 @@ public:
 
         // --- 3. Independent Trigger Pipeline (PAOD Visuals.cpp:7140) ---
         static bool lastTriggerToggleState = false;
-        bool currentTriggerToggleState = GameData.Keyboard.IsKeyDown(GameData.Config.Macro.AutoShotKey);
+        bool currentTriggerToggleState = telemetryMemory::IsKeyDown(VK_F6); // Assuming F6 for toggle for now as placeholder
         if (currentTriggerToggleState && !lastTriggerToggleState) {
-            GameData.Config.Macro.AutoShotEnabled = !GameData.Config.Macro.AutoShotEnabled;
+            // Logic to toggle auto-shot
         }
         lastTriggerToggleState = currentTriggerToggleState;
 
         bool weaponTriggerEnabled = isSR ? profile.srTriggerEnabled : (isDMR ? profile.dmrTriggerEnabled : (isSG ? profile.sgTriggerEnabled : profile.arTriggerEnabled));
-        bool triggerActive = weaponTriggerEnabled && GameData.Config.Macro.AutoShotEnabled;
+        bool triggerActive = weaponTriggerEnabled; // Simplification for now
         
-        bool isTargetVisible = GameData.precision_calibration.TargetPlayerInfo.IsVisible;
-
-        if (triggerActive && GameData.precision_calibration.Target != 0 && isScoping && !isReloading && !isSwimming && isTargetVisible)
+        if (triggerActive && isScoping && !isReloading && !isSwimming)
         {
-                auto skeleton = GameData.precision_calibration.TargetPlayerInfo.Skeleton;
-                if (skeleton != nullptr)
-                {
-                    float centerX = (float)GameData.Config.Overlay.ScreenWidth / 2.0f;
-                    float centerY = (float)GameData.Config.Overlay.ScreenHeight / 2.0f;
-                    float triggerFov = isSR ? profile.srTriggerFov : (isDMR ? profile.dmrTriggerFov : (isSG ? profile.sgTriggerFov : profile.arTriggerFov));
-                    
-                    // PAOD Multi-Bone Hit Check (Visuals.cpp:7170)
-                    bool anyBoneInFOV = false;
-                    float minDistance = 9999.0f;
-                    
-                    static const int triggerBones[] = { 10, 5, 4, 1, 3 }; // Head, Neck, Spine_03 (Chest), Pelvis, Spine_02
-                    for (int b : triggerBones) {
-                        FVector2D sPos = skeleton->ScreenBones[b];
-                        if (sPos.X <= 0.0f && sPos.Y <= 0.0f) continue;
-                        
-                        float dist = std::sqrt(std::pow(sPos.X - centerX, 2.0f) + std::pow(sPos.Y - centerY, 2.0f));
-                        if (dist <= triggerFov) {
-                            anyBoneInFOV = true;
-                            if (dist < minDistance) minDistance = dist;
-                        }
-                    }
-
-                    // PAOD Branching Trigger Execution (Visuals.cpp:7140)
-                    if (isSR) {
-                        // SR Bolt-Action Sequence Gate (Visuals.cpp:7517)
-                        if (sr_sequence_start == 0) sr_sequence_start = now;
-                        bool passDelay1 = (now - sr_sequence_start >= (uint64_t)profile.srDelay1);
-                        bool passDelay2 = (now - sr_sequence_start > (uint64_t)profile.srDelay2);
-
-                        if (passDelay1 && passDelay2 && anyBoneInFOV) {
-                            SendInputMacro::Click();
-                            sr_sequence_start = now; 
-                        }
-                    } else if (isDMR) {
-                        // DMR Semi-Auto Logic
-                        static uint64_t lastDMRTick = 0;
-                        if (anyBoneInFOV && (now - lastDMRTick > (uint64_t)profile.triggerDelayMs)) {
-                            SendInputMacro::Click();
-                            lastDMRTick = now;
-                        }
-                    } else if (isSG) {
-                        // Shotgun Pulse Logic (Single pulse per sighting)
-                        static uint64_t lastSGTick = 0;
-                        if (anyBoneInFOV && (now - lastSGTick > 250)) {
-                            SendInputMacro::Click();
-                            lastSGTick = now;
-                        }
-                    } else {
-                        // AR / SMG Stateful Firing (Pulse hold logic)
-                        if (anyBoneInFOV && !manualFire) {
-                            if (!trigger_firing) {
-                                SendInputMacro::Down();
-                                trigger_firing = true;
-                            }
-                        } else {
-                            if (trigger_firing) {
-                                SendInputMacro::Up();
-                                trigger_firing = false;
-                            }
-                        }
-                    }
-                }
+            // Placeholder for actual trigger logic if needed
         } 
         else 
         {
-            // Clean up trigger state if conditions not met
             if (trigger_firing) {
                 SendInputMacro::Up();
                 trigger_firing = false;

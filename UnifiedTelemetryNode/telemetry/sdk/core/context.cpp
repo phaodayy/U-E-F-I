@@ -23,7 +23,7 @@ using namespace telemetryMemory;
 FGameData GameData; 
 uint64_t G_UWorld = 0, G_GameInstance = 0, G_PersistentLevel = 0, G_LocalPlayer = 0, G_PlayerController = 0, G_LocalPawn = 0, G_LocalHUD = 0, G_GameState = 0;
 bool G_IsMenuOpen = false;
-Vector3 G_CameraLocation = { 0, 0, 0 }, G_CameraRotation = { 0, 0, 0 }, G_LocalPlayerPos = { 0, 0, 0 }, G_LocalPlayerVelocity = { 0, 0, 0 };
+Vector3 G_CameraLocation = { 0, 0, 0 }, G_CameraRotation = { 0, 0, 0 }, G_LocalPlayerPos = { 0, 0, 0 }, G_LocalPlayerVelocity = { 0, 0, 0 }, G_LocalRecoil = { 0, 0, 0 }, G_LocalControlRotation = { 0, 0, 0 };
 uint64_t G_LastScanTime = 0;
 RadarData G_Radar;
 std::vector<PlayerData> G_Players;
@@ -286,7 +286,7 @@ namespace {
         if (anim <= 0x1000000) return;
 
         player.IsScoping = Read<uint8_t>(anim + telemetryOffsets::bIsScoping_CP) != 0;
-        player.IsReloading = Read<uint8_t>(anim + telemetryOffsets::bIsReloading_CP) != 0;
+        player.IsReloading = Read<uint8_t>(anim + telemetryOffsets::bIsReloading_CP) != 0; player.RecoilADSRotation = Read<Vector3>(anim + telemetryOffsets::RecoilADSRotation_CP); player.RecoilValueVector = Read<Vector3>(anim + telemetryOffsets::RecoilValueVector);
     }
 
     void ReadWeaponAmmo(uint64_t weapon, PlayerData& player) {
@@ -692,7 +692,7 @@ namespace telemetryContext {
             G_PlayerController = ReadXe(G_LocalPlayer + telemetryOffsets::PlayerController);
             if (G_PlayerController) {
                 G_LocalPawn = ReadXe(G_PlayerController + telemetryOffsets::AcknowledgedPawn);
-                G_LocalHUD = Read<uint64_t>(G_PlayerController + telemetryOffsets::MyHUD);
+                G_LocalHUD = Read<uint64_t>(G_PlayerController + telemetryOffsets::MyHUD); if (G_LocalPawn > 0x1000000) { uint64_t mesh = Read<uint64_t>(G_LocalPawn + telemetryOffsets::Mesh); if (mesh > 0x1000000) { uint64_t anim = Read<uint64_t>(mesh + telemetryOffsets::AnimScriptInstance); if (anim > 0x1000000) { G_LocalRecoil = Read<Vector3>(anim + telemetryOffsets::RecoilADSRotation_CP); G_LocalControlRotation = Read<Vector3>(anim + telemetryOffsets::ControlRotation_CP); } } }
                 
                 // --- UPDATE MENU STATE ---
                 // bShowMouseCursor is a bitfield in PlayerController. We check if the bit is set.

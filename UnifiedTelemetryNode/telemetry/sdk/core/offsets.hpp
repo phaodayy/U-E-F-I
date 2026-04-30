@@ -64,6 +64,9 @@ namespace telemetryOffsets {
     inline auto& AnimScriptInstance = telemetry_config::offsets::AnimScriptInstance;
     inline auto& bIsScoping_CP = telemetry_config::offsets::bIsScoping_CP;
     inline auto& bIsReloading_CP = telemetry_config::offsets::bIsReloading_CP;
+    inline auto& RecoilADSRotation_CP = telemetry_config::offsets::RecoilADSRotation_CP;
+    inline auto& RecoilValueVector = telemetry_config::offsets::RecoilValueVector;
+    inline auto& ControlRotation_CP = telemetry_config::offsets::ControlRotation_CP;
 
     // --- 6. RADAR & HUD ---
     inline auto& Minimap = telemetry_config::offsets::Minimap;

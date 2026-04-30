@@ -50,6 +50,8 @@ struct PlayerData {
     bool HasAmmo = false;
     bool HasAimYaw = false;
     PlayerGender Gender = PlayerGender::Male;
+    Vector3 RecoilADSRotation = { 0, 0, 0 };
+    Vector3 RecoilValueVector = { 0, 0, 0 };
     uint64_t ActorPtr = 0;
     uint64_t WeaponPtr = 0;
     uintptr_t MeshAddr = 0;
@@ -64,7 +66,7 @@ struct PlayerData {
 
 extern uint64_t G_UWorld, G_GameInstance, G_PersistentLevel, G_LocalPlayer, G_PlayerController, G_LocalPawn, G_LocalHUD;
 extern bool G_IsMenuOpen;
-extern Vector3 G_CameraLocation, G_CameraRotation, G_LocalPlayerPos, G_LocalPlayerVelocity;
+extern Vector3 G_CameraLocation, G_CameraRotation, G_LocalPlayerPos, G_LocalPlayerVelocity, G_LocalRecoil, G_LocalControlRotation;
 extern uint64_t G_LastScanTime;
 struct RadarData {
     bool IsMiniMapVisible = false;
