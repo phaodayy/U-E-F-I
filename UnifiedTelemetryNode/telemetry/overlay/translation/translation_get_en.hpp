@@ -11,6 +11,7 @@ inline void FillEnglish(Strings& s) {
             s.TabVisuals = skCrypt("\xE2\x97\x89 Visuals");
 
             s.Tabprecision_calibration = skCrypt("\xE2\x97\x88 Flick Setting");
+            s.TabAimbot = skCrypt("\xE2\x9C\xA4 Aimbot");
 
             s.TabMacro = skCrypt("\xE2\x9C\xA4 Macro");
 

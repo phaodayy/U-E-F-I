@@ -495,9 +495,13 @@ public:
         if (name == skCrypt("BerylM762")) return skCrypt("m762");
         if (name == skCrypt("AK47")) return skCrypt("akm");
         if (name == skCrypt("SCAR-L")) return skCrypt("scar-l");
-        if (name == skCrypt("FNFal")) return skCrypt("slr");
+        if (name == skCrypt("FNFal") || name == skCrypt("MadsFNFal")) return skCrypt("slr");
+        if (name == skCrypt("QBU88") || name == skCrypt("MadsQBU88")) return skCrypt("qbu");
         if (name == skCrypt("G36C")) return skCrypt("g36c");
         if (name == skCrypt("Mk14")) return skCrypt("mk14");
+        if (name == skCrypt("L6")) return skCrypt("lynx");
+        if (name == skCrypt("MosinNagant")) return skCrypt("mosin");
+        if (name.find(skCrypt("PanzerFaust")) != std::string::npos) return skCrypt("panzerfaust");
         if (name == skCrypt("M249")) return skCrypt("m249");
         if (name == skCrypt("UMP")) return skCrypt("ump45");
         if (name == skCrypt("Vector")) return skCrypt("vector");

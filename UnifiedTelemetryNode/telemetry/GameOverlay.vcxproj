@@ -62,9 +62,10 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/utf-8 /FS %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)telemetry;$(SolutionDir)telemetry\sdk;$(SolutionDir)telemetry\sdk\core;$(SolutionDir)telemetry\sdk\memory;$(SolutionDir)telemetry\sdk\features;$(SolutionDir)telemetry\sdk\assets\embedded;$(SolutionDir)telemetry\sdk\third_party\stb;$(SolutionDir)..\;$(ProjectDir)..\..\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

@@ -10,6 +10,7 @@ namespace Translation {
         const char* MainTitle;
         const char* TabVisuals;
         const char* Tabprecision_calibration;
+        const char* TabAimbot;
         const char* TabMacro;
         const char* TabSettings;
         const char* TabRadar;

@@ -15,7 +15,277 @@ bool IsFlickWeaponEnabled(const OverlayMenu& menu, const std::string& weaponName
     if (weaponName == skCrypt("s1897") || weaponName == skCrypt("winchester")) return menu.flick_weapon_s1897;
     if (weaponName == skCrypt("dbs") || weaponName == skCrypt("dp12")) return menu.flick_weapon_dbs;
     if (weaponName == skCrypt("o12") || weaponName == skCrypt("origin12") || weaponName == skCrypt("origins12")) return menu.flick_weapon_o12;
+    if (weaponName == skCrypt("slr") || weaponName == skCrypt("fnfal") || weaponName == skCrypt("madsfnfal")) return menu.flick_weapon_slr;
+    if (weaponName == skCrypt("mini14")) return menu.flick_weapon_mini14;
+    if (weaponName == skCrypt("sks")) return menu.flick_weapon_sks;
+    if (weaponName == skCrypt("vss")) return menu.flick_weapon_vss;
+    if (weaponName == skCrypt("qbu") || weaponName == skCrypt("qbu88") || weaponName == skCrypt("madsqbu88")) return menu.flick_weapon_qbu;
+    if (weaponName == skCrypt("kar98k") || weaponName == skCrypt("julieskar98k")) return menu.flick_weapon_kar98k;
+    if (weaponName == skCrypt("m24") || weaponName == skCrypt("juliesm24")) return menu.flick_weapon_m24;
+    if (weaponName == skCrypt("awm")) return menu.flick_weapon_awm;
+    if (weaponName == skCrypt("lynx") || weaponName == skCrypt("l6")) return menu.flick_weapon_lynx;
+    if (weaponName == skCrypt("win94") || weaponName == skCrypt("win1894")) return menu.flick_weapon_win94;
+    if (weaponName == skCrypt("mosin") || weaponName == skCrypt("mosinnagant")) return menu.flick_weapon_mosin;
+    if (weaponName.find(skCrypt("panzer")) != std::string::npos) return menu.flick_weapon_panzerfaust;
+    if (weaponName == skCrypt("mk12")) return menu.flick_weapon_mk12;
+    if (weaponName == skCrypt("mk14")) return menu.flick_weapon_mk14;
+    if (weaponName == skCrypt("dragunov")) return menu.flick_weapon_dragunov;
     return false;
+}
+
+int GetFlickShotHoldMicros(const std::string& weaponName) {
+    int muzzleSpeed = 800;
+    int baseMicros = 100000;
+
+    if (weaponName == skCrypt("vss")) { muzzleSpeed = 330; baseMicros = 115000; }
+    else if (weaponName.find(skCrypt("panzer")) != std::string::npos) { muzzleSpeed = 115; baseMicros = 125000; }
+    else if (weaponName == skCrypt("win94") || weaponName == skCrypt("win1894")) { muzzleSpeed = 760; baseMicros = 110000; }
+    else if (weaponName == skCrypt("kar98k") || weaponName == skCrypt("mosin") || weaponName == skCrypt("mosinnagant")) { muzzleSpeed = 760; baseMicros = 110000; }
+    else if (weaponName == skCrypt("m24")) { muzzleSpeed = 790; baseMicros = 105000; }
+    else if (weaponName == skCrypt("awm")) { muzzleSpeed = 945; baseMicros = 100000; }
+    else if (weaponName == skCrypt("lynx") || weaponName == skCrypt("l6")) { muzzleSpeed = 990; baseMicros = 105000; }
+    else if (weaponName == skCrypt("mini14")) { muzzleSpeed = 990; baseMicros = 95000; }
+    else if (weaponName == skCrypt("qbu") || weaponName == skCrypt("qbu88") || weaponName == skCrypt("mk12")) { muzzleSpeed = 930; baseMicros = 95000; }
+    else if (weaponName == skCrypt("sks")) { muzzleSpeed = 800; baseMicros = 100000; }
+    else if (weaponName == skCrypt("slr") || weaponName == skCrypt("fnfal") || weaponName == skCrypt("madsfnfal")) { muzzleSpeed = 840; baseMicros = 100000; }
+    else if (weaponName == skCrypt("mk14")) { muzzleSpeed = 853; baseMicros = 100000; }
+    else if (weaponName == skCrypt("dragunov")) { muzzleSpeed = 830; baseMicros = 100000; }
+    else if (weaponName == skCrypt("s686") || weaponName == skCrypt("berreta686") ||
+        weaponName == skCrypt("s1897") || weaponName == skCrypt("winchester")) { muzzleSpeed = 360; baseMicros = 115000; }
+    else if (weaponName == skCrypt("s12k") || weaponName == skCrypt("saiga12") ||
+        weaponName == skCrypt("dbs") || weaponName == skCrypt("dp12") ||
+        weaponName == skCrypt("o12") || weaponName == skCrypt("origin12") || weaponName == skCrypt("origins12")) { muzzleSpeed = 420; baseMicros = 105000; }
+
+    const int slowProjectileExtra = std::clamp((850 - muzzleSpeed) * 30, 0, 25000);
+    return std::clamp(baseMicros + slowProjectileExtra, 95000, 150000);
+}
+
+long AbsLong(long value) {
+    return value < 0 ? -value : value;
+}
+
+int GetFlickSettleDelayMs(long moveX, long moveY) {
+    const long largestMove = (std::max)(AbsLong(moveX), AbsLong(moveY));
+    return std::clamp(35 + static_cast<int>(largestMove / 24), 40, 85);
+}
+
+struct PendingFlickAction {
+    bool active = false;
+    bool shotDown = false;
+    bool shouldClick = false;
+    bool shouldReturn = false;
+    long moveX = 0;
+    long moveY = 0;
+    ULONGLONG shotDownAt = 0;
+    ULONGLONG shotUpAt = 0;
+    ULONGLONG returnAt = 0;
+};
+
+void CancelPendingFlick(PendingFlickAction& pending) {
+    if (!pending.active) return;
+    if (pending.shotDown) {
+        telemetryMemory::MoveMouse(0, 0, 0x0002);
+    }
+    if (pending.shouldReturn && (pending.moveX != 0 || pending.moveY != 0)) {
+        telemetryMemory::MoveMouse(-pending.moveX, -pending.moveY);
+    }
+    pending = {};
+}
+
+void ProcessPendingFlick(PendingFlickAction& pending, bool canContinue, ULONGLONG now) {
+    if (!pending.active) return;
+
+    if (!canContinue) {
+        CancelPendingFlick(pending);
+        return;
+    }
+
+    if (pending.shouldClick && !pending.shotDown && now >= pending.shotDownAt) {
+        telemetryMemory::MoveMouse(0, 0, 0x0001);
+        pending.shotDown = true;
+        return;
+    }
+
+    if (pending.shotDown && now >= pending.shotUpAt) {
+        telemetryMemory::MoveMouse(0, 0, 0x0002);
+        pending.shotDown = false;
+        if (!pending.shouldReturn) {
+            pending = {};
+        }
+        return;
+    }
+
+    if (!pending.shotDown && pending.shouldReturn && now >= pending.returnAt) {
+        telemetryMemory::MoveMouse(-pending.moveX, -pending.moveY);
+        pending = {};
+        return;
+    }
+
+    if (!pending.shouldClick && !pending.shouldReturn) {
+        pending = {};
+    }
+}
+
+struct FlickTargetCandidate {
+    bool valid = false;
+    Vector2 aim = { 0.0f, 0.0f };
+    float selectDist = 0.0f;
+};
+
+Vector3 ResolveFlickTargetBone(const PlayerData& player, int targetPart) {
+    switch (targetPart) {
+    case 1: return player.Bone_Head.IsZero() ? player.HeadPosition : player.Bone_Head;
+    case 2: return player.Bone_Neck;
+    case 3: return player.Bone_Chest;
+    case 4: return player.Bone_Pelvis;
+    case 5: return player.Bone_LShoulder;
+    case 6: return player.Bone_RShoulder;
+    case 7: return player.Bone_LElbow;
+    case 8: return player.Bone_RElbow;
+    case 9: return player.Bone_LHand;
+    case 10: return player.Bone_RHand;
+    case 11: return player.Bone_LThigh;
+    case 12: return player.Bone_RThigh;
+    case 13: return player.Bone_LKnee;
+    case 14: return player.Bone_RKnee;
+    case 15:
+        if (!player.Bone_LFoot.IsZero() && !player.Bone_RFoot.IsZero()) {
+            return {
+                (player.Bone_LFoot.x + player.Bone_RFoot.x) * 0.5f,
+                (player.Bone_LFoot.y + player.Bone_RFoot.y) * 0.5f,
+                (player.Bone_LFoot.z + player.Bone_RFoot.z) * 0.5f
+            };
+        }
+        return player.FeetPosition;
+    default:
+        return {};
+    }
+}
+
+FlickTargetCandidate BuildFlickTargetFromSelectedBone(const PlayerData& player, const Vector3& delta,
+    float screenCenterX, float screenCenterY, float fovLimit, int targetPart) {
+    FlickTargetCandidate result{};
+    const Vector3 boneWorld = ResolveFlickTargetBone(player, targetPart);
+    if (boneWorld.IsZero()) {
+        return result;
+    }
+
+    Vector2 screen;
+    if (!telemetryContext::WorldToScreen(boneWorld + delta, screen)) {
+        return result;
+    }
+
+    const float dx = screen.x - screenCenterX;
+    const float dy = screen.y - screenCenterY;
+    const float dist = std::sqrt(dx * dx + dy * dy);
+    if (dist > fovLimit) {
+        return result;
+    }
+
+    result.valid = true;
+    result.aim = screen;
+    result.selectDist = dist;
+    return result;
+}
+
+FlickTargetCandidate BuildFlickTargetFromEspBox(const PlayerData& player, const Vector3& delta,
+    float screenCenterX, float screenCenterY, float fovLimit) {
+    FlickTargetCandidate result{};
+
+    Vector2 headS, feetS;
+    if (!telemetryContext::WorldToScreen(player.HeadPosition + delta, headS) ||
+        !telemetryContext::WorldToScreen(player.FeetPosition + delta, feetS)) {
+        return result;
+    }
+
+    float finalBoxTop = 0.0f;
+    float finalBoxBottom = 0.0f;
+    float finalBoxLeft = 0.0f;
+    float finalBoxRight = 0.0f;
+    bool useDynamicBox = false;
+
+    float minX = 100000.0f, maxX = -100000.0f;
+    float minY = 100000.0f, maxY = -100000.0f;
+    bool foundValidBone = false;
+
+    Vector3 bones[] = {
+        player.Bone_Head, player.Bone_Neck, player.Bone_Chest, player.Bone_Pelvis,
+        player.Bone_LShoulder, player.Bone_LElbow, player.Bone_LHand,
+        player.Bone_RShoulder, player.Bone_RElbow, player.Bone_RHand,
+        player.Bone_LThigh, player.Bone_LKnee, player.Bone_LFoot,
+        player.Bone_RThigh, player.Bone_RKnee, player.Bone_RFoot
+    };
+
+    for (const auto& boneWorld : bones) {
+        if (boneWorld.IsZero()) continue;
+        Vector2 screen;
+        if (telemetryContext::WorldToScreen(boneWorld + delta, screen)) {
+            minX = (std::min)(minX, screen.x);
+            maxX = (std::max)(maxX, screen.x);
+            minY = (std::min)(minY, screen.y);
+            maxY = (std::max)(maxY, screen.y);
+            foundValidBone = true;
+        }
+    }
+
+    if (foundValidBone) {
+        const float boxH = maxY - minY;
+        const float boxW = maxX - minX;
+        const float referenceH = std::fabs(headS.y - feetS.y);
+        const float aspect = boxH > 1.0f ? boxW / boxH : 999.0f;
+        const bool saneBoneBounds =
+            referenceH > 8.0f &&
+            boxH > referenceH * 0.55f &&
+            boxH < referenceH * 1.70f &&
+            aspect > 0.12f &&
+            aspect < 0.78f;
+
+        const float paddingW = (std::max)(boxW * 0.15f, 4.0f);
+        const float paddingH = (std::max)(boxH * 0.12f, 4.0f);
+
+        finalBoxTop = minY - (boxH * 0.25f) - 5.0f;
+        finalBoxBottom = maxY + paddingH;
+        finalBoxLeft = minX - paddingW;
+        finalBoxRight = maxX + paddingW;
+
+        if (saneBoneBounds && finalBoxBottom - finalBoxTop > 5.0f && finalBoxRight - finalBoxLeft > 2.0f) {
+            useDynamicBox = true;
+        }
+    }
+
+    if (!useDynamicBox) {
+        const float h = std::fabs(headS.y - feetS.y);
+        const float w = h * 0.50f;
+        finalBoxTop = headS.y - (h * 0.12f);
+        finalBoxBottom = feetS.y + (h * 0.05f);
+        finalBoxLeft = headS.x - w / 2.0f;
+        finalBoxRight = headS.x + w / 2.0f;
+    }
+
+    const float closestX = std::clamp(screenCenterX, finalBoxLeft, finalBoxRight);
+    const float closestY = std::clamp(screenCenterY, finalBoxTop, finalBoxBottom);
+    const float boxDx = closestX - screenCenterX;
+    const float boxDy = closestY - screenCenterY;
+    const float boxDist = std::sqrt(boxDx * boxDx + boxDy * boxDy);
+    if (boxDist > fovLimit) {
+        return result;
+    }
+
+    result.valid = true;
+    result.selectDist = boxDist;
+    result.aim = {
+        (finalBoxLeft + finalBoxRight) * 0.5f,
+        finalBoxTop + (finalBoxBottom - finalBoxTop) * 0.42f
+    };
+
+    Vector2 chestS;
+    if (!player.Bone_Chest.IsZero() && telemetryContext::WorldToScreen(player.Bone_Chest + delta, chestS) &&
+        chestS.x >= finalBoxLeft && chestS.x <= finalBoxRight &&
+        chestS.y >= finalBoxTop && chestS.y <= finalBoxBottom) {
+        result.aim = chestS;
+    }
+
+    return result;
 }
 
 } // namespace
@@ -53,72 +323,62 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
             if (!g_Menu.esp_show_enemies) continue;
         }
 
+        Vector3 delta = player.Velocity * dt_esp;
+
         if (canFlick && flickKeyDown && !player.IsTeammate && player.Health > 0.0f && player.Distance <= flick_max_dist) {
             if (!flick_visible_only || player.IsVisible) {
-                struct BonePos { Vector3 world; Vector2 screen; float dist; };
-                std::vector<BonePos> bones;
-                Vector3 scanBones[] = {
-                    player.Bone_Head, player.Bone_Neck, player.Bone_Chest, player.Bone_Pelvis
-                };
-
-                for (Vector3 bone : scanBones) {
-                    Vector2 screen;
-                    if (telemetryContext::WorldToScreen(bone, screen)) {
-                        const float dx = screen.x - ScreenCenterX;
-                        const float dy = screen.y - ScreenCenterY;
-                        bones.push_back({ bone, screen, std::sqrt(dx * dx + dy * dy) });
-                    }
+                const float fovLimit = flick_fov * 8.0f;
+                FlickTargetCandidate target{};
+                if (flick_target_part > 0) {
+                    target = BuildFlickTargetFromSelectedBone(
+                        player, delta, ScreenCenterX, ScreenCenterY, fovLimit, flick_target_part);
                 }
-
-                if (!bones.empty()) {
-                    const auto selected = std::min_element(bones.begin(), bones.end(),
-                        [](const BonePos& a, const BonePos& b) { return a.dist < b.dist; });
-
-                    const float fovLimit = flick_fov * 8.0f;
-                    if (selected->dist < fovLimit && selected->dist < bestDist) {
-                        bestDist = selected->dist;
-                        bestTarget = &player;
-                        bestScreenPos = selected->screen;
-                    }
+                if (!target.valid) {
+                    target = BuildFlickTargetFromEspBox(
+                        player, delta, ScreenCenterX, ScreenCenterY, fovLimit);
+                }
+                if (target.valid && target.selectDist < bestDist) {
+                    bestDist = target.selectDist;
+                    bestTarget = &player;
+                    bestScreenPos = target.aim;
                 }
             }
         }
 
         if (is_authenticated && esp_toggle) {
-            Vector3 delta = player.Velocity * dt_esp;
             RenderSinglePlayerEsp(draw, player, delta, local_feet_s, hasLocalS, ScreenCenterX, ScreenHeight);
         }
     }
 
-    static float totalFlickX = 0.0f;
-    static float totalFlickY = 0.0f;
-    static bool isFlicking = false;
     static bool lastFlickKeyDown = false;
+    static PendingFlickAction pendingFlick;
+    const ULONGLONG nowMs = GetTickCount64();
 
     const bool justPressed = flickKeyDown && !lastFlickKeyDown;
     lastFlickKeyDown = flickKeyDown;
 
-    if (canFlick && justPressed && bestTarget && !isFlicking) {
+    ProcessPendingFlick(pendingFlick, canFlick && flickKeyDown, nowMs);
+
+    if (canFlick && justPressed && bestTarget) {
         const float errorX = bestScreenPos.x - ScreenCenterX;
         const float errorY = bestScreenPos.y - ScreenCenterY;
+        const long moveX = std::lround(errorX);
+        const long moveY = std::lround(errorY);
 
-        if (telemetryMemory::MoveMouse((long)errorX, (long)errorY)) {
-            totalFlickX = errorX;
-            totalFlickY = errorY;
-            isFlicking = true;
+        CancelPendingFlick(pendingFlick);
+        telemetryMemory::MoveMouse(moveX, moveY);
 
-            if (flick_auto_shot) {
-                telemetryMemory::MoveMouse(0, 0, 0x0001);
-                telemetryMemory::StealthSleep(15);
-                telemetryMemory::MoveMouse(0, 0, 0x0002);
-            }
-        }
-    }
+        const int settleMs = GetFlickSettleDelayMs(moveX, moveY);
+        const int shotHoldMicros = flick_shot_hold ? GetFlickShotHoldMicros(MacroEngine::current_weapon_name) : 12000;
+        const int shotHoldMs = (shotHoldMicros / 1000) > 1 ? (shotHoldMicros / 1000) : 1;
 
-    if ((!flickKeyDown || !canFlick) && isFlicking) {
-        telemetryMemory::MoveMouse((long)-totalFlickX, (long)-totalFlickY);
-        totalFlickX = 0.0f;
-        totalFlickY = 0.0f;
-        isFlicking = false;
+        pendingFlick.active = true;
+        pendingFlick.shouldClick = flick_auto_shot;
+        pendingFlick.shouldReturn = flick_return;
+        pendingFlick.moveX = moveX;
+        pendingFlick.moveY = moveY;
+        pendingFlick.shotDownAt = nowMs + static_cast<ULONGLONG>(settleMs);
+        pendingFlick.shotUpAt = pendingFlick.shotDownAt + static_cast<ULONGLONG>(shotHoldMs);
+        pendingFlick.returnAt = flick_auto_shot ? pendingFlick.shotUpAt + 2 : nowMs + static_cast<ULONGLONG>(settleMs);
     }
 }

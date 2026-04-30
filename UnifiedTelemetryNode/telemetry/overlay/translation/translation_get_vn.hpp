@@ -11,6 +11,7 @@ inline void FillVietnamese(Strings& s) {
             s.TabVisuals = (const char*)u8"[+] Hiển thị";
 
             s.Tabprecision_calibration = (const char*)u8"[*] Flick Setting";
+            s.TabAimbot = (const char*)u8"[*] Aimbot";
 
             s.TabMacro = (const char*)u8"[!] Macro";
 

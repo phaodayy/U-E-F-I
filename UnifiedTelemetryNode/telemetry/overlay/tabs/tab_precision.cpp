@@ -4,6 +4,7 @@
 #include "../translation/translation.hpp"
 #include "../../sdk/Utils/MacroEngine.h"
 #include <protec/skCrypt.h>
+#include <algorithm>
 
 namespace {
 
@@ -93,6 +94,18 @@ void DrawKeyCombo(const char* label, int* keyValue) {
     }
 }
 
+void DrawFlickTargetCombo(int* targetPart) {
+    const char* targetLabels[] = {
+        "Auto Box", "Head", "Neck", "Chest", "Pelvis",
+        "L Shoulder", "R Shoulder", "L Elbow", "R Elbow",
+        "L Hand", "R Hand", "L Thigh", "R Thigh",
+        "L Knee", "R Knee", "Feet"
+    };
+    *targetPart = std::clamp(*targetPart, 0, IM_ARRAYSIZE(targetLabels) - 1);
+    ImGui::SetNextItemWidth(-1);
+    ImGui::Combo(skCrypt("Target Part"), targetPart, targetLabels, IM_ARRAYSIZE(targetLabels));
+}
+
 } // namespace
 
 void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
@@ -108,14 +121,16 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     BeginGlassCard(skCrypt("##FlickCore"), skCrypt("FLICK SETTING"), ImVec2(totalWidth / 3.0f - 20, 0));
     ImGui::Checkbox(skCrypt("Enable Flick"), &g_Menu.flick_enabled);
     ImGui::Checkbox(skCrypt("Visible Only"), &g_Menu.flick_visible_only);
-    ImGui::Checkbox(skCrypt("Auto Shot"), &g_Menu.flick_auto_shot);
+    ImGui::Checkbox(skCrypt("Hold Until Shot"), &g_Menu.flick_shot_hold);
+    ImGui::Checkbox(skCrypt("Return After Shot"), &g_Menu.flick_return);
     ImGui::Separator();
     DrawKeyCombo(skCrypt("Primary Key"), &g_Menu.flick_key);
     DrawKeyCombo(skCrypt("Secondary Key"), &g_Menu.flick_key2);
     OverlayHotkeys::DrawKeyBind(skCrypt("Capture Primary"), &g_Menu.flick_key, g_Menu.waiting_for_key);
     ImGui::Separator();
-    ImGui::SliderFloat(skCrypt("Flick FOV"), &g_Menu.flick_fov, 1.0f, 40.0f, skCrypt("%.0f"));
-    ImGui::SliderFloat(skCrypt("Max Distance"), &g_Menu.flick_max_dist, 5.0f, 120.0f, skCrypt("%.0f m"));
+    ImGui::SliderFloat(skCrypt("Flick FOV"), &g_Menu.flick_fov, 1.0f, 100.0f, skCrypt("%.0f"));
+    ImGui::SliderFloat(skCrypt("Max Distance"), &g_Menu.flick_max_dist, 5.0f, 400.0f, skCrypt("%.0f m"));
+    DrawFlickTargetCombo(&g_Menu.flick_target_part);
     ImGui::Separator();
     if (ImGui::Button(Lang.SaveConfig, ImVec2(-1, 35))) {
         g_Menu.SaveConfig("dataMacro/Config/settings.json");
@@ -125,13 +140,28 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     ImGui::EndChild();
 
     ImGui::NextColumn();
-    BeginGlassCard(skCrypt("##FlickWeapons"), skCrypt("SUPPORTED SHOTGUNS"), ImVec2(totalWidth / 3.0f - 20, 0));
+    BeginGlassCard(skCrypt("##FlickWeapons"), skCrypt("FLICK WEAPONS"), ImVec2(totalWidth / 3.0f - 20, 0));
     FlickWeaponTile weaponTiles[] = {
         { skCrypt("S686"), skCrypt("Gun/SG"), skCrypt("Item_Weapon_Berreta686_C"), &g_Menu.flick_weapon_s686 },
         { skCrypt("S12K"), skCrypt("Gun/SG"), skCrypt("Item_Weapon_Saiga12_C"), &g_Menu.flick_weapon_s12k },
         { skCrypt("S1897"), skCrypt("Gun/SG"), skCrypt("Item_Weapon_Winchester_C"), &g_Menu.flick_weapon_s1897 },
         { skCrypt("DBS"), skCrypt("Gun/SG"), skCrypt("Item_Weapon_DP12_C"), &g_Menu.flick_weapon_dbs },
-        { skCrypt("O12"), skCrypt("Gun/SG"), skCrypt("Item_Weapon_OriginS12_C"), &g_Menu.flick_weapon_o12 }
+        { skCrypt("O12"), skCrypt("Gun/SG"), skCrypt("Item_Weapon_OriginS12_C"), &g_Menu.flick_weapon_o12 },
+        { skCrypt("SLR"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_FNFal_C"), &g_Menu.flick_weapon_slr },
+        { skCrypt("Mini14"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_Mini14_C"), &g_Menu.flick_weapon_mini14 },
+        { skCrypt("SKS"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_SKS_C"), &g_Menu.flick_weapon_sks },
+        { skCrypt("VSS"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_VSS_C"), &g_Menu.flick_weapon_vss },
+        { skCrypt("QBU"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_QBU88_C"), &g_Menu.flick_weapon_qbu },
+        { skCrypt("Kar98k"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_Kar98k_C"), &g_Menu.flick_weapon_kar98k },
+        { skCrypt("M24"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_M24_C"), &g_Menu.flick_weapon_m24 },
+        { skCrypt("AWM"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_AWM_C"), &g_Menu.flick_weapon_awm },
+        { skCrypt("Lynx AMR"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_L6_C"), &g_Menu.flick_weapon_lynx },
+        { skCrypt("Win94"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_Win1894_C"), &g_Menu.flick_weapon_win94 },
+        { skCrypt("Mosin"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_Mosin_C"), &g_Menu.flick_weapon_mosin },
+        { skCrypt("Panzer"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_PanzerFaust100M_C"), &g_Menu.flick_weapon_panzerfaust },
+        { skCrypt("Mk12"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_Mk12_C"), &g_Menu.flick_weapon_mk12 },
+        { skCrypt("MK 14"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_Mk14_C"), &g_Menu.flick_weapon_mk14 },
+        { skCrypt("Dragunov"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_Dragunov_C"), &g_Menu.flick_weapon_dragunov }
     };
     if (ImGui::Button(skCrypt("All"), ImVec2(74, 24))) {
         for (auto& item : weaponTiles) *item.enabled = true;
@@ -146,13 +176,13 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
 
     ImGui::NextColumn();
     BeginGlassCard(skCrypt("##FlickRules"), skCrypt("Flick Rules"), ImVec2(totalWidth / 3.0f - 20, 0));
-    ImGui::TextWrapped(skCrypt("Flick only runs when the equipped weapon is one of the selected shotgun tiles."));
+    ImGui::TextWrapped(skCrypt("Flick runs once on key press, moves to target, then shoots."));
     ImGui::Separator();
-    ImGui::BulletText(skCrypt("S686"));
-    ImGui::BulletText(skCrypt("S12K"));
-    ImGui::BulletText(skCrypt("S1897"));
-    ImGui::BulletText(skCrypt("DBS"));
-    ImGui::BulletText(skCrypt("O12"));
+    ImGui::BulletText(skCrypt("No release wait"));
+    ImGui::BulletText(skCrypt("Move first, shot second"));
+    ImGui::BulletText(skCrypt("Hold Until Shot can be disabled"));
+    ImGui::BulletText(skCrypt("Return After Shot can be disabled"));
+    ImGui::BulletText(skCrypt("Only selected weapon tiles are allowed"));
     ImGui::Separator();
     ImGui::Checkbox(Lang.GrenadeLine, &g_Menu.esp_grenade_prediction);
     ImGui::Checkbox(Lang.Projectiles, &g_Menu.esp_projectile_tracer);

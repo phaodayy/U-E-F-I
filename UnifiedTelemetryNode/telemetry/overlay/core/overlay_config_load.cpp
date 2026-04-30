@@ -95,9 +95,12 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("active_preset")) active_preset = j["active_preset"];
             if (j.contains("flick_enabled")) flick_enabled = j["flick_enabled"];
             if (j.contains("flick_visible_only")) flick_visible_only = j["flick_visible_only"];
-            if (j.contains("flick_auto_shot")) flick_auto_shot = j["flick_auto_shot"];
+            flick_auto_shot = true;
+            if (j.contains("flick_shot_hold")) flick_shot_hold = j["flick_shot_hold"];
+            if (j.contains("flick_return")) flick_return = j["flick_return"];
             if (j.contains("flick_fov")) flick_fov = j["flick_fov"];
             if (j.contains("flick_max_dist")) flick_max_dist = j["flick_max_dist"];
+            if (j.contains("flick_target_part")) flick_target_part = j["flick_target_part"];
             if (j.contains("flick_key")) flick_key = j["flick_key"];
             if (j.contains("flick_key2")) flick_key2 = j["flick_key2"];
             if (j.contains("flick_weapon_s686")) flick_weapon_s686 = j["flick_weapon_s686"];
@@ -105,6 +108,21 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("flick_weapon_s1897")) flick_weapon_s1897 = j["flick_weapon_s1897"];
             if (j.contains("flick_weapon_dbs")) flick_weapon_dbs = j["flick_weapon_dbs"];
             if (j.contains("flick_weapon_o12")) flick_weapon_o12 = j["flick_weapon_o12"];
+            if (j.contains("flick_weapon_slr")) flick_weapon_slr = j["flick_weapon_slr"];
+            if (j.contains("flick_weapon_mini14")) flick_weapon_mini14 = j["flick_weapon_mini14"];
+            if (j.contains("flick_weapon_sks")) flick_weapon_sks = j["flick_weapon_sks"];
+            if (j.contains("flick_weapon_vss")) flick_weapon_vss = j["flick_weapon_vss"];
+            if (j.contains("flick_weapon_qbu")) flick_weapon_qbu = j["flick_weapon_qbu"];
+            if (j.contains("flick_weapon_kar98k")) flick_weapon_kar98k = j["flick_weapon_kar98k"];
+            if (j.contains("flick_weapon_m24")) flick_weapon_m24 = j["flick_weapon_m24"];
+            if (j.contains("flick_weapon_awm")) flick_weapon_awm = j["flick_weapon_awm"];
+            if (j.contains("flick_weapon_lynx")) flick_weapon_lynx = j["flick_weapon_lynx"];
+            if (j.contains("flick_weapon_win94")) flick_weapon_win94 = j["flick_weapon_win94"];
+            if (j.contains("flick_weapon_mosin")) flick_weapon_mosin = j["flick_weapon_mosin"];
+            if (j.contains("flick_weapon_panzerfaust")) flick_weapon_panzerfaust = j["flick_weapon_panzerfaust"];
+            if (j.contains("flick_weapon_mk12")) flick_weapon_mk12 = j["flick_weapon_mk12"];
+            if (j.contains("flick_weapon_mk14")) flick_weapon_mk14 = j["flick_weapon_mk14"];
+            if (j.contains("flick_weapon_dragunov")) flick_weapon_dragunov = j["flick_weapon_dragunov"];
             if (j.contains("esp_show_enemies")) esp_show_enemies = j["esp_show_enemies"];
             if (j.contains("esp_show_teammates")) {
                 esp_show_teammates = j["esp_show_teammates"];
