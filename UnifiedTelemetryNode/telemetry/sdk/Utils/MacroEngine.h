@@ -16,6 +16,7 @@
 #include "../core/offsets.hpp"
 #include "../core/telemetry_decrypt.hpp"
 #include "Driver.h"
+#include "SendInputMacro.h"
 #include "Utils.h"
 #include "../Common/Data.h"
 
@@ -938,7 +939,7 @@ public:
     {
         if (!G_LocalPawn || !macro_enabled)
         {
-            if (trigger_firing) { Driver::Up(); trigger_firing = false; }
+            if (trigger_firing) { SendInputMacro::Up(); trigger_firing = false; }
             return;
         }
 
@@ -947,20 +948,20 @@ public:
 
         const uint64_t weaponProc = telemetryMemory::Read<uint64_t>(G_LocalPawn + telemetry_config::offsets::WeaponProcessor);
         if (!weaponProc) {
-            if (trigger_firing) { Driver::Up(); trigger_firing = false; }
+            if (trigger_firing) { SendInputMacro::Up(); trigger_firing = false; }
             return;
         }
 
         const uint8_t currentIdx = telemetryMemory::Read<uint8_t>(weaponProc + telemetry_config::offsets::CurrentWeaponIndex);
         if (currentIdx >= 3) {
-            if (trigger_firing) { Driver::Up(); trigger_firing = false; }
+            if (trigger_firing) { SendInputMacro::Up(); trigger_firing = false; }
             return;
         }
 
         const uint64_t equippedAddr = telemetryMemory::Read<uint64_t>(weaponProc + telemetry_config::offsets::EquippedWeapons);
         const uint64_t weapon = telemetryMemory::Read<uint64_t>(equippedAddr + (currentIdx * 8));
         if (!weapon) {
-            if (trigger_firing) { Driver::Up(); trigger_firing = false; }
+            if (trigger_firing) { SendInputMacro::Up(); trigger_firing = false; }
             return;
         }
 
@@ -1144,7 +1145,7 @@ public:
             const long outY = static_cast<long>(std::llround(moveY));
             if (outX != 0 || outY != 0)
             {
-                Driver::Move(outX, outY);
+                SendInputMacro::Move(outX, outY);
                 angle_moved_x += static_cast<float>(outX);
                 angle_moved_y += static_cast<float>(outY);
             }
@@ -1204,33 +1205,33 @@ public:
                         bool passDelay2 = (now - sr_sequence_start > (uint64_t)profile.srDelay2);
 
                         if (passDelay1 && passDelay2 && anyBoneInFOV) {
-                            Driver::Click();
+                            SendInputMacro::Click();
                             sr_sequence_start = now; 
                         }
                     } else if (isDMR) {
                         // DMR Semi-Auto Logic
                         static uint64_t lastDMRTick = 0;
                         if (anyBoneInFOV && (now - lastDMRTick > (uint64_t)profile.triggerDelayMs)) {
-                            Driver::Click();
+                            SendInputMacro::Click();
                             lastDMRTick = now;
                         }
                     } else if (isSG) {
                         // Shotgun Pulse Logic (Single pulse per sighting)
                         static uint64_t lastSGTick = 0;
                         if (anyBoneInFOV && (now - lastSGTick > 250)) {
-                            Driver::Click();
+                            SendInputMacro::Click();
                             lastSGTick = now;
                         }
                     } else {
                         // AR / SMG Stateful Firing (Pulse hold logic)
                         if (anyBoneInFOV && !manualFire) {
                             if (!trigger_firing) {
-                                Driver::Down();
+                                SendInputMacro::Down();
                                 trigger_firing = true;
                             }
                         } else {
                             if (trigger_firing) {
-                                Driver::Up();
+                                SendInputMacro::Up();
                                 trigger_firing = false;
                             }
                         }
@@ -1241,7 +1242,7 @@ public:
         {
             // Clean up trigger state if conditions not met
             if (trigger_firing) {
-                Driver::Up();
+                SendInputMacro::Up();
                 trigger_firing = false;
             }
             sr_sequence_start = 0;

@@ -536,22 +536,6 @@ float ExpandedMiniMapScale(float rawScale, bool expanded) {
     return std::clamp((std::max)(rawScale, kDefaultExpandedScale), 1.0f, 2.50f);
 }
 
-float SmoothStepValue(float current, float target, float factor) {
-    if (!std::isfinite(current) || !std::isfinite(target)) return target;
-    return current + (target - current) * std::clamp(factor, 0.0f, 1.0f);
-}
-
-float BigMapSmoothingFactor(uint64_t nowMs) {
-    static uint64_t lastTick = 0;
-    if (lastTick == 0) {
-        lastTick = nowMs;
-        return 1.0f;
-    }
-    const float dt = std::clamp(static_cast<float>(nowMs - lastTick) / 1000.0f, 0.0f, 0.10f);
-    lastTick = nowMs;
-    return 1.0f - std::exp(-dt * 14.0f);
-}
-
 float MiniMapWorldRange(float sizeScale, bool expanded) {
     if (!expanded) return 20000.0f;
     const float overviewScale = 1.0f + (std::max)(0.0f, sizeScale - 1.0f) * 2.0f;
@@ -727,6 +711,7 @@ void Draw(ImDrawList* draw, OverlayMenu& menu, const std::vector<PlayerData>& pl
     }
     const float worldRange = MiniMapWorldRange(miniMapSizeScale, expandedMiniMap);
 
+/*
 #ifdef _DEBUG
     static uint64_t lastMiniMapScaleLogMs = 0;
     static float lastLoggedMiniMapScale = 0.0f;
@@ -755,6 +740,7 @@ void Draw(ImDrawList* draw, OverlayMenu& menu, const std::vector<PlayerData>& pl
             << std::endl;
     }
 #endif
+*/
 
     static bool forcedWorldMapOpen = false;
     static bool previousMDown = false;
@@ -794,36 +780,6 @@ void Draw(ImDrawList* draw, OverlayMenu& menu, const std::vector<PlayerData>& pl
         }
 
         if (IsValidBigMapRect(bigMapRect)) {
-            static bool bigMapSmoothReady = false;
-            static float smoothMapSizeFactored = 0.0f;
-            static Vector3 smoothWorldCenter = { 0.0f, 0.0f, 0.0f };
-            const float smoothFactor = BigMapSmoothingFactor(nowMs);
-            const bool resetBigMapSmoothing = !bigMapSmoothReady ||
-                !std::isfinite(smoothMapSizeFactored) ||
-                smoothMapSizeFactored <= 1000.0f ||
-                std::fabs(smoothMapSizeFactored - G_Radar.MapSizeFactored) > G_Radar.MapWorldSize ||
-                !std::isfinite(smoothWorldCenter.x) ||
-                !std::isfinite(smoothWorldCenter.y) ||
-                std::fabs(smoothWorldCenter.x - G_Radar.WorldCenterLocation.x) > G_Radar.MapWorldSize ||
-                std::fabs(smoothWorldCenter.y - G_Radar.WorldCenterLocation.y) > G_Radar.MapWorldSize;
-            if (resetBigMapSmoothing) {
-                smoothMapSizeFactored = G_Radar.MapSizeFactored;
-                smoothWorldCenter = G_Radar.WorldCenterLocation;
-                bigMapSmoothReady = true;
-            } else {
-                smoothMapSizeFactored = SmoothStepValue(smoothMapSizeFactored,
-                    G_Radar.MapSizeFactored, smoothFactor);
-                smoothWorldCenter.x = SmoothStepValue(smoothWorldCenter.x,
-                    G_Radar.WorldCenterLocation.x, smoothFactor);
-                smoothWorldCenter.y = SmoothStepValue(smoothWorldCenter.y,
-                    G_Radar.WorldCenterLocation.y, smoothFactor);
-            }
-
-            const float savedMapSizeFactored = G_Radar.MapSizeFactored;
-            const Vector3 savedWorldCenter = G_Radar.WorldCenterLocation;
-            G_Radar.MapSizeFactored = smoothMapSizeFactored;
-            G_Radar.WorldCenterLocation = smoothWorldCenter;
-
             DrawBigMapItems(draw, menu, bigMapRect);
 
             for (const auto& player : players) {
@@ -834,9 +790,6 @@ void Draw(ImDrawList* draw, OverlayMenu& menu, const std::vector<PlayerData>& pl
                 DrawBigMapAimRay(draw, menu, player, bigMapRect, ImVec2(mapX, mapY));
                 DrawBigMapMarker(draw, menu, player, mapX, mapY);
             }
-
-            G_Radar.MapSizeFactored = savedMapSizeFactored;
-            G_Radar.WorldCenterLocation = savedWorldCenter;
 
             DrawBigMapLegend(draw, menu, bigMapRect);
             worldMapDrawn = true;

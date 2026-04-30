@@ -167,6 +167,7 @@ bool OverlayMenu::Initialize(const VisualizationBridgeHost& bridge) {
     ImGui::CreateContext();
 
     ImGuiIO& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
     ImFontConfig font_cfg;
     font_cfg.FontDataOwnedByAtlas = false;
     // Load a system font that supports Vietnamese (Tahoma is preferred by user)

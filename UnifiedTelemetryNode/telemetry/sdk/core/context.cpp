@@ -739,8 +739,13 @@ namespace telemetryContext {
         // Dynamic radar/widget scan (minimap + world map)
         static ULONGLONG lastRadarScan = 0;
         static ULONGLONG lastMapInfoUpdate = 0;
-        if (now - lastRadarScan > 300) {
+        static ULONGLONG nextWorldMapScanIntervalMs = 240;
+        const ULONGLONG radarScanIntervalMs = G_Radar.IsWorldMapVisible ? nextWorldMapScanIntervalMs : 100;
+        if (now - lastRadarScan > radarScanIntervalMs) {
             lastRadarScan = now;
+            if (G_Radar.IsWorldMapVisible) {
+                nextWorldMapScanIntervalMs = 200 + (GetTickCount64() % 101);
+            }
             const float screenWidth = (float)GetSystemMetrics(SM_CXSCREEN);
             const float screenHeight = (float)GetSystemMetrics(SM_CYSCREEN);
 
@@ -826,6 +831,7 @@ namespace telemetryContext {
                                 }
                             }
 
+/*
 #ifdef _DEBUG
                             static ULONGLONG lastMiniMapWidgetLog = 0;
                             static float lastMiniMapWidgetScale = 0.0f;
@@ -850,6 +856,7 @@ namespace telemetryContext {
                                     << std::endl;
                             }
 #endif
+*/
                             continue;
                         }
 
