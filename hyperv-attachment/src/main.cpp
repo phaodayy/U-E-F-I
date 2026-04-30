@@ -16,6 +16,7 @@
 #include "slat/slat.h"
 #include "slat/cr3/cr3.h"
 #include "slat/violation/violation.h"
+#include "input/backend_selector.h"
 
 #include <intrin.h>
 
@@ -42,6 +43,7 @@ namespace
 
 // Phải ở file scope (không trong anonymous namespace) để hypercall.cpp có thể extern-link
 std::uint64_t authorized_caller_cr3 = 0;
+volatile long is_fake_ps2_io_enabled = 0;
 
 // =========================================================================
 // EPT Mouse Hook - INT3 Injection Handler
@@ -99,6 +101,69 @@ static void try_inject_mouse_from_bp(const trap_frame_t* const trap_frame)
 
     *last_x += dx;
     *last_y += dy;
+}
+
+static std::uint8_t handle_io_instruction(trap_frame_t* const trap_frame)
+{
+#ifdef _INTELMACHINE
+    const std::uint64_t exit_qualification = arch::vmread(VMCS_EXIT_QUALIFICATION);
+    const std::uint16_t port = static_cast<std::uint16_t>(exit_qualification >> 16);
+    const std::uint8_t is_byte_access = ((exit_qualification & 0x7) == 0);
+    const std::uint8_t is_in = (exit_qualification >> 3) & 1;
+    const std::uint8_t is_string = (exit_qualification >> 4) & 1;
+    const std::uint8_t is_rep = (exit_qualification >> 5) & 1;
+#else
+    vmcb_t* const vmcb = arch::get_vmcb();
+    // AMD ExitInfo1: [31:16] Port, [6] A32, [5] A16, [4] SZ32, [3] SZ16, [2] SZ8, [1] REP, [0] TYPE (0=OUT, 1=IN)
+    const std::uint16_t port = static_cast<std::uint16_t>(vmcb->control.exit_info1 >> 16);
+    const std::uint8_t is_byte_access = (vmcb->control.exit_info1 >> 2) & 1;
+    const std::uint8_t is_in = (vmcb->control.exit_info1 & 1);
+    const std::uint8_t is_rep = (vmcb->control.exit_info1 >> 1) & 1;
+    const std::uint8_t is_string = 0;
+#endif
+
+    auto set_guest_al = [&](const std::uint8_t value) {
+#ifdef _INTELMACHINE
+        trap_frame->rax = (trap_frame->rax & ~0xFFULL) | value;
+#else
+        vmcb->save_state.rax = (vmcb->save_state.rax & ~0xFFULL) | value;
+        trap_frame->rax = vmcb->save_state.rax;
+#endif
+    };
+
+    auto get_guest_al = [&]() -> std::uint8_t {
+#ifdef _INTELMACHINE
+        return static_cast<std::uint8_t>(trap_frame->rax & 0xFF);
+#else
+        return static_cast<std::uint8_t>(vmcb->save_state.rax & 0xFF);
+#endif
+    };
+
+    if (!is_byte_access || is_string || is_rep) {
+        return 0;
+    }
+
+    if (port != 0x60 && port != 0x64) {
+        return 0;
+    }
+
+    input::IoOperation operation = {};
+    operation.port = port;
+    operation.is_in = is_in;
+    operation.is_byte_access = is_byte_access;
+    operation.is_string = is_string;
+    operation.is_rep = is_rep;
+    operation.al = get_guest_al();
+
+    if (input::backend_selector::HandleIo(operation)) {
+        if (is_in) {
+            set_guest_al(operation.result_al);
+        }
+        arch::advance_guest_rip();
+        return 1;
+    }
+
+    return 0;
 }
 
 void clean_up_uefi_boot_image()
@@ -183,6 +248,13 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
 
     const std::uint64_t exit_reason = arch::get_vmexit_reason();
     execution::state_persistence_manager::enforce_on_vmexit(exit_reason);
+    
+    // System CR3 Sniffer: Capture a valid kernel CR3 when in kernel mode (CPL 0)
+    // This bypasses KVA Shadowing limitations for driver hook resolution.
+    extern std::uint64_t g_system_cr3;
+    if (arch::get_guest_cpl() == 0) {
+        g_system_cr3 = arch::get_guest_cr3().flags;
+    }
 
     if (arch::is_cpuid(exit_reason) == 1)
     {
@@ -243,6 +315,11 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
                     execution::state_persistence_manager::invariant_t::feature_control_locked, 1);
                 execution::state_persistence_manager::set_invariant_enabled(
                     execution::state_persistence_manager::invariant_t::tsc_exiting_base, 1);
+
+                input::backend_selector::Activate();
+                _InterlockedExchange(&is_fake_ps2_io_enabled, 1);
+                arch::enable_io_intercept();
+
                 execution::state_persistence_manager::enforce_on_vmexit(exit_reason);
 
                 current_primary_key = (guest_cr3 ^ __rdtsc()) & 0xFFFF;
@@ -322,6 +399,15 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
             return do_vmexit_premature_return();
         }
     }
+    else if (is_fake_ps2_io_enabled == 1 && arch::is_io_instruction(exit_reason) == 1)
+    {
+        trap_frame_t* const trap_frame = get_vmexit_trap_frame(a1, a2);
+        if (handle_io_instruction(trap_frame) == 1)
+        {
+            normalize_guest_resume(execution::stack_normalizer::event_type_t::cpuid_spoof, exit_reason, trap_frame); // Reuse type or add new one
+            return do_vmexit_premature_return();
+        }
+    }
     else if (arch::is_slat_violation(exit_reason) == 1 && slat::violation::process() == 1)
     {
         normalize_guest_resume(execution::stack_normalizer::event_type_t::slat_violation, exit_reason);
@@ -331,8 +417,7 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
     {
         interrupts::process_nmi();
     }
-    /*
-    else if (arch::is_breakpoint_exit(exit_reason) == 1 && g_mouse_shadow_page_va != 0)
+    else if (arch::is_breakpoint_exit(exit_reason) == 1 && g_mouse_callback_va != 0)
     {
         const std::uint64_t rip = arch::get_guest_rip();
 
@@ -342,12 +427,8 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
         if (rip == expected_hook_rip)
         {
             // Đúng là hook của ta. Lấy trap_frame để đọc RDX.
-            trap_frame_t* trap_frame;
-#ifdef _INTELMACHINE
-            trap_frame = reinterpret_cast<trap_frame_t*>(a4);
-#else
-            trap_frame = reinterpret_cast<trap_frame_t*>(a2);
-#endif
+            trap_frame_t* trap_frame = get_vmexit_trap_frame(a1, a2);
+            
             // Bơm tọa độ chuột vào struct MOUSE_INPUT_DATA của guest
             try_inject_mouse_from_bp(trap_frame);
 
@@ -366,7 +447,6 @@ std::uint64_t vmexit_handler_detour(const std::uint64_t a1, const std::uint64_t 
             return do_vmexit_premature_return();
         }
     }
-    */
 
     return reinterpret_cast<vmexit_handler_t>(original_vmexit_handler)(a1, a2, a3, a4);
 }
@@ -403,4 +483,5 @@ const std::uint8_t* const get_vmcb_gadget)
     execution::stack_normalizer::set_up();
     timing::tsc_drift_compensator::set_up();
     slat::set_up();
+    input::backend_selector::Initialize();
 }

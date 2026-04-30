@@ -134,3 +134,17 @@ bool HyperCall::UnregisterSignalPage(const std::uint64_t signal_id)
                          static_cast<std::uint64_t>(signal_hypercall_op_t::unregister_page),
                          signal_id, 0, 0) == 1;
 }
+
+bool HyperCall::GetInputDiagnostics(input_diagnostics_snapshot_t* const snapshot)
+{
+    if (snapshot == nullptr)
+    {
+        return false;
+    }
+
+    return MakeHypercall(hypercall_type_t::_hc_0x280,
+                         0,
+                         reinterpret_cast<std::uint64_t>(snapshot),
+                         0,
+                         0) == 1;
+}

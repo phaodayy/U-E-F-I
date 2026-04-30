@@ -26,4 +26,5 @@ namespace HyperCall
     std::uint64_t RegisterSignalPage(std::uint64_t signal_page_virtual_address);
     bool QuerySignalPage(std::uint64_t signal_id, signal_page_state_t* state);
     bool UnregisterSignalPage(std::uint64_t signal_id);
+    bool GetInputDiagnostics(input_diagnostics_snapshot_t* snapshot);
 }

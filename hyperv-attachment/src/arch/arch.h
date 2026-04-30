@@ -8,17 +8,29 @@ struct trap_frame_t;
 
 namespace arch
 {
+	std::uint64_t vmread(std::uint64_t field);
+	void vmwrite(std::uint64_t field, std::uint64_t value);
 	std::uint64_t get_vmexit_reason();
+	std::uint64_t get_vmexit_instruction_length();
+
+#ifdef _INTELMACHINE
+	vmx_exit_qualification_ept_violation get_exit_qualification();
+	std::uint64_t get_guest_physical_address();
+#endif
+
 	std::uint8_t is_cpuid(std::uint64_t vmexit_reason);
 	std::uint8_t is_slat_violation(std::uint64_t vmexit_reason);
 
 	std::uint8_t is_non_maskable_interrupt_exit(std::uint64_t vmexit_reason);
 	std::uint8_t is_breakpoint_exit(std::uint64_t vmexit_reason);
+	std::uint8_t is_io_instruction(std::uint64_t vmexit_reason);
 
 	void enable_breakpoint_intercept();
+	void enable_io_intercept();
 	void reinject_exception(std::uint8_t vector);
 
 	cr3 get_guest_cr3();
+	std::uint8_t get_guest_cpl();
 
 	cr3 get_slat_cr3();
 	void set_slat_cr3(cr3 slat_cr3);

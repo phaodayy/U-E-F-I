@@ -10,6 +10,7 @@
 #include "../arch/arch.h"
 #include "../logs/logs.h"
 #include "../crt/crt.h"
+#include "../input/backend_selector.h"
 
 #include <ia32-doc/ia32.hpp>
 #include <hypercall/hypercall_def.h>
@@ -21,6 +22,7 @@ volatile std::int32_t g_pending_mouse_y   = 0;
 std::uint64_t         g_mouse_callback_va    = 0;
 std::uint64_t         g_mouse_shadow_page_va = 0;
 std::uint64_t         g_mouse_func_offset    = 0;
+std::uint64_t         g_system_cr3           = 0;
 
 // Forward declare authorized_caller_cr3 from main.cpp
 extern std::uint64_t authorized_caller_cr3;
@@ -316,6 +318,12 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
 {
     switch (hypercall_info.call_type)
     {
+    case hypercall_type_t::_hc_0x100:
+    {
+        // Version Ping: Trả về 0x2323 (v2.3) để xác nhận bản sửa lỗi System CR3 Sniffer
+        trap_frame->rax = 0x2323;
+        break;
+    }
     case hypercall_type_t::_hc_0x110:
     {
         const auto memory_operation = static_cast<memory_operation_t>(hypercall_info.call_reserved_data);
@@ -416,72 +424,21 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
 
         break;
     }
-    /*
-    case hypercall_type_t::_hc_0x220:
-    {
-        const std::int32_t mouse_x = static_cast<std::int32_t>(static_cast<std::int16_t>(trap_frame->rdx));
-        const std::int32_t mouse_y = static_cast<std::int32_t>(static_cast<std::int16_t>(trap_frame->r8));
-
-        g_pending_mouse_x += mouse_x;
-        g_pending_mouse_y += mouse_y;
-
-        trap_frame->rax = 1;
-        break;
-    }
     case hypercall_type_t::_hc_0x230:
     {
-        // Usermode gửi virtual address của mouclass!MouseClassServiceCallback.
-        // Ring -1 sẽ: translate VA -> PA, cấp shadow page, copy code gốc,
-        // sau đó EPT-hook trang đó và trả reply "1" nếu thành công.
-
-        const std::uint64_t callback_va = trap_frame->rdx;
-        if (callback_va == 0) { trap_frame->rax = 0; break; }
-
-        // Lưu VA để biết đây là hooked page khi VMEXIT SLAT violation
-        g_mouse_callback_va = callback_va;
-
-        // Translate VA sang PA dùng authorized CR3
-        const cr3 guest_cr3 = { .flags = authorized_caller_cr3 };
-        const cr3 slat_cr3  = slat::hyperv_cr3();
-
-        const std::uint64_t callback_pa = memory_manager::translate_guest_virtual_address(
-            guest_cr3, slat_cr3, { .address = callback_va });
-
-        if (callback_pa == 0) { trap_frame->rax = 0; break; } // [FIX-3] No granular error code
-
-        // Cấp shadow page từ heap nội bộ Ring -1
-        void* const shadow_page = heap_manager::allocate_page();
-        if (shadow_page == nullptr) { trap_frame->rax = 0; break; } // [FIX-3] No granular error code
-
-        // Map trang vật lý gốc ra host và copy 4 KB nội dung gốc vào shadow page
-        const void* original_mapped = memory_manager::map_host_physical(callback_pa & ~0xFFFULL);
-        crt::copy_memory(shadow_page, original_mapped, 0x1000);
-
-        // Ghi đè byte INT3 (0xCC) lên offset trong shadow page (byte đầu của hàm)
-        const std::uint64_t func_offset = callback_va & 0xFFF;
-        static_cast<std::uint8_t*>(shadow_page)[func_offset] = 0xCC;
-
-        g_mouse_shadow_page_va = reinterpret_cast<std::uint64_t>(shadow_page);
-        g_mouse_func_offset    = func_offset;
-
-        // Lấy *Host Physical Address* của shadow page để nạp vào hook_host
-        const std::uint64_t shadow_hpa_val = memory_manager::unmap_host_physical(shadow_page);
-        const virtual_address_t shadow_hpa_struct = { .address = shadow_hpa_val };
-        const virtual_address_t target_gpa = { .address = callback_pa };
-
-        const std::uint64_t result = slat::hook::add_host(target_gpa, shadow_hpa_struct);
-        
-        if (result)
-        {
-            // BẬT Exception Bitmap bit 3 (#BP) để VMEXIT khi guest thực thi INT3
-            arch::enable_breakpoint_intercept();
-        }
-
-        trap_frame->rax = result ? 1 : 0; // [FIX-3] Only return 0=fail, 1=success
-
+        trap_frame->rax = 0;
         break;
     }
-    */
+    case hypercall_type_t::_hc_0x220:
+    {
+        // RDX = dx, R8 = dy, R9 = buttons (optional)
+        const std::int32_t dx = static_cast<std::int32_t>(static_cast<std::int16_t>(trap_frame->rdx));
+        const std::int32_t dy = static_cast<std::int32_t>(static_cast<std::int16_t>(trap_frame->r8));
+        const std::uint8_t buttons = static_cast<std::uint8_t>(trap_frame->r9);
+
+        trap_frame->rax = input::backend_selector::InjectMouse(dx, dy, buttons) ? 1 : 0;
+        break;
+    }
     case hypercall_type_t::_hc_0x250:
     {
         // Toggle Process Protection (PPL Bypass)
@@ -620,6 +577,22 @@ void hypercall::process(const hypercall_info_t hypercall_info, trap_frame_t* con
         }
 
         trap_frame->rax = final_hwid;
+        break;
+    }
+    case hypercall_type_t::_hc_0x280:
+    {
+        const std::uint64_t snapshot_va = trap_frame->rdx;
+        if (snapshot_va == 0) {
+            trap_frame->rax = 0;
+            break;
+        }
+
+        input_diagnostics_snapshot_t snapshot = input::backend_selector::Diagnostics();
+        const cr3 guest_cr3 = { .flags = authorized_caller_cr3 };
+        const std::uint64_t bytes_written = memory_manager::operate_on_guest_virtual_memory(
+            slat::hyperv_cr3(), &snapshot, snapshot_va, guest_cr3, sizeof(snapshot), memory_operation_t::write_operation);
+
+        trap_frame->rax = bytes_written == sizeof(snapshot);
         break;
     }
     default:

@@ -13,5 +13,6 @@ namespace telemetryRuntimeOffsets {
     };
 
     bool ApplyRuntimeScan(uint64_t baseAddress);
+    void InvalidateRuntimeScanCache(uint64_t baseAddress = 0);
     const RuntimeScanReport& GetLastReport();
 }

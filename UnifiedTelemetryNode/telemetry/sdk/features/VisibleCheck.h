@@ -14,29 +14,29 @@
 
 namespace VisibleCheck {
 
-    // --- NEW: Engine-based Visible Check (Lightweight & High Performance) ---
-    // Logic from bfmonkey: (enemyEyes + 0.05f >= localPlayerEyes)
-    // Actor + 0x488 = Mesh (Raw) -> Mesh + 0x75C = Eyes timestamp (float)
+    // --- Engine-based Visible Check (Lightweight & High Performance) ---
+    // Logic: (enemyRenderTime + threshold >= localPlayerRenderTime)
+    // Actor + Offset::bAlwaysCreatePhysicsState = Mesh (Raw) -> Mesh + Offset::LastRenderTimeOnScreen = Eyes timestamp
     inline bool IsVisibleByRenderTime(uint64_t entityPtr) {
         if (!Utils::ValidPtr(entityPtr)) return false;
 
-        // 1. Get Enemy Mesh from Actor (Actor + 0x488) - Mesh is a raw pointer
-        uint64_t meshPtr = mem.Read<uint64_t>(entityPtr + 0x488);
+        // 1. Get Enemy Mesh from Actor
+        uint64_t meshPtr = mem.Read<uint64_t>(entityPtr + (uint64_t)Offset::bAlwaysCreatePhysicsState);
         if (!Utils::ValidPtr(meshPtr)) return false;
 
-        // 2. Read LastRenderTimeOnScreen (Mesh + 0x75C) as float
-        float enemyEyes = mem.Read<float>(meshPtr + 0x75C);
+        // 2. Read LastRenderTimeOnScreen
+        float enemyEyes = mem.Read<float>(meshPtr + (uint64_t)Offset::LastRenderTimeOnScreen);
 
-        // 3. Get LocalPlayer Mesh for comparison (Pawn + 0x488)
+        // 3. Get LocalPlayer Mesh for comparison
         uint64_t localPawn = GameData.AcknowledgedPawn;
-        if (!Utils::ValidPtr(localPawn)) return true; // Fail-safe: Thấy nếu lỗi local pawn
+        if (!Utils::ValidPtr(localPawn)) return true; // Fail-safe
 
-        uint64_t localMeshPtr = mem.Read<uint64_t>(localPawn + 0x488);
+        uint64_t localMeshPtr = mem.Read<uint64_t>(localPawn + (uint64_t)Offset::bAlwaysCreatePhysicsState);
         if (!Utils::ValidPtr(localMeshPtr)) return true;
 
-        float localPlayerEyes = mem.Read<float>(localMeshPtr + 0x75C);
+        float localPlayerEyes = mem.Read<float>(localMeshPtr + (uint64_t)Offset::LastRenderTimeOnScreen);
 
-        // 4. Comparison Logic: enemyEyes + 0.05f >= localPlayerEyes
+        // 4. Comparison: enemyEyes + threshold >= localPlayerEyes
         return (enemyEyes + 0.05f >= localPlayerEyes);
     }
 

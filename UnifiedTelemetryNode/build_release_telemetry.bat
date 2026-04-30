@@ -55,6 +55,10 @@ if not exist "!OUTPUT_DIR!\GameOverlay.exe" (
     exit /b 1
 )
 
+del /F /Q "!OUTPUT_DIR!\*.pdb" "!OUTPUT_DIR!\*.ilk" "!OUTPUT_DIR!\*.iobj" "!OUTPUT_DIR!\*.ipdb" >nul 2>&1
+del /F /Q "!STAGING_DIR!\*.pdb" "!STAGING_DIR!\*.ilk" "!STAGING_DIR!\*.iobj" "!STAGING_DIR!\*.ipdb" >nul 2>&1
+
 echo [OK] SUCCESS!
 echo [+] Single-file release output: dist\GameOverlay.exe
+echo [+] Release hardening: Windows subsystem, CFG/CET, ASLR/NX, no debug artifacts copied.
 exit /b 0

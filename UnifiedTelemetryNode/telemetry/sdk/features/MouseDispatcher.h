@@ -3,7 +3,6 @@
 #include <thread>
 #include <chrono>
 #include "utils/Driver.h"
-#include "utils/UsermodeMouse.h"
 #include "common/Data.h"
 
 class MouseDispatcher {
@@ -64,7 +63,6 @@ public:
             if (iX != 0 || iY != 0) {
                 switch (GameData.Config.precision_calibration.Controller) {
                     case 4: Driver::Move(iX, iY); break;
-                    case 5: UsermodeMouse::Move(iX, iY); break;
                 }
             }
 

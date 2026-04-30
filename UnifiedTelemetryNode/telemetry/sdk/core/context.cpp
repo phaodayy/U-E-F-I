@@ -162,12 +162,12 @@ namespace {
             {skCrypt("Range_Main"), 101175.0f},
             {skCrypt("Summerland_Main"), 101175.0f},
             {skCrypt("Italy_Main"), 101175.0f},
-            {skCrypt("Baltic_Main"), 406372.0f},
+            {skCrypt("Baltic_Main"), 408000.0f},
             {skCrypt("Neon_Main"), 408000.0f},
-            {skCrypt("Heaven_Main"), 101175.0f},
+            {skCrypt("Heaven_Main"), 51420.0f},
             {skCrypt("Savage_Main"), 202387.5f},
             {skCrypt("DihorOtok_Main"), 408000.0f},
-            {skCrypt("Chimera_Main"), 153003.0f},
+            {skCrypt("Chimera_Main"), 152950.0f},
             {skCrypt("Boardwalk_Main"), 51420.0f},
             {skCrypt("Narrows_Main"), 51420.0f},
             {skCrypt("Pinnacle_Main"), 51420.0f}
@@ -178,7 +178,7 @@ namespace {
                 return entry.second;
             }
         }
-        return 406372.0f;
+        return 408000.0f;
     }
 
     void ResolveWidgetRect(float left, float top, float width, float height, float alignX, float alignY,
@@ -579,6 +579,9 @@ namespace telemetryContext {
         static uint32_t lastScanPid = 0;
         static uint64_t lastScanBase = 0;
         static bool scannedRuntimeForProcess = false;
+        static ULONGLONG lastRuntimeScanTick = 0;
+        static uint32_t failedInitCount = 0;
+        constexpr ULONGLONG kRuntimeScanRetryMs = 15000;
 
         telemetryMemory::g_ProcessId = process_id;
         telemetryMemory::g_BaseAddress = base_address;
@@ -598,19 +601,45 @@ namespace telemetryContext {
             lastScanPid = process_id;
             lastScanBase = telemetryMemory::g_BaseAddress;
             scannedRuntimeForProcess = false;
+            lastRuntimeScanTick = 0;
+            failedInitCount = 0;
+            telemetryRuntimeOffsets::InvalidateRuntimeScanCache();
         }
 
         if (TryInitializeWorldFromCurrentOffsets(telemetryMemory::g_BaseAddress)) {
 #ifdef _DEBUG
             std::cout << skCrypt("[INIT] offset source=compiled-static status=ready") << std::endl;
 #endif
+            failedInitCount = 0;
             return true;
+        }
+
+        ++failedInitCount;
+        const ULONGLONG now = GetTickCount64();
+        const bool retryableInitFailure =
+            std::string(g_LastInitializeStatus) == skCrypt("decrypt-init-failed") ||
+            std::string(g_LastInitializeStatus) == skCrypt("uworld-read-failed") ||
+            std::string(g_LastInitializeStatus) == skCrypt("uworld-decrypt-invalid") ||
+            std::string(g_LastInitializeStatus) == skCrypt("uworld-empty");
+        if (scannedRuntimeForProcess &&
+            retryableInitFailure &&
+            (lastRuntimeScanTick == 0 || now - lastRuntimeScanTick >= kRuntimeScanRetryMs)) {
+            telemetryRuntimeOffsets::InvalidateRuntimeScanCache(telemetryMemory::g_BaseAddress);
+            scannedRuntimeForProcess = false;
+#ifdef _DEBUG
+            std::cout << skCrypt("[INIT] runtime scan cache reset after ")
+                      << failedInitCount
+                      << skCrypt(" failed init attempts; status=")
+                      << g_LastInitializeStatus
+                      << std::endl;
+#endif
         }
 
         if (!scannedRuntimeForProcess) {
             const char* preScanStatus = g_LastInitializeStatus;
             const bool usingRuntimeSignatures = telemetryRuntimeOffsets::ApplyRuntimeScan(telemetryMemory::g_BaseAddress);
             scannedRuntimeForProcess = true;
+            lastRuntimeScanTick = GetTickCount64();
 #ifdef _DEBUG
             const auto& runtimeReport = telemetryRuntimeOffsets::GetLastReport();
             std::cout << skCrypt("[INIT] offset source=")
@@ -622,6 +651,7 @@ namespace telemetryContext {
                       << skCrypt("/") << runtimeReport.RequiredTotal << std::endl;
 #endif
             if (usingRuntimeSignatures && TryInitializeWorldFromCurrentOffsets(telemetryMemory::g_BaseAddress)) {
+                failedInitCount = 0;
                 return true;
             }
         }
@@ -716,6 +746,8 @@ namespace telemetryContext {
 
             G_Radar.IsMiniMapVisible = false;
             G_Radar.IsWorldMapVisible = false;
+            G_Radar.WorldMapX = 0.0f;
+            G_Radar.WorldMapY = 0.0f;
             G_Radar.WorldMapWidth = 0.0f;
             G_Radar.WorldMapHeight = 0.0f;
 
@@ -855,24 +887,38 @@ namespace telemetryContext {
                 const std::string mapName = FNameUtils::GetNameFast(mapObjId);
                 G_Radar.MapWorldSize = GetMapWorldSize(mapName);
 
-                float worldOriginX = Read<float>(G_UWorld + telemetryOffsets::WorldToMap);
-                float worldOriginY = Read<float>(G_UWorld + telemetryOffsets::WorldToMap + 0x4);
-                
-                // Fallback scan for origin if primary offset returns zero
-                if (worldOriginX == 0.0f && worldOriginY == 0.0f) {
-                    worldOriginX = Read<float>(G_UWorld + 0x940);
-                    worldOriginY = Read<float>(G_UWorld + 0x944);
-                    if (worldOriginX == 0.0f && worldOriginY == 0.0f) {
-                        worldOriginX = Read<float>(G_UWorld + 0x930);
-                        worldOriginY = Read<float>(G_UWorld + 0x934);
-                    }
+                const int32_t worldOriginRawX = Read<int32_t>(G_UWorld + telemetryOffsets::WorldToMap);
+                const int32_t worldOriginRawY = Read<int32_t>(G_UWorld + telemetryOffsets::WorldToMap + 0x4);
+                float worldOriginX = static_cast<float>(worldOriginRawX);
+                float worldOriginY = static_cast<float>(worldOriginRawY);
+                const char* worldOriginSource = "WorldToMap-i32";
+
+                if (worldOriginRawX < -1000000 || worldOriginRawX > 1000000 ||
+                    worldOriginRawY < -1000000 || worldOriginRawY > 1000000) {
+                    worldOriginX = 0.0f;
+                    worldOriginY = 0.0f;
+                    worldOriginSource = "WorldToMap-i32-invalid";
                 }
 
-                // SECURITY CLEANUP: If it's still garbage (-7.9e20), set to zero
-                if (worldOriginX < -1000000.0f || worldOriginX > 1000000.0f) worldOriginX = 0.0f;
-                if (worldOriginY < -1000000.0f || worldOriginY > 1000000.0f) worldOriginY = 0.0f;
-
                 G_Radar.WorldOriginLocation = { worldOriginX, worldOriginY, 0.0f };
+
+#ifdef _DEBUG
+                std::cout << "[DEBUG][MAP] name=" << mapName
+                    << " obj=0x" << std::hex << mapObjId << std::dec
+                    << " size=" << G_Radar.MapWorldSize
+                    << " origin=(" << G_Radar.WorldOriginLocation.x << "," << G_Radar.WorldOriginLocation.y << ")"
+                    << " origin_source=" << worldOriginSource
+                    << " origin_raw=(" << worldOriginRawX << "," << worldOriginRawY << ")"
+                    << " minimap_visible=" << (G_Radar.IsMiniMapVisible ? 1 : 0)
+                    << " world_visible=" << (G_Radar.IsWorldMapVisible ? 1 : 0)
+                    << " widget_rect=(" << G_Radar.WorldMapX << "," << G_Radar.WorldMapY
+                    << "," << G_Radar.WorldMapWidth << "," << G_Radar.WorldMapHeight << ")"
+                    << " widget_raw=(" << worldRawLeft << "," << worldRawTop
+                    << ") align=(" << worldAlignX << "," << worldAlignY << ")"
+                    << " zoom=" << G_Radar.WorldMapZoomFactor
+                    << " position=(" << G_Radar.WorldMapPosition.x << "," << G_Radar.WorldMapPosition.y << ")"
+                    << std::endl;
+#endif
             }
 
             if (G_Radar.WorldMapZoomFactor <= 0.001f) {
@@ -887,6 +933,21 @@ namespace telemetryContext {
                     0.0f
                 };
             }
+
+#ifdef _DEBUG
+            static ULONGLONG lastWorldMapStateLog = 0;
+            if (now - lastWorldMapStateLog > 3000) {
+                lastWorldMapStateLog = now;
+                std::cout << "[DEBUG][MAP_STATE] world_visible=" << (G_Radar.IsWorldMapVisible ? 1 : 0)
+                    << " map_size=" << G_Radar.MapWorldSize
+                    << " zoom=" << G_Radar.WorldMapZoomFactor
+                    << " factored=" << G_Radar.MapSizeFactored
+                    << " center=(" << G_Radar.WorldCenterLocation.x << "," << G_Radar.WorldCenterLocation.y << ")"
+                    << " rect=(" << G_Radar.WorldMapX << "," << G_Radar.WorldMapY
+                    << "," << G_Radar.WorldMapWidth << "," << G_Radar.WorldMapHeight << ")"
+                    << std::endl;
+            }
+#endif
         }
 
         // Dynamic fallback when HUD widget is not ready

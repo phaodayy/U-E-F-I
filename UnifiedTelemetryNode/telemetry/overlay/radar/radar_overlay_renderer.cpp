@@ -10,6 +10,7 @@
 #include <cfloat>
 #include <cmath>
 #include <cstdio>
+#include <iostream>
 #include <mutex>
 #include <string>
 
@@ -146,6 +147,13 @@ struct BigMapRect {
     float right = 0.0f;
     float bottom = 0.0f;
 };
+
+bool IsValidBigMapRect(const BigMapRect& rect) {
+    return std::isfinite(rect.left) && std::isfinite(rect.top) &&
+        std::isfinite(rect.right) && std::isfinite(rect.bottom) &&
+        rect.right > rect.left + 100.0f &&
+        rect.bottom > rect.top + 100.0f;
+}
 
 ImVec2 ProjectBigMapScreen(const BigMapRect& rect, const Vector3& position) {
     const float mapWorldSize = (std::isfinite(G_Radar.MapWorldSize) && G_Radar.MapWorldSize > 1000.0f)
@@ -652,44 +660,111 @@ void Draw(ImDrawList* draw, OverlayMenu& menu, const std::vector<PlayerData>& pl
 
     static bool forcedWorldMapOpen = false;
     static bool previousMDown = false;
+    static ULONGLONG lastMapToggleMs = 0;
+    static ULONGLONG lastMapReleaseMs = 0;
+    const ULONGLONG nowMs = GetTickCount64();
     const bool keyWorldMapPressed = telemetryMemory::IsKeyDown('M');
-    if (keyWorldMapPressed && !previousMDown) {
+    if (keyWorldMapPressed && !previousMDown &&
+        nowMs - lastMapToggleMs > 900 &&
+        (lastMapReleaseMs == 0 || nowMs - lastMapReleaseMs > 120)) {
         forcedWorldMapOpen = !forcedWorldMapOpen;
+        previousMDown = true;
+        lastMapToggleMs = nowMs;
+#ifdef _DEBUG
+        std::cout << "[DEBUG][BIGMAP] toggle=" << (forcedWorldMapOpen ? "on" : "off")
+            << " key=M" << std::endl;
+#endif
     }
-    previousMDown = keyWorldMapPressed;
+    if (!keyWorldMapPressed && previousMDown) {
+        previousMDown = false;
+        lastMapReleaseMs = nowMs;
+    }
     if (telemetryMemory::IsKeyDown(VK_ESCAPE)) {
         forcedWorldMapOpen = false;
+        previousMDown = false;
     }
 
     const bool canDrawWorldMap = menu.bigmap_enabled &&
-        (G_Radar.IsWorldMapVisible || forcedWorldMapOpen || keyWorldMapPressed) &&
+        (G_Radar.IsWorldMapVisible || forcedWorldMapOpen) &&
         G_Radar.MapWorldSize > 1000.0f;
     bool worldMapDrawn = false;
+
+#ifdef _DEBUG
+    static ULONGLONG lastBigMapDebugLog = 0;
+    const bool shouldLogBigMap = (nowMs - lastBigMapDebugLog > 1000);
+    if (shouldLogBigMap) {
+        lastBigMapDebugLog = nowMs;
+        const char* reason = "ready";
+        if (!menu.bigmap_enabled) {
+            reason = "menu-disabled";
+        } else if (!G_Radar.IsWorldMapVisible && !forcedWorldMapOpen) {
+            reason = "not-visible-and-not-forced";
+        } else if (G_Radar.MapWorldSize <= 1000.0f) {
+            reason = "map-size-missing";
+        }
+        std::cout << "[DEBUG][BIGMAP] enabled=" << (menu.bigmap_enabled ? 1 : 0)
+            << " hud_visible=" << (G_Radar.IsWorldMapVisible ? 1 : 0)
+            << " forced=" << (forcedWorldMapOpen ? 1 : 0)
+            << " key_m=" << (keyWorldMapPressed ? 1 : 0)
+            << " can_draw=" << (canDrawWorldMap ? 1 : 0)
+            << " reason=" << reason
+            << " players=" << players.size()
+            << " map_size=" << G_Radar.MapWorldSize
+            << " origin=(" << G_Radar.WorldOriginLocation.x << "," << G_Radar.WorldOriginLocation.y << ")"
+            << " center=(" << G_Radar.WorldCenterLocation.x << "," << G_Radar.WorldCenterLocation.y << ")"
+            << " factored=" << G_Radar.MapSizeFactored
+            << " zoom=" << G_Radar.WorldMapZoomFactor
+            << " widget_rect=(" << G_Radar.WorldMapX << "," << G_Radar.WorldMapY
+            << "," << G_Radar.WorldMapWidth << "," << G_Radar.WorldMapHeight << ")"
+            << std::endl;
+    }
+#endif
 
     if (canDrawWorldMap) {
         BigMapRect bigMapRect{};
         if (G_Radar.IsWorldMapVisible) {
-            // PAOD-style projection: the opened world map is centered on the viewport and scaled by height.
             bigMapRect = { 0.0f, 0.0f, screenWidth, screenHeight };
         } else {
-            const float baseMapSize = (std::min)(screenWidth, screenHeight) *
-                std::clamp(menu.bigmap_screen_scale, 0.70f, 1.25f);
-            const float worldLeft = ((screenWidth - baseMapSize) * 0.5f) + menu.bigmap_offset_x;
-            const float worldTop = ((screenHeight - baseMapSize) * 0.5f) + menu.bigmap_offset_y;
+            const float baseMapSize = (std::min)(screenWidth, screenHeight);
+            const float worldLeft = (screenWidth - baseMapSize) * 0.5f;
+            const float worldTop = (screenHeight - baseMapSize) * 0.5f;
             bigMapRect = { worldLeft, worldTop, worldLeft + baseMapSize, worldTop + baseMapSize };
         }
-        DrawBigMapItems(draw, menu, bigMapRect);
 
-        for (const auto& player : players) {
-            if (!ShouldDrawPlayer(menu, player)) continue;
-            float mapX = 0.0f;
-            float mapY = 0.0f;
-            if (!WorldToBigMapScreen(bigMapRect, player.Position, mapX, mapY)) continue;
-            DrawBigMapAimRay(draw, menu, player, bigMapRect, ImVec2(mapX, mapY));
-            DrawBigMapMarker(draw, menu, player, mapX, mapY);
+        if (!IsValidBigMapRect(bigMapRect)) {
+#ifdef _DEBUG
+            std::cout << "[DEBUG][BIGMAP] invalid_rect=(" << bigMapRect.left << "," << bigMapRect.top
+                << "," << bigMapRect.right << "," << bigMapRect.bottom << ")" << std::endl;
+#endif
+        } else {
+            int eligiblePlayers = 0;
+            int projectedPlayers = 0;
+            DrawBigMapItems(draw, menu, bigMapRect);
+
+            for (const auto& player : players) {
+                if (!ShouldDrawPlayer(menu, player)) continue;
+                ++eligiblePlayers;
+                float mapX = 0.0f;
+                float mapY = 0.0f;
+                if (!WorldToBigMapScreen(bigMapRect, player.Position, mapX, mapY)) continue;
+                ++projectedPlayers;
+                DrawBigMapAimRay(draw, menu, player, bigMapRect, ImVec2(mapX, mapY));
+                DrawBigMapMarker(draw, menu, player, mapX, mapY);
+            }
+            DrawBigMapLegend(draw, menu, bigMapRect);
+            worldMapDrawn = true;
+
+#ifdef _DEBUG
+            if (shouldLogBigMap) {
+                std::cout << "[DEBUG][BIGMAP_DRAW] rect=(" << bigMapRect.left << "," << bigMapRect.top
+                    << "," << bigMapRect.right << "," << bigMapRect.bottom << ")"
+                    << " eligible=" << eligiblePlayers
+                    << " projected=" << projectedPlayers
+                    << " dropped=" << (eligiblePlayers - projectedPlayers)
+                    << std::endl;
+            }
+#endif
         }
-        DrawBigMapLegend(draw, menu, bigMapRect);
-        worldMapDrawn = true;
     }
 
     if (worldMapDrawn || (!hasHudMiniMapRect && !G_Radar.IsMiniMapVisible)) return;

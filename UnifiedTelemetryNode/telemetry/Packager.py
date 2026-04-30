@@ -5,10 +5,8 @@ import string
 # --- CẤU HÌNH (Sử dụng đường dẫn tương đối) ---
 DRIVER_PATH      = r"bin\driver.sys"
 VMOUSE_PATH      = r"vmouse-main\vmouse\x64\Release\vmouse.sys"
-MS_INPUT_PATH    = r"bin\ms_input_core.dll"
 ENCRYPTED_OUTPUT = r"telemetry\resources\driver.bin"
 VMOUSE_OUTPUT    = r"telemetry\resources\vmouse.bin"
-MS_INPUT_OUTPUT  = r"telemetry\resources\ms_input_core.bin"
 KEY_HEADER_PATH  = r"telemetry\mapper\secret_key.hpp"
 
 # --- TẠO KHÓA BÍ MẬT NGẪU NHIÊN ---
@@ -43,14 +41,7 @@ def pack():
     else:
         print(f"[-] CANH BAO: Khong tim thay {VMOUSE_PATH}.")
 
-    # 4. Ma hoa ms_input_core.dll -> ms_input_core.bin
-    if os.path.exists(MS_INPUT_PATH):
-        xor_file(MS_INPUT_PATH, MS_INPUT_OUTPUT, key)
-        print(f"[+] Da ma hoa va luu Logitech BIN tai: {MS_INPUT_OUTPUT}")
-    else:
-        print(f"[-] CANH BAO: Khong tim thay {MS_INPUT_PATH}.")
-
-    # 5. Cap nhat key vao header C++ de App giai ma duoc
+    # 4. Cap nhat key vao header C++ de App giai ma duoc
     with open(KEY_HEADER_PATH, "w") as f:
         f.write("#pragma once\n")
         f.write("#include <string>\n\n")

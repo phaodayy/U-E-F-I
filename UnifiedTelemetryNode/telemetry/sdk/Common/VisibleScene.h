@@ -162,7 +162,7 @@ namespace Physics {
                     memcpy(indices, mesh.Indices.data(), mesh.Indices.size() * sizeof(uint32_t));
                     rtcSetGeometryUserData(geom, mesh_copy.get());
 
-                    // Nâng cấp: Transparency Check (Loại bỏ lưới thép, hàng rào, lá cây)
+                    // Nang cap: Transparency Check (Loai bo luoi thep, hang rao, la cay)
                     rtcSetGeometryIntersectFilterFunction(geom, [](const RTCFilterFunctionNArguments* args) {
                         int* valid = args->valid;
                         if (!valid[0]) return;
@@ -170,15 +170,19 @@ namespace Physics {
                         auto meshData = (TriangleMeshData*)args->geometryUserPtr;
                         if (!meshData) return;
                         
-                        // Kiem tra thuoc tinh xuyen thau thong qua SimulationFilterData hoac QueryFilterData
-                        // Thuong trong telemetry, Foliage (la cay/bui co) hoac ChainlinkFence co cac Flag cu the.
-                        // O day chung ta dung word0 (Type) hoac word3 de loc mesh
+                        // Kiem tra thuoc tinh xuyen thau thong qua FilterData
+                        // word0 = Collision Channel (0 = No collision, thuong la Foliage/Decor)
+                        // word3 = Object Type Flags (gia tri thap = vat the nho/xuyen thau)
                         if (meshData->Type == PxGeometryType::eTRIANGLEMESH) {
-                            // Vi du: bo qua neu la bui co hoac luoi sat mong dua tren flag tu dong
-                            // word0 thuong la chi so Collision Channel cua Unreal Engine (Visibility, Camera, v.v...)
-                            if (meshData->QueryFilterData.word0 == 0 || meshData->SimulationFilterData.word0 == 0) {
-                                // Co the day la Foliage hoac vat the ko can phai check hit
-                               // valid[0] = 0; // Uncomment neu test thay qua nhieu vat the bi chan
+                            // Bo qua neu la Foliage, ChainlinkFence, hoac vat the ko co collision
+                            if (meshData->QueryFilterData.word0 == 0 && meshData->SimulationFilterData.word0 == 0) {
+                                valid[0] = 0; // Ignore: vat the nay khong can chan tia raycast
+                                return;
+                            }
+                            // Bo qua cac vat the co word3 qua thap (thuong la co, bui, decal)
+                            if (meshData->QueryFilterData.word3 > 0 && meshData->QueryFilterData.word3 < 50) {
+                                valid[0] = 0;
+                                return;
                             }
                         }
                     });

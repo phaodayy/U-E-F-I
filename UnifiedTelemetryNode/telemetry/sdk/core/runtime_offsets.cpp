@@ -649,6 +649,13 @@ bool ApplyRuntimeScan(uint64_t baseAddress) {
     return g_LastReport.AppliedRuntimeOffsets;
 }
 
+void InvalidateRuntimeScanCache(uint64_t baseAddress) {
+    if (baseAddress == 0 || g_LastScannedBase == baseAddress) {
+        g_LastScannedBase = 0;
+        g_LastReport.Scanned = false;
+    }
+}
+
 const RuntimeScanReport& GetLastReport() {
     return g_LastReport;
 }

@@ -60,6 +60,7 @@ typedef struct _telemetry_SYSTEM_PROCESS_INFORMATION {
 #include "sdk/core/app_shutdown.hpp"
 #include "sdk/core/app_paths.hpp"
 #include "sdk/memory/hyper_process.hpp"
+#include "sdk/memory/vmouse_client.hpp"
 #include "sdk/core/process_single_instance.hpp"
 #include "sdk/core/offsets.hpp"
 #include "sdk/core/context.hpp"
@@ -204,6 +205,7 @@ std::string global_active_key = skCrypt("");
 std::string global_license_error = skCrypt("");
 std::string g_expiry_str = skCrypt("N/A");
 bool g_is_vietnamese = false;
+bool g_entitlement_active = false;
 time_t g_expiry_time = 0;
 uint64_t g_remaining_seconds = 0;
 uint64_t g_last_tick_count = 0;
@@ -228,6 +230,7 @@ std::string global_config_code = skCrypt("");
 
 void ClearActiveEntitlementState() {
     global_active_key.clear();
+    g_entitlement_active = false;
     g_expiry_str = skCrypt("N/A");
     g_expiry_time = 0;
     g_remaining_seconds = 0;
@@ -235,7 +238,7 @@ void ClearActiveEntitlementState() {
 }
 
 bool HasActiveLoaderEntitlement() {
-    return !global_account_token.empty() && !global_active_key.empty();
+    return !global_account_token.empty() && g_entitlement_active && g_remaining_seconds > 0;
 }
 
 // Chuyển "2026-04-02T16:17:30" => time_t (UTC)
@@ -417,41 +420,25 @@ struct LoaderSessionFile {
     std::string config_code;
 };
 
+void ClearLoaderSessionFile();
+
 LoaderSessionFile LoadLoaderSessionFile() {
-    LoaderSessionFile session;
-    std::ifstream in(AppPaths::LoaderSessionPath());
-    if (!in.is_open()) {
-        in.clear();
-        in.open(skCrypt("loader_session.json"));
-    }
-    if (!in.is_open()) return session;
-
-    nlohmann::json json = nlohmann::json::parse(in, nullptr, false);
-    if (json.is_discarded() || !json.is_object()) return session;
-
-    session.token = JsonStringValue(json, skCrypt("token"));
-    session.username = JsonStringValue(json, skCrypt("username"));
-    session.key = JsonStringValue(json, skCrypt("key"));
-    session.config_code = JsonStringValue(json, skCrypt("config_code"));
-    return session;
+    ClearLoaderSessionFile();
+    return {};
 }
 
 void SaveLoaderSessionFile() {
-    nlohmann::json json;
-    json["token"] = global_account_token;
-    json["username"] = global_account_username;
-    json["key"] = global_active_key;
-    json["config_code"] = global_config_code;
-
-    std::ofstream out(AppPaths::LoaderSessionPath(), std::ios::trunc);
-    if (out.is_open()) {
-        out << json.dump(2);
-    }
 }
 
 void ClearLoaderSessionFile() {
-    DeleteFileA(AppPaths::LoaderSessionPath().c_str());
-    DeleteFileA(AppPaths::KeyPath().c_str());
+    char localAppData[4096] = {};
+    const DWORD len = GetEnvironmentVariableA(skCrypt("LOCALAPPDATA"), localAppData, static_cast<DWORD>(sizeof(localAppData)));
+    if (len > 0 && len < sizeof(localAppData)) {
+        std::string root(localAppData, len);
+        root += skCrypt("\\UnifiedTelemetryNode\\");
+        DeleteFileA((root + skCrypt("loader_session.json")).c_str());
+        DeleteFileA((root + skCrypt("key.txt")).c_str());
+    }
     DeleteFileA(skCrypt("loader_session.json"));
     DeleteFileA(skCrypt("key.txt"));
 }
@@ -459,6 +446,16 @@ void ClearLoaderSessionFile() {
 bool ApplyExpiryFromJson(const nlohmann::json& json, const char* expiryField = "expiry", const char* timestampField = "timestamp") {
     std::string expiry = JsonStringValue(json, expiryField);
     if (expiry.empty()) expiry = JsonStringValue(json, skCrypt("expires_at"));
+    const long long remaining = JsonInt64Value(json, skCrypt("remaining_seconds"));
+    if (remaining > 0) {
+        g_remaining_seconds = (uint64_t)remaining;
+        g_last_tick_count = GetTickCount64();
+        const time_t now = time(nullptr);
+        g_expiry_time = now > 0 ? now + (time_t)remaining : 0;
+        g_expiry_str = expiry.empty() ? skCrypt("ACTIVE") : expiry;
+        return true;
+    }
+
     std::string server_time = JsonStringValue(json, timestampField);
     if (server_time.empty()) server_time = JsonStringValue(json, skCrypt("server_time"));
     if (server_time.empty()) {
@@ -488,8 +485,10 @@ bool ValidateSignedLicensePayload(
     const std::string& expectedHwid,
     const std::string& expectedNonce,
     std::string& signedStatus,
+    std::string& signedKey,
     std::string& signedExpiry,
     std::string& signedTimestamp,
+    long long& signedRemainingSeconds,
     std::string& error
 ) {
     std::string signedPayload = JsonStringValue(responseJson, "signed_payload");
@@ -517,12 +516,16 @@ bool ValidateSignedLicensePayload(
     }
 
     signedStatus = JsonStringValue(payloadJson, "status");
+    signedKey = JsonStringValue(payloadJson, "key");
     signedExpiry = JsonStringValue(payloadJson, "expiry");
     signedTimestamp = JsonStringValue(payloadJson, "timestamp");
+    signedRemainingSeconds = JsonInt64Value(payloadJson, "remaining_seconds");
+
+    const bool requireKeyMatch = expectedAction == skCrypt("activate") || !expectedKey.empty();
 
     if (JsonStringValue(payloadJson, "action") != expectedAction ||
         signedStatus != expectedStatus ||
-        JsonStringValue(payloadJson, "key") != expectedKey ||
+        (requireKeyMatch && signedKey != expectedKey) ||
         JsonStringValue(payloadJson, "hwid") != expectedHwid ||
         JsonStringValue(payloadJson, "nonce") != expectedNonce) {
         error = skCrypt("SIGNED_PAYLOAD_FIELD_MISMATCH");
@@ -600,8 +603,10 @@ bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) 
         
         // 1. Tìm signature từ server
         std::string signedStatus;
+        std::string signedKey;
         std::string signedExpiry;
         std::string signedTimestamp;
+        long long signedRemainingSeconds = 0;
         std::string verifyError;
         
         // 2. Tìm timestamp từ server để khớp hash
@@ -613,8 +618,10 @@ bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) 
             hwid,
             nonce,
             signedStatus,
+            signedKey,
             signedExpiry,
             signedTimestamp,
+            signedRemainingSeconds,
             verifyError);
 
         // 3. XÁC MINH CHỮ KÝ RSA + TÍNH TOÀN VẸN (BINARY INTEGRITY)
@@ -641,12 +648,15 @@ bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) 
 
         std::string responseConfigCode = JsonStringValue(responseJson, skCrypt("config_code"));
         if (!responseConfigCode.empty()) global_config_code = responseConfigCode;
+        if (!signedKey.empty()) global_active_key = signedKey;
 
-        if (!signedExpiry.empty()) {
+        if (!signedExpiry.empty() || signedRemainingSeconds > 0) {
             nlohmann::json expiryJson;
             expiryJson["expiry"] = signedExpiry;
             expiryJson["timestamp"] = signedTimestamp;
+            if (signedRemainingSeconds > 0) expiryJson["remaining_seconds"] = signedRemainingSeconds;
             ApplyExpiryFromJson(expiryJson, skCrypt("expiry"), skCrypt("timestamp"));
+            g_entitlement_active = g_remaining_seconds > 0;
         }
 
         // Kiểm tra hash định kỳ so với giá trị nhúng ở server (Phần này Admin cần cấu hình ở Worker)
@@ -657,8 +667,8 @@ bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent) 
         }
 
         if (!silent) {
-            std::string expiry = signedExpiry;
-            std::string server_time = signedTimestamp;
+            std::string expiry = g_expiry_str;
+            std::string server_time;
 
             if (!expiry.empty() && !server_time.empty()) {
                 time_t exp_t = ParseISO8601(expiry);
@@ -931,6 +941,10 @@ bool ParseAuthSessionResponse(const std::string& responseStr, bool allowNoActive
         bool active = (*entitlementIt).value(skCrypt("active"), false);
         if (active && !key.empty() && ApplyExpiryFromJson(*entitlementIt, skCrypt("expires_at"), skCrypt("timestamp"))) {
             global_active_key = key;
+            g_entitlement_active = true;
+        } else if (active && ApplyExpiryFromJson(*entitlementIt, skCrypt("expires_at"), skCrypt("timestamp"))) {
+            global_active_key.clear();
+            g_entitlement_active = true;
         } else {
             ClearActiveEntitlementState();
         }
@@ -942,31 +956,9 @@ bool ParseAuthSessionResponse(const std::string& responseStr, bool allowNoActive
 }
 
 bool TryResumeLoaderAccount(const std::string& hwid) {
-    LoaderSessionFile session = LoadLoaderSessionFile();
-    if (session.token.empty()) return false;
-
-    global_account_token = session.token;
-    global_account_username = session.username;
-    global_active_key = session.key;
-    global_config_code = session.config_code;
-
-    std::wstring path = std::wstring(LOADER_ME_PATH) + skCrypt(L"?hwid=") + Utf8ToWide(hwid);
-    std::string responseStr;
-    if (!HttpJsonGet(path.c_str(), global_account_token, responseStr)) {
-        global_account_token.clear();
-        return false;
-    }
-
-    if (!ParseAuthSessionResponse(responseStr, true)) {
-        global_account_token.clear();
-        return false;
-    }
-
-    if (!global_active_key.empty() && DoAPIRequest(global_active_key, hwid, true)) {
-        return true;
-    }
-
-    return !global_account_token.empty();
+    (void)hwid;
+    ClearLoaderSessionFile();
+    return false;
 }
 
 bool PromptLoaderAccountLogin(const std::string& hwid) {
@@ -1008,9 +1000,11 @@ bool PromptLoaderAccountLogin(const std::string& hwid) {
 bool AuthenticateLicense() {
     std::string hwid = GetHWID();
     
-    // Silent resume if session exists
+    ClearLoaderSessionFile();
+
+    // Session persistence is disabled; credentials stay in memory only.
     if (TryResumeLoaderAccount(hwid)) {
-        if (!global_active_key.empty() && DoAPIRequest(global_active_key, hwid, true)) {
+        if (HasActiveLoaderEntitlement() && DoAPIRequest(global_active_key, hwid, true)) {
             DownloadLoaderConfig();
             SaveLoaderSessionFile();
             return true;
@@ -1043,7 +1037,7 @@ void LicenseHeartbeatLoop() {
 
         // 2. Kiểm tra mạng định kỳ (đề phòng Admin thu hồi Key) - 10 phút/lần
         if ((current_tick - last_net_check_tick) >= (600 * 1000)) {
-            if (!global_active_key.empty()) {
+            if (HasActiveLoaderEntitlement()) {
                 bool heartbeatOk = DoAPIRequest(global_active_key, hwid, true);
                 if (!heartbeatOk && !global_license_error.empty()) {
                     SetConsoleColor(12);
@@ -1060,10 +1054,7 @@ void LicenseHeartbeatLoop() {
 
 void SelfDestruct() {
     // SECURITY: Delete configuration files first
-    DeleteFileA(AppPaths::KeyPath().c_str());
-    DeleteFileA(AppPaths::LoaderSessionPath().c_str());
-    DeleteFileA(skCrypt("key.txt"));
-    DeleteFileA(skCrypt("loader_session.json"));
+    ClearLoaderSessionFile();
 
     char szModuleName[MAX_PATH];
     if (GetModuleFileNameA(NULL, szModuleName, MAX_PATH) == 0) return;
@@ -1301,6 +1292,16 @@ int main() {
 
   EnsureLoaderConsole();
   protec::scan_detection_time = 1000;
+#ifdef _DEBUG
+  const auto hardening = protec::apply_baseline_hardening();
+  std::cout << skCrypt("[DEBUG][PROTEC] baseline=")
+            << (hardening.heap_termination_enabled ? skCrypt("heap-ok") : skCrypt("heap-fail"))
+            << skCrypt(" dll-search=")
+            << (hardening.dll_search_order_hardened ? skCrypt("ok") : skCrypt("off"))
+            << std::endl;
+#else
+  protec::apply_baseline_hardening();
+#endif
   srand((unsigned int)GetTickCount64());
   protec::start_protect(false);
   SelfRename();
@@ -1474,9 +1475,12 @@ int main() {
   SetConsoleColor(14);
   int sync_count = 0;
   ULONGLONG engine_wait_started = GetTickCount64();
+  ULONGLONG engine_connect_started = engine_wait_started;
   constexpr ULONGLONG kEngineWaitDiagnosticMs = 30000;
+  constexpr ULONGLONG kEngineInitHardFailMs = 90000;
   while (!telemetryContext::Initialize(pid, base)) {
       sync_count++;
+      const std::string initStatus = telemetryContext::GetLastInitializeStatus();
       std::cout << (g_is_vietnamese ? skCrypt("\r[*] Dang cho game san sang qua hyper [") : skCrypt("\r[*] Waiting for hyper-backed game state [")) << sync_count << skCrypt("]...   ") << std::flush;
       if (sync_count % 5 == 0) {
           query_process_data_packet live_data = {};
@@ -1499,10 +1503,27 @@ int main() {
                         << skCrypt(" process query failed; returning to PID wait may be needed") << std::endl;
           }
       }
+      if (initStatus == skCrypt("ready")) {
+          break;
+      }
+      if ((initStatus == skCrypt("decrypt-init-failed") ||
+           initStatus == skCrypt("process-context-refresh-failed")) &&
+          GetTickCount64() - engine_connect_started > kEngineInitHardFailMs) {
+          SetConsoleColor(12);
+          std::cout << skCrypt("\n[ERROR][ENGINE] Init stuck at status=")
+                    << initStatus
+                    << skCrypt(" for more than 90s. This usually means this game process/session is stale or its engine decrypt stub is not readable yet.") << std::endl;
+          std::cout << (g_is_vietnamese
+              ? skCrypt("[ERROR][ENGINE] Hay thoat han game roi mo lai game de lay PID/CR3 moi, sau do chay lai tool.\n")
+              : skCrypt("[ERROR][ENGINE] Fully restart the game to get a fresh PID/CR3, then run the tool again.\n"));
+          SetConsoleColor(7);
+          DebugPause();
+          return 1;
+      }
       if (GetTickCount64() - engine_wait_started > kEngineWaitDiagnosticMs) {
           std::cout << skCrypt("\n[DEBUG][ENGINE] still waiting after 30s; last_status=")
                     << telemetryContext::GetLastInitializeStatus()
-                    << skCrypt(". If the game is still loading, enter lobby/training; otherwise restart the game process.") << std::endl;
+                    << skCrypt(". Retrying runtime scan periodically; if this repeats, restart the game process.") << std::endl;
           engine_wait_started = GetTickCount64();
       }
       Sleep(1000 + (rand() % 200));

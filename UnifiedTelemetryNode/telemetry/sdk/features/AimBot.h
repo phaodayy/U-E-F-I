@@ -3,7 +3,6 @@
 #include "common/Data.h"
 #include "common/Entitys.h"
 #include "utils/Driver.h"
-#include "utils/UsermodeMouse.h"
 #include <features/LineTraceHook.h>
 #include <features/LineTrace.h>
 #include <features/VisibleCheck.h>
@@ -146,9 +145,6 @@ void TriggerMouseLeft(int durationMs = 30)
     switch (GameData.Config.precision_calibration.Controller) {
     case 4:
         Driver::Click();
-        break;
-    case 5:
-        UsermodeMouse::Click();
         break;
     }
 }
@@ -653,9 +649,6 @@ public:
         case 4:
             telemetryMemory::MoveMouse(0, 0, 0x0001);
             break;
-        case 5:
-            UsermodeMouse::PressTheLeft();
-            break;
         default:
             return;
         }
@@ -671,9 +664,6 @@ public:
         case 4:
             telemetryMemory::MoveMouse(0, 0, 0x0002);
             break;
-        case 5:
-            UsermodeMouse::PopUpTheLeft();
-            break;
         default:
             return;
         }
@@ -686,14 +676,7 @@ public:
         {
             return;
         }
-        switch (GameData.Config.precision_calibration.Controller) {
-        case 5:
-            // Scroll usually doesn't need click, but mimic Case 1 if needed
-            // UsermodeMouse doesn't have scroll yet, leaving case 5 placeholder
-            break;
-        default:
-            return;
-        }
+        return;
     }
 
     static void mouse_scroll_down()
@@ -702,12 +685,7 @@ public:
         {
             return;
         }
-        switch (GameData.Config.precision_calibration.Controller) {
-        case 5:
-            break;
-        default:
-            return;
-        }
+        return;
     }
     static void simulateClick()
     {
@@ -718,9 +696,6 @@ public:
         switch (GameData.Config.precision_calibration.Controller) {
         case 4:
             Driver::Click();
-            break;
-        case 5:
-            UsermodeMouse::Click();
             break;
         default:
             return;
@@ -737,9 +712,6 @@ public:
         switch (GameData.Config.precision_calibration.Controller) {
         case 4:
             Driver::Move(x, y);
-            break;
-        case 5:
-            UsermodeMouse::Move(x, y);
             break;
         default:
             return;

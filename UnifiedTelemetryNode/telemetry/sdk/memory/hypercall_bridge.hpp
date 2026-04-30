@@ -1,11 +1,18 @@
 #pragma once
 
 #include <cstdint>
+#include <shared/hypercall/hypercall_def.h>
 
 namespace telemetryHyperCall
 {
     bool Init();
     
+    std::uint64_t MakeHypercall(const hypercall_type_t call_type,
+                                const std::uint64_t call_reserved_data,
+                                const std::uint64_t rdx,
+                                const std::uint64_t r8,
+                                const std::uint64_t r9);
+
     std::uint64_t ReadGuestVirtualMemory(void* guest_destination_buffer,
                                          std::uint64_t guest_source_virtual_address,
                                          std::uint64_t source_cr3,
@@ -28,4 +35,5 @@ namespace telemetryHyperCall
     bool ToggleProcessProtection(std::uint64_t eprocess_address, bool enable);
     bool UnlinkProcess(std::uint64_t eprocess_address);
     std::uint64_t GetHardwareFingerprint();
+    bool GetInputDiagnostics(input_diagnostics_snapshot_t* snapshot);
 }

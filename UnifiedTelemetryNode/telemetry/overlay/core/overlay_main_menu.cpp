@@ -8,6 +8,7 @@
 extern std::string global_account_token;
 extern std::string global_active_key;
 extern std::string global_account_role;
+extern bool HasActiveLoaderEntitlement();
 
 void OverlayMenu::RenderMainMenuWindow(ImDrawList* draw, float ScreenWidth, float ScreenHeight) {
     if (!draw) return;
@@ -105,7 +106,7 @@ void OverlayMenu::RenderMainMenuWindow(ImDrawList* draw, float ScreenWidth, floa
             ImGui::BeginChild(skCrypt("##MainContent"), ImVec2(windowSize.x - 40, windowSize.y - 150), false, ImGuiWindowFlags_None);
 
             const bool hasAccountSession = !global_account_token.empty();
-            const bool hasValidKey = hasAccountSession && !global_active_key.empty();
+            const bool hasValidKey = hasAccountSession && HasActiveLoaderEntitlement();
             std::string accountRoleLower = global_account_role;
             for (char& c : accountRoleLower) c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
             const bool isAdmin = accountRoleLower == skCrypt("admin");

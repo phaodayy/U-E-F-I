@@ -12,21 +12,21 @@ namespace
     static std::uint64_t current_primary_key = hypercall_default_primary_key;
     static std::uint64_t current_secondary_key = hypercall_default_secondary_key;
     static bool is_initialized = false;
+}
 
-    std::uint64_t MakeHypercall(const hypercall_type_t call_type,
-                                const std::uint64_t call_reserved_data,
-                                const std::uint64_t rdx,
-                                const std::uint64_t r8,
-                                const std::uint64_t r9)
-    {
-        hypercall_info_t hypercall_info = {};
-        hypercall_info.primary_key = current_primary_key;
-        hypercall_info.secondary_key = current_secondary_key;
-        hypercall_info.call_type = call_type;
-        hypercall_info.call_reserved_data = call_reserved_data;
+std::uint64_t telemetryHyperCall::MakeHypercall(const hypercall_type_t call_type,
+                                                const std::uint64_t call_reserved_data,
+                                                const std::uint64_t rdx,
+                                                const std::uint64_t r8,
+                                                const std::uint64_t r9)
+{
+    hypercall_info_t hypercall_info = {};
+    hypercall_info.primary_key = current_primary_key;
+    hypercall_info.secondary_key = current_secondary_key;
+    hypercall_info.call_type = call_type;
+    hypercall_info.call_reserved_data = call_reserved_data;
 
-        return launch_raw_hypercall(hypercall_info, rdx, r8, r9);
-    }
+    return launch_raw_hypercall(hypercall_info, rdx, r8, r9);
 }
 
 bool telemetryHyperCall::Init()
@@ -117,26 +117,20 @@ std::uint64_t telemetryHyperCall::ReadGuestCr3()
     return MakeHypercall(hypercall_type_t::_hc_0x140, 0, 0, 0, 0);
 }
 
-    /*
-    std::uint64_t telemetryHyperCall::InjectMouseMovement(long x, long y, unsigned short flags)
-    {
-        // Hybrid Protocol: Pack coords [Y|X] into RDX and flags into R8
-        // Also mirrors data in call_reserved_data (RCX) for maximum compatibility with all Hyper-reV sub-versions.
-        std::uint64_t packed_coords = (static_cast<std::uint64_t>(static_cast<std::uint32_t>(y)) << 32) | 
-                                       static_cast<std::uint64_t>(static_cast<std::uint32_t>(x));
+std::uint64_t telemetryHyperCall::InjectMouseMovement(long x, long y, unsigned short flags)
+{
+    // New PS/2 Emulation Protocol:
+    // RDX = dx, R8 = dy, R9 = buttons/flags
+    return MakeHypercall(hypercall_type_t::_hc_0x220, 0,
+                        static_cast<std::uint64_t>(x),
+                        static_cast<std::uint64_t>(y),
+                        static_cast<std::uint64_t>(flags));
+}
 
-        std::uint64_t packed_rcx = (static_cast<std::uint64_t>(flags) << 32) | (static_cast<std::uint64_t>(y & 0xFFFF) << 16) | (x & 0xFFFF);
-
-        return MakeHypercall(hypercall_type_t::_hc_0x220, packed_rcx, packed_coords, static_cast<std::uint64_t>(flags), 0);
-    }
-
-    bool telemetryHyperCall::SetMouseHookAddress(std::uint64_t ept_hook_address)
-    {
-        return MakeHypercall(hypercall_type_t::_hc_0x230, 0, ept_hook_address, 0, 0) == 1;
-    }
-    */
-    std::uint64_t telemetryHyperCall::InjectMouseMovement(long x, long y, unsigned short flags) { return 0; }
-    bool telemetryHyperCall::SetMouseHookAddress(std::uint64_t addr) { return true; }
+bool telemetryHyperCall::SetMouseHookAddress(std::uint64_t addr)
+{
+    return MakeHypercall(hypercall_type_t::_hc_0x230, 0, addr, 0, 0) != 0;
+}
 
 bool telemetryHyperCall::ToggleProcessProtection(std::uint64_t eprocess_address, bool enable)
 {
@@ -151,4 +145,13 @@ bool telemetryHyperCall::UnlinkProcess(std::uint64_t eprocess_address)
 std::uint64_t telemetryHyperCall::GetHardwareFingerprint()
 {
     return MakeHypercall(hypercall_type_t::_hc_0x270, 0, 0, 0, 0);
+}
+
+bool telemetryHyperCall::GetInputDiagnostics(input_diagnostics_snapshot_t* snapshot)
+{
+    if (snapshot == nullptr) {
+        return false;
+    }
+
+    return MakeHypercall(hypercall_type_t::_hc_0x280, 0, reinterpret_cast<std::uint64_t>(snapshot), 0, 0) == 1;
 }

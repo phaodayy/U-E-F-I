@@ -225,13 +225,10 @@ namespace telemetryMemory {
     }
 
     inline bool MoveMouse(long x, long y, unsigned short flags = 0) {
-        // [MOD] Temporarily OFF to connect mouse later
-        /*
-        if (x != 0 || y != 0 || flags != 0) {
-            VMouseClient::Move(static_cast<int>(x), static_cast<int>(y), flags);
-        }
-        */
-        return true;
+        (void)x;
+        (void)y;
+        (void)flags;
+        return false;
     }
 
     inline bool AttachToGameStealthily(uint32_t pid) {

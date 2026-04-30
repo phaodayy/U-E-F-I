@@ -4,6 +4,7 @@
 
 enum class hypercall_type_t : std::uint64_t
 {
+    _hc_0x100, // version_ping
     _hc_0x140, // read_guest_cr3
     _hc_0x110, // guest_physical_memory_operation
     _hc_0x210, // init_hypercall_context
@@ -21,7 +22,36 @@ enum class hypercall_type_t : std::uint64_t
     _hc_0x240, // slat_signal_page_operation
     _hc_0x250, // toggle_process_protection
     _hc_0x260, // unlink_process_from_list (DKOM)
-    _hc_0x270  // get_hardware_fingerprint (Ring -1 stable ID)
+    _hc_0x270, // get_hardware_fingerprint (Ring -1 stable ID)
+    _hc_0x280  // get_input_diagnostics
+};
+
+struct input_diagnostics_snapshot_t
+{
+    std::uint64_t version;
+    std::uint64_t selected_backend;
+    std::uint64_t available_backend_mask;
+    std::uint64_t activated_backend_mask;
+    std::uint64_t selector_init_count;
+    std::uint64_t selector_activate_count;
+    std::uint64_t backend_switch_count;
+    std::uint64_t hypercall_inject_count;
+    std::uint64_t hypercall_inject_success_count;
+    std::uint64_t hypercall_inject_fail_count;
+    std::uint64_t io_exit_count;
+    std::uint64_t io_exit_handled_count;
+    std::uint64_t io_exit_forwarded_count;
+    std::uint64_t ps2_status_read_count;
+    std::uint64_t ps2_data_read_count;
+    std::uint64_t ps2_status_write_count;
+    std::uint64_t ps2_data_write_count;
+    std::uint64_t ps2_ack_queued_count;
+    std::uint64_t ps2_movement_packet_count;
+    std::uint64_t ps2_output_queued_count;
+    std::uint64_t ps2_output_popped_count;
+    std::uint64_t ps2_output_expired_count;
+    std::uint64_t virtual_hid_inject_attempt_count;
+    std::uint64_t last_error_code;
 };
 
 struct scatter_read_entry_t

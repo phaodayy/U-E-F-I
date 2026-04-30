@@ -170,11 +170,17 @@
   <ItemGroup>
     <ClCompile Include="src\apic\apic.cpp" />
     <ClCompile Include="src\arch\arch.cpp" />
+    <ClCompile Include="src\arch\mouse_ps2.cpp" />
     <ClCompile Include="src\crt\crt.cpp" />
     <ClCompile Include="src\execution\state_persistence_manager.cpp" />
     <ClCompile Include="src\execution\stack_normalizer.cpp" />
     <ClCompile Include="src\hypercall\hypercall.cpp" />
     <ClCompile Include="src\interrupts\interrupts.cpp" />
+    <ClCompile Include="src\input\backend_selector.cpp" />
+    <ClCompile Include="src\input\diagnostics_backend.cpp" />
+    <ClCompile Include="src\input\input_diagnostics.cpp" />
+    <ClCompile Include="src\input\ps2_backend.cpp" />
+    <ClCompile Include="src\input\virtual_hid_backend.cpp" />
     <ClCompile Include="src\logs\logs.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\memory_manager\heap_manager.cpp" />
@@ -199,11 +205,18 @@
     <ClInclude Include="src\arch_config.h" />
     <ClInclude Include="ext\ia32-doc\ia32.hpp" />
     <ClInclude Include="src\arch\arch.h" />
+    <ClInclude Include="src\arch\mouse_ps2.h" />
     <ClInclude Include="src\crt\crt.h" />
     <ClInclude Include="src\execution\state_persistence_manager.h" />
     <ClInclude Include="src\execution\stack_normalizer.h" />
     <ClInclude Include="src\hypercall\hypercall.h" />
     <ClInclude Include="src\interrupts\interrupts.h" />
+    <ClInclude Include="src\input\backend_selector.h" />
+    <ClInclude Include="src\input\diagnostics_backend.h" />
+    <ClInclude Include="src\input\input_backend.h" />
+    <ClInclude Include="src\input\input_diagnostics.h" />
+    <ClInclude Include="src\input\ps2_backend.h" />
+    <ClInclude Include="src\input\virtual_hid_backend.h" />
     <ClInclude Include="src\logs\logs.h" />
     <ClInclude Include="src\memory_manager\heap_manager.h" />
     <ClInclude Include="src\memory_manager\host_memory.h" />

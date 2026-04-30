@@ -15,6 +15,7 @@ extern std::string g_expiry_str;
 extern std::string global_license_error;
 extern std::string global_config_code;
 extern std::string GetHWID();
+extern void ClearActiveEntitlementState();
 extern bool HasActiveLoaderEntitlement();
 extern bool ParseAuthSessionResponse(const std::string& responseStr, bool allowNoActiveKey);
 extern void SaveLoaderSessionFile();
@@ -46,6 +47,7 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
     extern std::string g_expiry_str;
     extern std::string global_license_error;
     extern std::string GetHWID();
+    extern void ClearActiveEntitlementState();
     extern bool ParseAuthSessionResponse(const std::string& responseStr, bool allowNoActiveKey);
     extern void SaveLoaderSessionFile();
     extern void ClearLoaderSessionFile();
@@ -75,8 +77,7 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
             if (HttpJsonPost(LOADER_LOGIN_PATH, req, "", resp)) {
                 if (ParseAuthSessionResponse(resp, true)) {
                     if (HasActiveLoaderEntitlement()) {
-                        if (DoAPIRequest(global_active_key, GetHWID(), true)) DownloadLoaderConfig();
-                        else global_active_key.clear();
+                        DownloadLoaderConfig();
                     }
                     SaveLoaderSessionFile();
                 } else {
@@ -95,8 +96,7 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
             if (HttpJsonPost(LOADER_REGISTER_PATH, req, "", resp)) {
                 if (ParseAuthSessionResponse(resp, true)) {
                     if (HasActiveLoaderEntitlement()) {
-                        if (DoAPIRequest(global_active_key, GetHWID(), true)) DownloadLoaderConfig();
-                        else global_active_key.clear();
+                        DownloadLoaderConfig();
                     }
                     SaveLoaderSessionFile();
                 } else {
@@ -106,20 +106,30 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
         }
     } else {
         ImGui::TextColored(ImVec4(0, 1, 1, 1), "%s: %s", Lang.Username, global_account_username.c_str());
-        bool hasKey = !global_active_key.empty();
+        bool hasKey = HasActiveLoaderEntitlement();
+        static bool show_redeem_key = false;
+        static char key_buf[128] = {0};
         
         if (hasKey) {
             ImGui::TextColored(ImVec4(0, 1, 0, 1), "LICENSE: ACTIVE");
             ImGui::TextDisabled("%s: %s", Lang.Expiry, g_expiry_str.c_str());
+            if (ImGui::Button(show_redeem_key ? "Huy nap key" : "Nap them key", ImVec2(-1, 35))) {
+                show_redeem_key = !show_redeem_key;
+            }
         } else {
-            ImGui::TextColored(ImVec4(1, 0.5f, 0, 1), "LICENSE: NO KEY");
-            static char key_buf[128] = {0};
+            ImGui::TextColored(ImVec4(1, 0.5f, 0, 1), "LICENSE: EXPIRED / NO ACTIVE TIME");
+            show_redeem_key = true;
+        }
+
+        if (show_redeem_key) {
             ImGui::SetNextItemWidth(-1);
             ImGui::InputText(skCrypt("##KeyIn"), key_buf, sizeof(key_buf));
             if (ImGui::Button(Lang.ActivateKey, ImVec2(-1, 35))) {
                 if (DoAPIRequest(key_buf, GetHWID(), false)) {
-                    global_active_key = key_buf;
+                    DownloadLoaderConfig();
                     SaveLoaderSessionFile();
+                    key_buf[0] = '\0';
+                    show_redeem_key = false;
                 }
             }
         }
@@ -129,9 +139,8 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
             global_account_token.clear();
             global_account_username.clear();
             global_account_role.clear();
-            global_active_key.clear();
             global_config_code.clear();
-            g_expiry_str = skCrypt("N/A");
+            ClearActiveEntitlementState();
             ClearLoaderSessionFile();
         }
     }

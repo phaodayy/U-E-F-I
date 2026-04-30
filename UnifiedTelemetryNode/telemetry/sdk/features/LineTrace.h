@@ -14,13 +14,32 @@ namespace LineTrace
             return false;
         }
 
-        // Su dung PhysX 3.4 Raycast nhu PAOD
-        // return physxMgr.Raycast(TraceStart, TraceEnd);
-        return true; // Tam thoi mac dinh la thay (hoac true) neu can tat check vat ly
+        // Primary: Embree Raycast (fast, CPU-based ray tracing)
+        if (GameData.DynamicLoadScene) {
+            auto hit = GameData.DynamicLoadScene->Raycast(TraceStart, TraceEnd);
+            if (hit.hit.geomID != RTC_INVALID_GEOMETRY_ID && hit.hit.geomID != (RTC_INVALID_GEOMETRY_ID - 1)) {
+                return false; // Bi chan boi vat the trong Embree scene
+            }
+        }
+
+        // Secondary: PhysX Raycast (accurate, physics-based)
+        if (GameData.Config.signal_overlay.PhysXLoad) {
+            return physxMgr.Raycast(TraceStart, TraceEnd);
+        }
+
+        return oldState;
     }
 
     static TriangleMeshData* getNextHint()
     {
-        return nullptr; // Disable getNextHint while moving to PhysX
+        if (!GameData.DynamicLoadScene) return nullptr;
+        auto hit = GameData.DynamicLoadScene->Raycast(
+            GameData.LocalPlayerInfo.Location,
+            GameData.LocalPlayerInfo.Location + FVector(0, 0, -500)
+        );
+        if (hit.hit.geomID != RTC_INVALID_GEOMETRY_ID) {
+            return GameData.DynamicLoadScene->GetGeomeoryData(hit.hit.geomID);
+        }
+        return nullptr;
     }
 }

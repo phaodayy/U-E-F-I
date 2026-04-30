@@ -19,8 +19,7 @@ inline bool Initialize() {
 inline bool Move(int dx, int dy, unsigned short flags = 0) {
     // If movement is zero, just send the flags (click)
     if (dx == 0 && dy == 0) {
-        telemetryHyperCall::InjectMouseMovement(0, 0, flags);
-        return true;
+        return telemetryHyperCall::InjectMouseMovement(0, 0, flags) != 0;
     }
 
     // Dựa theo phân tích Heuristics V4: Split thành các packet ngẫu nhiên, không để max 127
@@ -45,7 +44,9 @@ inline bool Move(int dx, int dy, unsigned short flags = 0) {
         
         // Gửi trực tiếp xuống Ring -1 (Evasion CP)
         // We only send flags in the FIRST packet of a movement chain or alone.
-        telemetryHyperCall::InjectMouseMovement(step_x, step_y, flags);
+        if (telemetryHyperCall::InjectMouseMovement(step_x, step_y, flags) == 0) {
+            return false;
+        }
         flags = 0; // Clear flags for subsequent steps
         
         dx -= step_x;

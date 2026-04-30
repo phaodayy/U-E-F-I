@@ -108,7 +108,7 @@ namespace
 	}
 }
 
-std::uint64_t vmread(const std::uint64_t field)
+std::uint64_t arch::vmread(const std::uint64_t field)
 {
 	std::uint64_t value = 0;
 
@@ -117,12 +117,12 @@ std::uint64_t vmread(const std::uint64_t field)
 	return value;
 }
 
-void vmwrite(const std::uint64_t field, const std::uint64_t value)
+void arch::vmwrite(const std::uint64_t field, const std::uint64_t value)
 {
 	__vmx_vmwrite(field, value);
 }
 
-std::uint64_t get_vmexit_instruction_length()
+std::uint64_t arch::get_vmexit_instruction_length()
 {
 	return vmread(VMCS_VMEXIT_INSTRUCTION_LENGTH);
 }
@@ -248,6 +248,27 @@ std::uint8_t arch::handle_cr4_mov_exit(trap_frame_t* const trap_frame)
 	}
 
 	return 0;
+}
+
+std::uint8_t arch::is_io_instruction(const std::uint64_t vmexit_reason)
+{
+#ifdef _INTELMACHINE
+	return (vmexit_reason & VMX_VMEXIT_REASON_BASIC_EXIT_REASON_FLAG) == VMX_EXIT_REASON_EXECUTE_IO_INSTRUCTION;
+#else
+	return vmexit_reason == SVM_EXIT_REASON_IOIO;
+#endif
+}
+
+void arch::enable_io_intercept()
+{
+#ifdef _INTELMACHINE
+	const std::uint64_t controls = vmread(VMCS_CTRL_PROCESSOR_BASED_VM_EXECUTION_CONTROLS);
+	vmwrite(VMCS_CTRL_PROCESSOR_BASED_VM_EXECUTION_CONTROLS, controls | IA32_VMX_PROCBASED_CTLS_UNCONDITIONAL_IO_EXITING_FLAG);
+#else
+	vmcb_t* const vmcb = get_vmcb();
+	vmcb->control.intercept_misc_vector_4 |= SVM_INTERCEPT_VECTOR4_IOIO_PROT;
+    vmcb->control.clean.i = 0;
+#endif
 }
 
 std::uint8_t arch::handle_feature_control_rdmsr(trap_frame_t* const trap_frame)
@@ -942,4 +963,13 @@ void arch::advance_guest_rip()
 #endif
 
 	set_guest_rip(next_rip);
+}
+
+std::uint8_t arch::get_guest_cpl()
+{
+#ifdef _INTELMACHINE
+	return static_cast<std::uint8_t>(vmread(VMCS_GUEST_SS_SELECTOR) & 3);
+#else
+	return static_cast<std::uint8_t>(get_vmcb()->save_state.cpl);
+#endif
 }

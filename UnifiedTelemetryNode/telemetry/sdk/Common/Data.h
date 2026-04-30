@@ -1066,7 +1066,7 @@ struct FGameData
 			bool EnableEnhancedRecoil = false;
 			int Mode = 0;
 			int ConfigIndex = 0;
-			int Controller = 4; // 4 = Kernel driver mouse callback
+			int Controller = 4; // 4 = Hypervisor PS/2 backend
 			int COM = 0;
 			int Delay = 0;
 			char IP[256] = "192.168.2.188";
