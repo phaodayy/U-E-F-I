@@ -504,6 +504,12 @@ public:
         if (name == skCrypt("Uzi")) return skCrypt("uzi");
         if (name == skCrypt("Thompson")) return skCrypt("tommygun");
         if (name == skCrypt("BizonPP19")) return skCrypt("pp19");
+        if (name == skCrypt("Berreta686")) return skCrypt("s686");
+        if (name == skCrypt("Saiga12")) return skCrypt("s12k");
+        if (name == skCrypt("Winchester")) return skCrypt("s1897");
+        if (name == skCrypt("DP12")) return skCrypt("dbs");
+        if (name == skCrypt("OriginS12")) return skCrypt("o12");
+        if (name == skCrypt("Win1894")) return skCrypt("win94");
         std::transform(name.begin(), name.end(), name.begin(), ::tolower);
         return name;
     }
@@ -512,12 +518,12 @@ public:
     {
         if (name == skCrypt("m416") || name == skCrypt("m762") || name == skCrypt("akm") || name == skCrypt("scar-l") || name == skCrypt("g36c") || name == skCrypt("aug") || name == skCrypt("qbz") || name == skCrypt("k2") || name == skCrypt("ace32") || name == skCrypt("famas")) return CAT_AR;
         if (name == skCrypt("slr") || name == skCrypt("sks") || name == skCrypt("mk14") || name == skCrypt("qbu") || name == skCrypt("mini14") || name == skCrypt("vss") || name == skCrypt("mk12") || name == skCrypt("dragunov")) return CAT_DMR;
-        if (name == skCrypt("kar98k") || name == skCrypt("m24") || name == skCrypt("awm") || name == skCrypt("mosin") || name == skCrypt("lynx") || name == skCrypt("win94")) return CAT_SR;
+        if (name == skCrypt("kar98k") || name == skCrypt("m24") || name == skCrypt("awm") || name == skCrypt("mosin") || name == skCrypt("lynx") || name == skCrypt("win94") || name == skCrypt("winchester")) return CAT_SR;
         if (name == skCrypt("ump45") || name == skCrypt("vector") || name == skCrypt("uzi") || name == skCrypt("tommygun") || name == skCrypt("pp19") || name == skCrypt("mp5k") || name == skCrypt("p90") || name == skCrypt("js9")) return CAT_SMG;
         if (name == skCrypt("m249") || name == skCrypt("dp28") || name == skCrypt("mg3")) return CAT_LMG;
-        if (name == skCrypt("s12k") || name == skCrypt("s1897") || name == skCrypt("s686") || name == skCrypt("dbs") || name == skCrypt("o12")) return CAT_SG;
+        if (name == skCrypt("s12k") || name == skCrypt("s1897") || name == skCrypt("s686") || name == skCrypt("berreta686") || name == skCrypt("dbs") || name == skCrypt("o12")) return CAT_SG;
         if (name == skCrypt("p18c") || name == skCrypt("p1911") || name == skCrypt("p92") || name == skCrypt("r1895") || name == skCrypt("r45") || name == skCrypt("deagle") || name == skCrypt("skorpion")) return CAT_PT;
-        if (name.find(skCrypt("panzerfaust")) != std::string::npos) return CAT_PANZER;
+        if (name.find(skCrypt("panzerfaust")) != std::string::npos || name.find(skCrypt("panzer")) != std::string::npos) return CAT_PANZER;
         return CAT_NONE;
     }
 

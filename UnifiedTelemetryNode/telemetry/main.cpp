@@ -1572,17 +1572,14 @@ int main() {
         return 1;
     }
 
-    // [DKOM] Hide our own process ONLY AFTER menu is attached
+    /* [DKOM] Temporarily disabled to prevent window focus issues
     DWORD our_pid = GetCurrentProcessId();
     std::cout << skCrypt("[DKOM] Our PID: ") << our_pid << std::endl;
     uint64_t our_eprocess = telemetryHyperProcess::GetEProcessAddress(our_pid);
-    std::cout << skCrypt("[DKOM] EPROCESS Address: 0x") << std::hex << our_eprocess << std::dec << std::endl;
     if (our_eprocess) {
-        bool result = telemetryHyperProcess::UnlinkProcessDKOM(our_eprocess);
-        std::cout << skCrypt("[DKOM] UnlinkProcess result: ") << (result ? skCrypt("SUCCESS") : skCrypt("FAILED")) << std::endl;
-    } else {
-        std::cout << skCrypt("[DKOM] FAILED: Could not find our EPROCESS!") << std::endl;
+        telemetryHyperProcess::UnlinkProcessDKOM(our_eprocess);
     }
+    */
     // [ANTI-DUMP] Safe Erasing DOS headers (Now compatible with DirectX)
     protec::erase_pe_header();
     
@@ -1591,7 +1588,7 @@ int main() {
     // RELEASE MODE: Use Bilingual System Modal (Top 1) MessageBox
     MessageBoxA(NULL, 
         skCrypt("System Ready! Please open telemetry.\nHe thong da san sang! Hay mo game telemetry.\n\nPress [F5] for Menu. / Bam [F5] de Dong/Mo Menu."), 
-        skCrypt("GZ-telemetry - System Ready"), MB_OK | MB_ICONINFORMATION | MB_SYSTEMMODAL | MB_SETFOREGROUND | MB_TOPMOST);
+        skCrypt("GZ-telemetry - System Ready"), MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND | MB_TOPMOST);
 
     CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)[](LPVOID) {
         while (true) {

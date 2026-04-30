@@ -27,9 +27,10 @@ void ClampPlayer(OverlayMenu& menu) {
     menu.esp_view_direction_length = std::clamp(menu.esp_view_direction_length, 5.0f, 120.0f);
     menu.esp_close_warning_distance = std::clamp(menu.esp_close_warning_distance, 10.0f, 150.0f);
     menu.player_list_hold_key = std::clamp(menu.player_list_hold_key, 0, 0xFE);
-    menu.aim_smooth_curve = std::clamp(menu.aim_smooth_curve, 0, 3);
-    menu.aim_target_priority = std::clamp(menu.aim_target_priority, 0, 3);
-    menu.aim_category_idx = std::clamp(menu.aim_category_idx, 0, 8);
+    menu.flick_fov = std::clamp(menu.flick_fov, 1.0f, 40.0f);
+    menu.flick_max_dist = std::clamp(menu.flick_max_dist, 5.0f, 120.0f);
+    menu.flick_key = std::clamp(menu.flick_key, 0, 0xFE);
+    menu.flick_key2 = std::clamp(menu.flick_key2, 0, 0xFE);
 }
 
 void ClampRadar(OverlayMenu& menu) {

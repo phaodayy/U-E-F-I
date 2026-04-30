@@ -10,7 +10,7 @@ inline void FillEnglish(Strings& s) {
 
             s.TabVisuals = skCrypt("\xE2\x97\x89 Visuals");
 
-            s.Tabprecision_calibration = skCrypt("\xE2\x97\x88 precision_calibration");
+            s.Tabprecision_calibration = skCrypt("\xE2\x97\x88 Flick Setting");
 
             s.TabMacro = skCrypt("\xE2\x9C\xA4 Macro");
 
@@ -129,7 +129,7 @@ inline void FillEnglish(Strings& s) {
 
             
 
-            s.precision_calibrationSoon = skCrypt("precision_calibration Soon");
+            s.precision_calibrationSoon = skCrypt("Flick Setting");
 
             s.MacroSoon = skCrypt("Macro Soon");
 

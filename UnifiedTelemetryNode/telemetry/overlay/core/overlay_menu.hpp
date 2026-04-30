@@ -22,16 +22,6 @@ struct VisualizationBridgeHost {
     bool present_after_render = false;
 };
 
-struct AimConfig {
-    bool enabled = true;
-    float fov = 10.0f;
-    float smooth = 5.0f;
-    int bone = 6;
-    int key = VK_RBUTTON;
-    float max_dist = 400.0f;
-    bool prediction = true;
-};
-
 struct TextureInfo {
     ID3D11ShaderResourceView* SRV = nullptr;
     int Width = 0;
@@ -141,21 +131,25 @@ public:
   float bigmap_offset_y = 0.0f;
   float bigmap_screen_scale = 1.0f;
 
-  bool aim_master_enabled = true;
-  bool aim_visible_only = true;
-  bool aim_adaptive_fov = true;
-  float aim_smooth_rng = 0.0f;
-  int aim_smooth_curve = 1;
-  int aim_target_priority = 0;
-  int aim_key2 = 0;
+  bool flick_enabled = true;
+  bool flick_visible_only = true;
+  bool flick_auto_shot = true;
+  float flick_fov = 10.0f;
+  float flick_max_dist = 70.0f;
+  int flick_key = VK_RBUTTON;
+  int flick_key2 = 0;
+  bool flick_weapon_s686 = true;
+  bool flick_weapon_s12k = true;
+  bool flick_weapon_s1897 = true;
+  bool flick_weapon_dbs = true;
+  bool flick_weapon_o12 = true;
+
   bool macro_enabled = false;
   bool macro_humanize = true;
   bool macro_ads_only = true;
   bool show_macro_overlay = true;
   float macro_recoil_strength = 50.0f;
   float macro_overlay_color[4] = { 0.0f, 1.0f, 0.8f, 1.0f };
-  AimConfig aim_configs[9];
-  int aim_category_idx = 8;
   int* waiting_for_key = nullptr;
 
   float box_visible_color[4] = {1.0f, 0.22f, 0.24f, 1.0f};

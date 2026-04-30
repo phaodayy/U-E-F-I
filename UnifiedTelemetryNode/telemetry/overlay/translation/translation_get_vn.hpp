@@ -10,7 +10,7 @@ inline void FillVietnamese(Strings& s) {
 
             s.TabVisuals = (const char*)u8"[+] Hiển thị";
 
-            s.Tabprecision_calibration = (const char*)u8"[*] Tự động ngắm";
+            s.Tabprecision_calibration = (const char*)u8"[*] Flick Setting";
 
             s.TabMacro = (const char*)u8"[!] Macro";
 
@@ -128,7 +128,7 @@ inline void FillVietnamese(Strings& s) {
 
             
 
-            s.precision_calibrationSoon = (const char*)u8"Tính năng đang phát triển";
+            s.precision_calibrationSoon = (const char*)u8"Flick Setting";
 
             s.MacroSoon = (const char*)u8"Tính năng đang phát triển";
 

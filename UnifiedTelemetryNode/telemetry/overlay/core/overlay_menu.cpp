@@ -178,21 +178,6 @@ bool OverlayMenu::Initialize(const VisualizationBridgeHost& bridge) {
     ImGui_ImplWin32_Init(target_hwnd);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
-    // Default configs...
-    for (int i = 0; i < 9; i++) {
-        aim_configs[i].enabled = true;
-        aim_configs[i].fov = 10.0f;
-        aim_configs[i].smooth = 5.0f;
-        aim_configs[i].bone = 6;
-        aim_configs[i].key = VK_RBUTTON;
-        aim_configs[i].max_dist = 400.0f;
-        aim_configs[i].prediction = true;
-        if (i == 0 || i == 3 || i == 4) aim_configs[i].max_dist = 70.0f;
-        else if (i == 1) { aim_configs[i].smooth = 1.6f; aim_configs[i].fov = 8.0f; aim_configs[i].max_dist = 500.0f; }
-        else if (i == 2) { aim_configs[i].smooth = 2.5f; aim_configs[i].fov = 12.0f; aim_configs[i].max_dist = 250.0f; }
-        else if (i == 5 || i == 6) aim_configs[i].max_dist = 30.0f;
-    }
-
     LoadConfig(skCrypt("dataMacro/Config/settings.json"));
 
     // Load Preview Asset (Now relative to EXE for bin deployment)
@@ -409,7 +394,7 @@ void OverlayMenu::RenderFrame() {
             RadarOverlayRenderer::Draw(draw, *this, localPlayers);
         }
 
-        // --- 0. precision_calibration & PLAYER ESP ---
+        // --- 0. PLAYER ESP ---
         RenderPlayersAndAim(draw, localPlayers, local_feet_s, hasLocalS, ScreenCenterX, ScreenCenterY, ScreenHeight, is_authenticated);
 
         // --- 1.5. ITEM & VEHICLE RENDERING (MERGED ENGINE) ---

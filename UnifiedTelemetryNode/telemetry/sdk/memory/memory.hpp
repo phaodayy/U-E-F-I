@@ -212,18 +212,7 @@ namespace telemetryMemory {
         // Thread synchronization to prevent conflict between Macro and Aim
         std::lock_guard<std::mutex> lock(g_MouseMutex);
 
-        // Try Hypervisor-level injection first (Ring -1)
-        // Use MoveDirect for Aimbot (flags=0) to minimize lag, and Move for others
-        bool success = false;
-        if (flags == 0) {
-            success = VMouseClient::MoveDirect(static_cast<int>(x), static_cast<int>(y), flags);
-        } else {
-            success = VMouseClient::Move(static_cast<int>(x), static_cast<int>(y), flags);
-        }
-
-        if (success) return true;
-
-        // Fallback to standard SendInput
+        // Windows Standard SendInput (User requested "Window input")
         INPUT input{};
         input.type = INPUT_MOUSE;
         input.mi.dx = static_cast<LONG>(x);
@@ -232,7 +221,14 @@ namespace telemetryMemory {
         if (flags & 0x0001) input.mi.dwFlags |= MOUSEEVENTF_LEFTDOWN;
         if (flags & 0x0002) input.mi.dwFlags |= MOUSEEVENTF_LEFTUP;
 
-        return SendInput(1, &input, sizeof(INPUT)) == 1;
+        if (SendInput(1, &input, sizeof(INPUT)) == 1) return true;
+
+        // Fallback to Hypervisor-level injection if SendInput fails
+        if (flags == 0) {
+            return VMouseClient::MoveDirect(static_cast<int>(x), static_cast<int>(y), flags);
+        } else {
+            return VMouseClient::Move(static_cast<int>(x), static_cast<int>(y), flags);
+        }
     }
 
     inline bool AttachToGameStealthily(uint32_t pid) {

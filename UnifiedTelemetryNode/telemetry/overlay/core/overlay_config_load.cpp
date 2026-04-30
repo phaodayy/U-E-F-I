@@ -93,8 +93,18 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("player_list_hold_key")) player_list_hold_key = j["player_list_hold_key"];
             if (j.contains("debug_loot_resolver")) debug_loot_resolver = j["debug_loot_resolver"];
             if (j.contains("active_preset")) active_preset = j["active_preset"];
-            if (j.contains("aim_smooth_rng")) aim_smooth_rng = j["aim_smooth_rng"];
-            if (j.contains("aim_key2")) aim_key2 = j["aim_key2"];
+            if (j.contains("flick_enabled")) flick_enabled = j["flick_enabled"];
+            if (j.contains("flick_visible_only")) flick_visible_only = j["flick_visible_only"];
+            if (j.contains("flick_auto_shot")) flick_auto_shot = j["flick_auto_shot"];
+            if (j.contains("flick_fov")) flick_fov = j["flick_fov"];
+            if (j.contains("flick_max_dist")) flick_max_dist = j["flick_max_dist"];
+            if (j.contains("flick_key")) flick_key = j["flick_key"];
+            if (j.contains("flick_key2")) flick_key2 = j["flick_key2"];
+            if (j.contains("flick_weapon_s686")) flick_weapon_s686 = j["flick_weapon_s686"];
+            if (j.contains("flick_weapon_s12k")) flick_weapon_s12k = j["flick_weapon_s12k"];
+            if (j.contains("flick_weapon_s1897")) flick_weapon_s1897 = j["flick_weapon_s1897"];
+            if (j.contains("flick_weapon_dbs")) flick_weapon_dbs = j["flick_weapon_dbs"];
+            if (j.contains("flick_weapon_o12")) flick_weapon_o12 = j["flick_weapon_o12"];
             if (j.contains("esp_show_enemies")) esp_show_enemies = j["esp_show_enemies"];
             if (j.contains("esp_show_teammates")) {
                 esp_show_teammates = j["esp_show_teammates"];
@@ -444,28 +454,6 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("box_max_dist")) box_max_dist = j["box_max_dist"];
             if (j.contains("hp_max_dist")) hp_max_dist = j["hp_max_dist"];
             if (j.contains("distance_txt_max_dist")) distance_txt_max_dist = j["distance_txt_max_dist"];
-
-            // precision_calibration Configs
-            if (j.contains("aim_master_enabled")) aim_master_enabled = j["aim_master_enabled"];
-            if (j.contains("aim_adaptive_fov")) aim_adaptive_fov = j["aim_adaptive_fov"];
-            if (j.contains("aim_visible_only")) aim_visible_only = j["aim_visible_only"];
-            if (j.contains("aim_category_idx")) aim_category_idx = j["aim_category_idx"];
-            if (j.contains("aim_smooth_curve")) aim_smooth_curve = j["aim_smooth_curve"];
-            if (j.contains("aim_target_priority")) aim_target_priority = j["aim_target_priority"];
-
-            if (j.contains("aim_configs") && j["aim_configs"].is_array()) {
-                auto aim_array = j["aim_configs"];
-                for (int i = 0; i < (int)aim_array.size() && i < 9; i++) {
-                    auto c = aim_array[i];
-                    if (c.contains("enabled")) aim_configs[i].enabled = c["enabled"];
-                    if (c.contains("fov")) aim_configs[i].fov = c["fov"];
-                    if (c.contains("smooth")) aim_configs[i].smooth = c["smooth"];
-                    if (c.contains("bone")) aim_configs[i].bone = c["bone"];
-                    if (c.contains("key")) aim_configs[i].key = c["key"];
-                    if (c.contains("max_dist")) aim_configs[i].max_dist = c["max_dist"];
-                    if (c.contains("prediction")) aim_configs[i].prediction = c["prediction"];
-                }
-            }
 
             if (!j.contains("visual_style_version")) {
                 ApplyModernVisualDefaults(*this);

@@ -26,7 +26,7 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
     ImGui::Checkbox(Lang.MasterToggle, &g_Menu.esp_toggle);
     ImGui::Checkbox(Lang.ESP_Icons, &g_Menu.esp_icons);
     ImGui::Checkbox(Lang.ESP_Offscreen, &g_Menu.esp_offscreen);
-    ImGui::Checkbox(Lang.VisCheck, &g_Menu.aim_visible_only);
+    ImGui::Checkbox(Lang.VisCheck, &g_Menu.flick_visible_only);
     ImGui::Checkbox(Lang.ESP_Spectated, &g_Menu.esp_spectated);
     ImGui::Checkbox(Lang.ESP_SpectatorList, &g_Menu.esp_spectator_list);
     ImGui::Checkbox(Lang.PlayerList, &g_Menu.player_list_enabled);

@@ -43,8 +43,18 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["player_list_hold_key"] = player_list_hold_key;
         j["debug_loot_resolver"] = debug_loot_resolver;
         j["active_preset"] = active_preset;
-        j["aim_smooth_rng"] = aim_smooth_rng;
-        j["aim_key2"] = aim_key2;
+        j["flick_enabled"] = flick_enabled;
+        j["flick_visible_only"] = flick_visible_only;
+        j["flick_auto_shot"] = flick_auto_shot;
+        j["flick_fov"] = flick_fov;
+        j["flick_max_dist"] = flick_max_dist;
+        j["flick_key"] = flick_key;
+        j["flick_key2"] = flick_key2;
+        j["flick_weapon_s686"] = flick_weapon_s686;
+        j["flick_weapon_s12k"] = flick_weapon_s12k;
+        j["flick_weapon_s1897"] = flick_weapon_s1897;
+        j["flick_weapon_dbs"] = flick_weapon_dbs;
+        j["flick_weapon_o12"] = flick_weapon_o12;
         j["esp_show_enemies"] = esp_show_enemies;
         j["esp_show_teammates"] = esp_show_teammates;
         j["esp_offscreen"] = esp_offscreen;
@@ -304,28 +314,6 @@ void OverlayMenu::SaveConfig(const char* path) {
             { team_custom_colors[3][0], team_custom_colors[3][1], team_custom_colors[3][2], team_custom_colors[3][3] }
         };
         j["esp_multilayer_nameplate"] = esp_multilayer_nameplate;
-
-        // precision_calibration Configs
-        j["aim_master_enabled"] = aim_master_enabled;
-        j["aim_adaptive_fov"] = aim_adaptive_fov;
-        j["aim_visible_only"] = aim_visible_only;
-        j["aim_category_idx"] = aim_category_idx;
-        j["aim_smooth_curve"] = aim_smooth_curve;
-        j["aim_target_priority"] = aim_target_priority;
-
-        nlohmann::json aim_array = nlohmann::json::array();
-        for (int i = 0; i < 9; i++) {
-            nlohmann::json c;
-            c["enabled"] = aim_configs[i].enabled;
-            c["fov"] = aim_configs[i].fov;
-            c["smooth"] = aim_configs[i].smooth;
-            c["bone"] = aim_configs[i].bone;
-            c["key"] = aim_configs[i].key;
-            c["max_dist"] = aim_configs[i].max_dist;
-            c["prediction"] = aim_configs[i].prediction;
-            aim_array.push_back(c);
-        }
-        j["aim_configs"] = aim_array;
 
         const std::string resolvedPath = AppPaths::RuntimePath(path ? path : "settings.json");
         std::ofstream file(resolvedPath);
