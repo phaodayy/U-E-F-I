@@ -1527,7 +1527,7 @@ int main() {
     TypewriterPrint("\n[", 10, 8);
     TypewriterPrint("3", 10, 11);
     TypewriterPrint("] ", 10, 8);
-    TypewriterPrint(g_is_vietnamese ? skCrypt("Waiting for game...") : skCrypt("Waiting for game..."), 30, 14);
+    TypewriterPrint(g_is_vietnamese ? skCrypt("Vui long vao game truoc...") : skCrypt("Please enter the game first..."), 30, 14);
     StartupLog("waiting-for-tslgame");
 
     DWORD pid = 0;
@@ -1619,11 +1619,11 @@ int main() {
       
       // If we are stuck in decrypt-init-failed, show it clearly
       if (initStatus == skCrypt("decrypt-init-failed")) {
-          std::cout << (g_is_vietnamese ? skCrypt("\r[*] Dang cho game san sang... [") : skCrypt("\r[*] Waiting for game... [")) << sync_count << skCrypt("]   ") << std::flush;
+          std::cout << (g_is_vietnamese ? skCrypt("\r[*] Vui long vao game truoc... [") : skCrypt("\r[*] Please enter the game first... [")) << sync_count << skCrypt("]   ") << std::flush;
           UTN_DEV_LOG(std::cout << skCrypt(" status=decrypt-init-failed") << std::flush);
           Sleep(1500); // Wait a bit longer for game to settle
       } else {
-          std::cout << (g_is_vietnamese ? skCrypt("\r[*] Dang dong bo du lieu game [") : skCrypt("\r[*] Synchronizing game data [")) << sync_count << skCrypt("]...   ") << std::flush;
+          std::cout << (g_is_vietnamese ? skCrypt("\r[*] Hay vao game de tiep tuc... [") : skCrypt("\r[*] Enter the game to continue... [")) << sync_count << skCrypt("]...   ") << std::flush;
           UTN_DEV_LOG(std::cout << skCrypt(" status=") << initStatus << std::flush);
           Sleep(800);
       }
@@ -1744,12 +1744,12 @@ int main() {
     // [ANTI-DUMP] Safe Erasing DOS headers (Now compatible with DirectX)
     protec::erase_pe_header();
     
-    std::cout << (g_is_vietnamese ? skCrypt("\n[+] He thong da san sang! Hay mo game telemetry.") : skCrypt("\n[+] System Ready! Please open telemetry.")) << std::endl;
+    std::cout << (g_is_vietnamese ? skCrypt("\n[+] He thong da san sang!") : skCrypt("\n[+] System Ready!")) << std::endl;
     std::cout << (g_is_vietnamese ? skCrypt("[+] Bam [F5] de Dong/Mo Menu | Bam [F11] de Tat Tool") : skCrypt("[+] F5: Menu | F11: Clean Exit")) << std::endl;
     StartupLog("system-ready");
     // RELEASE MODE: Use Bilingual System Modal (Top 1) MessageBox
     MessageBoxA(NULL, 
-        skCrypt("System Ready! Please open telemetry.\nHe thong da san sang! Hay mo game telemetry.\n\nPress [F5] for Menu. Press [F11] to exit.\nBam [F5] de Dong/Mo Menu. Bam [F11] de Tat Tool."), 
+        skCrypt("System Ready!\nHe thong da san sang!\n\nPress [F5] for Menu. Press [F11] to exit.\nBam [F5] de Dong/Mo Menu. Bam [F11] de Tat Tool."), 
         skCrypt("GZ-telemetry - System Ready"), MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND | MB_TOPMOST);
 
     CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)[](LPVOID) {

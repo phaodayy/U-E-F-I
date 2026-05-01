@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <vector>
 #include "../core/context.hpp"
+#include "../core/console_log.hpp"
 #include "../../overlay/core/overlay_menu.hpp"
 #include "../core/embedded_resources.hpp"
 #include "../core/fname.hpp"
@@ -939,7 +940,7 @@ public:
             bullet_index = 0;
 
             if (!current_weapon_name.empty() && current_weapon_name != "None") {
-                std::cout << skCrypt("[WEAPON] Now holding: ") << current_weapon_name << std::endl;
+                UTN_DEV_LOG(std::cout << skCrypt("[DEV][WEAPON] Now holding: ") << current_weapon_name << std::endl);
             }
         }
     }
@@ -1233,13 +1234,13 @@ public:
                 if (!sent || now - last_debug_sendinput_tick > 500)
                 {
                     last_debug_sendinput_tick = now;
-                    std::cout << skCrypt("[MACRO][SENDINPUT] move=(") << outX << skCrypt(",") << outY << skCrypt(")")
+                    UTN_DEV_LOG(std::cout << skCrypt("[DEV][MACRO][SENDINPUT] move=(") << outX << skCrypt(",") << outY << skCrypt(")")
                         << skCrypt(" ok=") << (sent ? 1 : 0)
                         << skCrypt(" err=") << SendInputMacro::LastErrorCode()
                         << skCrypt(" raw=(") << moveX << skCrypt(",") << moveY << skCrypt(")")
                         << skCrypt(" rem=(") << pixel_remainder_x << skCrypt(",") << pixel_remainder_y << skCrypt(")")
                         << skCrypt(" moved_total=(") << angle_moved_x << skCrypt(",") << angle_moved_y << skCrypt(")")
-                        << std::endl;
+                        << std::endl);
                 }
             }
             else
@@ -1250,10 +1251,10 @@ public:
                 if (std::fabs(moveY) > 0.01f && now - last_debug_sendinput_tick > 500)
                 {
                     last_debug_sendinput_tick = now;
-                    std::cout << skCrypt("[MACRO][SENDINPUT] pending_vertical raw=(") << moveX << skCrypt(",") << moveY << skCrypt(")")
+                    UTN_DEV_LOG(std::cout << skCrypt("[DEV][MACRO][SENDINPUT] pending_vertical raw=(") << moveX << skCrypt(",") << moveY << skCrypt(")")
                         << skCrypt(" rem=(") << pixel_remainder_x << skCrypt(",") << pixel_remainder_y << skCrypt(")")
                         << skCrypt(" rounded=(0,0)")
-                        << std::endl;
+                        << std::endl);
                 }
             }
 
