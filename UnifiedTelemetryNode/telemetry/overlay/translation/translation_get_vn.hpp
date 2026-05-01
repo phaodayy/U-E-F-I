@@ -408,6 +408,25 @@ inline void FillVietnamese(Strings& s) {
             s.VehiclePickup = (const char*)u8"Xe Bán Tải";
             s.VehicleRony = (const char*)u8"Xe Rony";
             s.VehicleBlanc = (const char*)u8"Xe Blanc";
+
+            s.All = (const char*)u8"Tất cả";
+            s.None = (const char*)u8"Không";
+            s.WeaponCategories = (const char*)u8"DANH MỤC VŨ KHÍ";
+            s.FlickKey = (const char*)u8"Phím Flick";
+            s.CaptureKey = (const char*)u8"Phím Capture";
+            s.HoldUntilShot = (const char*)u8"Giữ đến khi bắn";
+            s.FlickMode = (const char*)u8"Chế độ Flick";
+            s.ReturnAfterShot = (const char*)u8"Trở lại sau khi bắn";
+            s.FollowTarget = (const char*)u8"Theo dõi mục tiêu";
+            s.AutoShotHold = (const char*)u8"Tự bắn khi giữ";
+            s.FlickRules = (const char*)u8"QUY TẮC FLICK";
+            s.FlickRuleDesc = (const char*)u8"Flick chạy một lần khi nhấn phím, di chuyển đến mục tiêu, sau đó bắn.";
+            s.FlickRule1 = (const char*)u8"Không chờ thả phím";
+            s.FlickRule2 = (const char*)u8"Di chuyển trước, bắn sau";
+            s.FlickRule3 = (const char*)u8"Có thể tắt Giữ đến khi bắn";
+            s.FlickRule4 = (const char*)u8"Chế độ Trở lại và Theo dõi loại trừ lẫn nhau";
+            s.FlickRule5 = (const char*)u8"Mỗi danh mục sử dụng phím flick riêng";
+            s.Target = (const char*)u8"Vùng ngắm";
 }
 
 } // namespace Translation

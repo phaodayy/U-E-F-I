@@ -326,6 +326,8 @@ inline void FillEnglish(Strings& s) {
             s.ShowcaseAimCurve = skCrypt("Smoothing Curve");
             s.ShowcaseAimPriority = skCrypt("Target Priority");
             s.ShowcaseMacroWeaponProfiles = skCrypt("Weapon Macro Profiles");
+            s.ShowcaseAimPriority = skCrypt("Target Priority");
+            s.ShowcaseMacroWeaponProfiles = skCrypt("Weapon Macro Profiles");
             s.ShowcaseMacroSensitivity = skCrypt("Sensitivity Profiles");
             s.ShowcaseMacroOverlayLayout = skCrypt("Macro OSD Layout");
             s.ShowcaseLootRareItems = skCrypt("Rare Item Filter");
@@ -410,6 +412,25 @@ inline void FillEnglish(Strings& s) {
             s.ImportCloud = skCrypt("Cloud Import");
             s.CloudConfig = skCrypt("Cloud Configuration");
             s.TabAdmin = skCrypt("Admin");
+
+            s.All = skCrypt("All");
+            s.None = skCrypt("None");
+            s.WeaponCategories = skCrypt("WEAPON CATEGORIES");
+            s.FlickKey = skCrypt("Flick Key");
+            s.CaptureKey = skCrypt("Capture Key");
+            s.HoldUntilShot = skCrypt("Hold Until Shot");
+            s.FlickMode = skCrypt("Flick Mode");
+            s.ReturnAfterShot = skCrypt("Return After Shot");
+            s.FollowTarget = skCrypt("Follow Target");
+            s.AutoShotHold = skCrypt("Auto Shot While Hold");
+            s.FlickRules = skCrypt("FLICK RULES");
+            s.FlickRuleDesc = skCrypt("Flick runs once on key press, moves to target, then shoots.");
+            s.FlickRule1 = skCrypt("No release wait");
+            s.FlickRule2 = skCrypt("Move first, shot second");
+            s.FlickRule3 = skCrypt("Hold Until Shot can be disabled");
+            s.FlickRule4 = skCrypt("Return and Follow modes are exclusive");
+            s.FlickRule5 = skCrypt("Each category uses its own flick key");
+            s.Target = skCrypt("Target Bone");
 }
 
 } // namespace Translation

@@ -65,24 +65,6 @@ void DrawFlickWeaponTile(const FlickWeaponTile& item, const ImVec2& tileSize, co
     ImGui::PopID();
 }
 
-void DrawFlickWeaponGrid(FlickWeaponTile* items, int count) {
-    const auto lang = Translation::Get();
-    const float tileGap = 10.0f;
-    const float tileHeight = 88.0f;
-    const int perRow = 3;
-    float available = ImGui::GetContentRegionAvail().x;
-    float tileWidth = (available - (perRow - 1) * tileGap) / perRow;
-    if (tileWidth > 110.0f) tileWidth = 110.0f;
-    if (tileWidth < 80.0f) tileWidth = 80.0f;
-
-    for (int i = 0; i < count; ++i) {
-        DrawFlickWeaponTile(items[i], ImVec2(tileWidth, tileHeight), lang);
-        if ((i % perRow) != (perRow - 1) && i != count - 1) {
-            ImGui::SameLine(0, tileGap);
-        }
-    }
-}
-
 void DrawKeyCombo(const char* label, int* keyValue) {
     const char* keyLabels[] = { "NONE", "MOUSE LEFT", "MOUSE RIGHT", "L-ALT", "L-SHIFT", "X", "V" };
     int keyVals[] = { 0, VK_LBUTTON, VK_RBUTTON, VK_LMENU, VK_LSHIFT, 'X', 'V' };
@@ -90,16 +72,13 @@ void DrawKeyCombo(const char* label, int* keyValue) {
     for (int i = 0; i < IM_ARRAYSIZE(keyVals); ++i) {
         if (*keyValue == keyVals[i]) keyIdx = i;
     }
-    ImGui::TextUnformatted(label);
-    ImGui::PushID(label);
-    ImGui::SetNextItemWidth(-1);
-    if (ImGui::Combo(skCrypt("##KeyCombo"), &keyIdx, keyLabels, IM_ARRAYSIZE(keyLabels))) {
+    ImGui::SetNextItemWidth(130);
+    if (ImGui::Combo(label, &keyIdx, keyLabels, IM_ARRAYSIZE(keyLabels))) {
         *keyValue = keyVals[keyIdx];
     }
-    ImGui::PopID();
 }
 
-void DrawFlickTargetCombo(int* targetPart) {
+void DrawFlickTargetCombo(const char* label, int* targetPart) {
     const char* targetLabels[] = {
         "Auto Box", "Head", "Neck", "Chest", "Pelvis",
         "L Shoulder", "R Shoulder", "L Elbow", "R Elbow",
@@ -107,24 +86,15 @@ void DrawFlickTargetCombo(int* targetPart) {
         "L Knee", "R Knee", "Feet"
     };
     *targetPart = std::clamp(*targetPart, 0, IM_ARRAYSIZE(targetLabels) - 1);
-    ImGui::TextUnformatted(skCrypt("Target Part"));
-    ImGui::SetNextItemWidth(-1);
-    ImGui::Combo(skCrypt("##TargetPart"), targetPart, targetLabels, IM_ARRAYSIZE(targetLabels));
-}
-
-void DrawLabeledSliderFloat(const char* label, float* value, float minValue, float maxValue, const char* format) {
-    ImGui::TextUnformatted(label);
-    ImGui::PushID(label);
-    ImGui::SetNextItemWidth(-1);
-    ImGui::SliderFloat(skCrypt("##Slider"), value, minValue, maxValue, format);
-    ImGui::PopID();
+    ImGui::SetNextItemWidth(130);
+    ImGui::Combo(label, targetPart, targetLabels, IM_ARRAYSIZE(targetLabels));
 }
 
 bool DrawCategoryRow(const FlickWeaponCatalog::Category& category, bool selected, bool enabled) {
     ImGui::PushID(category.key);
 
-    const float rowHeight = 38.0f;
-    const float rowWidth = (std::max)(ImGui::GetContentRegionAvail().x, 180.0f);
+    const float rowHeight = 36.0f;
+    const float rowWidth = ImGui::GetContentRegionAvail().x;
     const ImVec2 rowMin = ImGui::GetCursorScreenPos();
     const ImVec2 rowSize(rowWidth, rowHeight);
     const bool clicked = ImGui::InvisibleButton(skCrypt("##CategoryRow"), rowSize);
@@ -140,11 +110,11 @@ bool DrawCategoryRow(const FlickWeaponCatalog::Category& category, bool selected
 
     draw->AddRectFilled(rowMin, rowMax, bg, 4.0f);
     draw->AddRect(rowMin, rowMax, border, 4.0f);
-    draw->AddCircleFilled(ImVec2(rowMin.x + 15.0f, rowMin.y + rowHeight * 0.5f), 4.0f, dot);
+    draw->AddCircleFilled(ImVec2(rowMin.x + 15.0f, rowMin.y + rowHeight * 0.5f), 3.5f, dot);
 
-    const ImVec2 textMin(rowMin.x + 30.0f, rowMin.y + 10.0f);
+    const ImVec2 textMin(rowMin.x + 32.0f, rowMin.y + 10.0f);
     const ImVec4 clip(rowMin.x + 30.0f, rowMin.y, rowMax.x - 10.0f, rowMax.y);
-    draw->AddText(ImGui::GetFont(), 14.0f, textMin, text, category.label, nullptr, rowWidth - 40.0f, &clip);
+    draw->AddText(ImGui::GetFont(), 13.5f, textMin, text, category.label, nullptr, rowWidth - 40.0f, &clip);
 
     ImGui::PopID();
     return clicked;
@@ -157,8 +127,6 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     extern void UploadActiveLoaderConfigAsync();
 
     const float totalWidth = windowSize.x - 60.0f;
-    const float spacing = 8.0f;
-    const float colWidth = (totalWidth - (spacing * 2.0f)) / 3.0f;
     const float cardHeight = (std::max)(windowSize.y - 190.0f, 420.0f);
 
     FlickWeaponCatalog::EnsureCategoryDefaults(g_Menu.flick_category_enabled);
@@ -177,20 +145,24 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
         g_Menu.flick_selected_category, 0, static_cast<int>(categories.size()) - 1);
     const auto& selectedCategory = categories[g_Menu.flick_selected_category];
 
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(spacing, 0));
+    ImGui::Columns(3, skCrypt("FlickColumns"), false);
+    ImGui::SetColumnWidth(0, totalWidth * 0.28f);
+    ImGui::SetColumnWidth(1, totalWidth * 0.38f);
+    ImGui::SetColumnWidth(2, totalWidth * 0.34f);
 
-    ImGui::BeginGroup();
-    BeginGlassCard(skCrypt("##FlickCategories"), skCrypt("WEAPON CATEGORIES"), ImVec2(colWidth - 10.0f, cardHeight));
-    if (ImGui::Button(skCrypt("All"), ImVec2(colWidth * 0.35f, 24.0f))) {
+    // --- Column 1: Category Selection ---
+    BeginGlassCard(skCrypt("##FlickCategories"), Lang.WeaponCategories, ImVec2(totalWidth * 0.28f - 15, 0));
+    
+    if (ImGui::Button(Lang.All, ImVec2(70, 24))) {
         for (const auto& category : categories) g_Menu.flick_category_enabled[category.key] = true;
     }
     ImGui::SameLine();
-    if (ImGui::Button(skCrypt("None"), ImVec2(colWidth * 0.35f, 24.0f))) {
+    if (ImGui::Button(Lang.None, ImVec2(70, 24))) {
         for (const auto& category : categories) g_Menu.flick_category_enabled[category.key] = false;
     }
     ImGui::Separator();
 
-    ImGui::BeginChild(skCrypt("CategoryListInner"), ImVec2(-1, -32.0f), false);
+    ImGui::BeginChild(skCrypt("CategoryListInner"), ImVec2(-1, cardHeight - 110.0f), false);
     for (int i = 0; i < static_cast<int>(categories.size()); ++i) {
         const auto& category = categories[i];
         const bool selected = g_Menu.flick_selected_category == i;
@@ -200,15 +172,18 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
         }
     }
     ImGui::EndChild();
+    
     ImGui::Separator();
-    ImGui::TextDisabled("Current: %s",
-        MacroEngine::current_weapon_name.empty() ? "None" : MacroEngine::current_weapon_name.c_str());
+    ImGui::TextDisabled("%s", Lang.CurrentWeapon);
+    ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), "%s",
+        MacroEngine::current_weapon_name.empty() ? Lang.None : MacroEngine::current_weapon_name.c_str());
+    
     ImGui::EndChild();
-    ImGui::EndGroup();
 
-    ImGui::SameLine();
-    ImGui::BeginGroup();
-    BeginGlassCard(skCrypt("##FlickCategorySettings"), skCrypt("CATEGORY SETTING"), ImVec2(colWidth - 10.0f, cardHeight));
+    ImGui::NextColumn();
+
+    // --- Column 2: Specific Category Settings ---
+    BeginGlassCard(skCrypt("##FlickSettings"), Lang.HeaderPrecisionSettings, ImVec2(totalWidth * 0.38f - 15, 0));
 
     bool& categoryEnabled = g_Menu.flick_category_enabled[selectedCategory.key];
     bool& visibleOnly = g_Menu.flick_category_visible_only[selectedCategory.key];
@@ -221,61 +196,78 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     float& categoryFov = g_Menu.flick_category_fov[selectedCategory.key];
     float& maxDistance = g_Menu.flick_category_max_dist[selectedCategory.key];
 
-    behaviorMode = std::clamp(behaviorMode, 0, 1);
-    targetPart = std::clamp(targetPart, 0, 15);
-    categoryKey = std::clamp(categoryKey, 0, 0xFE);
-    moveSpeed = std::clamp(moveSpeed, 0.2f, 2.0f);
-    categoryFov = std::clamp(categoryFov, 1.0f, 100.0f);
-    maxDistance = std::clamp(maxDistance, 5.0f, 400.0f);
-
-    ImGui::Text("%s", selectedCategory.label);
+    ImGui::TextColored(ImVec4(0.0f, 0.7f, 1.0f, 1.0f), "%s", selectedCategory.label);
     ImGui::Separator();
-    ImGui::Checkbox(skCrypt("Enabled"), &categoryEnabled);
-    DrawKeyCombo(skCrypt("Flick Key"), &categoryKey);
-    OverlayHotkeys::DrawKeyBind(skCrypt("Capture Key"), &categoryKey, g_Menu.waiting_for_key);
-    ImGui::Checkbox(skCrypt("Visible Only"), &visibleOnly);
-    ImGui::Checkbox(skCrypt("Hold Until Shot"), &shotHold);
-    ImGui::TextUnformatted(skCrypt("Flick Mode"));
-    ImGui::RadioButton(skCrypt("Return After Shot"), &behaviorMode, 0);
-    ImGui::RadioButton(skCrypt("Follow Target"), &behaviorMode, 1);
+
+    ImGui::TextDisabled("%s", Lang.HeaderSystemCore);
+    ImGui::Checkbox(Lang.AimEnabled, &categoryEnabled);
+    DrawKeyCombo(Lang.FlickKey, &categoryKey);
+    OverlayHotkeys::DrawKeyBind(Lang.CaptureKey, &categoryKey, g_Menu.waiting_for_key);
+    
+    ImGui::Separator();
+    ImGui::TextDisabled("%s", Lang.HeaderAimStructure);
+    ImGui::Checkbox(Lang.AimVisible, &visibleOnly);
+    ImGui::Checkbox(Lang.HoldUntilShot, &shotHold);
+    
+    ImGui::Spacing();
+    ImGui::TextUnformatted(Lang.FlickMode);
+    ImGui::RadioButton(Lang.ReturnAfterShot, &behaviorMode, 0);
+    ImGui::SameLine();
+    ImGui::RadioButton(Lang.FollowTarget, &behaviorMode, 1);
+    
     if (behaviorMode == 1) {
-        ImGui::Checkbox(skCrypt("Auto Shot While Hold"), &followAutoShot);
+        ImGui::Checkbox(Lang.AutoShotHold, &followAutoShot);
     }
 
-    DrawLabeledSliderFloat(skCrypt("Max Distance"), &maxDistance, 5.0f, 400.0f, skCrypt("%.0f m"));
-    DrawFlickTargetCombo(&targetPart);
-    DrawLabeledSliderFloat(skCrypt("Flick FOV"), &categoryFov, 1.0f, 100.0f, skCrypt("%.0f"));
-    DrawLabeledSliderFloat(skCrypt("Move Speed"), &moveSpeed, 0.2f, 2.0f, skCrypt("%.2f x"));
+    ImGui::Separator();
+    ImGui::TextDisabled("%s", Lang.HeaderDangerScan);
+    ImGui::SliderFloat(Lang.Distance, &maxDistance, 5.0f, 400.0f, skCrypt("%.0f m"));
+    DrawFlickTargetCombo(Lang.Target, &targetPart);
+    ImGui::SliderFloat(Lang.AimFOV, &categoryFov, 1.0f, 100.0f, skCrypt("%.0f"));
+    ImGui::SliderFloat(Lang.Speed, &moveSpeed, 0.2f, 2.0f, skCrypt("%.2f x"));
 
+    ImGui::Separator();
     TextureInfo* preview = GetPreviewIcon(selectedCategory.folder, selectedCategory.asset);
     if (preview && preview->SRV) {
         ImGui::Spacing();
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetContentRegionAvail().x - 160) * 0.5f);
         ImGui::Image(preview->SRV, ImVec2(160, 80));
     }
+    
     ImGui::EndChild();
-    ImGui::EndGroup();
 
-    ImGui::SameLine();
-    ImGui::BeginGroup();
-    BeginGlassCard(skCrypt("##FlickRules"), skCrypt("FLICK RULES"), ImVec2(colWidth - 10.0f, cardHeight));
-    ImGui::TextWrapped(skCrypt("Flick runs once on key press, moves to target, then shoots."));
+    ImGui::NextColumn();
+
+    // --- Column 3: Rules & Miscellaneous ---
+    BeginGlassCard(skCrypt("##FlickRules"), Lang.FlickRules, ImVec2(totalWidth * 0.34f - 15, 0));
+    
+    ImGui::TextDisabled("%s", Lang.ShowcasePrecisionProfile);
+    ImGui::TextWrapped(Lang.FlickRuleDesc);
     ImGui::Separator();
-    ImGui::BulletText(skCrypt("No release wait"));
-    ImGui::BulletText(skCrypt("Move first, shot second"));
-    ImGui::BulletText(skCrypt("Hold Until Shot can be disabled"));
-    ImGui::BulletText(skCrypt("Return and Follow modes are exclusive"));
-    ImGui::BulletText(skCrypt("Each category uses its own flick key"));
+    
+    ImGui::BulletText(Lang.FlickRule1);
+    ImGui::BulletText(Lang.FlickRule2);
+    ImGui::BulletText(Lang.FlickRule3);
+    ImGui::BulletText(Lang.FlickRule4);
+    ImGui::BulletText(Lang.FlickRule5);
+    
     ImGui::Separator();
+    ImGui::TextDisabled("%s", Lang.HeaderTactical);
     ImGui::Checkbox(Lang.GrenadeLine, &g_Menu.esp_grenade_prediction);
     ImGui::Checkbox(Lang.Projectiles, &g_Menu.esp_projectile_tracer);
     ImGui::Checkbox(Lang.ThreatWarning, &g_Menu.esp_threat_warning);
+    
     ImGui::Separator();
-    if (ImGui::Button(Lang.SaveConfig, ImVec2(-1, 35.0f))) {
+    ImGui::Spacing();
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.45f, 0.8f, 0.6f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.55f, 0.95f, 0.8f));
+    if (ImGui::Button(Lang.SaveConfig, ImVec2(-1, 38.0f))) {
         g_Menu.SaveConfig("dataMacro/Config/settings.json");
         UploadActiveLoaderConfigAsync();
     }
-    ImGui::EndChild();
-    ImGui::EndGroup();
+    ImGui::PopStyleColor(2);
 
-    ImGui::PopStyleVar();
+    ImGui::EndChild();
+
+    ImGui::Columns(1);
 }

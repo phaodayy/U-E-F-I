@@ -295,6 +295,25 @@ namespace Translation {
         const char* ImportCloud;
         const char* CloudConfig;
         const char* TabAdmin;
+
+        const char* All;
+        const char* None;
+        const char* WeaponCategories;
+        const char* FlickKey;
+        const char* CaptureKey;
+        const char* HoldUntilShot;
+        const char* FlickMode;
+        const char* ReturnAfterShot;
+        const char* FollowTarget;
+        const char* AutoShotHold;
+        const char* FlickRules;
+        const char* FlickRuleDesc;
+        const char* FlickRule1;
+        const char* FlickRule2;
+        const char* FlickRule3;
+        const char* FlickRule4;
+        const char* FlickRule5;
+        const char* Target;
     };
 
 } // namespace Translation
