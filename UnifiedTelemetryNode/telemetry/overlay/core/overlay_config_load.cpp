@@ -143,6 +143,18 @@ void OverlayMenu::LoadConfig(const char* path) {
                     if (it.value().is_number_integer()) flick_category_behavior_mode[it.key()] = std::clamp(it.value().get<int>(), 0, 1);
                 }
             }
+            if (j.contains("flick_category_smoothness") && j["flick_category_smoothness"].is_object()) {
+                flick_category_smoothness.clear();
+                for (auto it = j["flick_category_smoothness"].begin(); it != j["flick_category_smoothness"].end(); ++it) {
+                    if (it.value().is_number()) flick_category_smoothness[it.key()] = std::clamp(it.value().get<float>(), 0.0f, 100.0f);
+                }
+            }
+            if (j.contains("flick_category_fov_circle") && j["flick_category_fov_circle"].is_object()) {
+                flick_category_fov_circle.clear();
+                for (auto it = j["flick_category_fov_circle"].begin(); it != j["flick_category_fov_circle"].end(); ++it) {
+                    if (it.value().is_boolean()) flick_category_fov_circle[it.key()] = it.value().get<bool>();
+                }
+            }
             if (j.contains("flick_category_target_part") && j["flick_category_target_part"].is_object()) {
                 flick_category_target_part.clear();
                 for (auto it = j["flick_category_target_part"].begin(); it != j["flick_category_target_part"].end(); ++it) {
@@ -165,7 +177,7 @@ void OverlayMenu::LoadConfig(const char* path) {
                 flick_category_move_speed.clear();
                 for (auto it = j["flick_category_move_speed"].begin(); it != j["flick_category_move_speed"].end(); ++it) {
                     if (it.value().is_number()) {
-                        flick_category_move_speed[it.key()] = std::clamp(it.value().get<float>(), 0.2f, 2.0f);
+                        flick_category_move_speed[it.key()] = std::clamp(it.value().get<float>(), 0.0f, 100.0f);
                     }
                 }
             }

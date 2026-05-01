@@ -60,6 +60,8 @@ void OverlayMenu::SaveConfig(const char* path) {
         FlickWeaponCatalog::EnsureCategoryIntDefaults(flick_category_key, flick_key);
         FlickWeaponCatalog::EnsureCategoryFloatDefaults(flick_category_max_dist, flick_max_dist);
         FlickWeaponCatalog::EnsureCategoryMoveSpeedDefaults(flick_category_move_speed);
+        FlickWeaponCatalog::EnsureCategorySmoothnessDefaults(flick_category_smoothness, flick_smoothness);
+        FlickWeaponCatalog::EnsureCategoryBoolDefaults(flick_category_fov_circle, flick_fov_circle);
         FlickWeaponCatalog::EnsureCategoryFovDefaults(flick_category_fov, flick_fov);
         j["flick_category_enabled"] = flick_category_enabled;
         j["flick_category_visible_only"] = flick_category_visible_only;
@@ -70,6 +72,8 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["flick_category_key"] = flick_category_key;
         j["flick_category_max_dist"] = flick_category_max_dist;
         j["flick_category_move_speed"] = flick_category_move_speed;
+        j["flick_category_smoothness"] = flick_category_smoothness;
+        j["flick_category_fov_circle"] = flick_category_fov_circle;
         j["flick_category_fov"] = flick_category_fov;
         j["flick_return"] = flick_return;
         j["flick_fov"] = flick_fov;

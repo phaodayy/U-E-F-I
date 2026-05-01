@@ -132,6 +132,7 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     FlickWeaponCatalog::EnsureCategoryDefaults(g_Menu.flick_category_enabled);
     FlickWeaponCatalog::EnsureCategoryBoolDefaults(g_Menu.flick_category_visible_only, g_Menu.flick_visible_only);
     FlickWeaponCatalog::EnsureCategoryBoolDefaults(g_Menu.flick_category_shot_hold, g_Menu.flick_shot_hold);
+    FlickWeaponCatalog::EnsureCategoryBoolDefaults(g_Menu.flick_category_auto_shot, g_Menu.flick_auto_shot);
     FlickWeaponCatalog::EnsureCategoryBoolDefaults(g_Menu.flick_category_follow_auto_shot, g_Menu.flick_follow_auto_shot);
     FlickWeaponCatalog::EnsureCategoryIntDefaults(g_Menu.flick_category_behavior_mode, g_Menu.flick_behavior_mode);
     FlickWeaponCatalog::EnsureCategoryIntDefaults(g_Menu.flick_category_target_part, g_Menu.flick_target_part);
@@ -188,6 +189,7 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     bool& categoryEnabled = g_Menu.flick_category_enabled[selectedCategory.key];
     bool& visibleOnly = g_Menu.flick_category_visible_only[selectedCategory.key];
     bool& shotHold = g_Menu.flick_category_shot_hold[selectedCategory.key];
+    bool& flickAutoShot = g_Menu.flick_category_auto_shot[selectedCategory.key];
     bool& followAutoShot = g_Menu.flick_category_follow_auto_shot[selectedCategory.key];
     int& behaviorMode = g_Menu.flick_category_behavior_mode[selectedCategory.key];
     int& targetPart = g_Menu.flick_category_target_part[selectedCategory.key];
@@ -195,6 +197,8 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     float& moveSpeed = g_Menu.flick_category_move_speed[selectedCategory.key];
     float& categoryFov = g_Menu.flick_category_fov[selectedCategory.key];
     float& maxDistance = g_Menu.flick_category_max_dist[selectedCategory.key];
+    float& smoothness = g_Menu.flick_category_smoothness[selectedCategory.key];
+    bool& fovCircle = g_Menu.flick_category_fov_circle[selectedCategory.key];
 
     ImGui::TextColored(ImVec4(0.0f, 0.7f, 1.0f, 1.0f), "%s", selectedCategory.label);
     ImGui::Separator();
@@ -207,6 +211,7 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     ImGui::Separator();
     ImGui::TextDisabled("%s", Lang.HeaderAimStructure);
     ImGui::Checkbox(Lang.AimVisible, &visibleOnly);
+    ImGui::Checkbox(Lang.FlickAutoShot, &flickAutoShot);
     ImGui::Checkbox(Lang.HoldUntilShot, &shotHold);
     
     ImGui::Spacing();
@@ -224,7 +229,9 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     ImGui::SliderFloat(Lang.Distance, &maxDistance, 5.0f, 400.0f, skCrypt("%.0f m"));
     DrawFlickTargetCombo(Lang.Target, &targetPart);
     ImGui::SliderFloat(Lang.AimFOV, &categoryFov, 1.0f, 100.0f, skCrypt("%.0f"));
-    ImGui::SliderFloat(Lang.Speed, &moveSpeed, 0.2f, 2.0f, skCrypt("%.2f x"));
+    ImGui::Checkbox(Lang.FOVCircle, &fovCircle);
+    ImGui::SliderFloat(Lang.Speed, &moveSpeed, 0.0f, 100.0f, skCrypt("%.0f"));
+    ImGui::SliderFloat(Lang.Smoothness, &smoothness, 0.0f, 100.0f, skCrypt("%.0f"));
 
     ImGui::Separator();
     TextureInfo* preview = GetPreviewIcon(selectedCategory.folder, selectedCategory.asset);
@@ -251,6 +258,9 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     ImGui::BulletText(Lang.FlickRule4);
     ImGui::BulletText(Lang.FlickRule5);
     
+    ImGui::Separator();
+    ImGui::TextDisabled("%s", Lang.FOVColor);
+    ImGui::ColorEdit4(skCrypt("##FovCircleColor"), g_Menu.flick_fov_circle_color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
     ImGui::Separator();
     ImGui::TextDisabled("%s", Lang.HeaderTactical);
     ImGui::Checkbox(Lang.GrenadeLine, &g_Menu.esp_grenade_prediction);

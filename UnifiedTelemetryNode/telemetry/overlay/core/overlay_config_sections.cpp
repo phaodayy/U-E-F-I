@@ -44,17 +44,22 @@ void ClampPlayer(OverlayMenu& menu) {
     FlickWeaponCatalog::EnsureCategoryIntDefaults(menu.flick_category_key, menu.flick_key);
     FlickWeaponCatalog::EnsureCategoryFloatDefaults(menu.flick_category_max_dist, menu.flick_max_dist);
     FlickWeaponCatalog::EnsureCategoryMoveSpeedDefaults(menu.flick_category_move_speed);
+    FlickWeaponCatalog::EnsureCategorySmoothnessDefaults(menu.flick_category_smoothness, menu.flick_smoothness);
+    FlickWeaponCatalog::EnsureCategoryBoolDefaults(menu.flick_category_fov_circle, menu.flick_fov_circle);
     FlickWeaponCatalog::EnsureCategoryFovDefaults(menu.flick_category_fov, menu.flick_fov);
     const int max_category = static_cast<int>(FlickWeaponCatalog::Categories().size()) - 1;
     menu.flick_selected_category = std::clamp(menu.flick_selected_category, 0, (std::max)(0, max_category));
     for (auto& entry : menu.flick_category_move_speed) {
-        entry.second = std::clamp(entry.second, 0.2f, 2.0f);
+        entry.second = std::clamp(entry.second, 0.0f, 100.0f);
     }
     for (auto& entry : menu.flick_category_fov) {
         entry.second = std::clamp(entry.second, 1.0f, 100.0f);
     }
     for (auto& entry : menu.flick_category_max_dist) {
         entry.second = std::clamp(entry.second, 5.0f, 400.0f);
+    }
+    for (auto& entry : menu.flick_category_smoothness) {
+        entry.second = std::clamp(entry.second, 0.0f, 100.0f);
     }
     for (auto& entry : menu.flick_category_behavior_mode) {
         entry.second = std::clamp(entry.second, 0, 1);

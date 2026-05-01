@@ -426,7 +426,11 @@ inline void FillVietnamese(Strings& s) {
             s.FlickRule3 = (const char*)u8"Có thể tắt Giữ đến khi bắn";
             s.FlickRule4 = (const char*)u8"Chế độ Trở lại và Theo dõi loại trừ lẫn nhau";
             s.FlickRule5 = (const char*)u8"Mỗi danh mục sử dụng phím flick riêng";
-            s.Target = (const char*)u8"Vùng ngắm";
+            s.Smoothness = (const char*)u8"Độ mượt";
+    s.FOVCircle = (const char*)u8"Vòng tròn FOV";
+    s.FOVColor = (const char*)u8"Màu vòng tròn FOV";
+    s.FlickAutoShot = (const char*)u8"Tự bắn sau khi Flick";
+    s.Target = (const char*)u8"Vùng ngắm";
 }
 
 } // namespace Translation

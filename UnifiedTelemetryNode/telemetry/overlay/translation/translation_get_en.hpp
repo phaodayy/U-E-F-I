@@ -430,6 +430,10 @@ inline void FillEnglish(Strings& s) {
             s.FlickRule3 = skCrypt("Hold Until Shot can be disabled");
             s.FlickRule4 = skCrypt("Return and Follow modes are exclusive");
             s.FlickRule5 = skCrypt("Each category uses its own flick key");
+            s.Smoothness = skCrypt("Smoothness");
+            s.FOVCircle = skCrypt("FOV Circle");
+            s.FOVColor = skCrypt("FOV Circle Color");
+            s.FlickAutoShot = skCrypt("Auto Shot After Flick");
             s.Target = skCrypt("Target Bone");
 }
 

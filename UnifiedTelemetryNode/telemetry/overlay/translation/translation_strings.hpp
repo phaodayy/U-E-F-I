@@ -313,6 +313,10 @@ namespace Translation {
         const char* FlickRule3;
         const char* FlickRule4;
         const char* FlickRule5;
+        const char* Smoothness;
+    const char* FOVCircle;
+    const char* FOVColor;
+    const char* FlickAutoShot;
         const char* Target;
     };
 

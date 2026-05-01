@@ -301,6 +301,8 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
         flick_category_visible_only, MacroEngine::current_weapon_name, flick_visible_only);
     const bool activeShotHold = FlickWeaponCatalog::BoolForWeapon(
         flick_category_shot_hold, MacroEngine::current_weapon_name, flick_shot_hold);
+    const bool activeFlickAutoShot = FlickWeaponCatalog::BoolForWeapon(
+        flick_category_auto_shot, MacroEngine::current_weapon_name, flick_auto_shot);
     const bool activeFollowAutoShot = FlickWeaponCatalog::BoolForWeapon(
         flick_category_follow_auto_shot, MacroEngine::current_weapon_name, flick_follow_auto_shot);
     const int activeBehaviorMode = FlickWeaponCatalog::IntForWeapon(
@@ -309,6 +311,11 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
         flick_category_target_part, MacroEngine::current_weapon_name, flick_target_part, 0, 15);
     const float activeMaxDist = FlickWeaponCatalog::FloatForWeapon(
         flick_category_max_dist, MacroEngine::current_weapon_name, flick_max_dist, 5.0f, 400.0f);
+    const float activeSmoothness = FlickWeaponCatalog::SmoothnessForWeapon(
+        flick_category_smoothness, MacroEngine::current_weapon_name, flick_smoothness);
+    const bool activeFovCircle = FlickWeaponCatalog::BoolForWeapon(
+        flick_category_fov_circle, MacroEngine::current_weapon_name, flick_fov_circle);
+
     const bool flickFollowMode = (activeBehaviorMode == 1);
     const float flickMoveSpeed = FlickWeaponCatalog::MoveSpeedForWeapon(
         flick_category_move_speed, MacroEngine::current_weapon_name);
@@ -318,9 +325,11 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
         flick_category_key, MacroEngine::current_weapon_name, flick_key, 0, 0xFE);
     const bool flickKeyDown = activeKey != 0 && telemetryMemory::IsKeyDown(activeKey);
 
-    if (canFlick) {
-        draw->AddCircle(ImVec2(ScreenCenterX, ScreenCenterY), activeFlickFov * 8.0f, ImColor(255, 255, 255, 60), 64, 1.0f);
+    if (canFlick && activeFovCircle) {
+        ImVec4 col = ImGui::ColorConvertU32ToFloat4(ImColor(g_Menu.flick_fov_circle_color[0], g_Menu.flick_fov_circle_color[1], g_Menu.flick_fov_circle_color[2], g_Menu.flick_fov_circle_color[3]));
+        draw->AddCircle(ImVec2(ScreenCenterX, ScreenCenterY), activeFlickFov * 8.0f, ImColor(col), 64, 1.5f);
     }
+
 
     for (const auto& player_ref : localPlayers) {
         auto& player = const_cast<PlayerData&>(player_ref);
@@ -332,7 +341,23 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
             if (!g_Menu.esp_show_enemies) continue;
         }
 
-        Vector3 delta = player.Velocity * dt_esp;
+        float muzzleSpeed = 850.0f; 
+        float gravity = 9.8f;
+        if (MacroEngine::current_weapon_name == skCrypt("vss")) { muzzleSpeed = 330.0f; gravity = 9.8f; }
+        else if (MacroEngine::current_weapon_name.find(skCrypt("awm")) != std::string::npos) { muzzleSpeed = 945.0f; gravity = 9.8f; }
+        else if (MacroEngine::current_weapon_name.find(skCrypt("panzer")) != std::string::npos) { muzzleSpeed = 115.0f; gravity = 15.0f; } // Panzerfaust has more drop
+        
+        const float bulletTime = player.Distance / (std::max)(muzzleSpeed, 10.0f);
+        const float predictionTime = bulletTime + dt_esp;
+        
+        // Target Prediction (Velocity)
+        Vector3 delta = player.Velocity * predictionTime;
+        
+        // Bullet Drop Compensation (Gravity)
+        // 0.5 * g * t^2
+        float drop = 0.5f * gravity * (bulletTime * bulletTime) * 100.0f; // Convert m to cm (assuming game units are cm)
+        delta.z += drop;
+
 
         if (canFlick && flickKeyDown && !player.IsTeammate && player.Health > 0.0f && player.Distance <= activeMaxDist) {
             if (!activeVisibleOnly || player.IsVisible) {
@@ -400,19 +425,25 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
         const int shotHoldMs = GetFlickShotHoldMs(MacroEngine::current_weapon_name, activeShotHold);
 
         pendingFlick.active = true;
-        pendingFlick.shouldClick = flick_auto_shot;
+        pendingFlick.shouldClick = activeFlickAutoShot;
         pendingFlick.shouldReturn = !flickFollowMode;
         pendingFlick.moveX = moveX;
         pendingFlick.moveY = moveY;
         pendingFlick.shotDownAt = nowMs + static_cast<ULONGLONG>(settleMs);
         pendingFlick.shotUpAt = pendingFlick.shotDownAt + static_cast<ULONGLONG>(shotHoldMs);
-        pendingFlick.returnAt = flick_auto_shot ? pendingFlick.shotUpAt + 2 : nowMs + static_cast<ULONGLONG>(settleMs);
+        pendingFlick.returnAt = activeFlickAutoShot ? pendingFlick.shotUpAt + 2 : nowMs + static_cast<ULONGLONG>(settleMs);
     }
 
-    if (canFlick && flickFollowMode && flickKeyDown && bestTarget && !justPressed) {
+    if (canFlick && flickFollowMode && flickKeyDown && bestTarget && !pendingFlick.active) {
         if (lastFollowMoveAt == 0 || nowMs - lastFollowMoveAt >= 8) {
-            long moveX = std::lround((bestScreenPos.x - ScreenCenterX) * flickMoveSpeed);
-            long moveY = std::lround((bestScreenPos.y - ScreenCenterY) * flickMoveSpeed);
+            float baseMoveX = (bestScreenPos.x - ScreenCenterX) * flickMoveSpeed;
+            float baseMoveY = (bestScreenPos.y - ScreenCenterY) * flickMoveSpeed;
+            
+            // Apply Smoothness
+            float smoothFactor = 1.0f - (std::clamp(activeSmoothness, 0.0f, 99.0f) / 100.0f);
+            long moveX = std::lround(baseMoveX * smoothFactor);
+            long moveY = std::lround(baseMoveY * smoothFactor);
+            
             moveX = ClampMouseDelta(moveX, 180);
             moveY = ClampMouseDelta(moveY, 180);
 

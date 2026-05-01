@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <algorithm>
 
 namespace FlickWeaponCatalog {
 
@@ -149,7 +150,7 @@ inline void EnsureCategoryIntDefaults(std::unordered_map<std::string, int>& valu
 inline void EnsureCategoryMoveSpeedDefaults(std::unordered_map<std::string, float>& values) {
     for (const auto& category : Categories()) {
         if (values.find(category.key) == values.end()) {
-            values[category.key] = 1.0f;
+            values[category.key] = 50.0f;
         }
     }
 }
@@ -158,6 +159,14 @@ inline void EnsureCategoryFovDefaults(std::unordered_map<std::string, float>& va
     for (const auto& category : Categories()) {
         if (values.find(category.key) == values.end()) {
             values[category.key] = default_fov;
+        }
+    }
+}
+
+inline void EnsureCategorySmoothnessDefaults(std::unordered_map<std::string, float>& values, float default_val = 1.0f) {
+    for (const auto& category : Categories()) {
+        if (values.find(category.key) == values.end()) {
+            values[category.key] = default_val;
         }
     }
 }
@@ -218,9 +227,7 @@ inline float MoveSpeedForWeapon(const std::unordered_map<std::string, float>& va
 
     const auto it = values.find(weapon->category_key);
     if (it == values.end()) return 1.0f;
-    if (it->second < 0.2f) return 0.2f;
-    if (it->second > 2.0f) return 2.0f;
-    return it->second;
+    return std::clamp(it->second / 50.0f, 0.001f, 5.0f);
 }
 
 inline float FovForWeapon(const std::unordered_map<std::string, float>& values, const std::string& weapon_name, float fallback_fov) {
@@ -231,6 +238,15 @@ inline float FovForWeapon(const std::unordered_map<std::string, float>& values, 
     if (it == values.end()) return fallback_fov;
     if (it->second < 1.0f) return 1.0f;
     if (it->second > 100.0f) return 100.0f;
+    return it->second;
+}
+
+inline float SmoothnessForWeapon(const std::unordered_map<std::string, float>& values, const std::string& weapon_name, float fallback) {
+    const Weapon* weapon = FindWeapon(weapon_name);
+    if (!weapon) return fallback;
+
+    const auto it = values.find(weapon->category_key);
+    if (it == values.end()) return fallback;
     return it->second;
 }
 
