@@ -3,7 +3,7 @@ setlocal EnableExtensions EnableDelayedExpansion
 cd /d "%~dp0"
 
 echo ========================================
-echo   UnifiedTelemetryNode - RELEASE BUILD
+echo   UnifiedTelemetryNode - USER CONSOLE BUILD
 echo ========================================
 
 set "MSBUILD_PATH=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\amd64\MSBuild.exe"
@@ -29,7 +29,7 @@ set "STAGING_DIR=%CD%\dist_build\Release"
 set "INT_DIR=%CD%\telemetry\script_build\Release"
 if not exist "!STAGING_DIR!" mkdir "!STAGING_DIR!"
 
-echo [*] Rebuilding GameOverlay (Release)...
+echo [*] Rebuilding GameOverlay (Release / User Console)...
 "!MSBUILD_PATH!" "phao_final.sln" /t:GameOverlay:Rebuild /p:Configuration=Release /p:Platform=x64 /p:VcpkgApplocalDeps=false "/p:OutDir=!STAGING_DIR!\\" "/p:IntDir=!INT_DIR!\\" /m /verbosity:minimal
 
 if errorlevel 1 (
@@ -59,6 +59,6 @@ del /F /Q "!OUTPUT_DIR!\*.pdb" "!OUTPUT_DIR!\*.ilk" "!OUTPUT_DIR!\*.iobj" "!OUTP
 del /F /Q "!STAGING_DIR!\*.pdb" "!STAGING_DIR!\*.ilk" "!STAGING_DIR!\*.iobj" "!STAGING_DIR!\*.ipdb" >nul 2>&1
 
 echo [OK] SUCCESS!
-echo [+] Single-file release output: dist\GameOverlay.exe
-echo [+] Release hardening: Windows subsystem, CFG/CET, ASLR/NX, no debug artifacts copied.
+echo [+] Single-file user console output: dist\GameOverlay.exe
+echo [+] Release hardening: CFG/CET, ASLR/NX, no debug artifacts copied.
 exit /b 0

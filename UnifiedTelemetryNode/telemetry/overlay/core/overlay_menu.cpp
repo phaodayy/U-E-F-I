@@ -22,6 +22,7 @@ extern const wchar_t* LOADER_LOGIN_PATH;
 #include "../loot/loot_source_merge.hpp"
 #include "overlay_config_sections.hpp"
 #include "overlay_hotkeys.hpp"
+#include "../../sdk/core/console_log.hpp"
 #include "../player/player_esp_layout.hpp"
 #include "overlay_texture_cache.hpp"
 #include "../radar/radar_overlay_renderer.hpp"
@@ -137,8 +138,7 @@ bool OverlayMenu::Initialize(const VisualizationBridgeHost& bridge) {
     target_hwnd = bridge.hwnd;
     if (!target_hwnd || !IsWindow(target_hwnd)) {
         target_hwnd = nullptr;
-        std::cout << skCrypt("[-] Passive visualization host is not available.\n");
-        std::cout << skCrypt("[-] Provide a valid bridge-owned HWND; window discovery and style mutation are disabled.\n");
+        UTN_DEV_LOG(std::cout << skCrypt("[-][DEV] Passive visualization host is not available.") << std::endl);
         return false;
     }
 
@@ -146,7 +146,7 @@ bool OverlayMenu::Initialize(const VisualizationBridgeHost& bridge) {
     DWORD target_pid = 0;
     GetClassNameA(target_hwnd, cls, 256);
     GetWindowThreadProcessId(target_hwnd, &target_pid);
-    std::cout << skCrypt("[+] Passive visualization host attached: [") << cls << skCrypt("] (PID: ") << target_pid << skCrypt(")\n");
+    UTN_DEV_LOG(std::cout << skCrypt("[DEV] Passive visualization host attached: [") << cls << skCrypt("] (PID: ") << target_pid << skCrypt(")") << std::endl);
 
     if (target_pid == GetCurrentProcessId()) {
         MARGINS margin = { -1 };
@@ -158,7 +158,7 @@ bool OverlayMenu::Initialize(const VisualizationBridgeHost& bridge) {
             CleanupDeviceD3D();
             return false;
         }
-        std::cout << skCrypt("[+] Bridge renderer using host-provided swap chain.\n");
+        UTN_DEV_LOG(std::cout << skCrypt("[DEV] Bridge renderer using host-provided swap chain.") << std::endl);
     } else if (!CreateDeviceD3D(target_hwnd)) {
         return false;
     }
@@ -183,7 +183,7 @@ bool OverlayMenu::Initialize(const VisualizationBridgeHost& bridge) {
     OverlayTextures::SetDevice(g_pd3dDevice);
     OverlayTextures::LoadInstructor();
 
-    std::cout << skCrypt("[+] Passive visualization ready.\n");
+    UTN_DEV_LOG(std::cout << skCrypt("[DEV] Passive visualization ready.") << std::endl);
     return true;
 }
 

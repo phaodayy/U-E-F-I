@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <windows.h>
+#include "../../sdk/core/console_log.hpp"
 #include "../../sdk/memory/hyper_process.hpp"
 #include <protec/skCrypt.h>
 
@@ -80,8 +81,7 @@ inline VisualizationBridgeHost FromDiscordFallback() {
     VisualizationBridgeHost bridge = {};
     
     // Yêu cầu bắt buộc: Súc sạo hoàn toàn từ luồng Hypervisor (Bỏ FindWindowA)
-    std::cout << skCrypt("[*] Waiting for Bridge Link (Discord via Hypervisor GhostWalk)...\n");
-    std::cout << skCrypt("[!] Make sure Discord overlay is ENABLED\n");
+    UTN_DEV_LOG(std::cout << skCrypt("[DEV] Waiting for bridge link via Hypervisor GhostWalk.") << std::endl);
 
     HWND overlay = nullptr;
     int attempt = 0;
@@ -135,13 +135,13 @@ inline VisualizationBridgeHost FromDiscordFallback() {
 
         if (!overlay) {
             if (attempt % 5 == 0) {
-                std::cout << skCrypt("[*] Still waiting for Game Overlay to link... (Attempt ") << attempt << ")\n";
+                UTN_DEV_LOG(std::cout << skCrypt("[DEV] Still waiting for game overlay link, attempt ") << attempt << std::endl);
             }
             Sleep(1000);
         }
     }
     
-    std::cout << skCrypt("[+] Found passive host HWND via Hypervisor PID match.\n");
+    UTN_DEV_LOG(std::cout << skCrypt("[DEV] Found passive host HWND via Hypervisor PID match.") << std::endl);
     bridge.hwnd = overlay;
     bridge.clear_before_render = false;
     bridge.present_after_render = true;

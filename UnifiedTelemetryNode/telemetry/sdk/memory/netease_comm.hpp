@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <intrin.h>
+#include "../core/console_log.hpp"
 
 #pragma comment(lib, "FltLib.lib")
 
@@ -106,7 +107,7 @@ namespace NetEaseMemory {
 
             hResult = FilterConnectCommunicationPort(name, 0, &lpContext, sizeof(lpContext), NULL, &g_PortHandle);
             if (hResult == S_OK) {
-                std::wcout << skCrypt(L"\n[+] Connected to port: ") << name << std::endl;
+                UTN_DEV_LOG(std::wcout << skCrypt(L"\n[DEV] Connected to port: ") << name << std::endl);
                 return true;
             }
 
@@ -115,12 +116,12 @@ namespace NetEaseMemory {
             lpContext.Version = 10;
             hResult = FilterConnectCommunicationPort(name, 0, &lpContext, sizeof(lpContext), NULL, &g_PortHandle);
             if (hResult == S_OK) {
-                std::wcout << skCrypt(L"\n[+] Connected to port (TUCK v10): ") << name << std::endl;
+                UTN_DEV_LOG(std::wcout << skCrypt(L"\n[DEV] Connected to port (TUCK v10): ") << name << std::endl);
                 return true;
             }
         }
 
-        std::cout << skCrypt("\n[-] FilterConnectCommunicationPort failed! HRESULT: 0x") << std::hex << hResult << std::dec << std::endl;
+        UTN_DEV_LOG(std::cout << skCrypt("\n[-][DEV] FilterConnectCommunicationPort failed! HRESULT: 0x") << std::hex << hResult << std::dec << std::endl);
         g_PortHandle = INVALID_HANDLE_VALUE;
         return false;
     }

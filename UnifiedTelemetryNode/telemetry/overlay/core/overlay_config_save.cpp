@@ -1,4 +1,5 @@
 #include "overlay_menu.hpp"
+#include "../../sdk/core/console_log.hpp"
 #include "../../sdk/core/app_paths.hpp"
 #include "../../sdk/Utils/MacroEngine.h"
 #include "../../../nlohmann/json.hpp"
@@ -338,7 +339,7 @@ void OverlayMenu::SaveConfig(const char* path) {
         if (file.is_open()) {
             file << j.dump(4);
             file.close();
-            std::cout << "[+] Saved Config to: " << resolvedPath << std::endl;
+            UTN_DEV_LOG(std::cout << "[DEV] Saved Config to: " << resolvedPath << std::endl);
         }
     } catch (...) {}
 }

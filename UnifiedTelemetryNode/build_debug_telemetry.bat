@@ -3,7 +3,7 @@ setlocal EnableExtensions EnableDelayedExpansion
 cd /d "%~dp0"
 
 echo ========================================
-echo   UnifiedTelemetryNode - DEBUG BUILD
+echo   UnifiedTelemetryNode - DEV CONSOLE BUILD
 echo ========================================
 
 set "MSBUILD_PATH=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\amd64\MSBuild.exe"
@@ -36,7 +36,7 @@ if /i "%~1"=="rebuild" (
     set "BUILD_LABEL=Rebuilding"
 )
 
-echo [*] !BUILD_LABEL! GameOverlay (Debug)...
+echo [*] !BUILD_LABEL! GameOverlay (Debug / Dev Console)...
 "!MSBUILD_PATH!" "phao_final.sln" /t:!BUILD_TARGET! /p:Configuration=Debug /p:Platform=x64 /p:VcpkgApplocalDeps=false "/p:OutDir=!STAGING_DIR!\\" "/p:IntDir=!INT_DIR!\\" /verbosity:minimal
 
 if errorlevel 1 (
@@ -63,5 +63,5 @@ if not exist "!OUTPUT_DIR!\GameOverlay_Debug.exe" (
 )
 
 echo [OK] SUCCESS!
-echo [+] Single-file debug output: dist_debug\GameOverlay_Debug.exe
+echo [+] Single-file dev console output: dist_debug\GameOverlay_Debug.exe
 exit /b 0

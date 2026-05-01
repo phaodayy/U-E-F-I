@@ -61,6 +61,7 @@ typedef struct _telemetry_SYSTEM_PROCESS_INFORMATION {
 #include <protec/skCrypt.h>
 #include "sdk/core/app_shutdown.hpp"
 #include "sdk/core/app_paths.hpp"
+#include "sdk/core/console_log.hpp"
 #include "sdk/memory/hyper_process.hpp"
 #include "sdk/memory/vmouse_client.hpp"
 #include "sdk/core/process_single_instance.hpp"
@@ -272,7 +273,6 @@ void TypewriterPrint(const std::string& text, int delay_ms = 20, int color = 7) 
 }
 
 void EnsureLoaderConsole() {
-#ifdef _DEBUG
     if (GetConsoleWindow()) return;
     if (!AllocConsole()) return;
 
@@ -281,7 +281,6 @@ void EnsureLoaderConsole() {
     freopen_s(&stream, skCrypt("CONOUT$"), skCrypt("w"), stderr);
     freopen_s(&stream, skCrypt("CONIN$"), skCrypt("r"), stdin);
     SetConsoleTitleA(skCrypt("GZ Loader"));
-#endif
 }
 
 void DebugPause() {
@@ -290,12 +289,8 @@ void DebugPause() {
 #endif
 }
 
-// --- LINKER CONFIG: WINDOWS FOR RELEASE, CONSOLE FOR DEBUG ---
-#ifdef _DEBUG
+// --- LINKER CONFIG: BOTH USER AND DEV BUILDS USE A CONSOLE WINDOW ---
 #pragma comment(linker, "/SUBSYSTEM:CONSOLE")
-#else
-#pragma comment(linker, "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
-#endif
 
 void SelectLanguage() {
     g_is_vietnamese = true;
@@ -1489,7 +1484,7 @@ int main() {
   TypewriterPrint("\n[", 10, 8);
   TypewriterPrint("2", 10, 11);
   TypewriterPrint("] ", 10, 8);
-  TypewriterPrint(g_is_vietnamese ? skCrypt("Checking hyper connection...") : skCrypt("Checking hyper connection..."), 30, 7);
+  TypewriterPrint(g_is_vietnamese ? skCrypt("Checking connection...") : skCrypt("Checking connection..."), 30, 7);
   std::cout << "\n";
 
   query_process_data_packet test_packet = {};
@@ -1497,19 +1492,21 @@ int main() {
       ? 0
       : static_cast<NTSTATUS>(0xC0000001L);
   if (status >= 0) {
-      std::cout << (g_is_vietnamese ? skCrypt("[+] Hypervisor connection established!") : skCrypt("[+] Hypervisor connection established!")) << std::endl;
+      std::cout << (g_is_vietnamese ? skCrypt("[+] Connection established!") : skCrypt("[+] Connection established!")) << std::endl;
+      UTN_DEV_LOG(std::cout << skCrypt("[DEV] Hypervisor connection established.") << std::endl);
   }
   
   if (status < 0) {
     StartupLog("hyper-init-failed");
 #ifdef _DEBUG
     SetConsoleColor(12);
-    std::cout << (g_is_vietnamese ? skCrypt("[-] Khong thể giao tiep voi hypervisor!\n") : skCrypt("[-] Failed to communicate with hypervisor!\n"));
+    std::cout << (g_is_vietnamese ? skCrypt("[-] Khong the ket noi dich vu.\n") : skCrypt("[-] Failed to connect to service.\n"));
+    UTN_DEV_LOG(std::cout << skCrypt("[-][DEV] Failed to communicate with hypervisor.\n"));
     SetConsoleColor(7);
 #else
     MessageBoxA(NULL, 
-        skCrypt("CRITICAL ERROR: Hypervisor connection failed!\nLoi nghiem trong: Khong the ket noi Hypervisor!\n\nPlease run 'GZ-Loader' as Administrator first, then reopen this tool.\nVui long chay 'GZ-Loader' bang quyen Admin truoc, sau do mo lai Tool nay."), 
-        skCrypt("GZ-telemetry - HYPERVISOR ERROR"), MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_TOPMOST);
+        skCrypt("Connection failed.\nKhong the ket noi dich vu.\n\nPlease run 'GZ-Loader' as Administrator first, then reopen this tool.\nVui long chay 'GZ-Loader' bang quyen Admin truoc, sau do mo lai Tool nay."), 
+        skCrypt("GZ-telemetry - CONNECTION ERROR"), MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_TOPMOST);
 #endif
     DebugPause();
     SelfDestruct();
@@ -1530,7 +1527,7 @@ int main() {
     TypewriterPrint("\n[", 10, 8);
     TypewriterPrint("3", 10, 11);
     TypewriterPrint("] ", 10, 8);
-    TypewriterPrint(g_is_vietnamese ? skCrypt("Waiting for telemetry (TslGame.exe)...") : skCrypt("Waiting for telemetry (TslGame.exe)..."), 30, 14);
+    TypewriterPrint(g_is_vietnamese ? skCrypt("Waiting for game...") : skCrypt("Waiting for game..."), 30, 14);
     StartupLog("waiting-for-tslgame");
 
     DWORD pid = 0;
@@ -1550,7 +1547,7 @@ int main() {
         if (wait_pid_count % 60 == 0) {
           StartupLog("still-waiting-for-tslgame");
         }
-        std::cout << (g_is_vietnamese ? skCrypt("\n[DEBUG][PID] try=") : skCrypt("\n[DEBUG][PID] try=")) << wait_pid_count << (g_is_vietnamese ? skCrypt(" (Ghost-walking cho TslGame...)") : skCrypt(" (Ghost-walking for TslGame...)")) << std::endl;
+        UTN_DEV_LOG(std::cout << skCrypt("\n[DEV][PID] try=") << wait_pid_count << skCrypt(" (Ghost-walking for TslGame...)") << std::endl);
       }
       Sleep(500 + (rand() % 200));
       continue;
@@ -1563,9 +1560,9 @@ int main() {
       pending_pid = candidate_pid;
       first_candidate_tick = GetTickCount64();
       StartupLog("tslgame-candidate-detected");
-      std::cout << skCrypt("\n[DEBUG][PID] candidate_detected=") << pending_pid
+      UTN_DEV_LOG(std::cout << skCrypt("\n[DEV][PID] candidate_detected=") << pending_pid
                 << skCrypt(" initial_settling_ms=") << kPidSettleDelayMs
-                << std::endl;
+                << std::endl);
     }
 
     const ULONGLONG elapsed = GetTickCount64() - first_candidate_tick;
@@ -1574,7 +1571,7 @@ int main() {
     // or if the full timer expired, we are good to go.
     if (candidate_cr3 != 0 && elapsed > 1000) {
         StartupLog("tslgame-cr3-verified");
-        std::cout << skCrypt("[+] CR3 verified! Active at: ") << std::hex << candidate_cr3 << std::dec << std::endl;
+        UTN_DEV_LOG(std::cout << skCrypt("[DEV] CR3 verified: ") << std::hex << candidate_cr3 << std::dec << std::endl);
         pid = candidate_pid;
         break;
     }
@@ -1596,7 +1593,8 @@ int main() {
   if (!telemetryMemory::AttachToGameStealthily(pid)) {
       StartupLog("attach-game-failed");
       SetConsoleColor(12);
-      std::cout << skCrypt("\n[-] Critical Communication Error (Stealth Auth Fail)!") << std::endl;
+      std::cout << (g_is_vietnamese ? skCrypt("\n[-] Khong the ket noi game.") : skCrypt("\n[-] Failed to connect to game.")) << std::endl;
+      UTN_DEV_LOG(std::cout << skCrypt("[-][DEV] Stealth auth failed.") << std::endl);
       DebugPause();
       SelfDestruct();
       return 1;
@@ -1607,7 +1605,7 @@ int main() {
   TypewriterPrint("\n[", 10, 8);
   TypewriterPrint("4", 10, 11);
   TypewriterPrint("] ", 10, 8);
-  TypewriterPrint(g_is_vietnamese ? skCrypt("Connecting to game engine via hyper...") : skCrypt("Connecting to game engine via hyper..."), 30, 7);
+  TypewriterPrint(g_is_vietnamese ? skCrypt("Connecting to game...") : skCrypt("Connecting to game..."), 30, 7);
   std::cout << "\n";
   SetConsoleColor(14);
   int sync_count = 0;
@@ -1621,10 +1619,12 @@ int main() {
       
       // If we are stuck in decrypt-init-failed, show it clearly
       if (initStatus == skCrypt("decrypt-init-failed")) {
-          std::cout << (g_is_vietnamese ? skCrypt("\r[*] Game dang khoi tao vung nho bao mat... [") : skCrypt("\r[*] Game is initializing secure memory... [")) << sync_count << skCrypt("]   ") << std::flush;
+          std::cout << (g_is_vietnamese ? skCrypt("\r[*] Dang cho game san sang... [") : skCrypt("\r[*] Waiting for game... [")) << sync_count << skCrypt("]   ") << std::flush;
+          UTN_DEV_LOG(std::cout << skCrypt(" status=decrypt-init-failed") << std::flush);
           Sleep(1500); // Wait a bit longer for game to settle
       } else {
-          std::cout << (g_is_vietnamese ? skCrypt("\r[*] Dang cho game san sang qua hyper [") : skCrypt("\r[*] Waiting for hyper-backed game state [")) << sync_count << skCrypt("]...   ") << std::flush;
+          std::cout << (g_is_vietnamese ? skCrypt("\r[*] Dang dong bo du lieu game [") : skCrypt("\r[*] Synchronizing game data [")) << sync_count << skCrypt("]...   ") << std::flush;
+          UTN_DEV_LOG(std::cout << skCrypt(" status=") << initStatus << std::flush);
           Sleep(800);
       }
 
@@ -1650,12 +1650,12 @@ int main() {
           GetTickCount64() - engine_connect_started > kEngineInitHardFailMs) {
           StartupLog("engine-init-timeout");
           SetConsoleColor(12);
-          std::cout << skCrypt("\n[ERROR][ENGINE] Init stuck at status=")
+          UTN_DEV_LOG(std::cout << skCrypt("\n[DEV][ENGINE] Init stuck at status=")
                     << initStatus
-                    << skCrypt(" for more than 90s. This usually means this game process/session is stale or its engine decrypt stub is not readable yet.") << std::endl;
+                    << skCrypt(" for more than 90s.") << std::endl);
           std::cout << (g_is_vietnamese
-              ? skCrypt("[ERROR][ENGINE] Hay thoat han game roi mo lai game de lay PID/CR3 moi, sau do chay lai tool.\n")
-              : skCrypt("[ERROR][ENGINE] Fully restart the game to get a fresh PID/CR3, then run the tool again.\n"));
+              ? skCrypt("\n[-] Game chua san sang. Hay thoat han game roi mo lai game, sau do chay lai tool.\n")
+              : skCrypt("\n[-] Game is not ready. Fully restart the game, then run the tool again.\n"));
           SetConsoleColor(7);
           DebugPause();
           return 1;
@@ -1677,7 +1677,7 @@ int main() {
       return 0;
   }
 
-  std::cout << (g_is_vietnamese ? skCrypt("\n[+] Ket noi hyper thanh cong, hay vao game de trai nghiem!") : skCrypt("\n[+] Hyper connection ready!")) << std::endl;
+  std::cout << (g_is_vietnamese ? skCrypt("\n[+] Ket noi thanh cong, hay vao game de trai nghiem!") : skCrypt("\n[+] Connection ready!")) << std::endl;
   SetConsoleColor(7);
   
     MacroEngine::Initialize();
@@ -1689,7 +1689,8 @@ int main() {
     bool menu_initialized = false;
     int init_retry_count = 0;
     
-    std::cout << skCrypt("[*] Synchronizing Visualization Bridge (waiting for Discord Overlay to be fully ready)...\n");
+    std::cout << (g_is_vietnamese ? skCrypt("[*] Dang chuan bi hien thi...\n") : skCrypt("[*] Preparing display...\n"));
+    UTN_DEV_LOG(std::cout << skCrypt("[DEV] Synchronizing visualization bridge.") << std::endl);
 
     while (!AppShutdown::IsRequested() && !menu_initialized && init_retry_count < 60) {
         visualization_bridge = ResolvePassiveVisualizationHost();
@@ -1699,7 +1700,7 @@ int main() {
                 menu_initialized = true;
                 break;
             } else {
-                std::cout << skCrypt("[-] Menu initialization failed (DirectX might not be ready on target HWND). Retrying...\n");
+                UTN_DEV_LOG(std::cout << skCrypt("[-][DEV] Menu initialization failed; retrying.") << std::endl);
             }
         }
 
@@ -1716,13 +1717,15 @@ int main() {
     if (!menu_initialized) {
         StartupLog("visualization-bridge-failed");
         SetConsoleColor(12);
-        std::cout << skCrypt("[-] CRITICAL: Visualization bridge could not be synchronized after 60 seconds.\n");
-        std::cout << skCrypt("[-] Please ensure Discord Overlay is enabled for TslGame.exe and try again.\n");
+        std::cout << (g_is_vietnamese
+            ? skCrypt("[-] Khong the khoi tao hien thi. Vui long thu lai.\n")
+            : skCrypt("[-] Display could not be initialized. Please try again.\n"));
+        UTN_DEV_LOG(std::cout << skCrypt("[-][DEV] Visualization bridge could not be synchronized after 60 seconds.") << std::endl);
         SetConsoleColor(7);
 #ifndef _DEBUG
         MessageBoxA(NULL,
-            skCrypt("Visualization bridge host could not be resolved or initialized.\nEnsure Discord is open and Overlay is enabled for ."),
-            skCrypt("GZ-telemetry - VISUALIZATION ERROR"), MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_TOPMOST);
+            skCrypt("Display could not be initialized.\nKhong the khoi tao hien thi."),
+            skCrypt("GZ-telemetry - DISPLAY ERROR"), MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_TOPMOST);
 #endif
         DebugPause();
         SelfDestruct();

@@ -1,6 +1,7 @@
 #include "../core/overlay_menu.hpp"
 #include "../translation/translation.hpp"
 #include "../../sdk/Utils/SendInputMacro.h"
+#include "../../sdk/core/console_log.hpp"
 #include <iostream>
 #include <protec/skCrypt.h>
 
@@ -39,11 +40,11 @@ void OverlayMenu::RenderTabMacro(ImVec2 windowSize) {
     if (ImGui::Button(skCrypt("Test SendInput Y"), ImVec2(-1, 35))) {
         const bool ok1 = SendInputMacro::Move(0, 35);
         const bool ok2 = SendInputMacro::Move(0, -35);
-        std::cout << "[MACRO][TEST] SendInput Y test ok="
+        UTN_DEV_LOG(std::cout << "[DEV][MACRO][TEST] SendInput Y test ok="
             << ((ok1 && ok2) ? 1 : 0)
             << " err=" << SendInputMacro::LastErrorCode()
             << " convention=dy+down_dy-up"
-            << std::endl;
+            << std::endl);
     }
     ImGui::TextDisabled("%s", Lang.MacroStatusPreview);
     DrawDisplayOnlyOption(Lang.ShowcaseInputProfile);

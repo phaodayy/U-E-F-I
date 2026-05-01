@@ -3,6 +3,7 @@
 #include <winternl.h>
 #include <vector>
 #include <iostream>
+#include "../core/console_log.hpp"
 
 /**
  * @brief Tối giản hóa PE Loader để nạp DLL trực tiếp từ RAM
@@ -34,7 +35,7 @@ namespace MemoryDllLoader {
         if (ntHeader->Signature != IMAGE_NT_SIGNATURE) return nullptr;
 
         if (ntHeader->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR64_MAGIC) {
-            std::cout << "[!] Chỉ hỗ trợ nạp DLL x64 tàng hình." << std::endl;
+            UTN_DEV_LOG(std::cout << "[DEV] Unsupported DLL architecture." << std::endl);
             return nullptr;
         }
 
