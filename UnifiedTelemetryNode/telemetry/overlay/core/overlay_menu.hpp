@@ -146,6 +146,7 @@ public:
   std::unordered_map<std::string, bool> flick_category_follow_auto_shot;
   std::unordered_map<std::string, int> flick_category_behavior_mode;
   std::unordered_map<std::string, int> flick_category_target_part;
+  std::unordered_map<std::string, int> flick_category_key;
   std::unordered_map<std::string, float> flick_category_move_speed;
   std::unordered_map<std::string, float> flick_category_fov;
   std::unordered_map<std::string, float> flick_category_max_dist;

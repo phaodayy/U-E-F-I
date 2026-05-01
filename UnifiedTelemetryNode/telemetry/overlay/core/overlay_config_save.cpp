@@ -57,6 +57,7 @@ void OverlayMenu::SaveConfig(const char* path) {
         FlickWeaponCatalog::EnsureCategoryBoolDefaults(flick_category_follow_auto_shot, flick_follow_auto_shot);
         FlickWeaponCatalog::EnsureCategoryIntDefaults(flick_category_behavior_mode, flick_behavior_mode);
         FlickWeaponCatalog::EnsureCategoryIntDefaults(flick_category_target_part, flick_target_part);
+        FlickWeaponCatalog::EnsureCategoryIntDefaults(flick_category_key, flick_key);
         FlickWeaponCatalog::EnsureCategoryFloatDefaults(flick_category_max_dist, flick_max_dist);
         FlickWeaponCatalog::EnsureCategoryMoveSpeedDefaults(flick_category_move_speed);
         FlickWeaponCatalog::EnsureCategoryFovDefaults(flick_category_fov, flick_fov);
@@ -66,6 +67,7 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["flick_category_follow_auto_shot"] = flick_category_follow_auto_shot;
         j["flick_category_behavior_mode"] = flick_category_behavior_mode;
         j["flick_category_target_part"] = flick_category_target_part;
+        j["flick_category_key"] = flick_category_key;
         j["flick_category_max_dist"] = flick_category_max_dist;
         j["flick_category_move_speed"] = flick_category_move_speed;
         j["flick_category_fov"] = flick_category_fov;

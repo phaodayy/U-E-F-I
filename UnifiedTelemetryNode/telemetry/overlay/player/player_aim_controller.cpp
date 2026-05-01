@@ -296,7 +296,7 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
     float bestDist = 1000000000.0f;
 
     const bool flickWeaponAllowed = IsFlickWeaponEnabled(*this, MacroEngine::current_weapon_name);
-    const bool canFlick = is_authenticated && !showmenu && flick_enabled && flickWeaponAllowed;
+    const bool canFlick = is_authenticated && !showmenu && flickWeaponAllowed;
     const bool activeVisibleOnly = FlickWeaponCatalog::BoolForWeapon(
         flick_category_visible_only, MacroEngine::current_weapon_name, flick_visible_only);
     const bool activeShotHold = FlickWeaponCatalog::BoolForWeapon(
@@ -314,9 +314,9 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
         flick_category_move_speed, MacroEngine::current_weapon_name);
     const float activeFlickFov = FlickWeaponCatalog::FovForWeapon(
         flick_category_fov, MacroEngine::current_weapon_name, flick_fov);
-    const int activeKey = flick_key;
-    const bool flickKeyDown = (activeKey != 0 && telemetryMemory::IsKeyDown(activeKey)) ||
-        (flick_key2 != 0 && telemetryMemory::IsKeyDown(flick_key2));
+    const int activeKey = FlickWeaponCatalog::IntForWeapon(
+        flick_category_key, MacroEngine::current_weapon_name, flick_key, 0, 0xFE);
+    const bool flickKeyDown = activeKey != 0 && telemetryMemory::IsKeyDown(activeKey);
 
     if (canFlick) {
         draw->AddCircle(ImVec2(ScreenCenterX, ScreenCenterY), activeFlickFov * 8.0f, ImColor(255, 255, 255, 60), 64, 1.0f);

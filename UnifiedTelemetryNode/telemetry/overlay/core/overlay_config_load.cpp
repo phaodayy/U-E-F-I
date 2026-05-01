@@ -149,6 +149,12 @@ void OverlayMenu::LoadConfig(const char* path) {
                     if (it.value().is_number_integer()) flick_category_target_part[it.key()] = std::clamp(it.value().get<int>(), 0, 15);
                 }
             }
+            if (j.contains("flick_category_key") && j["flick_category_key"].is_object()) {
+                flick_category_key.clear();
+                for (auto it = j["flick_category_key"].begin(); it != j["flick_category_key"].end(); ++it) {
+                    if (it.value().is_number_integer()) flick_category_key[it.key()] = std::clamp(it.value().get<int>(), 0, 0xFE);
+                }
+            }
             if (j.contains("flick_category_max_dist") && j["flick_category_max_dist"].is_object()) {
                 flick_category_max_dist.clear();
                 for (auto it = j["flick_category_max_dist"].begin(); it != j["flick_category_max_dist"].end(); ++it) {
@@ -238,6 +244,7 @@ void OverlayMenu::LoadConfig(const char* path) {
             FlickWeaponCatalog::EnsureCategoryBoolDefaults(flick_category_follow_auto_shot, flick_follow_auto_shot);
             FlickWeaponCatalog::EnsureCategoryIntDefaults(flick_category_behavior_mode, flick_behavior_mode);
             FlickWeaponCatalog::EnsureCategoryIntDefaults(flick_category_target_part, flick_target_part);
+            FlickWeaponCatalog::EnsureCategoryIntDefaults(flick_category_key, flick_key);
             FlickWeaponCatalog::EnsureCategoryFloatDefaults(flick_category_max_dist, flick_max_dist);
             FlickWeaponCatalog::EnsureCategoryMoveSpeedDefaults(flick_category_move_speed);
             FlickWeaponCatalog::EnsureCategoryFovDefaults(flick_category_fov, flick_fov);

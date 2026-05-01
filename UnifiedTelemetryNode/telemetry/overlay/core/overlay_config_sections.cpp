@@ -41,6 +41,7 @@ void ClampPlayer(OverlayMenu& menu) {
     FlickWeaponCatalog::EnsureCategoryBoolDefaults(menu.flick_category_follow_auto_shot, menu.flick_follow_auto_shot);
     FlickWeaponCatalog::EnsureCategoryIntDefaults(menu.flick_category_behavior_mode, menu.flick_behavior_mode);
     FlickWeaponCatalog::EnsureCategoryIntDefaults(menu.flick_category_target_part, menu.flick_target_part);
+    FlickWeaponCatalog::EnsureCategoryIntDefaults(menu.flick_category_key, menu.flick_key);
     FlickWeaponCatalog::EnsureCategoryFloatDefaults(menu.flick_category_max_dist, menu.flick_max_dist);
     FlickWeaponCatalog::EnsureCategoryMoveSpeedDefaults(menu.flick_category_move_speed);
     FlickWeaponCatalog::EnsureCategoryFovDefaults(menu.flick_category_fov, menu.flick_fov);
@@ -60,6 +61,9 @@ void ClampPlayer(OverlayMenu& menu) {
     }
     for (auto& entry : menu.flick_category_target_part) {
         entry.second = std::clamp(entry.second, 0, 15);
+    }
+    for (auto& entry : menu.flick_category_key) {
+        entry.second = std::clamp(entry.second, 0, 0xFE);
     }
 }
 
