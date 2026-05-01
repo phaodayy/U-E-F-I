@@ -22,6 +22,7 @@
 #include <sstream>
 #include <ctime>
 #include <cstdio>
+#include <algorithm>
 #include "../nlohmann/json.hpp"
 
 #pragma comment(lib, "winhttp.lib")
@@ -1299,6 +1300,162 @@ struct ProcessPickDebugInfo {
   uint64_t selected_private_usage = 0;
 };
 
+static ProcessPickDebugInfo g_pid_debug = {};
+
+struct ProcessUsageInfo {
+  DWORD pid = 0;
+  query_process_data_packet data = {};
+  uint64_t cycles_first = 0;
+  uint64_t cycles_second = 0;
+  uint64_t cycle_delta = 0;
+  uint64_t working_set = 0;
+  uint64_t private_usage = 0;
+  bool opened = false;
+  bool memory_ok = false;
+  bool cycles_ok = false;
+};
+
+static bool QueryProcessUsage(DWORD pid, ProcessUsageInfo* info, bool first_sample) {
+    if (!info || pid == 0) return false;
+
+    DWORD access = PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ;
+    HANDLE process = OpenProcess(access, FALSE, pid);
+    if (!process) {
+        process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    }
+    if (!process) {
+        g_pid_debug.open_fail++;
+        return false;
+    }
+
+    info->opened = true;
+
+    PROCESS_MEMORY_COUNTERS_EX counters = {};
+    counters.cb = sizeof(counters);
+    if (GetProcessMemoryInfo(process, reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters), sizeof(counters))) {
+        info->working_set = static_cast<uint64_t>(counters.WorkingSetSize);
+        info->private_usage = static_cast<uint64_t>(counters.PrivateUsage);
+        info->memory_ok = true;
+    }
+
+    ULONG64 cycles = 0;
+    if (QueryProcessCycleTime(process, &cycles)) {
+        if (first_sample) {
+            info->cycles_first = cycles;
+        } else {
+            info->cycles_second = cycles;
+            info->cycle_delta = (cycles >= info->cycles_first) ? (cycles - info->cycles_first) : 0;
+        }
+        info->cycles_ok = true;
+    }
+
+    CloseHandle(process);
+    return info->memory_ok || info->cycles_ok;
+}
+
+static bool IsBetterGameProcess(const ProcessUsageInfo& candidate, const ProcessUsageInfo& best) {
+    constexpr uint64_t kMemoryTieBytes = 128ull * 1024ull * 1024ull;
+    constexpr uint64_t kCycleTieDelta = 1000000ull;
+
+    if (best.pid == 0) return true;
+
+    const uint64_t candidate_memory = (std::max)(candidate.private_usage, candidate.working_set);
+    const uint64_t best_memory = (std::max)(best.private_usage, best.working_set);
+
+    if (candidate_memory > best_memory + kMemoryTieBytes) return true;
+    if (best_memory > candidate_memory + kMemoryTieBytes) return false;
+
+    if (candidate.cycle_delta > best.cycle_delta + kCycleTieDelta) return true;
+    if (best.cycle_delta > candidate.cycle_delta + kCycleTieDelta) return false;
+
+    if (candidate.private_usage != best.private_usage) {
+        return candidate.private_usage > best.private_usage;
+    }
+
+    return candidate.working_set > best.working_set;
+}
+
+static bool SelectBestTslGameProcess(ProcessUsageInfo* selected) {
+    if (!selected) return false;
+    g_pid_debug = {};
+
+    std::vector<uint32_t> pids = telemetryHyperProcess::FindAllPidsByGhostWalk(skCrypt("TslGame"));
+    if (pids.empty()) return false;
+
+    std::vector<ProcessUsageInfo> candidates;
+    candidates.reserve(pids.size());
+
+    for (uint32_t raw_pid : pids) {
+        DWORD pid = static_cast<DWORD>(raw_pid);
+        if (pid == 0) continue;
+
+        bool duplicate = false;
+        for (const auto& existing : candidates) {
+            if (existing.pid == pid) {
+                duplicate = true;
+                break;
+            }
+        }
+        if (duplicate) continue;
+
+        g_pid_debug.matched_name++;
+
+        ProcessUsageInfo info = {};
+        info.pid = pid;
+        if (!telemetryHyperProcess::QueryProcessData(pid, &info.data) ||
+            info.data.process_id == 0 ||
+            info.data.cr3 == 0 ||
+            info.data.base_address == nullptr ||
+            info.data.peb == nullptr) {
+            g_pid_debug.query_fail++;
+            continue;
+        }
+
+        g_pid_debug.query_ok++;
+        QueryProcessUsage(pid, &info, true);
+        candidates.push_back(info);
+    }
+
+    if (candidates.empty()) return false;
+
+    Sleep(350);
+
+    ProcessUsageInfo best = {};
+    for (auto& candidate : candidates) {
+        QueryProcessUsage(candidate.pid, &candidate, false);
+        UTN_DEV_LOG(std::cout << skCrypt("[DEV][PID] candidate=") << candidate.pid
+            << skCrypt(" private_mb=") << (candidate.private_usage / (1024 * 1024))
+            << skCrypt(" ws_mb=") << (candidate.working_set / (1024 * 1024))
+            << skCrypt(" cycles_delta=") << candidate.cycle_delta
+            << skCrypt(" cr3=0x") << std::hex << candidate.data.cr3 << std::dec
+            << std::endl);
+
+        if (IsBetterGameProcess(candidate, best)) {
+            best = candidate;
+        }
+    }
+
+    if (best.pid == 0) return false;
+
+    g_pid_debug.selected_pid = best.pid;
+    g_pid_debug.selected_base = reinterpret_cast<uint64_t>(best.data.base_address);
+    g_pid_debug.selected_cr3 = best.data.cr3;
+    g_pid_debug.selected_cycles = best.cycle_delta;
+    g_pid_debug.selected_working_set = best.working_set;
+    g_pid_debug.selected_private_usage = best.private_usage;
+
+    UTN_DEV_LOG(std::cout << skCrypt("[DEV][PID] selected=") << best.pid
+        << skCrypt(" private_mb=") << (best.private_usage / (1024 * 1024))
+        << skCrypt(" ws_mb=") << (best.working_set / (1024 * 1024))
+        << skCrypt(" cycles_delta=") << best.cycle_delta
+        << skCrypt(" base=0x") << std::hex << reinterpret_cast<uint64_t>(best.data.base_address)
+        << skCrypt(" cr3=0x") << best.data.cr3 << std::dec
+        << std::endl);
+
+    *selected = best;
+    return true;
+}
+
 void CleanUpEFITraces() {
   /*
   std::cout << skCrypt("[BOOT-SAFETY] EFI cleanup is disabled in telemetry to avoid boot/BIOS side effects.") << std::endl;
@@ -1365,8 +1522,6 @@ void CleanUpEFITraces() {
   system((skCrypt("mountvol ") + drive + skCrypt(" /D >nul 2>&1")).c_str());
 #endif
 }
-
-static ProcessPickDebugInfo g_pid_debug = {};
 
 static DWORD WINAPI QuickExitHotkeyThread(LPVOID) {
     bool was_down = false;
@@ -1532,56 +1687,28 @@ int main() {
 
     DWORD pid = 0;
   int wait_pid_count = 0;
-  constexpr ULONGLONG kPidSettleDelayMs = 3000;
-  ULONGLONG first_candidate_tick = 0;
-  DWORD pending_pid = 0;
-  static wchar_t game_name[] = { 'T','s','l','G','a','m','e','.','e','x','e',0 };
   while (!pid && !AppShutdown::IsRequested()) {
     wait_pid_count++;
-    query_process_data_packet candidate_data = {};
-    if (!telemetryHyperProcess::QueryProcessData(0, &candidate_data)) {
-      first_candidate_tick = 0;
-      pending_pid = 0;
+    ProcessUsageInfo selected_process = {};
+    if (!SelectBestTslGameProcess(&selected_process)) {
       std::cout << skCrypt(".");
       if (wait_pid_count % 5 == 0) {
         if (wait_pid_count % 60 == 0) {
           StartupLog("still-waiting-for-tslgame");
         }
-        UTN_DEV_LOG(std::cout << skCrypt("\n[DEV][PID] try=") << wait_pid_count << skCrypt(" (Ghost-walking for TslGame...)") << std::endl);
+        UTN_DEV_LOG(std::cout << skCrypt("\n[DEV][PID] try=") << wait_pid_count
+            << skCrypt(" matched=") << g_pid_debug.matched_name
+            << skCrypt(" query_ok=") << g_pid_debug.query_ok
+            << skCrypt(" query_fail=") << g_pid_debug.query_fail
+            << skCrypt(" open_fail=") << g_pid_debug.open_fail
+            << std::endl);
       }
       Sleep(500 + (rand() % 200));
       continue;
     }
 
-    DWORD candidate_pid = (DWORD)candidate_data.process_id;
-    ULONGLONG candidate_cr3 = candidate_data.cr3;
-
-    if (pending_pid != candidate_pid) {
-      pending_pid = candidate_pid;
-      first_candidate_tick = GetTickCount64();
-      StartupLog("tslgame-candidate-detected");
-      UTN_DEV_LOG(std::cout << skCrypt("\n[DEV][PID] candidate_detected=") << pending_pid
-                << skCrypt(" initial_settling_ms=") << kPidSettleDelayMs
-                << std::endl);
-    }
-
-    const ULONGLONG elapsed = GetTickCount64() - first_candidate_tick;
-    
-    // CR3 Check: If the process has a valid page directory and we've met the minimum threshold (e.g. 500ms), 
-    // or if the full timer expired, we are good to go.
-    if (candidate_cr3 != 0 && elapsed > 1000) {
-        StartupLog("tslgame-cr3-verified");
-        UTN_DEV_LOG(std::cout << skCrypt("[DEV] CR3 verified: ") << std::hex << candidate_cr3 << std::dec << std::endl);
-        pid = candidate_pid;
-        break;
-    }
-
-    if (elapsed < kPidSettleDelayMs) {
-      Sleep(500);
-      continue;
-    }
-
-    pid = candidate_pid;
+    StartupLog("tslgame-candidate-detected");
+    pid = selected_process.pid;
   }
 
   if (AppShutdown::IsRequested()) {
