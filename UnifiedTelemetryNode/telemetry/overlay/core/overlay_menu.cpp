@@ -69,7 +69,7 @@ bool OverlayMenu::CreateDeviceD3D(HWND hWnd) {
     DXGI_SWAP_CHAIN_DESC sd;
     ZeroMemory(&sd, sizeof(sd));
     sd.BufferCount = 2;
-    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    sd.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     sd.OutputWindow = hWnd;
     sd.SampleDesc.Count = 1;
@@ -132,6 +132,28 @@ static bool AcquireBridgeD3D(const VisualizationBridgeHost& bridge) {
     g_clearBeforeRender = bridge.clear_before_render;
     g_presentAfterRender = bridge.present_after_render;
     return g_pd3dDevice && g_pd3dDeviceContext;
+}
+
+static HWND FindTrackedGameWindow() {
+    HWND hwnd = FindWindowA(nullptr, skCrypt("PUBG: BATTLEGROUNDS "));
+    if (!hwnd) hwnd = FindWindowA(skCrypt("UnrealWindow"), nullptr);
+    return hwnd;
+}
+
+static bool GetTrackedGameClientRect(HWND game, RECT& rect) {
+    if (!game || !IsWindow(game)) return false;
+
+    RECT client = {};
+    if (!GetClientRect(game, &client)) return false;
+
+    POINT top_left = { 0, 0 };
+    if (!ClientToScreen(game, &top_left)) return false;
+
+    rect.left = top_left.x;
+    rect.top = top_left.y;
+    rect.right = top_left.x + (client.right - client.left);
+    rect.bottom = top_left.y + (client.bottom - client.top);
+    return rect.right > rect.left && rect.bottom > rect.top;
 }
 
 bool OverlayMenu::Initialize(const VisualizationBridgeHost& bridge) {
@@ -230,6 +252,54 @@ void OverlayMenu::RenderFrame() {
     }
     try {
         if (!target_hwnd) return;
+
+        static DWORD last_window_track_tick = 0;
+        const DWORD now_track = GetTickCount();
+        if (now_track - last_window_track_tick >= 250) {
+            last_window_track_tick = now_track;
+
+            HWND game_hwnd = FindTrackedGameWindow();
+            if (game_hwnd && IsWindow(game_hwnd)) {
+                if (IsIconic(game_hwnd) && !showmenu) {
+                    ShowWindow(target_hwnd, SW_HIDE);
+                } else {
+                    RECT target_rect = {};
+                    if (GetTrackedGameClientRect(game_hwnd, target_rect)) {
+                        RECT current_rect = {};
+                        GetWindowRect(target_hwnd, &current_rect);
+
+                        const int new_w = target_rect.right - target_rect.left;
+                        const int new_h = target_rect.bottom - target_rect.top;
+                        const int cur_w = current_rect.right - current_rect.left;
+                        const int cur_h = current_rect.bottom - current_rect.top;
+
+                        if (new_w > 0 && new_h > 0 &&
+                            (current_rect.left != target_rect.left ||
+                             current_rect.top != target_rect.top ||
+                             cur_w != new_w ||
+                             cur_h != new_h)) {
+                            if (g_pSwapChain && (cur_w != new_w || cur_h != new_h)) {
+                                CleanupRenderTarget();
+                                if (SUCCEEDED(g_pSwapChain->ResizeBuffers(0, new_w, new_h, DXGI_FORMAT_UNKNOWN, 0))) {
+                                    CreateRenderTarget();
+                                }
+                            }
+
+                            SetWindowPos(target_hwnd, HWND_TOPMOST,
+                                target_rect.left, target_rect.top, new_w, new_h,
+                                SWP_NOACTIVATE | SWP_SHOWWINDOW);
+                        } else {
+                            SetWindowPos(target_hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+                        }
+                    }
+
+                    HWND foreground = GetForegroundWindow();
+                    const bool should_show = showmenu || foreground == game_hwnd || foreground == target_hwnd;
+                    ShowWindow(target_hwnd, should_show ? SW_SHOWNOACTIVATE : SW_HIDE);
+                }
+            }
+        }
 
         // --- TOGGLE MENU (F5) ---
         static bool f5_down = false;

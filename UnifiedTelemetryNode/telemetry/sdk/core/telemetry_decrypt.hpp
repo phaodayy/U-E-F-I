@@ -120,7 +120,8 @@ namespace telemetryDecrypt {
             }
             }
         }
-        return r;
+        // Cleanup: Mask to 48-bit canonical address (removes 0x1000... prefixes)
+        return r & 0x0000FFFFFFFFFFFFULL;
     }
 
     inline void Cleanup() {

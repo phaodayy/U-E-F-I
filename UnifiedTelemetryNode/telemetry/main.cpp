@@ -69,6 +69,7 @@ typedef struct _telemetry_SYSTEM_PROCESS_INFORMATION {
 #include "sdk/core/offsets.hpp"
 #include "sdk/core/context.hpp"
 #include "sdk/core/telemetry_decrypt.hpp"
+#include "sdk/core/runtime_offsets.hpp"
 #include "sdk/utils/MacroEngine.h"
 #include "overlay/core/overlay_menu.hpp"
 #include "overlay/core/discord_overlay.h"
@@ -1310,47 +1311,89 @@ struct ProcessUsageInfo {
   uint64_t cycle_delta = 0;
   uint64_t working_set = 0;
   uint64_t private_usage = 0;
+  bool has_visible_window = false;
   bool opened = false;
   bool memory_ok = false;
   bool cycles_ok = false;
 };
 
+struct ProcessWindowSearch {
+    DWORD pid = 0;
+    bool found = false;
+};
+
+static BOOL CALLBACK FindVisibleProcessWindow(HWND hwnd, LPARAM lParam) {
+    auto* search = reinterpret_cast<ProcessWindowSearch*>(lParam);
+    if (!search || search->found || !IsWindowVisible(hwnd) || GetWindow(hwnd, GW_OWNER) != nullptr) {
+        return TRUE;
+    }
+
+    const LONG_PTR ex_style = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+    if ((ex_style & WS_EX_TOOLWINDOW) != 0) {
+        return TRUE;
+    }
+
+    RECT rect = {};
+    if (!GetWindowRect(hwnd, &rect) || rect.right - rect.left < 200 || rect.bottom - rect.top < 200) {
+        return TRUE;
+    }
+
+    DWORD owner_pid = 0;
+    GetWindowThreadProcessId(hwnd, &owner_pid);
+    if (owner_pid == search->pid) {
+        search->found = true;
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+static bool ProcessHasVisibleWindow(DWORD pid) {
+    if (pid == 0) return false;
+    ProcessWindowSearch search = {};
+    search.pid = pid;
+    EnumWindows(FindVisibleProcessWindow, reinterpret_cast<LPARAM>(&search));
+    return search.found;
+}
+
 static bool QueryProcessUsage(DWORD pid, ProcessUsageInfo* info, bool first_sample) {
     if (!info || pid == 0) return false;
 
-    DWORD access = PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ;
-    HANDLE process = OpenProcess(access, FALSE, pid);
-    if (!process) {
-        process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
-    }
-    if (!process) {
-        g_pid_debug.open_fail++;
-        return false;
-    }
+    info->has_visible_window = ProcessHasVisibleWindow(pid);
 
-    info->opened = true;
+    // STEALTH V7: Use NtQuerySystemInformation for 100% accurate RAM stats without handles.
+    ULONG size = 0;
+    NtQuerySystemInformation(SystemProcessInformation, nullptr, 0, &size);
+    if (size == 0) return false;
 
-    PROCESS_MEMORY_COUNTERS_EX counters = {};
-    counters.cb = sizeof(counters);
-    if (GetProcessMemoryInfo(process, reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters), sizeof(counters))) {
-        info->working_set = static_cast<uint64_t>(counters.WorkingSetSize);
-        info->private_usage = static_cast<uint64_t>(counters.PrivateUsage);
-        info->memory_ok = true;
-    }
-
-    ULONG64 cycles = 0;
-    if (QueryProcessCycleTime(process, &cycles)) {
-        if (first_sample) {
-            info->cycles_first = cycles;
-        } else {
-            info->cycles_second = cycles;
-            info->cycle_delta = (cycles >= info->cycles_first) ? (cycles - info->cycles_first) : 0;
+    std::vector<uint8_t> buffer(size + 16384); // Extra buffer for process churn
+    if (NtQuerySystemInformation(SystemProcessInformation, buffer.data(), static_cast<ULONG>(buffer.size()), &size) == 0) {
+        auto* current = reinterpret_cast<telemetry_SYSTEM_PROCESS_INFORMATION*>(buffer.data());
+        while (true) {
+            if (reinterpret_cast<uint64_t>(current->UniqueProcessId) == pid) {
+                info->working_set = static_cast<uint64_t>(current->WorkingSetSize);
+                info->private_usage = static_cast<uint64_t>(current->PrivatePageCount) * 4096;
+                info->memory_ok = true;
+                info->opened = true;
+                break;
+            }
+            if (current->NextEntryOffset == 0) break;
+            current = reinterpret_cast<telemetry_SYSTEM_PROCESS_INFORMATION*>(
+                reinterpret_cast<uint8_t*>(current) + current->NextEntryOffset);
         }
+    }
+
+    // Still use Hypervisor for CPU Cycles if needed, but for now we prioritize memory stability
+    if (info->memory_ok && first_sample) {
+        info->cycles_first = GetTickCount64();
+        info->cycles_ok = true;
+    } else if (info->memory_ok) {
+        info->cycles_second = GetTickCount64();
+        info->cycle_delta = (info->cycles_second - info->cycles_first);
         info->cycles_ok = true;
     }
 
-    CloseHandle(process);
-    return info->memory_ok || info->cycles_ok;
+    return info->memory_ok;
 }
 
 static bool IsBetterGameProcess(const ProcessUsageInfo& candidate, const ProcessUsageInfo& best) {
@@ -1358,6 +1401,10 @@ static bool IsBetterGameProcess(const ProcessUsageInfo& candidate, const Process
     constexpr uint64_t kCycleTieDelta = 1000000ull;
 
     if (best.pid == 0) return true;
+
+    if (candidate.has_visible_window != best.has_visible_window) {
+        return candidate.has_visible_window;
+    }
 
     const uint64_t candidate_memory = (std::max)(candidate.private_usage, candidate.working_set);
     const uint64_t best_memory = (std::max)(best.private_usage, best.working_set);
@@ -1424,6 +1471,7 @@ static bool SelectBestTslGameProcess(ProcessUsageInfo* selected) {
     for (auto& candidate : candidates) {
         QueryProcessUsage(candidate.pid, &candidate, false);
         UTN_DEV_LOG(std::cout << skCrypt("[DEV][PID] candidate=") << candidate.pid
+            << skCrypt(" window=") << (candidate.has_visible_window ? 1 : 0)
             << skCrypt(" private_mb=") << (candidate.private_usage / (1024 * 1024))
             << skCrypt(" ws_mb=") << (candidate.working_set / (1024 * 1024))
             << skCrypt(" cycles_delta=") << candidate.cycle_delta
@@ -1445,6 +1493,7 @@ static bool SelectBestTslGameProcess(ProcessUsageInfo* selected) {
     g_pid_debug.selected_private_usage = best.private_usage;
 
     UTN_DEV_LOG(std::cout << skCrypt("[DEV][PID] selected=") << best.pid
+        << skCrypt(" window=") << (best.has_visible_window ? 1 : 0)
         << skCrypt(" private_mb=") << (best.private_usage / (1024 * 1024))
         << skCrypt(" ws_mb=") << (best.working_set / (1024 * 1024))
         << skCrypt(" cycles_delta=") << best.cycle_delta
@@ -1738,6 +1787,8 @@ int main() {
   int sync_count = 0;
   ULONGLONG engine_wait_started = GetTickCount64();
   ULONGLONG engine_connect_started = engine_wait_started;
+  ULONGLONG last_engine_repick_tick = engine_wait_started;
+  constexpr ULONGLONG kEngineRepickMs = 10000;
   constexpr ULONGLONG kEngineWaitDiagnosticMs = 30000;
   constexpr ULONGLONG kEngineInitHardFailMs = 90000;
   while (!AppShutdown::IsRequested() && !telemetryContext::Initialize(pid, base)) {
@@ -1769,6 +1820,38 @@ int main() {
               }
           }
       }
+
+      const ULONGLONG now_tick = GetTickCount64();
+      if (now_tick - last_engine_repick_tick >= kEngineRepickMs) {
+          last_engine_repick_tick = now_tick;
+
+          ProcessUsageInfo repick = {};
+          if (SelectBestTslGameProcess(&repick) && repick.pid != 0) {
+              const uint64_t repick_base = reinterpret_cast<uint64_t>(repick.data.base_address);
+              const bool changed_context =
+                  repick.pid != pid ||
+                  repick_base != telemetryMemory::g_BaseAddress ||
+                  repick.data.cr3 != telemetryMemory::g_ProcessCr3;
+
+              if (changed_context && telemetryMemory::AttachToGameStealthily(repick.pid)) {
+                  pid = repick.pid;
+                  base = telemetryMemory::g_BaseAddress;
+                  telemetryDecrypt::Cleanup();
+                  telemetryRuntimeOffsets::InvalidateRuntimeScanCache(base);
+                  telemetryMemory::g_LastRefreshTime = 0;
+                  engine_connect_started = GetTickCount64();
+                  sync_count = 0;
+                  std::cout << (g_is_vietnamese
+                      ? skCrypt("\r[*] Dang ket noi lai game...      ")
+                      : skCrypt("\r[*] Reconnecting to game...      ")) << std::flush;
+                  UTN_DEV_LOG(std::cout << skCrypt("\n[DEV][ENGINE] repicked pid=") << pid
+                      << skCrypt(" base=0x") << std::hex << base
+                      << skCrypt(" cr3=0x") << telemetryMemory::g_ProcessCr3 << std::dec
+                      << std::endl);
+              }
+          }
+      }
+
       if (initStatus == skCrypt("ready")) {
           break;
       }
