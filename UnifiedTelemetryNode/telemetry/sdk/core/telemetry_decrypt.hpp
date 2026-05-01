@@ -1,6 +1,8 @@
 #pragma once
 #include <cstdint>
+#include <intrin.h>
 #include <iostream>
+#include <vector>
 #include <.shared/shared.hpp>
 #include "memory.hpp"
 
@@ -14,6 +16,16 @@ namespace telemetryDecrypt {
 
     inline std::vector<Step> g_Steps;
     inline uint64_t g_RaxKey = 0;
+
+    inline uint64_t SignExtendImm32(const uint8_t* bytes) {
+        return static_cast<uint64_t>(static_cast<int64_t>(*reinterpret_cast<const int32_t*>(bytes)));
+    }
+
+    inline uint8_t Rotl8(uint8_t value, int shift) {
+        shift &= 7;
+        if (shift == 0) return value;
+        return static_cast<uint8_t>((value << shift) | (value >> (8 - shift)));
+    }
 
     template<typename T>
     inline bool Initialize(T read_func, uint64_t base_address, uint64_t xenuine_decrypt_offset) {
@@ -49,7 +61,7 @@ namespace telemetryDecrypt {
 
             // XOR RCX, imm32 (48 81 F1 [imm32])
             if (bytes[i] == 0x48 && bytes[i + 1] == 0x81 && bytes[i + 2] == 0xF1) {
-                g_Steps.push_back({ OpType::OP_XOR, *reinterpret_cast<uint32_t*>(&bytes[i + 3]) });
+                g_Steps.push_back({ OpType::OP_XOR, SignExtendImm32(bytes + i + 3) });
                 i += 6;
             }
             // XOR RCX, RAX (48 31 C1)
@@ -59,7 +71,7 @@ namespace telemetryDecrypt {
             }
             // ADD RCX, imm32 (48 81 C1 [imm32])
             else if (bytes[i] == 0x48 && bytes[i + 1] == 0x81 && bytes[i + 2] == 0xC1) {
-                g_Steps.push_back({ OpType::OP_ADD, *reinterpret_cast<uint32_t*>(&bytes[i + 3]) });
+                g_Steps.push_back({ OpType::OP_ADD, SignExtendImm32(bytes + i + 3) });
                 i += 6;
             }
             // ADD RCX, RAX (48 01 C1)
@@ -69,7 +81,7 @@ namespace telemetryDecrypt {
             }
             // SUB RCX, imm32 (48 81 E9 [imm32])
             else if (bytes[i] == 0x48 && bytes[i + 1] == 0x81 && bytes[i + 2] == 0xE9) {
-                g_Steps.push_back({ OpType::OP_SUB, *reinterpret_cast<uint32_t*>(&bytes[i + 3]) });
+                g_Steps.push_back({ OpType::OP_SUB, SignExtendImm32(bytes + i + 3) });
                 i += 6;
             }
             // SUB RCX, RAX (48 29 C1)
@@ -108,14 +120,13 @@ namespace telemetryDecrypt {
             case OpType::OP_SUB: r -= op.Val; break;
             case OpType::OP_ROL_64: {
                 int s = static_cast<int>(op.Val & 63);
-                r = (r << s) | (r >> (64 - s));
+                r = _rotl64(r, s);
                 break;
             }
             case OpType::OP_ROL_8: {
                 uint8_t c = static_cast<uint8_t>(r & 0xFF);
-                int a = static_cast<int>(op.Val & 7);
-                c = (c << a) | (c >> (8 - a));
-                r = (r & 0xFFFFFFFFFFFFFF00) | c;
+                c = Rotl8(c, static_cast<int>(op.Val));
+                r = (r & 0xFFFFFFFFFFFFFF00ULL) | c;
                 break;
             }
             }
