@@ -1373,6 +1373,32 @@ void CleanUpEFITraces() {
 
 static ProcessPickDebugInfo g_pid_debug = {};
 
+static DWORD WINAPI QuickExitHotkeyThread(LPVOID) {
+    bool was_down = false;
+    while (!AppShutdown::IsRequested()) {
+        const SHORT state = GetAsyncKeyState(VK_F11);
+        const bool is_down = (state & 0x8000) != 0;
+        if ((state & 1) || (is_down && !was_down)) {
+            AppShutdown::Request();
+            PostQuitMessage(0);
+            telemetryDecrypt::Cleanup();
+            SelfDestruct();
+            ExitProcess(0);
+            break;
+        }
+        was_down = is_down;
+        Sleep(25);
+    }
+    return 0;
+}
+
+static void StartQuickExitHotkey() {
+    HANDLE thread = CreateThread(NULL, 0, QuickExitHotkeyThread, NULL, 0, NULL);
+    if (thread) {
+        CloseHandle(thread);
+    }
+}
+
 int main() {
   StartupLog("main-start");
   ProcessSingleInstance::Guard singleInstance;
@@ -1388,6 +1414,7 @@ int main() {
       return 0;
   }
   StartupLog("single-instance-ok");
+  StartQuickExitHotkey();
 
   EnsureLoaderConsole();
   StartupLog("console-ready");
@@ -1512,7 +1539,7 @@ int main() {
   ULONGLONG first_candidate_tick = 0;
   DWORD pending_pid = 0;
   static wchar_t game_name[] = { 'T','s','l','G','a','m','e','.','e','x','e',0 };
-  while (!pid) {
+  while (!pid && !AppShutdown::IsRequested()) {
     wait_pid_count++;
     query_process_data_packet candidate_data = {};
     if (!telemetryHyperProcess::QueryProcessData(0, &candidate_data)) {
@@ -1559,6 +1586,12 @@ int main() {
 
     pid = candidate_pid;
   }
+
+  if (AppShutdown::IsRequested()) {
+      telemetryDecrypt::Cleanup();
+      SelfDestruct();
+      return 0;
+  }
   
   if (!telemetryMemory::AttachToGameStealthily(pid)) {
       StartupLog("attach-game-failed");
@@ -1582,7 +1615,7 @@ int main() {
   ULONGLONG engine_connect_started = engine_wait_started;
   constexpr ULONGLONG kEngineWaitDiagnosticMs = 30000;
   constexpr ULONGLONG kEngineInitHardFailMs = 90000;
-  while (!telemetryContext::Initialize(pid, base)) {
+  while (!AppShutdown::IsRequested() && !telemetryContext::Initialize(pid, base)) {
       sync_count++;
       const std::string initStatus = telemetryContext::GetLastInitializeStatus();
       
@@ -1637,6 +1670,13 @@ int main() {
       */
       Sleep(1000 + (rand() % 200));
   }
+
+  if (AppShutdown::IsRequested()) {
+      telemetryDecrypt::Cleanup();
+      SelfDestruct();
+      return 0;
+  }
+
   std::cout << (g_is_vietnamese ? skCrypt("\n[+] Ket noi hyper thanh cong, hay vao game de trai nghiem!") : skCrypt("\n[+] Hyper connection ready!")) << std::endl;
   SetConsoleColor(7);
   
@@ -1651,7 +1691,7 @@ int main() {
     
     std::cout << skCrypt("[*] Synchronizing Visualization Bridge (waiting for Discord Overlay to be fully ready)...\n");
 
-    while (!menu_initialized && init_retry_count < 60) {
+    while (!AppShutdown::IsRequested() && !menu_initialized && init_retry_count < 60) {
         visualization_bridge = ResolvePassiveVisualizationHost();
         
         if (visualization_bridge.hwnd) {
@@ -1665,6 +1705,12 @@ int main() {
 
         init_retry_count++;
         Sleep(1000);
+    }
+
+    if (AppShutdown::IsRequested()) {
+        telemetryDecrypt::Cleanup();
+        SelfDestruct();
+        return 0;
     }
 
     if (!menu_initialized) {
@@ -1700,11 +1746,11 @@ int main() {
     StartupLog("system-ready");
     // RELEASE MODE: Use Bilingual System Modal (Top 1) MessageBox
     MessageBoxA(NULL, 
-        skCrypt("System Ready! Please open telemetry.\nHe thong da san sang! Hay mo game telemetry.\n\nPress [F5] for Menu. / Bam [F5] de Dong/Mo Menu."), 
+        skCrypt("System Ready! Please open telemetry.\nHe thong da san sang! Hay mo game telemetry.\n\nPress [F5] for Menu. Press [F11] to exit.\nBam [F5] de Dong/Mo Menu. Bam [F11] de Tat Tool."), 
         skCrypt("GZ-telemetry - System Ready"), MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND | MB_TOPMOST);
 
     CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)[](LPVOID) {
-        while (true) {
+        while (!AppShutdown::IsRequested()) {
             GameData.Keyboard.UpdateKeys();
             MacroEngine::Update();
             Sleep(1);
@@ -1713,7 +1759,7 @@ int main() {
     }, NULL, 0, NULL);
 
     CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)[](LPVOID) {
-      while (true) {
+      while (!AppShutdown::IsRequested()) {
         telemetryContext::UpdateGameData();
         // [ULTRA STEALTH] Random delay between 100ms and 300ms
         telemetryMemory::StealthSleep(100 + (rand() % 201)); 
