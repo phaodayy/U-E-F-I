@@ -754,6 +754,18 @@ std::uint8_t arch::handle_tsc_exit(const std::uint64_t vmexit_reason, trap_frame
 	advance_guest_rip();
 	return 1;
 }
+
+std::uint8_t arch::is_io_instruction(const std::uint64_t vmexit_reason)
+{
+	return vmexit_reason == SVM_EXIT_REASON_IOIO;
+}
+
+void arch::enable_io_intercept()
+{
+	vmcb_t* const vmcb = get_vmcb();
+	vmcb->control.intercept_misc_vector_3 |= SVM_INTERCEPT_VECTOR3_IOIO_PROT;
+	vmcb->control.clean.i = 0;
+}
 #endif
 
 std::uint64_t arch::get_vmexit_reason()
@@ -970,6 +982,6 @@ std::uint8_t arch::get_guest_cpl()
 #ifdef _INTELMACHINE
 	return static_cast<std::uint8_t>(vmread(VMCS_GUEST_SS_SELECTOR) & 3);
 #else
-	return static_cast<std::uint8_t>(get_vmcb()->save_state.cpl);
+	return static_cast<std::uint8_t>(get_vmcb()->save_state.ss_selector & 3);
 #endif
 }

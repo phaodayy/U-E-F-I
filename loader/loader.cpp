@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <shellapi.h>
 #include <string>
 #include <shlobj.h>
 #include <iomanip>
@@ -66,10 +67,49 @@ bool is_admin() {
     return admin == TRUE;
 }
 
+std::wstring quote_command_arg(const std::wstring& arg) {
+    if (arg.find_first_of(L" \t\"") == std::wstring::npos) return arg;
+
+    std::wstring quoted = L"\"";
+    size_t backslashes = 0;
+    for (wchar_t ch : arg) {
+        if (ch == L'\\') {
+            ++backslashes;
+        } else if (ch == L'"') {
+            quoted.append(backslashes * 2 + 1, L'\\');
+            quoted.push_back(ch);
+            backslashes = 0;
+        } else {
+            quoted.append(backslashes, L'\\');
+            quoted.push_back(ch);
+            backslashes = 0;
+        }
+    }
+    quoted.append(backslashes * 2, L'\\');
+    quoted.push_back(L'"');
+    return quoted;
+}
+
+std::wstring current_process_arguments() {
+    int argc = 0;
+    LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+    if (!argv) return L"";
+
+    std::wstring args;
+    for (int i = 1; i < argc; ++i) {
+        if (!args.empty()) args.push_back(L' ');
+        args += quote_command_arg(argv[i]);
+    }
+
+    LocalFree(argv);
+    return args;
+}
+
 void run_as_admin() {
-    char path[MAX_PATH];
-    GetModuleFileNameA(NULL, path, MAX_PATH);
-    ShellExecuteA(NULL, "runas", path, NULL, NULL, SW_SHOWNORMAL);
+    wchar_t path[MAX_PATH] = {};
+    GetModuleFileNameW(NULL, path, MAX_PATH);
+    const std::wstring args = current_process_arguments();
+    ShellExecuteW(NULL, L"runas", path, args.empty() ? NULL : args.c_str(), NULL, SW_SHOWNORMAL);
 }
 
 bool aggressive_copy(const std::string& src, const std::string& dst) {
@@ -89,6 +129,7 @@ namespace auth {
     constexpr const wchar_t* kHost = L"licensing-backend.donghiem114.workers.dev";
     constexpr const wchar_t* kUserAgent = L"GZ-Account-Loader";
     constexpr const wchar_t* kLoginPath = L"/loader/login";
+    constexpr const wchar_t* kLaunchLoginPath = L"/loader/launch-login";
     constexpr const wchar_t* kMePath = L"/loader/me";
     constexpr const wchar_t* kActivatePath = L"/loader/keys/activate";
     constexpr int kSignatureVersion = 2;
@@ -141,6 +182,51 @@ namespace auth {
         std::wstring out((size_t)required - 1, L'\0');
         MultiByteToWideChar(CP_UTF8, 0, value.c_str(), -1, out.data(), required);
         return out;
+    }
+
+    std::string wide_to_utf8(const std::wstring& value) {
+        if (value.empty()) return "";
+        int required = WideCharToMultiByte(CP_UTF8, 0, value.c_str(), -1, nullptr, 0, nullptr, nullptr);
+        if (required <= 0) return "";
+        std::string out((size_t)required - 1, '\0');
+        WideCharToMultiByte(CP_UTF8, 0, value.c_str(), -1, out.data(), required, nullptr, nullptr);
+        return out;
+    }
+
+    std::string command_line_option(const wchar_t* optionName) {
+        int argc = 0;
+        LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+        if (!argv) return "";
+
+        std::wstring option(optionName);
+        std::wstring prefix = option + L"=";
+        std::string value;
+
+        for (int i = 1; i < argc; ++i) {
+            std::wstring arg = argv[i] ? argv[i] : L"";
+            if (arg == option && i + 1 < argc) {
+                value = wide_to_utf8(argv[i + 1] ? argv[i + 1] : L"");
+                break;
+            }
+            if (arg.rfind(prefix, 0) == 0) {
+                value = wide_to_utf8(arg.substr(prefix.size()));
+                break;
+            }
+        }
+
+        LocalFree(argv);
+        return value;
+    }
+
+    bool is_hex_token(const std::string& value) {
+        if (value.size() != 64) return false;
+        for (char ch : value) {
+            const bool digit = ch >= '0' && ch <= '9';
+            const bool lower = ch >= 'a' && ch <= 'f';
+            const bool upper = ch >= 'A' && ch <= 'F';
+            if (!digit && !lower && !upper) return false;
+        }
+        return true;
     }
 
     std::string generate_nonce() {
@@ -626,6 +712,29 @@ namespace auth {
         return state.action;
     }
 
+    bool launch_login(Session& session, const std::string& hwid) {
+        const std::string launchToken = command_line_option(L"--launch-token");
+        if (!is_hex_token(launchToken)) return false;
+
+        nlohmann::json request;
+        request["launch_token"] = launchToken;
+        request["hwid"] = hwid;
+
+        std::string response;
+        if (!post_json(kLaunchLoginPath, request, "", response)) {
+            return false;
+        }
+
+        nlohmann::json json = nlohmann::json::parse(response, nullptr, false);
+        if (!json.is_object() || !json.contains("token")) {
+            return false;
+        }
+
+        apply_account_response(json, session, "");
+        refresh_entitlement(session, hwid);
+        return !session.token.empty();
+    }
+
     bool login(Session& session, const std::string& hwid) {
         AuthDialogState input;
         if (!show_auth_dialog(input)) return false;
@@ -689,6 +798,13 @@ namespace auth {
         Session session;
 
         if (resume_session(hwid, session)) {
+            return true;
+        }
+
+        if (launch_login(session, hwid)) {
+            if (session.active) return true;
+            MessageBoxA(nullptr, "Tai khoan chua co thoi gian su dung. Vui long nhap key de kich hoat.", "GZ Loader", MB_ICONINFORMATION | MB_OK);
+            if (!activate_key(session, hwid)) return false;
             return true;
         }
 

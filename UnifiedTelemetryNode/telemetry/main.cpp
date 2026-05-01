@@ -4,6 +4,7 @@
 #define _CRT_USE_WINAPI_FAMILY_DESKTOP_APP
 #include <winsock2.h>
 #include <Windows.h>
+#include <shellapi.h>
 #include <process.h>
 #include <winioctl.h>
 #include <ntddstor.h>
@@ -25,6 +26,7 @@
 
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "psapi.lib")
+#pragma comment(lib, "shell32.lib")
 
 #include ".shared/shared.hpp"
 #include "sdk/memory/memory.hpp"
@@ -210,10 +212,34 @@ time_t g_expiry_time = 0;
 uint64_t g_remaining_seconds = 0;
 uint64_t g_last_tick_count = 0;
 
+void StartupLog(const char* step) {
+    char tempPath[MAX_PATH] = {};
+    DWORD len = GetTempPathA(MAX_PATH, tempPath);
+    std::string logPath = (len > 0 && len < MAX_PATH) ? std::string(tempPath) : std::string(".\\");
+    logPath += "gz_pubg_startup.log";
+
+    SYSTEMTIME st = {};
+    GetLocalTime(&st);
+    std::ofstream out(logPath, std::ios::app);
+    if (!out.is_open()) return;
+
+    out << std::setfill('0')
+        << st.wYear << '-'
+        << std::setw(2) << st.wMonth << '-'
+        << std::setw(2) << st.wDay << ' '
+        << std::setw(2) << st.wHour << ':'
+        << std::setw(2) << st.wMinute << ':'
+        << std::setw(2) << st.wSecond
+        << " pid=" << GetCurrentProcessId()
+        << " step=" << step
+        << "\n";
+}
+
 extern const wchar_t* LICENSE_API_HOST = L"licensing-backend.donghiem114.workers.dev";
 extern const wchar_t* LICENSE_ACTIVATE_PATH = L"/public/activate";
 extern const wchar_t* LICENSE_HEARTBEAT_PATH = L"/public/heartbeat";
 extern const wchar_t* LOADER_LOGIN_PATH = L"/loader/login";
+extern const wchar_t* LOADER_LAUNCH_LOGIN_PATH = L"/loader/launch-login";
 extern const wchar_t* LOADER_ME_PATH = L"/loader/me";
 extern const wchar_t* LOADER_KEY_ACTIVATE_PATH = L"/loader/keys/activate";
 extern const wchar_t* LOADER_HEARTBEAT_PATH = L"/loader/heartbeat";
@@ -344,6 +370,51 @@ std::wstring Utf8ToWide(const std::string& value) {
     std::wstring out((size_t)required - 1, L'\0');
     MultiByteToWideChar(CP_UTF8, 0, value.c_str(), -1, out.data(), required);
     return out;
+}
+
+std::string WideToUtf8(const std::wstring& value) {
+    if (value.empty()) return skCrypt("");
+    int required = WideCharToMultiByte(CP_UTF8, 0, value.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    if (required <= 0) return skCrypt("");
+    std::string out((size_t)required - 1, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, value.c_str(), -1, out.data(), required, nullptr, nullptr);
+    return out;
+}
+
+std::string CommandLineOption(const wchar_t* optionName) {
+    int argc = 0;
+    LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+    if (!argv) return skCrypt("");
+
+    std::wstring option(optionName);
+    std::wstring prefix = option + L"=";
+    std::string value;
+
+    for (int i = 1; i < argc; ++i) {
+        std::wstring arg = argv[i] ? argv[i] : L"";
+        if (arg == option && i + 1 < argc) {
+            value = WideToUtf8(argv[i + 1] ? argv[i + 1] : L"");
+            break;
+        }
+        if (arg.rfind(prefix, 0) == 0) {
+            value = WideToUtf8(arg.substr(prefix.size()));
+            break;
+        }
+    }
+
+    LocalFree(argv);
+    return value;
+}
+
+bool IsHexLaunchToken(const std::string& value) {
+    if (value.size() != 64) return false;
+    for (char ch : value) {
+        const bool digit = ch >= '0' && ch <= '9';
+        const bool lower = ch >= 'a' && ch <= 'f';
+        const bool upper = ch >= 'A' && ch <= 'F';
+        if (!digit && !lower && !upper) return false;
+    }
+    return true;
 }
 
 bool HttpJsonRequest(const wchar_t* method, const wchar_t* path, const std::string& body, const std::string& bearerToken, std::string& responseStr) {
@@ -959,6 +1030,40 @@ bool TryResumeLoaderAccount(const std::string& hwid) {
     return false;
 }
 
+bool TryLaunchTokenLogin(const std::string& hwid) {
+    const std::string launchToken = CommandLineOption(L"--launch-token");
+    if (!IsHexLaunchToken(launchToken)) return false;
+
+    StartupLog("launch-token-login-start");
+
+    nlohmann::json requestJson;
+    requestJson[skCrypt("launch_token")] = launchToken;
+    requestJson[skCrypt("hwid")] = hwid;
+
+    std::string responseStr;
+    if (!HttpJsonPost(LOADER_LAUNCH_LOGIN_PATH, requestJson, skCrypt(""), responseStr)) {
+        StartupLog("launch-token-http-failed");
+        global_license_error = g_is_vietnamese
+            ? skCrypt("Khong ket noi duoc may chu launch token.")
+            : skCrypt("Cannot connect to launch token server.");
+        return false;
+    }
+
+    if (!ParseAuthSessionResponse(responseStr, true) || global_account_token.empty()) {
+        StartupLog("launch-token-parse-failed");
+        global_license_error = responseStr;
+        return false;
+    }
+
+    StartupLog("launch-token-login-ok");
+
+    if (HasActiveLoaderEntitlement()) {
+        DownloadLoaderConfig();
+    }
+    SaveLoaderSessionFile();
+    return true;
+}
+
 bool PromptLoaderAccountLogin(const std::string& hwid) {
     SetConsoleColor(11);
     std::cout << skCrypt("\nDang nhap tai khoan\n");
@@ -995,6 +1100,14 @@ bool AuthenticateLicense() {
     std::string hwid = GetHWID();
     
     ClearLoaderSessionFile();
+
+    if (TryLaunchTokenLogin(hwid)) {
+        if (HasActiveLoaderEntitlement() && DoAPIRequest(global_active_key, hwid, true)) {
+            DownloadLoaderConfig();
+            SaveLoaderSessionFile();
+        }
+        return true;
+    }
 
     // Session persistence is disabled; credentials stay in memory only.
     if (TryResumeLoaderAccount(hwid)) {
@@ -1280,8 +1393,10 @@ void CleanUpEFITraces() {
 static ProcessPickDebugInfo g_pid_debug = {};
 
 int main() {
+  StartupLog("main-start");
   ProcessSingleInstance::Guard singleInstance;
   if (!singleInstance.Acquire()) {
+      StartupLog("single-instance-failed");
 #ifdef _DEBUG
       std::cout << "[!] Could not stop the previous tool instance.\n";
 #else
@@ -1291,27 +1406,34 @@ int main() {
 #endif
       return 0;
   }
+  StartupLog("single-instance-ok");
 
   EnsureLoaderConsole();
+  StartupLog("console-ready");
   protec::scan_detection_time = 1000;
   protec::apply_baseline_hardening();
   srand((unsigned int)GetTickCount64());
   protec::start_protect(false);
   SelfRename();
+  StartupLog("self-rename-done");
 
   if (!SecurityCheck()) {
+      StartupLog("security-check-failed");
       SelfDestruct();
       return 0;
   }
+  StartupLog("security-check-ok");
 
   // [STEALTH] Check Admin & Wipe EFI traces immediately upon startup
   if (!IsUserAdmin()) {
+      StartupLog("admin-check-failed");
       SetConsoleColor(12);
       std::cout << (g_is_vietnamese ? skCrypt("[-] Vui long chay bang quyen QTV (Run as Admin) - Error: 0x5") : skCrypt("[-] Missing permission (Error: 0x5)")) << std::endl;
       DebugPause();
       SelfDestruct();
       return 1;
   }
+  StartupLog("admin-check-ok");
   CleanUpEFITraces();
   
   SelectLanguage();
@@ -1319,10 +1441,12 @@ int main() {
   SetConsoleColor(7);
 
   if (!AuthenticateLicense()) {
+      StartupLog("auth-failed");
       DebugPause();
       SelfDestruct();
       return 1;
   }
+  StartupLog("auth-ok");
 
   SetConsoleColor(7);
 
@@ -1369,6 +1493,7 @@ int main() {
   }
   
   if (status < 0) {
+    StartupLog("hyper-init-failed");
 #ifdef _DEBUG
     SetConsoleColor(12);
     std::cout << (g_is_vietnamese ? skCrypt("[-] Khong thể giao tiep voi hypervisor!\n") : skCrypt("[-] Failed to communicate with hypervisor!\n"));
@@ -1382,6 +1507,7 @@ int main() {
     SelfDestruct();
     return 1;
   }
+  StartupLog("hyper-init-ok");
   
   // Discord Requirement Check bị loại bỏ vì Discovery Bridge hoạt động trong âm thầm
   // và không còn bắt buộc phải có Discord (có thể dùng Shared Registry Host khác).
@@ -1397,6 +1523,7 @@ int main() {
     TypewriterPrint("3", 10, 11);
     TypewriterPrint("] ", 10, 8);
     TypewriterPrint(g_is_vietnamese ? skCrypt("Waiting for telemetry (TslGame.exe)...") : skCrypt("Waiting for telemetry (TslGame.exe)..."), 30, 14);
+    StartupLog("waiting-for-tslgame");
 
     DWORD pid = 0;
   int wait_pid_count = 0;
@@ -1412,6 +1539,9 @@ int main() {
       pending_pid = 0;
       std::cout << skCrypt(".");
       if (wait_pid_count % 5 == 0) {
+        if (wait_pid_count % 60 == 0) {
+          StartupLog("still-waiting-for-tslgame");
+        }
         std::cout << (g_is_vietnamese ? skCrypt("\n[DEBUG][PID] try=") : skCrypt("\n[DEBUG][PID] try=")) << wait_pid_count << (g_is_vietnamese ? skCrypt(" (Ghost-walking cho TslGame...)") : skCrypt(" (Ghost-walking for TslGame...)")) << std::endl;
       }
       Sleep(500 + (rand() % 200));
@@ -1424,6 +1554,7 @@ int main() {
     if (pending_pid != candidate_pid) {
       pending_pid = candidate_pid;
       first_candidate_tick = GetTickCount64();
+      StartupLog("tslgame-candidate-detected");
       std::cout << skCrypt("\n[DEBUG][PID] candidate_detected=") << pending_pid
                 << skCrypt(" initial_settling_ms=") << kPidSettleDelayMs
                 << std::endl;
@@ -1434,6 +1565,7 @@ int main() {
     // CR3 Check: If the process has a valid page directory and we've met the minimum threshold (e.g. 500ms), 
     // or if the full timer expired, we are good to go.
     if (candidate_cr3 != 0 && elapsed > 1000) {
+        StartupLog("tslgame-cr3-verified");
         std::cout << skCrypt("[+] CR3 verified! Active at: ") << std::hex << candidate_cr3 << std::dec << std::endl;
         pid = candidate_pid;
         break;
@@ -1448,12 +1580,14 @@ int main() {
   }
   
   if (!telemetryMemory::AttachToGameStealthily(pid)) {
+      StartupLog("attach-game-failed");
       SetConsoleColor(12);
       std::cout << skCrypt("\n[-] Critical Communication Error (Stealth Auth Fail)!") << std::endl;
       DebugPause();
       SelfDestruct();
       return 1;
   }
+  StartupLog("attach-game-ok");
   uint64_t base = telemetryMemory::g_BaseAddress;
 
   TypewriterPrint("\n[", 10, 8);
@@ -1500,6 +1634,7 @@ int main() {
       if ((initStatus == skCrypt("decrypt-init-failed") ||
            initStatus == skCrypt("process-context-refresh-failed")) &&
           GetTickCount64() - engine_connect_started > kEngineInitHardFailMs) {
+          StartupLog("engine-init-timeout");
           SetConsoleColor(12);
           std::cout << skCrypt("\n[ERROR][ENGINE] Init stuck at status=")
                     << initStatus
@@ -1552,6 +1687,7 @@ int main() {
     }
 
     if (!menu_initialized) {
+        StartupLog("visualization-bridge-failed");
         SetConsoleColor(12);
         std::cout << skCrypt("[-] CRITICAL: Visualization bridge could not be synchronized after 60 seconds.\n");
         std::cout << skCrypt("[-] Please ensure Discord Overlay is enabled for TslGame.exe and try again.\n");
@@ -1565,6 +1701,7 @@ int main() {
         SelfDestruct();
         return 1;
     }
+    StartupLog("visualization-bridge-ok");
 
     /* [DKOM] Temporarily disabled to prevent window focus issues
     DWORD our_pid = GetCurrentProcessId();
@@ -1579,6 +1716,7 @@ int main() {
     
     std::cout << (g_is_vietnamese ? skCrypt("\n[+] He thong da san sang! Hay mo game telemetry.") : skCrypt("\n[+] System Ready! Please open telemetry.")) << std::endl;
     std::cout << (g_is_vietnamese ? skCrypt("[+] Bam [F5] de Dong/Mo Menu | Bam [F11] de Tat Tool") : skCrypt("[+] F5: Menu | F11: Clean Exit")) << std::endl;
+    StartupLog("system-ready");
     // RELEASE MODE: Use Bilingual System Modal (Top 1) MessageBox
     MessageBoxA(NULL, 
         skCrypt("System Ready! Please open telemetry.\nHe thong da san sang! Hay mo game telemetry.\n\nPress [F5] for Menu. / Bam [F5] de Dong/Mo Menu."), 

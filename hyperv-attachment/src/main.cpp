@@ -115,10 +115,11 @@ static std::uint8_t handle_io_instruction(trap_frame_t* const trap_frame)
 #else
     vmcb_t* const vmcb = arch::get_vmcb();
     // AMD ExitInfo1: [31:16] Port, [6] A32, [5] A16, [4] SZ32, [3] SZ16, [2] SZ8, [1] REP, [0] TYPE (0=OUT, 1=IN)
-    const std::uint16_t port = static_cast<std::uint16_t>(vmcb->control.exit_info1 >> 16);
-    const std::uint8_t is_byte_access = (vmcb->control.exit_info1 >> 2) & 1;
-    const std::uint8_t is_in = (vmcb->control.exit_info1 & 1);
-    const std::uint8_t is_rep = (vmcb->control.exit_info1 >> 1) & 1;
+    const std::uint64_t exit_info1 = vmcb->control.first_exit_info;
+    const std::uint16_t port = static_cast<std::uint16_t>(exit_info1 >> 16);
+    const std::uint8_t is_byte_access = (exit_info1 >> 2) & 1;
+    const std::uint8_t is_in = (exit_info1 & 1);
+    const std::uint8_t is_rep = (exit_info1 >> 1) & 1;
     const std::uint8_t is_string = 0;
 #endif
 

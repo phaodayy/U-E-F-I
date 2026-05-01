@@ -73,7 +73,9 @@ struct vmcb_control_area_t
 
 struct vmcb_state_save_t
 {
-	std::uint8_t pad_one[0x148];
+	std::uint8_t pad_one[0x20];
+	std::uint16_t ss_selector;
+	std::uint8_t pad_two[0x126];
 	std::uint64_t cr4;
     std::uint64_t cr3;
     std::uint8_t pad_five[0x20];
@@ -100,6 +102,7 @@ static_assert(offsetof(vmcb_control_area_t, vmexit_reason) == 0x70);
 static_assert(offsetof(vmcb_control_area_t, next_rip) == 0xC8);
 static_assert(offsetof(vmcb_control_area_t, number_of_bytes_fetched) == 0xD0);
 static_assert(sizeof(vmcb_control_area_t) == 0x400);
+static_assert(offsetof(vmcb_state_save_t, ss_selector) == 0x20);
 static_assert(offsetof(vmcb_state_save_t, cr4) == 0x148);
 static_assert(offsetof(vmcb_state_save_t, cr3) == 0x150);
 
@@ -130,6 +133,7 @@ union npf_exit_info_1
 #define SVM_EXIT_REASON_PHYSICAL_NMI 0x61
 #define SVM_EXIT_REASON_RDTSC 0x6E
 #define SVM_EXIT_REASON_CPUID 0x72
+#define SVM_EXIT_REASON_IOIO 0x7B
 #define SVM_EXIT_REASON_MSR 0x7C
 #define SVM_EXIT_REASON_RDTSCP 0x87
 #define SVM_EXIT_REASON_NPF 0x400
@@ -140,6 +144,7 @@ union npf_exit_info_1
 #define SVM_INTERCEPT_CR4 0x10
 
 #define SVM_INTERCEPT_VECTOR3_RDTSC 0x00004000
+#define SVM_INTERCEPT_VECTOR3_IOIO_PROT 0x08000000
 #define SVM_INTERCEPT_VECTOR3_MSR_PROT 0x10000000
 
 #define SVM_INTERCEPT_VECTOR4_RDTSCP 0x00000080
