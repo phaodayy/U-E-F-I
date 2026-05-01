@@ -48,6 +48,7 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["flick_visible_only"] = flick_visible_only;
         j["flick_auto_shot"] = true;
         j["flick_shot_hold"] = flick_shot_hold;
+        j["flick_behavior_mode"] = flick_behavior_mode;
         j["flick_return"] = flick_return;
         j["flick_fov"] = flick_fov;
         j["flick_max_dist"] = flick_max_dist;

@@ -32,6 +32,8 @@ void ClampPlayer(OverlayMenu& menu) {
     menu.flick_target_part = std::clamp(menu.flick_target_part, 0, 15);
     menu.flick_key = std::clamp(menu.flick_key, 0, 0xFE);
     menu.flick_key2 = std::clamp(menu.flick_key2, 0, 0xFE);
+    menu.flick_behavior_mode = std::clamp(menu.flick_behavior_mode, 0, 1);
+    menu.flick_return = (menu.flick_behavior_mode == 0);
 }
 
 void ClampRadar(OverlayMenu& menu) {

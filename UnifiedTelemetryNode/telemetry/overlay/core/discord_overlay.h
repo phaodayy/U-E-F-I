@@ -2,85 +2,17 @@
 
 #include "overlay_menu.hpp"
 
-#include <cstdlib>
-#include <cstdint>
 #include <cstring>
 #include <iostream>
-#include <vector>
 #include <windows.h>
 #include <shellapi.h>
 #include <dwmapi.h>
 
 #include "../../sdk/core/app_shutdown.hpp"
 #include "../../sdk/core/console_log.hpp"
-#include "../../sdk/memory/hyper_process.hpp"
 #include <protec/skCrypt.h>
 
 namespace VisualizationBridgeDiscovery {
-
-constexpr uint32_t kRegistryMagic = 0x42565455; // UTVB
-constexpr uint32_t kRegistryVersion = 1;
-constexpr DWORD kFlagClearBeforeRender = 1 << 0;
-constexpr DWORD kFlagPresentAfterRender = 1 << 1;
-
-struct RegistryBlock {
-    uint32_t magic = 0;
-    uint32_t version = 0;
-    uint64_t hwnd = 0;
-    uint32_t owner_pid = 0;
-    uint32_t flags = 0;
-};
-
-inline bool AssignWindow(VisualizationBridgeHost& bridge, uint64_t raw_hwnd, uint32_t expected_owner_pid = 0) {
-    if (raw_hwnd == 0) return false;
-
-    HWND hwnd = reinterpret_cast<HWND>(static_cast<UINT_PTR>(raw_hwnd));
-    if (!IsWindow(hwnd)) return false;
-
-    DWORD owner_pid = 0;
-    GetWindowThreadProcessId(hwnd, &owner_pid);
-    if (expected_owner_pid != 0 && owner_pid != expected_owner_pid) return false;
-
-    bridge.hwnd = hwnd;
-    return true;
-}
-
-inline VisualizationBridgeHost FromEnvironment() {
-    VisualizationBridgeHost bridge = {};
-    char value[64] = {};
-    DWORD len = GetEnvironmentVariableA(skCrypt("UTN_VISUALIZATION_HWND"), value, static_cast<DWORD>(sizeof(value)));
-    if (len == 0 || len >= sizeof(value)) return bridge;
-
-    char* end = nullptr;
-    unsigned long long raw = std::strtoull(value, &end, 0);
-    if (end == value || raw == 0) return bridge;
-
-    AssignWindow(bridge, raw);
-    return bridge;
-}
-
-inline VisualizationBridgeHost FromSharedRegistry() {
-    VisualizationBridgeHost bridge = {};
-    HANDLE mapping = OpenFileMappingA(FILE_MAP_READ, FALSE, skCrypt("Local\\UTNVisualizationBridge"));
-    if (!mapping) return bridge;
-
-    auto* mapped = static_cast<const RegistryBlock*>(
-        MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, sizeof(RegistryBlock)));
-    if (mapped) {
-        RegistryBlock block = *mapped;
-        UnmapViewOfFile(mapped);
-
-        if (block.magic == kRegistryMagic &&
-            block.version == kRegistryVersion &&
-            AssignWindow(bridge, block.hwnd, block.owner_pid)) {
-            bridge.clear_before_render = (block.flags & kFlagClearBeforeRender) != 0;
-            bridge.present_after_render = (block.flags & kFlagPresentAfterRender) != 0;
-        }
-    }
-
-    CloseHandle(mapping);
-    return bridge;
-}
 
 inline HWND FindGameWindow() {
     HWND hwnd = FindWindowA(nullptr, skCrypt("PUBG: BATTLEGROUNDS "));
@@ -165,9 +97,11 @@ inline bool ConfigureStealthOverlay(HWND hwnd) {
     // 2. Thiết lập Style một cách tinh tế
     // WS_EX_TRANSPARENT giúp click chuột xuyên qua Overlay vào Game
     // WS_EX_TOOLWINDOW giúp giấu cửa sổ khỏi Alt-Tab
+    SetWindowLongPtr(hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
     SetWindowLongPtr(hwnd, GWL_EXSTYLE,
         WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
 
+    SetLayeredWindowAttributes(hwnd, RGB(0, 0, 0), 255, LWA_ALPHA);
     MoveWindow(hwnd, target_rect.left, target_rect.top, width, height, TRUE);
     
     // 3. Kích hoạt tính năng "Kính" (Glass effect) qua DWM
@@ -176,11 +110,12 @@ inline bool ConfigureStealthOverlay(HWND hwnd) {
 
     ShowWindow(hwnd, SW_SHOWNOACTIVATE);
     SetWindowPos(hwnd, HWND_TOPMOST, target_rect.left, target_rect.top, width, height,
-        SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_FRAMECHANGED);
 
     return true;
 }
 
+#if 0
 inline VisualizationBridgeHost FromNvidiaHost() {
     VisualizationBridgeHost bridge = {};
     // NVIDIA Overlay cực kỳ an toàn vì nó là tiến trình Driver
@@ -193,6 +128,8 @@ inline VisualizationBridgeHost FromNvidiaHost() {
     }
     return bridge;
 }
+
+#endif
 
 inline VisualizationBridgeHost FromMovaviHost() {
     VisualizationBridgeHost bridge = {};
@@ -217,6 +154,7 @@ inline VisualizationBridgeHost FromMovaviHost() {
     return bridge;
 }
 
+#if 0
 inline VisualizationBridgeHost FromDiscordFallback() {
     VisualizationBridgeHost bridge = {};
     std::vector<uint32_t> discord_pids = telemetryHyperProcess::FindAllPidsByGhostWalk(skCrypt("Discord"));
@@ -258,6 +196,8 @@ inline VisualizationBridgeHost FromDiscordFallback() {
     return bridge;
 }
 
+#endif
+
 inline VisualizationBridgeHost ResolveHost() {
     UTN_DEV_LOG(std::cout << skCrypt("[DEV] Negotiating Stealth Bridge Link...") << std::endl);
 
@@ -265,29 +205,11 @@ inline VisualizationBridgeHost ResolveHost() {
     while (!AppShutdown::IsRequested()) {
         attempt++;
 
-        VisualizationBridgeHost bridge = FromEnvironment();
+        VisualizationBridgeHost bridge = FromMovaviHost();
         if (bridge.hwnd) return bridge;
-
-        bridge = FromSharedRegistry();
-        if (bridge.hwnd) return bridge;
-
-        // ƯU TIÊN 1: NVIDIA (Tuyệt đối an toàn)
-        bridge = FromNvidiaHost();
-        if (bridge.hwnd) return bridge;
-
-        // ƯU TIÊN 2: Movavi (Đã được cường hóa Stealth)
-        bridge = FromMovaviHost();
-        if (bridge.hwnd) return bridge;
-
-        // ƯU TIÊN 3: Discord (Fallback ổn định)
-        bridge = FromDiscordFallback();
-        if (bridge.hwnd) {
-            UTN_DEV_LOG(std::cout << skCrypt("[DEV] Linked via Discord Stealth Fallback.") << std::endl);
-            return bridge;
-        }
 
         if (attempt % 5 == 0) {
-            UTN_DEV_LOG(std::cout << skCrypt("[DEV] Still waiting for overlay host, attempt ") << attempt << std::endl);
+            UTN_DEV_LOG(std::cout << skCrypt("[DEV] Still waiting for Movavi overlay host, attempt ") << attempt << std::endl);
         }
         Sleep(1000);
     }

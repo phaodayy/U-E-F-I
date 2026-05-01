@@ -3,6 +3,7 @@
 #include "../../sdk/core/app_paths.hpp"
 #include "../../sdk/Utils/MacroEngine.h"
 #include "../../../nlohmann/json.hpp"
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -99,6 +100,13 @@ void OverlayMenu::LoadConfig(const char* path) {
             flick_auto_shot = true;
             if (j.contains("flick_shot_hold")) flick_shot_hold = j["flick_shot_hold"];
             if (j.contains("flick_return")) flick_return = j["flick_return"];
+            if (j.contains("flick_behavior_mode")) {
+                flick_behavior_mode = j["flick_behavior_mode"];
+            } else {
+                flick_behavior_mode = flick_return ? 0 : 1;
+            }
+            flick_behavior_mode = std::clamp(flick_behavior_mode, 0, 1);
+            flick_return = (flick_behavior_mode == 0);
             if (j.contains("flick_fov")) flick_fov = j["flick_fov"];
             if (j.contains("flick_max_dist")) flick_max_dist = j["flick_max_dist"];
             if (j.contains("flick_target_part")) flick_target_part = j["flick_target_part"];

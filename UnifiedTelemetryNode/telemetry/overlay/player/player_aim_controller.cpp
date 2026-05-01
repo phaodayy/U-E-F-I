@@ -64,6 +64,12 @@ long AbsLong(long value) {
     return value < 0 ? -value : value;
 }
 
+long ClampMouseDelta(long value, long limit) {
+    if (value > limit) return limit;
+    if (value < -limit) return -limit;
+    return value;
+}
+
 int GetFlickSettleDelayMs(long moveX, long moveY) {
     const long largestMove = (std::max)(AbsLong(moveX), AbsLong(moveY));
     return std::clamp(35 + static_cast<int>(largestMove / 24), 40, 85);
@@ -305,6 +311,7 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
 
     const bool flickWeaponAllowed = IsFlickWeaponEnabled(*this, MacroEngine::current_weapon_name);
     const bool canFlick = is_authenticated && !showmenu && flick_enabled && flickWeaponAllowed;
+    const bool flickFollowMode = (flick_behavior_mode == 1);
     const int activeKey = flick_key;
     const bool flickKeyDown = (activeKey != 0 && telemetryMemory::IsKeyDown(activeKey)) ||
         (flick_key2 != 0 && telemetryMemory::IsKeyDown(flick_key2));
@@ -352,10 +359,15 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
 
     static bool lastFlickKeyDown = false;
     static PendingFlickAction pendingFlick;
+    static ULONGLONG lastFollowMoveAt = 0;
     const ULONGLONG nowMs = GetTickCount64();
 
     const bool justPressed = flickKeyDown && !lastFlickKeyDown;
     lastFlickKeyDown = flickKeyDown;
+
+    if (!canFlick || !flickKeyDown || !flickFollowMode) {
+        lastFollowMoveAt = 0;
+    }
 
     ProcessPendingFlick(pendingFlick, canFlick && flickKeyDown, nowMs);
 
@@ -374,11 +386,25 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
 
         pendingFlick.active = true;
         pendingFlick.shouldClick = flick_auto_shot;
-        pendingFlick.shouldReturn = flick_return;
+        pendingFlick.shouldReturn = !flickFollowMode && flick_return;
         pendingFlick.moveX = moveX;
         pendingFlick.moveY = moveY;
         pendingFlick.shotDownAt = nowMs + static_cast<ULONGLONG>(settleMs);
         pendingFlick.shotUpAt = pendingFlick.shotDownAt + static_cast<ULONGLONG>(shotHoldMs);
         pendingFlick.returnAt = flick_auto_shot ? pendingFlick.shotUpAt + 2 : nowMs + static_cast<ULONGLONG>(settleMs);
+    }
+
+    if (canFlick && flickFollowMode && flickKeyDown && bestTarget && !justPressed) {
+        if (lastFollowMoveAt == 0 || nowMs - lastFollowMoveAt >= 8) {
+            long moveX = std::lround(bestScreenPos.x - ScreenCenterX);
+            long moveY = std::lround(bestScreenPos.y - ScreenCenterY);
+            moveX = ClampMouseDelta(moveX, 180);
+            moveY = ClampMouseDelta(moveY, 180);
+
+            if (moveX != 0 || moveY != 0) {
+                telemetryMemory::MoveMouse(moveX, moveY);
+                lastFollowMoveAt = nowMs;
+            }
+        }
     }
 }

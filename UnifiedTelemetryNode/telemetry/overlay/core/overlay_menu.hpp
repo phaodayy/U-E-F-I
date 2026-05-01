@@ -136,6 +136,7 @@ public:
   bool flick_auto_shot = true;
   bool flick_shot_hold = true;
   bool flick_return = true;
+  int flick_behavior_mode = 0;
   float flick_fov = 100.0f;
   float flick_max_dist = 400.0f;
   int flick_target_part = 3;

@@ -73,6 +73,8 @@ void ApplySharedDefaults(OverlayMenu& menu) {
     menu.flick_fov = 100.0f;
     menu.flick_max_dist = 400.0f;
     menu.flick_target_part = 3;
+    menu.flick_behavior_mode = 0;
+    menu.flick_return = true;
     menu.damage_color[0] = 1.0f; menu.damage_color[1] = 0.48f; menu.damage_color[2] = 0.18f; menu.damage_color[3] = 1.0f;
     menu.speed_color[0] = 0.45f; menu.speed_color[1] = 1.0f; menu.speed_color[2] = 0.72f; menu.speed_color[3] = 1.0f;
     menu.ammo_color[0] = 0.95f; menu.ammo_color[1] = 0.95f; menu.ammo_color[2] = 0.72f; menu.ammo_color[3] = 1.0f;

@@ -122,7 +122,11 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     ImGui::Checkbox(skCrypt("Enable Flick"), &g_Menu.flick_enabled);
     ImGui::Checkbox(skCrypt("Visible Only"), &g_Menu.flick_visible_only);
     ImGui::Checkbox(skCrypt("Hold Until Shot"), &g_Menu.flick_shot_hold);
-    ImGui::Checkbox(skCrypt("Return After Shot"), &g_Menu.flick_return);
+    g_Menu.flick_behavior_mode = std::clamp(g_Menu.flick_behavior_mode, 0, 1);
+    ImGui::TextUnformatted(skCrypt("Flick Mode"));
+    ImGui::RadioButton(skCrypt("Return After Shot"), &g_Menu.flick_behavior_mode, 0);
+    ImGui::RadioButton(skCrypt("Follow Target"), &g_Menu.flick_behavior_mode, 1);
+    g_Menu.flick_return = (g_Menu.flick_behavior_mode == 0);
     ImGui::Separator();
     DrawKeyCombo(skCrypt("Primary Key"), &g_Menu.flick_key);
     DrawKeyCombo(skCrypt("Secondary Key"), &g_Menu.flick_key2);
@@ -181,7 +185,7 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     ImGui::BulletText(skCrypt("No release wait"));
     ImGui::BulletText(skCrypt("Move first, shot second"));
     ImGui::BulletText(skCrypt("Hold Until Shot can be disabled"));
-    ImGui::BulletText(skCrypt("Return After Shot can be disabled"));
+    ImGui::BulletText(skCrypt("Return and Follow modes are exclusive"));
     ImGui::BulletText(skCrypt("Only selected weapon tiles are allowed"));
     ImGui::Separator();
     ImGui::Checkbox(Lang.GrenadeLine, &g_Menu.esp_grenade_prediction);
