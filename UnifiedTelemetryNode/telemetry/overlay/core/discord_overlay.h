@@ -140,14 +140,20 @@ inline void LaunchMovaviIfNeeded() {
     }
 }
 
-inline bool ConfigureMovaviOverlayWindow(HWND hwnd) {
+inline bool ConfigureStealthOverlay(HWND hwnd) {
     if (!hwnd || !IsWindow(hwnd)) return false;
+
+    // 1. Chống chụp ảnh màn hình (Anti-Screenshot)
+    // Kỹ thuật này khiến cửa sổ hoàn toàn biến mất trong ảnh chụp của Game/Anti-cheat
+    #ifndef WDA_EXCLUDEFROMCAPTURE
+    #define WDA_EXCLUDEFROMCAPTURE 0x00000011
+    #endif
+    SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
 
     RECT target_rect = {};
     HWND game = FindGameWindow();
     if (!GetGameClientRect(game, &target_rect)) {
-        target_rect.left = 0;
-        target_rect.top = 0;
+        target_rect.left = 0; target_rect.top = 0;
         target_rect.right = GetSystemMetrics(SM_CXSCREEN);
         target_rect.bottom = GetSystemMetrics(SM_CYSCREEN);
     }
@@ -156,28 +162,42 @@ inline bool ConfigureMovaviOverlayWindow(HWND hwnd) {
     const int height = target_rect.bottom - target_rect.top;
     if (width <= 0 || height <= 0) return false;
 
-    SetWindowLongPtr(hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
+    // 2. Thiết lập Style một cách tinh tế
+    // WS_EX_TRANSPARENT giúp click chuột xuyên qua Overlay vào Game
+    // WS_EX_TOOLWINDOW giúp giấu cửa sổ khỏi Alt-Tab
     SetWindowLongPtr(hwnd, GWL_EXSTYLE,
         WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
 
     MoveWindow(hwnd, target_rect.left, target_rect.top, width, height, TRUE);
-    SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
-
+    
+    // 3. Kích hoạt tính năng "Kính" (Glass effect) qua DWM
     MARGINS margins = { -1, -1, -1, -1 };
     DwmExtendFrameIntoClientArea(hwnd, &margins);
 
     ShowWindow(hwnd, SW_SHOWNOACTIVATE);
-    UpdateWindow(hwnd);
     SetWindowPos(hwnd, HWND_TOPMOST, target_rect.left, target_rect.top, width, height,
         SWP_NOACTIVATE | SWP_SHOWWINDOW);
 
     return true;
 }
 
+inline VisualizationBridgeHost FromNvidiaHost() {
+    VisualizationBridgeHost bridge = {};
+    // NVIDIA Overlay cực kỳ an toàn vì nó là tiến trình Driver
+    HWND hwnd = FindWindowA(skCrypt("CEF-Standard-Window"), skCrypt("NVIDIA GeForce Overlay"));
+    if (hwnd && IsWindowVisible(hwnd) && ConfigureStealthOverlay(hwnd)) {
+        bridge.hwnd = hwnd;
+        bridge.clear_before_render = true;
+        bridge.present_after_render = true;
+        UTN_DEV_LOG(std::cout << skCrypt("[DEV] NVIDIA Stealth Host active.") << std::endl);
+    }
+    return bridge;
+}
+
 inline VisualizationBridgeHost FromMovaviHost() {
     VisualizationBridgeHost bridge = {};
-
     HWND hwnd = FindMovaviWindow();
+    
     if (!hwnd) {
         LaunchMovaviIfNeeded();
         for (int i = 0; i < 150 && !AppShutdown::IsRequested(); ++i) {
@@ -187,11 +207,11 @@ inline VisualizationBridgeHost FromMovaviHost() {
         }
     }
 
-    if (hwnd && ConfigureMovaviOverlayWindow(hwnd)) {
+    if (hwnd && ConfigureStealthOverlay(hwnd)) {
         bridge.hwnd = hwnd;
         bridge.clear_before_render = true;
         bridge.present_after_render = true;
-        UTN_DEV_LOG(std::cout << skCrypt("[DEV] Movavi overlay host ready: ") << hwnd << std::endl);
+        UTN_DEV_LOG(std::cout << skCrypt("[DEV] Movavi Stealth Host active.") << std::endl);
     }
 
     return bridge;
@@ -207,12 +227,7 @@ inline VisualizationBridgeHost FromDiscordFallback() {
             DWORD pid = 0;
             GetWindowThreadProcessId(hwnd, &pid);
             bool is_match = false;
-            for (uint32_t d_pid : discord_pids) {
-                if (pid == d_pid) {
-                    is_match = true;
-                    break;
-                }
-            }
+            for (uint32_t d_pid : discord_pids) { if (pid == d_pid) { is_match = true; break; } }
 
             if (is_match) {
                 char class_name[256] = {};
@@ -221,11 +236,12 @@ inline VisualizationBridgeHost FromDiscordFallback() {
                 GetWindowTextA(hwnd, window_name, sizeof(window_name));
 
                 if (strcmp(class_name, skCrypt("Chrome_WidgetWin_1")) == 0 &&
-                    (strstr(window_name, skCrypt("Discord Overlay")) != nullptr ||
-                     (window_name[0] == '\0' && IsWindowVisible(hwnd)))) {
-                    RECT rc = {};
-                    GetWindowRect(hwnd, &rc);
+                    (strstr(window_name, skCrypt("Discord Overlay")) != nullptr || (window_name[0] == '\0' && IsWindowVisible(hwnd)))) {
+                    
+                    RECT rc = {}; GetWindowRect(hwnd, &rc);
                     if ((rc.right - rc.left) > 100 && (rc.bottom - rc.top) > 100) {
+                        // Với Discord chúng ta không cần ConfigureStealthOverlay vì nó đã chuẩn sẵn
+                        SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
                         bridge.hwnd = hwnd;
                         break;
                     }
@@ -243,7 +259,7 @@ inline VisualizationBridgeHost FromDiscordFallback() {
 }
 
 inline VisualizationBridgeHost ResolveHost() {
-    UTN_DEV_LOG(std::cout << skCrypt("[DEV] Waiting for bridge link (Movavi first, Discord fallback)...") << std::endl);
+    UTN_DEV_LOG(std::cout << skCrypt("[DEV] Negotiating Stealth Bridge Link...") << std::endl);
 
     int attempt = 0;
     while (!AppShutdown::IsRequested()) {
@@ -255,15 +271,18 @@ inline VisualizationBridgeHost ResolveHost() {
         bridge = FromSharedRegistry();
         if (bridge.hwnd) return bridge;
 
-        bridge = FromMovaviHost();
-        if (bridge.hwnd) {
-            UTN_DEV_LOG(std::cout << skCrypt("[DEV] Found passive host via Movavi.") << std::endl);
-            return bridge;
-        }
+        // ƯU TIÊN 1: NVIDIA (Tuyệt đối an toàn)
+        bridge = FromNvidiaHost();
+        if (bridge.hwnd) return bridge;
 
+        // ƯU TIÊN 2: Movavi (Đã được cường hóa Stealth)
+        bridge = FromMovaviHost();
+        if (bridge.hwnd) return bridge;
+
+        // ƯU TIÊN 3: Discord (Fallback ổn định)
         bridge = FromDiscordFallback();
         if (bridge.hwnd) {
-            UTN_DEV_LOG(std::cout << skCrypt("[DEV] Found passive host via Discord.") << std::endl);
+            UTN_DEV_LOG(std::cout << skCrypt("[DEV] Linked via Discord Stealth Fallback.") << std::endl);
             return bridge;
         }
 
