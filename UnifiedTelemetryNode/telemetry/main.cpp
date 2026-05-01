@@ -213,26 +213,7 @@ uint64_t g_remaining_seconds = 0;
 uint64_t g_last_tick_count = 0;
 
 void StartupLog(const char* step) {
-    char tempPath[MAX_PATH] = {};
-    DWORD len = GetTempPathA(MAX_PATH, tempPath);
-    std::string logPath = (len > 0 && len < MAX_PATH) ? std::string(tempPath) : std::string(".\\");
-    logPath += "gz_pubg_startup.log";
-
-    SYSTEMTIME st = {};
-    GetLocalTime(&st);
-    std::ofstream out(logPath, std::ios::app);
-    if (!out.is_open()) return;
-
-    out << std::setfill('0')
-        << st.wYear << '-'
-        << std::setw(2) << st.wMonth << '-'
-        << std::setw(2) << st.wDay << ' '
-        << std::setw(2) << st.wHour << ':'
-        << std::setw(2) << st.wMinute << ':'
-        << std::setw(2) << st.wSecond
-        << " pid=" << GetCurrentProcessId()
-        << " step=" << step
-        << "\n";
+    (void)step;
 }
 
 extern const wchar_t* LICENSE_API_HOST = L"licensing-backend.donghiem114.workers.dev";
