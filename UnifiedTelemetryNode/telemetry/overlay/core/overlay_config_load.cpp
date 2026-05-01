@@ -1,4 +1,5 @@
 #include "overlay_menu.hpp"
+#include "flick_weapon_catalog.hpp"
 #include "../../sdk/core/console_log.hpp"
 #include "../../sdk/core/app_paths.hpp"
 #include "../../sdk/Utils/MacroEngine.h"
@@ -107,6 +108,79 @@ void OverlayMenu::LoadConfig(const char* path) {
             }
             flick_behavior_mode = std::clamp(flick_behavior_mode, 0, 1);
             flick_return = (flick_behavior_mode == 0);
+            if (j.contains("flick_follow_auto_shot")) flick_follow_auto_shot = j["flick_follow_auto_shot"];
+            bool loaded_flick_category_map = false;
+            if (j.contains("flick_category_enabled") && j["flick_category_enabled"].is_object()) {
+                flick_category_enabled.clear();
+                for (auto it = j["flick_category_enabled"].begin(); it != j["flick_category_enabled"].end(); ++it) {
+                    if (it.value().is_boolean()) {
+                        flick_category_enabled[it.key()] = it.value().get<bool>();
+                    }
+                }
+                loaded_flick_category_map = true;
+            }
+            if (j.contains("flick_category_visible_only") && j["flick_category_visible_only"].is_object()) {
+                flick_category_visible_only.clear();
+                for (auto it = j["flick_category_visible_only"].begin(); it != j["flick_category_visible_only"].end(); ++it) {
+                    if (it.value().is_boolean()) flick_category_visible_only[it.key()] = it.value().get<bool>();
+                }
+            }
+            if (j.contains("flick_category_shot_hold") && j["flick_category_shot_hold"].is_object()) {
+                flick_category_shot_hold.clear();
+                for (auto it = j["flick_category_shot_hold"].begin(); it != j["flick_category_shot_hold"].end(); ++it) {
+                    if (it.value().is_boolean()) flick_category_shot_hold[it.key()] = it.value().get<bool>();
+                }
+            }
+            if (j.contains("flick_category_follow_auto_shot") && j["flick_category_follow_auto_shot"].is_object()) {
+                flick_category_follow_auto_shot.clear();
+                for (auto it = j["flick_category_follow_auto_shot"].begin(); it != j["flick_category_follow_auto_shot"].end(); ++it) {
+                    if (it.value().is_boolean()) flick_category_follow_auto_shot[it.key()] = it.value().get<bool>();
+                }
+            }
+            if (j.contains("flick_category_behavior_mode") && j["flick_category_behavior_mode"].is_object()) {
+                flick_category_behavior_mode.clear();
+                for (auto it = j["flick_category_behavior_mode"].begin(); it != j["flick_category_behavior_mode"].end(); ++it) {
+                    if (it.value().is_number_integer()) flick_category_behavior_mode[it.key()] = std::clamp(it.value().get<int>(), 0, 1);
+                }
+            }
+            if (j.contains("flick_category_target_part") && j["flick_category_target_part"].is_object()) {
+                flick_category_target_part.clear();
+                for (auto it = j["flick_category_target_part"].begin(); it != j["flick_category_target_part"].end(); ++it) {
+                    if (it.value().is_number_integer()) flick_category_target_part[it.key()] = std::clamp(it.value().get<int>(), 0, 15);
+                }
+            }
+            if (j.contains("flick_category_max_dist") && j["flick_category_max_dist"].is_object()) {
+                flick_category_max_dist.clear();
+                for (auto it = j["flick_category_max_dist"].begin(); it != j["flick_category_max_dist"].end(); ++it) {
+                    if (it.value().is_number()) flick_category_max_dist[it.key()] = std::clamp(it.value().get<float>(), 5.0f, 400.0f);
+                }
+            }
+            if (j.contains("flick_category_move_speed") && j["flick_category_move_speed"].is_object()) {
+                flick_category_move_speed.clear();
+                for (auto it = j["flick_category_move_speed"].begin(); it != j["flick_category_move_speed"].end(); ++it) {
+                    if (it.value().is_number()) {
+                        flick_category_move_speed[it.key()] = std::clamp(it.value().get<float>(), 0.2f, 2.0f);
+                    }
+                }
+            }
+            if (j.contains("flick_category_fov") && j["flick_category_fov"].is_object()) {
+                flick_category_fov.clear();
+                for (auto it = j["flick_category_fov"].begin(); it != j["flick_category_fov"].end(); ++it) {
+                    if (it.value().is_number()) {
+                        flick_category_fov[it.key()] = std::clamp(it.value().get<float>(), 1.0f, 100.0f);
+                    }
+                }
+            }
+            bool loaded_flick_weapon_map = false;
+            if (j.contains("flick_weapon_enabled") && j["flick_weapon_enabled"].is_object()) {
+                flick_weapon_enabled.clear();
+                for (auto it = j["flick_weapon_enabled"].begin(); it != j["flick_weapon_enabled"].end(); ++it) {
+                    if (it.value().is_boolean()) {
+                        flick_weapon_enabled[it.key()] = it.value().get<bool>();
+                    }
+                }
+                loaded_flick_weapon_map = true;
+            }
             if (j.contains("flick_fov")) flick_fov = j["flick_fov"];
             if (j.contains("flick_max_dist")) flick_max_dist = j["flick_max_dist"];
             if (j.contains("flick_target_part")) flick_target_part = j["flick_target_part"];
@@ -132,6 +206,41 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("flick_weapon_mk12")) flick_weapon_mk12 = j["flick_weapon_mk12"];
             if (j.contains("flick_weapon_mk14")) flick_weapon_mk14 = j["flick_weapon_mk14"];
             if (j.contains("flick_weapon_dragunov")) flick_weapon_dragunov = j["flick_weapon_dragunov"];
+            if (!loaded_flick_weapon_map) {
+                flick_weapon_enabled["s686"] = flick_weapon_s686;
+                flick_weapon_enabled["s12k"] = flick_weapon_s12k;
+                flick_weapon_enabled["s1897"] = flick_weapon_s1897;
+                flick_weapon_enabled["dbs"] = flick_weapon_dbs;
+                flick_weapon_enabled["o12"] = flick_weapon_o12;
+                flick_weapon_enabled["slr"] = flick_weapon_slr;
+                flick_weapon_enabled["mini14"] = flick_weapon_mini14;
+                flick_weapon_enabled["sks"] = flick_weapon_sks;
+                flick_weapon_enabled["vss"] = flick_weapon_vss;
+                flick_weapon_enabled["qbu"] = flick_weapon_qbu;
+                flick_weapon_enabled["kar98k"] = flick_weapon_kar98k;
+                flick_weapon_enabled["m24"] = flick_weapon_m24;
+                flick_weapon_enabled["awm"] = flick_weapon_awm;
+                flick_weapon_enabled["lynx"] = flick_weapon_lynx;
+                flick_weapon_enabled["win94"] = flick_weapon_win94;
+                flick_weapon_enabled["mosin"] = flick_weapon_mosin;
+                flick_weapon_enabled["panzerfaust"] = flick_weapon_panzerfaust;
+                flick_weapon_enabled["mk12"] = flick_weapon_mk12;
+                flick_weapon_enabled["mk14"] = flick_weapon_mk14;
+                flick_weapon_enabled["dragunov"] = flick_weapon_dragunov;
+            }
+            if (!loaded_flick_category_map) {
+                FlickWeaponCatalog::EnsureDefaults(flick_weapon_enabled);
+                FlickWeaponCatalog::BuildCategoriesFromWeaponSettings(flick_weapon_enabled, flick_category_enabled);
+            }
+            FlickWeaponCatalog::EnsureCategoryDefaults(flick_category_enabled);
+            FlickWeaponCatalog::EnsureCategoryBoolDefaults(flick_category_visible_only, flick_visible_only);
+            FlickWeaponCatalog::EnsureCategoryBoolDefaults(flick_category_shot_hold, flick_shot_hold);
+            FlickWeaponCatalog::EnsureCategoryBoolDefaults(flick_category_follow_auto_shot, flick_follow_auto_shot);
+            FlickWeaponCatalog::EnsureCategoryIntDefaults(flick_category_behavior_mode, flick_behavior_mode);
+            FlickWeaponCatalog::EnsureCategoryIntDefaults(flick_category_target_part, flick_target_part);
+            FlickWeaponCatalog::EnsureCategoryFloatDefaults(flick_category_max_dist, flick_max_dist);
+            FlickWeaponCatalog::EnsureCategoryMoveSpeedDefaults(flick_category_move_speed);
+            FlickWeaponCatalog::EnsureCategoryFovDefaults(flick_category_fov, flick_fov);
             if (j.contains("esp_show_enemies")) esp_show_enemies = j["esp_show_enemies"];
             if (j.contains("esp_show_teammates")) {
                 esp_show_teammates = j["esp_show_teammates"];

@@ -1,4 +1,5 @@
 #include "overlay_config_sections.hpp"
+#include "flick_weapon_catalog.hpp"
 #include "overlay_menu.hpp"
 
 #include <algorithm>
@@ -34,6 +35,32 @@ void ClampPlayer(OverlayMenu& menu) {
     menu.flick_key2 = std::clamp(menu.flick_key2, 0, 0xFE);
     menu.flick_behavior_mode = std::clamp(menu.flick_behavior_mode, 0, 1);
     menu.flick_return = (menu.flick_behavior_mode == 0);
+    FlickWeaponCatalog::EnsureCategoryDefaults(menu.flick_category_enabled);
+    FlickWeaponCatalog::EnsureCategoryBoolDefaults(menu.flick_category_visible_only, menu.flick_visible_only);
+    FlickWeaponCatalog::EnsureCategoryBoolDefaults(menu.flick_category_shot_hold, menu.flick_shot_hold);
+    FlickWeaponCatalog::EnsureCategoryBoolDefaults(menu.flick_category_follow_auto_shot, menu.flick_follow_auto_shot);
+    FlickWeaponCatalog::EnsureCategoryIntDefaults(menu.flick_category_behavior_mode, menu.flick_behavior_mode);
+    FlickWeaponCatalog::EnsureCategoryIntDefaults(menu.flick_category_target_part, menu.flick_target_part);
+    FlickWeaponCatalog::EnsureCategoryFloatDefaults(menu.flick_category_max_dist, menu.flick_max_dist);
+    FlickWeaponCatalog::EnsureCategoryMoveSpeedDefaults(menu.flick_category_move_speed);
+    FlickWeaponCatalog::EnsureCategoryFovDefaults(menu.flick_category_fov, menu.flick_fov);
+    const int max_category = static_cast<int>(FlickWeaponCatalog::Categories().size()) - 1;
+    menu.flick_selected_category = std::clamp(menu.flick_selected_category, 0, (std::max)(0, max_category));
+    for (auto& entry : menu.flick_category_move_speed) {
+        entry.second = std::clamp(entry.second, 0.2f, 2.0f);
+    }
+    for (auto& entry : menu.flick_category_fov) {
+        entry.second = std::clamp(entry.second, 1.0f, 100.0f);
+    }
+    for (auto& entry : menu.flick_category_max_dist) {
+        entry.second = std::clamp(entry.second, 5.0f, 400.0f);
+    }
+    for (auto& entry : menu.flick_category_behavior_mode) {
+        entry.second = std::clamp(entry.second, 0, 1);
+    }
+    for (auto& entry : menu.flick_category_target_part) {
+        entry.second = std::clamp(entry.second, 0, 15);
+    }
 }
 
 void ClampRadar(OverlayMenu& menu) {

@@ -1,4 +1,5 @@
 #include "overlay_presets.hpp"
+#include "flick_weapon_catalog.hpp"
 #include "overlay_menu.hpp"
 
 namespace {
@@ -74,7 +75,28 @@ void ApplySharedDefaults(OverlayMenu& menu) {
     menu.flick_max_dist = 400.0f;
     menu.flick_target_part = 3;
     menu.flick_behavior_mode = 0;
+    menu.flick_follow_auto_shot = false;
     menu.flick_return = true;
+    menu.flick_weapon_enabled.clear();
+    menu.flick_category_enabled.clear();
+    menu.flick_category_visible_only.clear();
+    menu.flick_category_shot_hold.clear();
+    menu.flick_category_follow_auto_shot.clear();
+    menu.flick_category_behavior_mode.clear();
+    menu.flick_category_target_part.clear();
+    menu.flick_category_move_speed.clear();
+    menu.flick_category_fov.clear();
+    menu.flick_category_max_dist.clear();
+    menu.flick_selected_category = 0;
+    FlickWeaponCatalog::EnsureCategoryDefaults(menu.flick_category_enabled);
+    FlickWeaponCatalog::EnsureCategoryBoolDefaults(menu.flick_category_visible_only, menu.flick_visible_only);
+    FlickWeaponCatalog::EnsureCategoryBoolDefaults(menu.flick_category_shot_hold, menu.flick_shot_hold);
+    FlickWeaponCatalog::EnsureCategoryBoolDefaults(menu.flick_category_follow_auto_shot, menu.flick_follow_auto_shot);
+    FlickWeaponCatalog::EnsureCategoryIntDefaults(menu.flick_category_behavior_mode, menu.flick_behavior_mode);
+    FlickWeaponCatalog::EnsureCategoryIntDefaults(menu.flick_category_target_part, menu.flick_target_part);
+    FlickWeaponCatalog::EnsureCategoryFloatDefaults(menu.flick_category_max_dist, menu.flick_max_dist);
+    FlickWeaponCatalog::EnsureCategoryMoveSpeedDefaults(menu.flick_category_move_speed);
+    FlickWeaponCatalog::EnsureCategoryFovDefaults(menu.flick_category_fov, menu.flick_fov);
     menu.damage_color[0] = 1.0f; menu.damage_color[1] = 0.48f; menu.damage_color[2] = 0.18f; menu.damage_color[3] = 1.0f;
     menu.speed_color[0] = 0.45f; menu.speed_color[1] = 1.0f; menu.speed_color[2] = 0.72f; menu.speed_color[3] = 1.0f;
     menu.ammo_color[0] = 0.95f; menu.ammo_color[1] = 0.95f; menu.ammo_color[2] = 0.72f; menu.ammo_color[3] = 1.0f;

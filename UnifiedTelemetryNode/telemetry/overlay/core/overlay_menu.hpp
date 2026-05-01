@@ -5,6 +5,7 @@
 #include <dwmapi.h>
 #include <windows.h>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #pragma comment(lib, "dwmapi.lib")
@@ -137,6 +138,18 @@ public:
   bool flick_shot_hold = true;
   bool flick_return = true;
   int flick_behavior_mode = 0;
+  bool flick_follow_auto_shot = false;
+  std::unordered_map<std::string, bool> flick_weapon_enabled;
+  std::unordered_map<std::string, bool> flick_category_enabled;
+  std::unordered_map<std::string, bool> flick_category_visible_only;
+  std::unordered_map<std::string, bool> flick_category_shot_hold;
+  std::unordered_map<std::string, bool> flick_category_follow_auto_shot;
+  std::unordered_map<std::string, int> flick_category_behavior_mode;
+  std::unordered_map<std::string, int> flick_category_target_part;
+  std::unordered_map<std::string, float> flick_category_move_speed;
+  std::unordered_map<std::string, float> flick_category_fov;
+  std::unordered_map<std::string, float> flick_category_max_dist;
+  int flick_selected_category = 0;
   float flick_fov = 100.0f;
   float flick_max_dist = 400.0f;
   int flick_target_part = 3;

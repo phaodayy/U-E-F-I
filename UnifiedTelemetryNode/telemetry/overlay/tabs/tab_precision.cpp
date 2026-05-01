@@ -1,10 +1,12 @@
 #include "../core/overlay_menu.hpp"
 #include "../core/overlay_asset_animation.hpp"
+#include "../core/flick_weapon_catalog.hpp"
 #include "../core/overlay_hotkeys.hpp"
 #include "../translation/translation.hpp"
 #include "../../sdk/Utils/MacroEngine.h"
 #include <protec/skCrypt.h>
 #include <algorithm>
+#include <vector>
 
 namespace {
 
@@ -120,21 +122,9 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
 
     BeginGlassCard(skCrypt("##FlickCore"), skCrypt("FLICK SETTING"), ImVec2(totalWidth / 3.0f - 20, 0));
     ImGui::Checkbox(skCrypt("Enable Flick"), &g_Menu.flick_enabled);
-    ImGui::Checkbox(skCrypt("Visible Only"), &g_Menu.flick_visible_only);
-    ImGui::Checkbox(skCrypt("Hold Until Shot"), &g_Menu.flick_shot_hold);
-    g_Menu.flick_behavior_mode = std::clamp(g_Menu.flick_behavior_mode, 0, 1);
-    ImGui::TextUnformatted(skCrypt("Flick Mode"));
-    ImGui::RadioButton(skCrypt("Return After Shot"), &g_Menu.flick_behavior_mode, 0);
-    ImGui::RadioButton(skCrypt("Follow Target"), &g_Menu.flick_behavior_mode, 1);
-    g_Menu.flick_return = (g_Menu.flick_behavior_mode == 0);
-    ImGui::Separator();
     DrawKeyCombo(skCrypt("Primary Key"), &g_Menu.flick_key);
     DrawKeyCombo(skCrypt("Secondary Key"), &g_Menu.flick_key2);
     OverlayHotkeys::DrawKeyBind(skCrypt("Capture Primary"), &g_Menu.flick_key, g_Menu.waiting_for_key);
-    ImGui::Separator();
-    ImGui::SliderFloat(skCrypt("Flick FOV"), &g_Menu.flick_fov, 1.0f, 100.0f, skCrypt("%.0f"));
-    ImGui::SliderFloat(skCrypt("Max Distance"), &g_Menu.flick_max_dist, 5.0f, 400.0f, skCrypt("%.0f m"));
-    DrawFlickTargetCombo(&g_Menu.flick_target_part);
     ImGui::Separator();
     if (ImGui::Button(Lang.SaveConfig, ImVec2(-1, 35))) {
         g_Menu.SaveConfig("dataMacro/Config/settings.json");
@@ -144,38 +134,83 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     ImGui::EndChild();
 
     ImGui::NextColumn();
-    BeginGlassCard(skCrypt("##FlickWeapons"), skCrypt("FLICK WEAPONS"), ImVec2(totalWidth / 3.0f - 20, 0));
-    FlickWeaponTile weaponTiles[] = {
-        { skCrypt("S686"), skCrypt("Gun/SG"), skCrypt("Item_Weapon_Berreta686_C"), &g_Menu.flick_weapon_s686 },
-        { skCrypt("S12K"), skCrypt("Gun/SG"), skCrypt("Item_Weapon_Saiga12_C"), &g_Menu.flick_weapon_s12k },
-        { skCrypt("S1897"), skCrypt("Gun/SG"), skCrypt("Item_Weapon_Winchester_C"), &g_Menu.flick_weapon_s1897 },
-        { skCrypt("DBS"), skCrypt("Gun/SG"), skCrypt("Item_Weapon_DP12_C"), &g_Menu.flick_weapon_dbs },
-        { skCrypt("O12"), skCrypt("Gun/SG"), skCrypt("Item_Weapon_OriginS12_C"), &g_Menu.flick_weapon_o12 },
-        { skCrypt("SLR"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_FNFal_C"), &g_Menu.flick_weapon_slr },
-        { skCrypt("Mini14"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_Mini14_C"), &g_Menu.flick_weapon_mini14 },
-        { skCrypt("SKS"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_SKS_C"), &g_Menu.flick_weapon_sks },
-        { skCrypt("VSS"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_VSS_C"), &g_Menu.flick_weapon_vss },
-        { skCrypt("QBU"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_QBU88_C"), &g_Menu.flick_weapon_qbu },
-        { skCrypt("Kar98k"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_Kar98k_C"), &g_Menu.flick_weapon_kar98k },
-        { skCrypt("M24"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_M24_C"), &g_Menu.flick_weapon_m24 },
-        { skCrypt("AWM"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_AWM_C"), &g_Menu.flick_weapon_awm },
-        { skCrypt("Lynx AMR"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_L6_C"), &g_Menu.flick_weapon_lynx },
-        { skCrypt("Win94"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_Win1894_C"), &g_Menu.flick_weapon_win94 },
-        { skCrypt("Mosin"), skCrypt("Gun/SR"), skCrypt("Item_Weapon_Mosin_C"), &g_Menu.flick_weapon_mosin },
-        { skCrypt("Panzer"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_PanzerFaust100M_C"), &g_Menu.flick_weapon_panzerfaust },
-        { skCrypt("Mk12"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_Mk12_C"), &g_Menu.flick_weapon_mk12 },
-        { skCrypt("MK 14"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_Mk14_C"), &g_Menu.flick_weapon_mk14 },
-        { skCrypt("Dragunov"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_Dragunov_C"), &g_Menu.flick_weapon_dragunov }
-    };
+    BeginGlassCard(skCrypt("##FlickWeapons"), skCrypt("FLICK CATEGORIES"), ImVec2(totalWidth / 3.0f - 20, 0));
+    FlickWeaponCatalog::EnsureCategoryDefaults(g_Menu.flick_category_enabled);
+    FlickWeaponCatalog::EnsureCategoryBoolDefaults(g_Menu.flick_category_visible_only, g_Menu.flick_visible_only);
+    FlickWeaponCatalog::EnsureCategoryBoolDefaults(g_Menu.flick_category_shot_hold, g_Menu.flick_shot_hold);
+    FlickWeaponCatalog::EnsureCategoryBoolDefaults(g_Menu.flick_category_follow_auto_shot, g_Menu.flick_follow_auto_shot);
+    FlickWeaponCatalog::EnsureCategoryIntDefaults(g_Menu.flick_category_behavior_mode, g_Menu.flick_behavior_mode);
+    FlickWeaponCatalog::EnsureCategoryIntDefaults(g_Menu.flick_category_target_part, g_Menu.flick_target_part);
+    FlickWeaponCatalog::EnsureCategoryMoveSpeedDefaults(g_Menu.flick_category_move_speed);
+    FlickWeaponCatalog::EnsureCategoryFovDefaults(g_Menu.flick_category_fov, g_Menu.flick_fov);
+    FlickWeaponCatalog::EnsureCategoryFloatDefaults(g_Menu.flick_category_max_dist, g_Menu.flick_max_dist);
+    const auto& categories = FlickWeaponCatalog::Categories();
+    g_Menu.flick_selected_category = std::clamp(
+        g_Menu.flick_selected_category, 0, static_cast<int>(categories.size()) - 1);
+
     if (ImGui::Button(skCrypt("All"), ImVec2(74, 24))) {
-        for (auto& item : weaponTiles) *item.enabled = true;
+        for (const auto& category : categories) g_Menu.flick_category_enabled[category.key] = true;
     }
     ImGui::SameLine();
     if (ImGui::Button(skCrypt("None"), ImVec2(74, 24))) {
-        for (auto& item : weaponTiles) *item.enabled = false;
+        for (const auto& category : categories) g_Menu.flick_category_enabled[category.key] = false;
     }
     ImGui::Separator();
-    DrawFlickWeaponGrid(weaponTiles, IM_ARRAYSIZE(weaponTiles));
+    ImGui::Columns(2, skCrypt("FlickCategoryPicker"), false);
+    ImGui::SetColumnWidth(0, 118.0f);
+    for (int i = 0; i < static_cast<int>(categories.size()); ++i) {
+        const auto& category = categories[i];
+        const bool selected = g_Menu.flick_selected_category == i;
+        const bool enabled = g_Menu.flick_category_enabled[category.key];
+        ImGui::PushID(category.key);
+        ImGui::PushStyleColor(ImGuiCol_Text, enabled ? ImVec4(0.75f, 0.93f, 1.0f, 1.0f) : ImVec4(0.55f, 0.62f, 0.70f, 1.0f));
+        if (ImGui::Selectable(category.label, selected, 0, ImVec2(-1, 32))) {
+            g_Menu.flick_selected_category = i;
+        }
+        ImGui::PopStyleColor();
+        ImGui::PopID();
+    }
+
+    ImGui::NextColumn();
+    const auto& selectedCategory = categories[g_Menu.flick_selected_category];
+    bool& categoryEnabled = g_Menu.flick_category_enabled[selectedCategory.key];
+    bool& visibleOnly = g_Menu.flick_category_visible_only[selectedCategory.key];
+    bool& shotHold = g_Menu.flick_category_shot_hold[selectedCategory.key];
+    bool& followAutoShot = g_Menu.flick_category_follow_auto_shot[selectedCategory.key];
+    int& behaviorMode = g_Menu.flick_category_behavior_mode[selectedCategory.key];
+    int& targetPart = g_Menu.flick_category_target_part[selectedCategory.key];
+    float& moveSpeed = g_Menu.flick_category_move_speed[selectedCategory.key];
+    float& categoryFov = g_Menu.flick_category_fov[selectedCategory.key];
+    float& maxDistance = g_Menu.flick_category_max_dist[selectedCategory.key];
+    behaviorMode = std::clamp(behaviorMode, 0, 1);
+    targetPart = std::clamp(targetPart, 0, 15);
+    moveSpeed = std::clamp(moveSpeed, 0.2f, 2.0f);
+    categoryFov = std::clamp(categoryFov, 1.0f, 100.0f);
+    maxDistance = std::clamp(maxDistance, 5.0f, 400.0f);
+    ImGui::Text("%s", selectedCategory.label);
+    ImGui::Separator();
+    ImGui::Checkbox(skCrypt("Enabled"), &categoryEnabled);
+    ImGui::Checkbox(skCrypt("Visible Only"), &visibleOnly);
+    ImGui::Checkbox(skCrypt("Hold Until Shot"), &shotHold);
+    ImGui::TextUnformatted(skCrypt("Flick Mode"));
+    ImGui::RadioButton(skCrypt("Return After Shot"), &behaviorMode, 0);
+    ImGui::RadioButton(skCrypt("Follow Target"), &behaviorMode, 1);
+    if (behaviorMode == 1) {
+        ImGui::Checkbox(skCrypt("Auto Shot While Hold"), &followAutoShot);
+    }
+    ImGui::SetNextItemWidth(-1);
+    ImGui::SliderFloat(skCrypt("Max Distance"), &maxDistance, 5.0f, 400.0f, skCrypt("%.0f m"));
+    DrawFlickTargetCombo(&targetPart);
+    ImGui::SetNextItemWidth(-1);
+    ImGui::SliderFloat(skCrypt("Flick FOV"), &categoryFov, 1.0f, 100.0f, skCrypt("%.0f"));
+    ImGui::SetNextItemWidth(-1);
+    ImGui::SliderFloat(skCrypt("Move Speed"), &moveSpeed, 0.2f, 2.0f, skCrypt("%.2fx"));
+    TextureInfo* preview = GetPreviewIcon(selectedCategory.folder, selectedCategory.asset);
+    if (preview && preview->SRV) {
+        ImGui::Spacing();
+        ImGui::Image((ImTextureID)preview->SRV, ImVec2(58.0f, 58.0f));
+    }
+    ImGui::Columns(1);
     ImGui::EndChild();
 
     ImGui::NextColumn();
@@ -186,7 +221,7 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     ImGui::BulletText(skCrypt("Move first, shot second"));
     ImGui::BulletText(skCrypt("Hold Until Shot can be disabled"));
     ImGui::BulletText(skCrypt("Return and Follow modes are exclusive"));
-    ImGui::BulletText(skCrypt("Only selected weapon tiles are allowed"));
+    ImGui::BulletText(skCrypt("Only selected weapon categories are allowed"));
     ImGui::Separator();
     ImGui::Checkbox(Lang.GrenadeLine, &g_Menu.esp_grenade_prediction);
     ImGui::Checkbox(Lang.Projectiles, &g_Menu.esp_projectile_tracer);

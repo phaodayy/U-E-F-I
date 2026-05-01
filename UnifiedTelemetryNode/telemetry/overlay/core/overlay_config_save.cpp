@@ -1,4 +1,5 @@
 #include "overlay_menu.hpp"
+#include "flick_weapon_catalog.hpp"
 #include "../../sdk/core/console_log.hpp"
 #include "../../sdk/core/app_paths.hpp"
 #include "../../sdk/Utils/MacroEngine.h"
@@ -49,6 +50,25 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["flick_auto_shot"] = true;
         j["flick_shot_hold"] = flick_shot_hold;
         j["flick_behavior_mode"] = flick_behavior_mode;
+        j["flick_follow_auto_shot"] = flick_follow_auto_shot;
+        FlickWeaponCatalog::EnsureCategoryDefaults(flick_category_enabled);
+        FlickWeaponCatalog::EnsureCategoryBoolDefaults(flick_category_visible_only, flick_visible_only);
+        FlickWeaponCatalog::EnsureCategoryBoolDefaults(flick_category_shot_hold, flick_shot_hold);
+        FlickWeaponCatalog::EnsureCategoryBoolDefaults(flick_category_follow_auto_shot, flick_follow_auto_shot);
+        FlickWeaponCatalog::EnsureCategoryIntDefaults(flick_category_behavior_mode, flick_behavior_mode);
+        FlickWeaponCatalog::EnsureCategoryIntDefaults(flick_category_target_part, flick_target_part);
+        FlickWeaponCatalog::EnsureCategoryFloatDefaults(flick_category_max_dist, flick_max_dist);
+        FlickWeaponCatalog::EnsureCategoryMoveSpeedDefaults(flick_category_move_speed);
+        FlickWeaponCatalog::EnsureCategoryFovDefaults(flick_category_fov, flick_fov);
+        j["flick_category_enabled"] = flick_category_enabled;
+        j["flick_category_visible_only"] = flick_category_visible_only;
+        j["flick_category_shot_hold"] = flick_category_shot_hold;
+        j["flick_category_follow_auto_shot"] = flick_category_follow_auto_shot;
+        j["flick_category_behavior_mode"] = flick_category_behavior_mode;
+        j["flick_category_target_part"] = flick_category_target_part;
+        j["flick_category_max_dist"] = flick_category_max_dist;
+        j["flick_category_move_speed"] = flick_category_move_speed;
+        j["flick_category_fov"] = flick_category_fov;
         j["flick_return"] = flick_return;
         j["flick_fov"] = flick_fov;
         j["flick_max_dist"] = flick_max_dist;

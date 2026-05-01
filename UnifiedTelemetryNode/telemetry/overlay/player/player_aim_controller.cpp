@@ -1,4 +1,5 @@
 #include "../core/overlay_menu.hpp"
+#include "../core/flick_weapon_catalog.hpp"
 #include "../../sdk/core/context.hpp"
 #include "../../sdk/Utils/MacroEngine.h"
 #include <algorithm>
@@ -10,27 +11,7 @@
 namespace {
 
 bool IsFlickWeaponEnabled(const OverlayMenu& menu, const std::string& weaponName) {
-    if (weaponName == skCrypt("s686") || weaponName == skCrypt("berreta686")) return menu.flick_weapon_s686;
-    if (weaponName == skCrypt("s12k") || weaponName == skCrypt("saiga12")) return menu.flick_weapon_s12k;
-    if (weaponName == skCrypt("s1897") || weaponName == skCrypt("winchester")) return menu.flick_weapon_s1897;
-    if (weaponName == skCrypt("dbs") || weaponName == skCrypt("dp12")) return menu.flick_weapon_dbs;
-    if (weaponName == skCrypt("o12") || weaponName == skCrypt("origin12") || weaponName == skCrypt("origins12")) return menu.flick_weapon_o12;
-    if (weaponName == skCrypt("slr") || weaponName == skCrypt("fnfal") || weaponName == skCrypt("madsfnfal")) return menu.flick_weapon_slr;
-    if (weaponName == skCrypt("mini14")) return menu.flick_weapon_mini14;
-    if (weaponName == skCrypt("sks")) return menu.flick_weapon_sks;
-    if (weaponName == skCrypt("vss")) return menu.flick_weapon_vss;
-    if (weaponName == skCrypt("qbu") || weaponName == skCrypt("qbu88") || weaponName == skCrypt("madsqbu88")) return menu.flick_weapon_qbu;
-    if (weaponName == skCrypt("kar98k") || weaponName == skCrypt("julieskar98k")) return menu.flick_weapon_kar98k;
-    if (weaponName == skCrypt("m24") || weaponName == skCrypt("juliesm24")) return menu.flick_weapon_m24;
-    if (weaponName == skCrypt("awm")) return menu.flick_weapon_awm;
-    if (weaponName == skCrypt("lynx") || weaponName == skCrypt("l6")) return menu.flick_weapon_lynx;
-    if (weaponName == skCrypt("win94") || weaponName == skCrypt("win1894")) return menu.flick_weapon_win94;
-    if (weaponName == skCrypt("mosin") || weaponName == skCrypt("mosinnagant")) return menu.flick_weapon_mosin;
-    if (weaponName.find(skCrypt("panzer")) != std::string::npos) return menu.flick_weapon_panzerfaust;
-    if (weaponName == skCrypt("mk12")) return menu.flick_weapon_mk12;
-    if (weaponName == skCrypt("mk14")) return menu.flick_weapon_mk14;
-    if (weaponName == skCrypt("dragunov")) return menu.flick_weapon_dragunov;
-    return false;
+    return FlickWeaponCatalog::IsEnabled(menu.flick_category_enabled, weaponName);
 }
 
 int GetFlickShotHoldMicros(const std::string& weaponName) {
@@ -73,6 +54,11 @@ long ClampMouseDelta(long value, long limit) {
 int GetFlickSettleDelayMs(long moveX, long moveY) {
     const long largestMove = (std::max)(AbsLong(moveX), AbsLong(moveY));
     return std::clamp(35 + static_cast<int>(largestMove / 24), 40, 85);
+}
+
+int GetFlickShotHoldMs(const std::string& weaponName, bool holdUntilShot) {
+    const int holdMicros = holdUntilShot ? GetFlickShotHoldMicros(weaponName) : 12000;
+    return (holdMicros / 1000) > 1 ? (holdMicros / 1000) : 1;
 }
 
 struct PendingFlickAction {
@@ -311,13 +297,29 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
 
     const bool flickWeaponAllowed = IsFlickWeaponEnabled(*this, MacroEngine::current_weapon_name);
     const bool canFlick = is_authenticated && !showmenu && flick_enabled && flickWeaponAllowed;
-    const bool flickFollowMode = (flick_behavior_mode == 1);
+    const bool activeVisibleOnly = FlickWeaponCatalog::BoolForWeapon(
+        flick_category_visible_only, MacroEngine::current_weapon_name, flick_visible_only);
+    const bool activeShotHold = FlickWeaponCatalog::BoolForWeapon(
+        flick_category_shot_hold, MacroEngine::current_weapon_name, flick_shot_hold);
+    const bool activeFollowAutoShot = FlickWeaponCatalog::BoolForWeapon(
+        flick_category_follow_auto_shot, MacroEngine::current_weapon_name, flick_follow_auto_shot);
+    const int activeBehaviorMode = FlickWeaponCatalog::IntForWeapon(
+        flick_category_behavior_mode, MacroEngine::current_weapon_name, flick_behavior_mode, 0, 1);
+    const int activeTargetPart = FlickWeaponCatalog::IntForWeapon(
+        flick_category_target_part, MacroEngine::current_weapon_name, flick_target_part, 0, 15);
+    const float activeMaxDist = FlickWeaponCatalog::FloatForWeapon(
+        flick_category_max_dist, MacroEngine::current_weapon_name, flick_max_dist, 5.0f, 400.0f);
+    const bool flickFollowMode = (activeBehaviorMode == 1);
+    const float flickMoveSpeed = FlickWeaponCatalog::MoveSpeedForWeapon(
+        flick_category_move_speed, MacroEngine::current_weapon_name);
+    const float activeFlickFov = FlickWeaponCatalog::FovForWeapon(
+        flick_category_fov, MacroEngine::current_weapon_name, flick_fov);
     const int activeKey = flick_key;
     const bool flickKeyDown = (activeKey != 0 && telemetryMemory::IsKeyDown(activeKey)) ||
         (flick_key2 != 0 && telemetryMemory::IsKeyDown(flick_key2));
 
     if (canFlick) {
-        draw->AddCircle(ImVec2(ScreenCenterX, ScreenCenterY), flick_fov * 8.0f, ImColor(255, 255, 255, 60), 64, 1.0f);
+        draw->AddCircle(ImVec2(ScreenCenterX, ScreenCenterY), activeFlickFov * 8.0f, ImColor(255, 255, 255, 60), 64, 1.0f);
     }
 
     for (const auto& player_ref : localPlayers) {
@@ -332,13 +334,13 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
 
         Vector3 delta = player.Velocity * dt_esp;
 
-        if (canFlick && flickKeyDown && !player.IsTeammate && player.Health > 0.0f && player.Distance <= flick_max_dist) {
-            if (!flick_visible_only || player.IsVisible) {
-                const float fovLimit = flick_fov * 8.0f;
+        if (canFlick && flickKeyDown && !player.IsTeammate && player.Health > 0.0f && player.Distance <= activeMaxDist) {
+            if (!activeVisibleOnly || player.IsVisible) {
+                const float fovLimit = activeFlickFov * 8.0f;
                 FlickTargetCandidate target{};
-                if (flick_target_part > 0) {
+                if (activeTargetPart > 0) {
                     target = BuildFlickTargetFromSelectedBone(
-                        player, delta, ScreenCenterX, ScreenCenterY, fovLimit, flick_target_part);
+                        player, delta, ScreenCenterX, ScreenCenterY, fovLimit, activeTargetPart);
                 }
                 if (!target.valid) {
                     target = BuildFlickTargetFromEspBox(
@@ -360,13 +362,26 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
     static bool lastFlickKeyDown = false;
     static PendingFlickAction pendingFlick;
     static ULONGLONG lastFollowMoveAt = 0;
+    static bool followShotDown = false;
+    static ULONGLONG followShotUpAt = 0;
+    static ULONGLONG nextFollowShotAt = 0;
     const ULONGLONG nowMs = GetTickCount64();
 
     const bool justPressed = flickKeyDown && !lastFlickKeyDown;
     lastFlickKeyDown = flickKeyDown;
 
+    auto resetFollowShot = []() {
+        if (followShotDown) {
+            telemetryMemory::MoveMouse(0, 0, 0x0002);
+        }
+        followShotDown = false;
+        followShotUpAt = 0;
+        nextFollowShotAt = 0;
+    };
+
     if (!canFlick || !flickKeyDown || !flickFollowMode) {
         lastFollowMoveAt = 0;
+        resetFollowShot();
     }
 
     ProcessPendingFlick(pendingFlick, canFlick && flickKeyDown, nowMs);
@@ -374,19 +389,19 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
     if (canFlick && justPressed && bestTarget) {
         const float errorX = bestScreenPos.x - ScreenCenterX;
         const float errorY = bestScreenPos.y - ScreenCenterY;
-        const long moveX = std::lround(errorX);
-        const long moveY = std::lround(errorY);
+        const long moveX = std::lround(errorX * flickMoveSpeed);
+        const long moveY = std::lround(errorY * flickMoveSpeed);
 
         CancelPendingFlick(pendingFlick);
+        resetFollowShot();
         telemetryMemory::MoveMouse(moveX, moveY);
 
         const int settleMs = GetFlickSettleDelayMs(moveX, moveY);
-        const int shotHoldMicros = flick_shot_hold ? GetFlickShotHoldMicros(MacroEngine::current_weapon_name) : 12000;
-        const int shotHoldMs = (shotHoldMicros / 1000) > 1 ? (shotHoldMicros / 1000) : 1;
+        const int shotHoldMs = GetFlickShotHoldMs(MacroEngine::current_weapon_name, activeShotHold);
 
         pendingFlick.active = true;
         pendingFlick.shouldClick = flick_auto_shot;
-        pendingFlick.shouldReturn = !flickFollowMode && flick_return;
+        pendingFlick.shouldReturn = !flickFollowMode;
         pendingFlick.moveX = moveX;
         pendingFlick.moveY = moveY;
         pendingFlick.shotDownAt = nowMs + static_cast<ULONGLONG>(settleMs);
@@ -396,8 +411,8 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
 
     if (canFlick && flickFollowMode && flickKeyDown && bestTarget && !justPressed) {
         if (lastFollowMoveAt == 0 || nowMs - lastFollowMoveAt >= 8) {
-            long moveX = std::lround(bestScreenPos.x - ScreenCenterX);
-            long moveY = std::lround(bestScreenPos.y - ScreenCenterY);
+            long moveX = std::lround((bestScreenPos.x - ScreenCenterX) * flickMoveSpeed);
+            long moveY = std::lround((bestScreenPos.y - ScreenCenterY) * flickMoveSpeed);
             moveX = ClampMouseDelta(moveX, 180);
             moveY = ClampMouseDelta(moveY, 180);
 
@@ -405,6 +420,30 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
                 telemetryMemory::MoveMouse(moveX, moveY);
                 lastFollowMoveAt = nowMs;
             }
+        }
+    }
+
+    const bool canFollowAutoShot =
+        canFlick && flickFollowMode && activeFollowAutoShot && flickKeyDown && bestTarget && !pendingFlick.active;
+
+    if (!canFollowAutoShot) {
+        if (!canFlick || !activeFollowAutoShot || !flickKeyDown || !flickFollowMode || !bestTarget) {
+            resetFollowShot();
+        }
+    } else {
+        const int shotHoldMs = GetFlickShotHoldMs(MacroEngine::current_weapon_name, activeShotHold);
+        const ULONGLONG shotGapMs = static_cast<ULONGLONG>(std::clamp(shotHoldMs + 35, 80, 190));
+
+        if (followShotDown && nowMs >= followShotUpAt) {
+            telemetryMemory::MoveMouse(0, 0, 0x0002);
+            followShotDown = false;
+            nextFollowShotAt = nowMs + shotGapMs;
+        }
+
+        if (!followShotDown && (nextFollowShotAt == 0 || nowMs >= nextFollowShotAt)) {
+            telemetryMemory::MoveMouse(0, 0, 0x0001);
+            followShotDown = true;
+            followShotUpAt = nowMs + static_cast<ULONGLONG>(shotHoldMs);
         }
     }
 }
