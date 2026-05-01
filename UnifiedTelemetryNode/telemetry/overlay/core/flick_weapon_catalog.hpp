@@ -26,13 +26,13 @@ struct Category {
 
 inline const std::vector<Category>& Categories() {
     static const std::vector<Category> categories = {
-        { "AR", "ar", "Gun/AR", "Item_Weapon_HK416_C", true },
-        { "DMR", "dmr", "Gun/DMR", "Item_Weapon_FNFal_C", true },
-        { "SR", "sr", "Gun/SR", "Item_Weapon_Kar98k_C", true },
-        { "SMG", "smg", "Gun/SMG", "Item_Weapon_UMP_C", true },
-        { "LMG", "lmg", "Gun/LMG", "Item_Weapon_M249_C", true },
-        { "SG", "sg", "Gun/SG", "Item_Weapon_Saiga12_C", true },
-        { "HG", "hg", "Gun/HG", "Item_Weapon_G18_C", true },
+        { "Assault Rifle", "ar", "Gun/AR", "Item_Weapon_HK416_C", true },
+        { "Marksman Rifle", "dmr", "Gun/DMR", "Item_Weapon_FNFal_C", true },
+        { "Sniper Rifle", "sr", "Gun/SR", "Item_Weapon_Kar98k_C", true },
+        { "Submachine Gun", "smg", "Gun/SMG", "Item_Weapon_UMP_C", true },
+        { "Machine Gun", "lmg", "Gun/LMG", "Item_Weapon_M249_C", true },
+        { "Shotgun", "sg", "Gun/SG", "Item_Weapon_Saiga12_C", true },
+        { "Handgun", "hg", "Gun/HG", "Item_Weapon_G18_C", true },
         { "Special", "special", "Gun/Special", "Item_Weapon_PanzerFaust100M_C", true },
     };
     return categories;

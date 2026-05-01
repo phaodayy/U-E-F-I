@@ -90,10 +90,13 @@ void DrawKeyCombo(const char* label, int* keyValue) {
     for (int i = 0; i < IM_ARRAYSIZE(keyVals); ++i) {
         if (*keyValue == keyVals[i]) keyIdx = i;
     }
+    ImGui::TextUnformatted(label);
+    ImGui::PushID(label);
     ImGui::SetNextItemWidth(-1);
-    if (ImGui::Combo(label, &keyIdx, keyLabels, IM_ARRAYSIZE(keyLabels))) {
+    if (ImGui::Combo(skCrypt("##KeyCombo"), &keyIdx, keyLabels, IM_ARRAYSIZE(keyLabels))) {
         *keyValue = keyVals[keyIdx];
     }
+    ImGui::PopID();
 }
 
 void DrawFlickTargetCombo(int* targetPart) {
@@ -104,8 +107,47 @@ void DrawFlickTargetCombo(int* targetPart) {
         "L Knee", "R Knee", "Feet"
     };
     *targetPart = std::clamp(*targetPart, 0, IM_ARRAYSIZE(targetLabels) - 1);
+    ImGui::TextUnformatted(skCrypt("Target Part"));
     ImGui::SetNextItemWidth(-1);
-    ImGui::Combo(skCrypt("Target Part"), targetPart, targetLabels, IM_ARRAYSIZE(targetLabels));
+    ImGui::Combo(skCrypt("##TargetPart"), targetPart, targetLabels, IM_ARRAYSIZE(targetLabels));
+}
+
+void DrawLabeledSliderFloat(const char* label, float* value, float minValue, float maxValue, const char* format) {
+    ImGui::TextUnformatted(label);
+    ImGui::PushID(label);
+    ImGui::SetNextItemWidth(-1);
+    ImGui::SliderFloat(skCrypt("##Slider"), value, minValue, maxValue, format);
+    ImGui::PopID();
+}
+
+bool DrawCategoryRow(const FlickWeaponCatalog::Category& category, bool selected, bool enabled) {
+    ImGui::PushID(category.key);
+
+    const float rowHeight = 38.0f;
+    const float rowWidth = (std::max)(ImGui::GetContentRegionAvail().x, 180.0f);
+    const ImVec2 rowMin = ImGui::GetCursorScreenPos();
+    const ImVec2 rowSize(rowWidth, rowHeight);
+    const bool clicked = ImGui::InvisibleButton(skCrypt("##CategoryRow"), rowSize);
+    const bool hovered = ImGui::IsItemHovered();
+    const ImVec2 rowMax(rowMin.x + rowSize.x, rowMin.y + rowSize.y);
+
+    ImDrawList* draw = ImGui::GetWindowDrawList();
+    const ImU32 bg = selected ? IM_COL32(0, 150, 255, 54) :
+        (hovered ? IM_COL32(0, 140, 210, 32) : IM_COL32(8, 22, 39, 70));
+    const ImU32 border = selected ? IM_COL32(0, 210, 255, 165) : IM_COL32(70, 105, 145, 70);
+    const ImU32 text = enabled ? IM_COL32(220, 240, 255, 245) : IM_COL32(140, 155, 175, 230);
+    const ImU32 dot = enabled ? IM_COL32(0, 220, 255, 235) : IM_COL32(80, 95, 110, 210);
+
+    draw->AddRectFilled(rowMin, rowMax, bg, 4.0f);
+    draw->AddRect(rowMin, rowMax, border, 4.0f);
+    draw->AddCircleFilled(ImVec2(rowMin.x + 15.0f, rowMin.y + rowHeight * 0.5f), 4.0f, dot);
+
+    const ImVec2 textMin(rowMin.x + 30.0f, rowMin.y + 10.0f);
+    const ImVec4 clip(rowMin.x + 30.0f, rowMin.y, rowMax.x - 10.0f, rowMax.y);
+    draw->AddText(ImGui::GetFont(), 14.0f, textMin, text, category.label, nullptr, rowWidth - 40.0f, &clip);
+
+    ImGui::PopID();
+    return clicked;
 }
 
 } // namespace
@@ -153,15 +195,9 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
         const auto& category = categories[i];
         const bool selected = g_Menu.flick_selected_category == i;
         const bool enabled = g_Menu.flick_category_enabled[category.key];
-
-        ImGui::PushID(category.key);
-        ImGui::PushStyleColor(ImGuiCol_Text,
-            enabled ? ImVec4(0.75f, 0.93f, 1.0f, 1.0f) : ImVec4(0.55f, 0.62f, 0.70f, 1.0f));
-        if (ImGui::Selectable(category.label, selected, 0, ImVec2(-1, 35.0f))) {
+        if (DrawCategoryRow(category, selected, enabled)) {
             g_Menu.flick_selected_category = i;
         }
-        ImGui::PopStyleColor();
-        ImGui::PopID();
     }
     ImGui::EndChild();
     ImGui::Separator();
@@ -206,13 +242,10 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
         ImGui::Checkbox(skCrypt("Auto Shot While Hold"), &followAutoShot);
     }
 
-    ImGui::SetNextItemWidth(-1);
-    ImGui::SliderFloat(skCrypt("Max Distance"), &maxDistance, 5.0f, 400.0f, skCrypt("%.0f m"));
+    DrawLabeledSliderFloat(skCrypt("Max Distance"), &maxDistance, 5.0f, 400.0f, skCrypt("%.0f m"));
     DrawFlickTargetCombo(&targetPart);
-    ImGui::SetNextItemWidth(-1);
-    ImGui::SliderFloat(skCrypt("Flick FOV"), &categoryFov, 1.0f, 100.0f, skCrypt("%.0f"));
-    ImGui::SetNextItemWidth(-1);
-    ImGui::SliderFloat(skCrypt("Move Speed"), &moveSpeed, 0.2f, 2.0f, skCrypt("%.2f x"));
+    DrawLabeledSliderFloat(skCrypt("Flick FOV"), &categoryFov, 1.0f, 100.0f, skCrypt("%.0f"));
+    DrawLabeledSliderFloat(skCrypt("Move Speed"), &moveSpeed, 0.2f, 2.0f, skCrypt("%.2f x"));
 
     TextureInfo* preview = GetPreviewIcon(selectedCategory.folder, selectedCategory.asset);
     if (preview && preview->SRV) {
