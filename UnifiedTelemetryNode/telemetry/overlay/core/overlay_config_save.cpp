@@ -45,6 +45,7 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["player_list_hold_required"] = player_list_hold_required;
         j["player_list_hold_key"] = player_list_hold_key;
         j["debug_loot_resolver"] = debug_loot_resolver;
+        j["debug_map_mesh_esp"] = debug_map_mesh_esp;
         j["active_preset"] = active_preset;
         j["flick_enabled"] = flick_enabled;
         j["flick_visible_only"] = flick_visible_only;

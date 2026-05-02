@@ -68,6 +68,9 @@ public:
     bool Raycast(const FVector& origin, const FVector& target, 
                  uint32_t collisionMask = PhysXCollisionGroup::GROUP_STATIC | PhysXCollisionGroup::GROUP_VEHICLE | PhysXCollisionGroup::GROUP_TERRAIN | PhysXCollisionGroup::GROUP_DYNAMIC);
 
+    bool RaycastHit(const FVector& origin, const FVector& target, FVector& hitPoint,
+                    uint32_t collisionMask = PhysXCollisionGroup::GROUP_STATIC | PhysXCollisionGroup::GROUP_VEHICLE | PhysXCollisionGroup::GROUP_TERRAIN | PhysXCollisionGroup::GROUP_DYNAMIC);
+
     // Them Mesh vao Scene (voi Cooking Cache)
     void UpdateScene(const std::vector<TriangleMeshData>& meshes, const std::set<PrunerPayload>& removeObjects);
 

@@ -5,6 +5,8 @@
 #include "scanner.hpp"
 #include "fname.hpp"
 #include "Common/Data.h"
+#include "Common/Offset.h"
+#include "../features/Physx.h"
 #include "../overlay/core/overlay_menu.hpp"
 #include <iostream>
 #include <algorithm>
@@ -21,7 +23,10 @@ using namespace telemetryMemory;
 
 // Globals
 FGameData GameData; 
-uint64_t G_UWorld = 0, G_GameInstance = 0, G_PersistentLevel = 0, G_LocalPlayer = 0, G_PlayerController = 0, G_LocalPawn = 0, G_LocalHUD = 0, G_GameState = 0;
+uint64_t G_UWorld = 0, G_GameInstance = 0, G_PersistentLevel = 0, G_LocalPlayer = 0, G_PlayerController = 0, G_LocalPawn = 0, G_LocalPlayerState = 0, G_LocalHUD = 0, G_GameState = 0;
+std::string G_LocalPlayerName = "";
+std::string G_LocalWeaponName = "";
+std::string G_MapMeshDebugStatus = "";
 bool G_IsMenuOpen = false;
 Vector3 G_CameraLocation = { 0, 0, 0 }, G_CameraRotation = { 0, 0, 0 }, G_LocalPlayerPos = { 0, 0, 0 }, G_LocalPlayerVelocity = { 0, 0, 0 }, G_LocalRecoil = { 0, 0, 0 }, G_LocalControlRotation = { 0, 0, 0 };
 uint64_t G_LastScanTime = 0;
@@ -66,7 +71,359 @@ namespace {
         uint64_t lastSeenTimeMs = 0;
     };
 
+    struct ProjectileTrack {
+        Vector3 Position = { 0, 0, 0 };
+        uint64_t Tick = 0;
+    };
+
     std::unordered_map<uint64_t, ShotState> g_PlayerShotStates;
+    std::unordered_map<uint64_t, ProjectileTrack> g_ProjectileTracks;
+
+    int NormalizeTeamId(int team);
+    uint64_t ReadXe(uint64_t addr);
+
+    ULONGLONG MaxTickInterval(ULONGLONG fallback, int configured) {
+        const ULONGLONG value = configured > 0 ? static_cast<ULONGLONG>(configured) : 0;
+        return value > fallback ? value : fallback;
+    }
+
+    int MaxConfigValue(int fallback, int configured) {
+        return configured > fallback ? configured : fallback;
+    }
+
+    bool IsUserPtr(uint64_t value) {
+        return value >= 0x10000 && value <= 0x7FFFFFFFFFFF;
+    }
+
+    void SetMapMeshDebugStatus(const char* fmt, ...) {
+        char buffer[256] = {};
+        va_list args;
+        va_start(args, fmt);
+        std::vsnprintf(buffer, sizeof(buffer), fmt, args);
+        va_end(args);
+        G_MapMeshDebugStatus = buffer;
+    }
+
+    void UpdateClonedMapMeshes(ULONGLONG now, bool inGame) {
+        return; // Temporarily disabled for performance
+        static ULONGLONG lastStaticUpdate = 0;
+        static ULONGLONG lastHeightUpdate = 0;
+        static ULONGLONG lastClear = 0;
+
+        static uint32_t staticTimestamp = 0;
+        static std::unordered_map<PrunerPayload, PxTransformT, PrunerPayloadHash> staticCache;
+        static std::set<PrunerPayload> currentSceneObjects;
+        static std::set<PrunerPayload> willRemoveObjects;
+        static std::unordered_map<PrunerPayload, uint64_t, PrunerPayloadHash> alwaysCheckShape;
+
+        static uint32_t heightTimestamp = 0;
+        static std::set<PrunerPayload> heightUniqueKeySet;
+        static std::set<PrunerPayload> heightFieldSet;
+        static std::set<uint64_t> heightFieldSamplePtrSet;
+        static std::set<uint64_t> willRemoveHeightFieldKey;
+
+        const bool enabled = inGame && (g_Menu.esp_grenade_prediction || g_Menu.esp_projectile_tracer || g_Menu.debug_map_mesh_esp);
+        if (!enabled || telemetryMemory::g_BaseAddress == 0 || telemetryMemory::g_ProcessCr3 == 0) {
+            if (now - lastClear > 2000) {
+                lastClear = now;
+                staticCache.clear();
+                currentSceneObjects.clear();
+                willRemoveObjects.clear();
+                alwaysCheckShape.clear();
+                heightUniqueKeySet.clear();
+                heightFieldSet.clear();
+                heightFieldSamplePtrSet.clear();
+                willRemoveHeightFieldKey.clear();
+                std::unique_lock<std::shared_mutex> lock(GameData.Actors.ClonedMapMutex);
+                GameData.Actors.ClonedMapMeshes.clear();
+                SetMapMeshDebugStatus("disabled/inactive inGame=%d base=0x%llX cr3=0x%llX", inGame ? 1 : 0,
+                    telemetryMemory::g_BaseAddress, telemetryMemory::g_ProcessCr3);
+            }
+            return;
+        }
+
+        const Vector3 reference = !G_LocalPlayerPos.IsZero() ? G_LocalPlayerPos : G_CameraLocation;
+        if (reference.IsZero()) {
+            SetMapMeshDebugStatus("waiting position cam=%.0f %.0f %.0f local=%.0f %.0f %.0f",
+                G_CameraLocation.x, G_CameraLocation.y, G_CameraLocation.z,
+                G_LocalPlayerPos.x, G_LocalPlayerPos.y, G_LocalPlayerPos.z);
+            return;
+        }
+
+        const ULONGLONG staticInterval = MaxTickInterval(1000, GameData.Config.signal_overlay.PhysxStaticRefreshInterval);
+        if (now - lastStaticUpdate >= staticInterval) {
+            lastStaticUpdate = now;
+            willRemoveObjects.clear();
+
+            const double radius = static_cast<double>(MaxConfigValue(250, GameData.Config.signal_overlay.PhysxLoadRadius)) * 100.0;
+            const uint32_t limit = static_cast<uint32_t>(MaxConfigValue(500, GameData.Config.signal_overlay.PhysxRefreshLimit));
+
+            constexpr uint64_t kPhysicsSceneOffset = 0x3A0;
+            constexpr uint64_t kMPhysXSceneOffset = 0xD0;
+            const uint64_t physxSdkAddress = GameData.GameBase + Offset::Physx;
+            const uint64_t physxSdk = mem.Read<uint64_t>(physxSdkAddress);
+            uint64_t pxScene = 0;
+            uint64_t physicsScene = 0;
+
+            if (IsUserPtr(G_UWorld)) {
+                // Try multiple potential offsets for FPhysicsScene in UWorld
+                const uint64_t physSceneOffsets[] = { 0x3A0, 0x308, 0x390, 0x3A8, 0x480 };
+                const uint64_t pxSceneOffsets[] = { 0x120, 0x118, 0xD0, 0x80, 0x88, 0xC8 };
+
+                for (uint64_t pOff : physSceneOffsets) {
+                    uint64_t pScene = mem.Read<uint64_t>(G_UWorld + pOff);
+                    if (IsUserPtr(pScene)) {
+                        // For each potential physicsScene, try to find a valid pxScene pointer
+                        for (uint64_t sOff : pxSceneOffsets) {
+                            uint64_t sPtr = mem.Read<uint64_t>(pScene + sOff);
+                            if (IsUserPtr(sPtr)) {
+                                physicsScene = pScene;
+                                pxScene = sPtr;
+                                break;
+                            }
+                        }
+                    }
+                    if (pxScene != 0) break;
+                }
+            }
+
+            // Fallback: If pxScene is still invalid, try resolving via PhysX SDK instance directly
+            if (!IsUserPtr(pxScene)) {
+                const uint64_t pxInstance = mem.Read<uint64_t>(GameData.GameBase + Offset::Physx);
+                if (IsUserPtr(pxInstance)) {
+                    // Try direct pointers and array pointers from SDK instance
+                    uint64_t ptr1 = mem.Read<uint64_t>(pxInstance + 0x0);
+                    uint64_t ptr2 = mem.Read<uint64_t>(pxInstance + 0x8);
+                    
+                    if (IsUserPtr(ptr1)) pxScene = ptr1;
+                    else if (IsUserPtr(ptr2)) {
+                        // Check if it's an array or direct pointer
+                        uint64_t arrPtr = mem.Read<uint64_t>(ptr2);
+                        pxScene = IsUserPtr(arrPtr) ? arrPtr : ptr2;
+                    }
+                }
+            }
+
+            uint32_t sceneTimestamp = 0;
+            uint64_t prunerAddress = 0;
+            uint32_t prunerObjects = 0;
+            uint64_t prunerObjectPtr = 0;
+            if (IsUserPtr(pxScene)) {
+                const GamePhysX::NpSceneT scene = mem.Read<GamePhysX::NpSceneT>(pxScene);
+                sceneTimestamp = scene.exts[0].mTimestamp;
+                prunerAddress = scene.exts[0].mPruner;
+                if (sceneTimestamp != 0 && IsUserPtr(prunerAddress)) {
+                    const GamePhysX::PruningPoolT pruner = mem.Read<GamePhysX::PruningPoolT>(prunerAddress + 0x1A0);
+                    prunerObjects = pruner.mNbObjects;
+                    prunerObjectPtr = reinterpret_cast<uint64_t>(pruner.mObjects);
+                }
+            }
+
+            std::vector<TriangleMeshData> addedMeshes = GamePhysX::LoadShapeByRange(
+                staticTimestamp,
+                staticCache,
+                currentSceneObjects,
+                willRemoveObjects,
+                alwaysCheckShape,
+                reference,
+                radius,
+                limit);
+
+            SetMapMeshDebugStatus("physSDK@0x%llX=0x%llX uw=0x%llX physScene=0x%llX pxScene=0x%llX ts=%u prunerObjs=%u added=%zu cache=%zu",
+                physxSdkAddress, physxSdk, G_UWorld, physicsScene, pxScene,
+                sceneTimestamp, prunerObjects, addedMeshes.size(), staticCache.size());
+
+            if (!addedMeshes.empty() || !willRemoveObjects.empty()) {
+                std::unique_lock<std::shared_mutex> lock(GameData.Actors.ClonedMapMutex);
+                if (!willRemoveObjects.empty()) {
+                    GameData.Actors.ClonedMapMeshes.erase(
+                        std::remove_if(
+                            GameData.Actors.ClonedMapMeshes.begin(),
+                            GameData.Actors.ClonedMapMeshes.end(),
+                            [](const TriangleMeshData& mesh) {
+                                return willRemoveObjects.find(mesh.UniqueKey1) != willRemoveObjects.end();
+                            }),
+                        GameData.Actors.ClonedMapMeshes.end());
+                }
+                GameData.Actors.ClonedMapMeshes.insert(
+                    GameData.Actors.ClonedMapMeshes.end(),
+                    std::make_move_iterator(addedMeshes.begin()),
+                    std::make_move_iterator(addedMeshes.end()));
+            }
+        }
+
+        const ULONGLONG heightInterval = MaxTickInterval(1500, GameData.Config.signal_overlay.PhysxDynamicRefreshInterval);
+        if (now - lastHeightUpdate >= heightInterval) {
+            lastHeightUpdate = now;
+            willRemoveHeightFieldKey.clear();
+
+            std::vector<TriangleMeshData> heightMeshes = GamePhysX::RefreshDynamicLoadHeightField(
+                heightTimestamp,
+                heightUniqueKeySet,
+                heightFieldSet,
+                heightFieldSamplePtrSet,
+                willRemoveHeightFieldKey);
+
+            if (!heightMeshes.empty() || !willRemoveHeightFieldKey.empty()) {
+                std::unique_lock<std::shared_mutex> lock(GameData.Actors.ClonedMapMutex);
+                if (!willRemoveHeightFieldKey.empty()) {
+                    GameData.Actors.ClonedMapMeshes.erase(
+                        std::remove_if(
+                            GameData.Actors.ClonedMapMeshes.begin(),
+                            GameData.Actors.ClonedMapMeshes.end(),
+                            [](const TriangleMeshData& mesh) {
+                                return willRemoveHeightFieldKey.find(mesh.UniqueKey2) != willRemoveHeightFieldKey.end();
+                            }),
+                        GameData.Actors.ClonedMapMeshes.end());
+                }
+                GameData.Actors.ClonedMapMeshes.insert(
+                    GameData.Actors.ClonedMapMeshes.end(),
+                    std::make_move_iterator(heightMeshes.begin()),
+                    std::make_move_iterator(heightMeshes.end()));
+            }
+        }
+    }
+
+    bool IsProjectileExpired(uint64_t actor) {
+        if (!actor) return true;
+
+        const uint8_t explodeState = Read<uint8_t>(actor + telemetryOffsets::ExplodeState);
+        if (explodeState != 0) return true;
+
+        const float timeTillExplosion = Read<float>(actor + telemetryOffsets::TimeTillExplosion);
+        return !std::isfinite(timeTillExplosion) || timeTillExplosion <= 0.03f || timeTillExplosion > 120.0f;
+    }
+
+    bool IsProjectileActorName(const std::string& className) {
+        if (className.find(skCrypt("Explosion")) != std::string::npos ||
+            className.find(skCrypt("Explode")) != std::string::npos ||
+            className.find(skCrypt("Start")) != std::string::npos ||
+            className.find(skCrypt("Impact")) != std::string::npos) {
+            return false;
+        }
+
+        return className == skCrypt("ProjGrenade_C") ||
+               className == skCrypt("ProjMolotov_C") ||
+               className == skCrypt("ProjBluezoneGrenade_C") ||
+               className == skCrypt("ProjBZGrenade_C") ||
+               className == skCrypt("ProjDecoyGrenade_C") ||
+               className == skCrypt("ProjStickyGrenade_C") ||
+               className == skCrypt("ProjC4_C");
+    }
+
+    float ProjectileBlastRadius(const std::string& className) {
+        if (className.find(skCrypt("Molotov")) != std::string::npos) return 350.0f;
+        if (className.find(skCrypt("Bluezone")) != std::string::npos ||
+            className.find(skCrypt("BZGrenade")) != std::string::npos) return 650.0f;
+        if (className.find(skCrypt("C4")) != std::string::npos) return 2500.0f;
+        if (className.find(skCrypt("Sticky")) != std::string::npos) return 650.0f;
+        return 550.0f;
+    }
+
+    std::string ProjectileDisplayName(const std::string& className) {
+        if (className.find(skCrypt("Molotov")) != std::string::npos) return skCrypt("Molotov");
+        if (className.find(skCrypt("Bluezone")) != std::string::npos ||
+            className.find(skCrypt("BZGrenade")) != std::string::npos) return skCrypt("Bluezone Nade");
+        if (className.find(skCrypt("Decoy")) != std::string::npos) return skCrypt("Decoy");
+        if (className.find(skCrypt("Sticky")) != std::string::npos) return skCrypt("Sticky Bomb");
+        if (className.find(skCrypt("C4")) != std::string::npos) return skCrypt("C4");
+        return skCrypt("Frag Nade");
+    }
+
+    std::string NormalizeWeaponDisplayName(std::string rawName) {
+        if (rawName.find(skCrypt("Weap")) == 0) rawName.erase(0, 4);
+        if (rawName.find(skCrypt("Item_Weapon_")) == 0) rawName.erase(0, 12);
+        if (rawName.length() >= 2 && rawName.substr(rawName.length() - 2) == skCrypt("_C")) rawName.erase(rawName.length() - 2);
+        if (rawName == skCrypt("Grenade")) return skCrypt("Frag Nade");
+        if (rawName == skCrypt("BluezoneGrenade") || rawName == skCrypt("BZGrenade")) return skCrypt("Bluezone Nade");
+        if (rawName == skCrypt("StickyGrenade")) return skCrypt("Sticky Bomb");
+        if (rawName == skCrypt("SmokeBomb")) return skCrypt("Smoke Grenade");
+        if (rawName == skCrypt("DecoyGrenade")) return skCrypt("Decoy");
+        return rawName;
+    }
+
+    bool IsHeldThrowableName(const std::string& name) {
+        return name.find(skCrypt("Nade")) != std::string::npos ||
+               name.find(skCrypt("Grenade")) != std::string::npos ||
+               name.find(skCrypt("Molotov")) != std::string::npos ||
+               name.find(skCrypt("Bomb")) != std::string::npos ||
+               name == skCrypt("C4") ||
+               name == skCrypt("Decoy");
+    }
+
+    void UpdateLocalWeaponName() {
+        G_LocalWeaponName = skCrypt("None");
+        if (G_LocalPawn <= 0x1000000) return;
+
+        const uint64_t weaponProc = Read<uint64_t>(G_LocalPawn + telemetryOffsets::WeaponProcessor);
+        if (!weaponProc) return;
+
+        const uint8_t currentIdx = Read<uint8_t>(weaponProc + telemetryOffsets::CurrentWeaponIndex);
+        if (currentIdx >= 8) return;
+
+        const uint64_t equippedAddr = Read<uint64_t>(weaponProc + telemetryOffsets::EquippedWeapons);
+        if (!equippedAddr) return;
+
+        const uint64_t weapon = Read<uint64_t>(equippedAddr + (currentIdx * 8));
+        if (!weapon) return;
+
+        const uint32_t objID = telemetryOffsets::DecryptCIndex(Read<uint32_t>(weapon + telemetryOffsets::ObjID));
+        G_LocalWeaponName = NormalizeWeaponDisplayName(FNameUtils::GetNameFast(objID));
+    }
+
+    Vector3 EstimateProjectileVelocity(uint64_t actor, const Vector3& position, uint64_t tick) {
+        Vector3 velocity = { 0, 0, 0 };
+        auto it = g_ProjectileTracks.find(actor);
+        if (it != g_ProjectileTracks.end() && tick > it->second.Tick && !it->second.Position.IsZero()) {
+            const float dt = static_cast<float>(tick - it->second.Tick) / 1000.0f;
+            if (dt > 0.02f && dt < 1.5f) {
+                velocity = (position - it->second.Position) * (1.0f / dt);
+                if (velocity.Length() > 120000.0f) velocity = { 0, 0, 0 };
+            }
+        }
+        g_ProjectileTracks[actor] = { position, tick };
+        return velocity;
+    }
+
+    bool IsPlayerActorName(const std::string& className) {
+        return className.find(skCrypt("PlayerMale")) != std::string::npos ||
+               className.find(skCrypt("PlayerFemale")) != std::string::npos;
+    }
+
+    uint64_t ReadActorPlayerState(uint64_t actor) {
+        if (actor <= 0x1000000) return 0;
+        uint64_t playerState = Read<uint64_t>(actor + telemetryOffsets::PlayerState);
+        if (playerState < 0x1000000) playerState = ReadXe(actor + telemetryOffsets::PlayerState);
+        return playerState;
+    }
+
+    int ReadTeamId(uint64_t actor, uint64_t playerState) {
+        int team = 0;
+        if (actor > 0x1000000) {
+            team = NormalizeTeamId(Read<int>(actor + telemetryOffsets::LastTeamNum));
+        }
+        if (team == 0 && playerState > 0x1000000) {
+            team = NormalizeTeamId(Read<int>(playerState + telemetryOffsets::TeamNumber));
+            if (team == 0) team = NormalizeTeamId(Read<int>(playerState + 0x444));
+        }
+        return team;
+    }
+
+    std::string ReadActorCharacterName(uint64_t actor) {
+        if (actor <= 0x1000000) return {};
+
+        uint64_t nameData = Read<uint64_t>(actor + telemetryOffsets::CharacterName);
+        if (nameData <= 0x1000000) return {};
+
+        wchar_t buf[32] = {0};
+        if (!telemetryContext::ReadMemory(nameData, buf, 31 * sizeof(wchar_t))) return {};
+
+        std::string name;
+        for (int i = 0; i < 31 && buf[i]; ++i) {
+            name += (buf[i] >= 32 && buf[i] <= 126) ? static_cast<char>(buf[i]) : '?';
+        }
+        return name == skCrypt("Player") ? std::string{} : name;
+    }
 
     PlayerGender NormalizeGender(uint8_t genderValue) {
         return (genderValue == static_cast<uint8_t>(PlayerGender::Female)) ? PlayerGender::Female : PlayerGender::Male;
@@ -380,6 +737,7 @@ namespace telemetryContext {
         }
 
         G_UWorld = telemetryDecrypt::Xe(rawUWorld);
+        GameData.UWorld = G_UWorld;
 #ifdef _DEBUG
         if (rawUWorld != 0) {
             std::cout << skCrypt("[DIAG] UWorld Attempt: ") << std::hex << G_UWorld << skCrypt(" (raw: ") << rawUWorld << skCrypt(")") << std::dec << std::endl;
@@ -615,6 +973,9 @@ namespace telemetryContext {
             g_LastInitializeStatus = "base-address-empty";
             return false;
         }
+        GameData.PID = process_id;
+        GameData.GameBase = telemetryMemory::g_BaseAddress;
+        mem.Init(process_id);
 
         if (lastScanPid != process_id || lastScanBase != telemetryMemory::g_BaseAddress) {
             lastScanPid = process_id;
@@ -691,6 +1052,7 @@ namespace telemetryContext {
             uint64_t rawUWorld = 0;
             if (telemetryMemory::ReadMemory(telemetryMemory::g_BaseAddress + telemetryOffsets::UWorld, &rawUWorld, sizeof(uint64_t))) {
                 G_UWorld = telemetryDecrypt::Xe(rawUWorld);
+                GameData.UWorld = G_UWorld;
                 if (G_UWorld) {
                     G_GameInstance = ReadXe(G_UWorld + telemetryOffsets::GameInstance);
                     G_PersistentLevel = ReadXe(G_UWorld + telemetryOffsets::CurrentLevel);
@@ -711,6 +1073,40 @@ namespace telemetryContext {
             G_PlayerController = ReadXe(G_LocalPlayer + telemetryOffsets::PlayerController);
             if (G_PlayerController) {
                 G_LocalPawn = ReadXe(G_PlayerController + telemetryOffsets::AcknowledgedPawn);
+                
+                // Prefer controller state so driver-seat possession changes do not make
+                // the local character look like a normal enemy actor.
+                uint64_t currentState = ReadActorPlayerState(G_PlayerController);
+                if (G_LocalPawn > 0x1000000) {
+                    const uint64_t pawnState = ReadActorPlayerState(G_LocalPawn);
+                    if (currentState <= 0x1000000) currentState = pawnState;
+
+                    uint32_t localObjID = telemetryOffsets::DecryptCIndex(Read<uint32_t>(G_LocalPawn + telemetryOffsets::ObjID));
+                    std::string localClassName = FNameUtils::GetNameFast(localObjID);
+                    if (IsPlayerActorName(localClassName)) {
+                        const std::string localName = ReadActorCharacterName(G_LocalPawn);
+                        if (!localName.empty()) G_LocalPlayerName = localName;
+                    }
+                }
+                
+                if (currentState > 0x1000000) {
+                    G_LocalPlayerState = currentState;
+                } else if (G_LocalPlayerState <= 0x1000000) {
+                    // Search for PlayerState in Controller if not found (Driver seat case)
+                    for (uint32_t offset : {0x290, 0x298, 0x2A0, 0x288, 0x2B0}) {
+                        uint64_t ps = ReadXe(G_PlayerController + offset);
+                        if (ps > 0x1000000 && (ps & 0xF) == 0) { // PlayerState is always 16-byte aligned
+                             G_LocalPlayerState = ps;
+                             break;
+                        }
+                        ps = Read<uint64_t>(G_PlayerController + offset);
+                        if (ps > 0x1000000 && (ps & 0xF) == 0) {
+                             G_LocalPlayerState = ps;
+                             break;
+                        }
+                    }
+                }
+
                 G_LocalHUD = Read<uint64_t>(G_PlayerController + telemetryOffsets::MyHUD); if (G_LocalPawn > 0x1000000) { uint64_t mesh = Read<uint64_t>(G_LocalPawn + telemetryOffsets::Mesh); if (mesh > 0x1000000) { uint64_t anim = Read<uint64_t>(mesh + telemetryOffsets::AnimScriptInstance); if (anim > 0x1000000) { G_LocalRecoil = Read<Vector3>(anim + telemetryOffsets::RecoilADSRotation_CP); G_LocalControlRotation = Read<Vector3>(anim + telemetryOffsets::ControlRotation_CP); } } }
                 
                 // --- UPDATE MENU STATE ---
@@ -721,10 +1117,10 @@ namespace telemetryContext {
 
                 if (G_LocalPawn > 0x1000000) {
                     inGame = true;
+                    UpdateLocalWeaponName();
                     
                     // --- GET LOCAL SPECTATED COUNT ---
-                    uint64_t localPlayerState = Read<uint64_t>(G_LocalPawn + telemetryOffsets::PlayerState);
-                    if (localPlayerState < 0x1000000) localPlayerState = ReadXe(G_LocalPawn + telemetryOffsets::PlayerState);
+                    uint64_t localPlayerState = G_LocalPlayerState;
                     if (localPlayerState > 0x1000000) {
                         G_LocalSpectatedCount = Read<int>(localPlayerState + telemetryOffsets::SpectatedCount);
                     } else {
@@ -984,6 +1380,7 @@ namespace telemetryContext {
         }
 
         g_Menu.current_scene = inGame ? Scene::Gaming : Scene::Lobby;
+        UpdateClonedMapMeshes(now, inGame);
         if (!inGame) { 
             { std::lock_guard<std::mutex> lock(G_PlayersMutex); G_Players.clear(); }
             { std::lock_guard<std::mutex> lock(CachedItemsMutex); CachedItems.clear(); }
@@ -997,6 +1394,9 @@ namespace telemetryContext {
         float localPlayerEyes = 0.0f;
 
         ULONGLONG scanStartTime = GetTickCount64();
+        static ULONGLONG lastItemScanTime = 0;
+        const bool shouldScanItems = (scanStartTime - lastItemScanTime > 100);
+        bool refreshedItems = false;
         bool isAdmin = (global_account_role == skCrypt("admin"));
         std::vector<DebugActorData> tempDebug;
 
@@ -1013,23 +1413,12 @@ namespace telemetryContext {
         int actorCount = Read<int>(actorListPtr + 0x8);
         if (actorCount <= 0 || actorCount > 10000) return;
 
-        int localTeam = 0;
-        if (G_LocalPawn > 0x1000000) {
-            // PAOD-style priority: read LastTeamNum directly from character first.
-            localTeam = NormalizeTeamId(Read<int>(G_LocalPawn + telemetryOffsets::LastTeamNum));
-            if (localTeam == 0) {
-                uint64_t localPlayerState = Read<uint64_t>(G_LocalPawn + telemetryOffsets::PlayerState);
-                if (localPlayerState < 0x1000000) {
-                    localPlayerState = ReadXe(G_LocalPawn + telemetryOffsets::PlayerState);
-                }
-                if (localPlayerState > 0x1000000) {
-                    localTeam = NormalizeTeamId(Read<int>(localPlayerState + telemetryOffsets::TeamNumber));
-                    if (localTeam == 0) {
-                        localTeam = NormalizeTeamId(Read<int>(localPlayerState + 0x444));
-                    }
-                }
-            }
-        }
+        const int localTeam = ReadTeamId(G_LocalPawn, G_LocalPlayerState);
+        const uint64_t localRoot = (G_LocalPawn > 0x1000000) ? ReadXe(G_LocalPawn + telemetryOffsets::RootComponent) : 0;
+        uint64_t localMesh = (G_LocalPawn > 0x1000000) ? Read<uint64_t>(G_LocalPawn + telemetryOffsets::Mesh) : 0;
+        if (localMesh < 0x1000000 && G_LocalPawn > 0x1000000) localMesh = ReadXe(G_LocalPawn + telemetryOffsets::Mesh);
+        const bool localPawnIsVehicle = (G_LocalPawn > 0x1000000 && IsVehicleActorName(FNameUtils::GetNameFast(
+            telemetryOffsets::DecryptCIndex(Read<uint32_t>(G_LocalPawn + telemetryOffsets::ObjID)))));
 
         for (int i = 0; i < actorCount; i++) {
             uintptr_t actor = Read<uintptr_t>(actorArray + (i * 0x8));
@@ -1050,6 +1439,24 @@ namespace telemetryContext {
 
             if (actor == G_LocalPawn) continue;
             
+            uint64_t playerState = ReadActorPlayerState(actor);
+
+            // Identification by PlayerState catches the local character even when
+            // AcknowledgedPawn temporarily points at a vehicle/seat pawn.
+            if (playerState > 0x1000000 && playerState == G_LocalPlayerState) continue;
+
+            // AttachParent Check: If we are in a vehicle, skip characters attached to the same local vehicle component.
+            uint64_t root = ReadXe(actor + telemetryOffsets::RootComponent);
+            if (root) {
+                uint64_t attachParent = Read<uint64_t>(root + 0x148); // RootComponent->AttachParent
+                if (attachParent) {
+                     if (attachParent == localRoot || attachParent == localMesh) continue;
+                     
+                     // Also check if attached to a component embedded near the local vehicle actor.
+                     if (attachParent > G_LocalPawn && attachParent < G_LocalPawn + 0x1000) continue;
+                }
+            }
+            
             const bool isBotClass = (cname.find(skCrypt("AIPawn")) != std::string::npos ||
                                     cname.find(skCrypt("NPC_")) != std::string::npos ||
                                     cname.find(skCrypt("ZombieNpc")) != std::string::npos ||
@@ -1063,9 +1470,6 @@ namespace telemetryContext {
             if (isPlayer) {
                 uint64_t mesh = Read<uintptr_t>(actor + telemetryOffsets::Mesh);
                 if (!mesh) continue;
-
-                uint64_t playerState = Read<uintptr_t>(actor + telemetryOffsets::PlayerState);
-                if (playerState < 0x1000000) playerState = ReadXe(actor + telemetryOffsets::PlayerState);
 
                 if (playerState > 0x1000000) {
                     bool alreadySeen = false;
@@ -1084,18 +1488,10 @@ namespace telemetryContext {
                 PlayerData p{};
                 p.ActorPtr = actor; p.MeshAddr = mesh; p.Position = pos; p.Distance = dist; p.IsBot = isBotClass;
                 
-                uint64_t pNameData = Read<uint64_t>(actor + telemetryOffsets::CharacterName); 
-                if (pNameData > 0x1000000) {
-                    wchar_t buf[32] = {0};
-                    if (telemetryContext::ReadMemory(pNameData, buf, 31 * sizeof(wchar_t))) {
-                        std::string narrowName;
-                        for (int k = 0; k < 31 && buf[k]; ++k) {
-                            if (buf[k] >= 32 && buf[k] <= 126) narrowName += (char)buf[k];
-                            else narrowName += '?';
-                        }
-                        if (!narrowName.empty() && narrowName != skCrypt("Player")) p.Name = narrowName;
-                    }
-                }
+                p.Name = ReadActorCharacterName(actor);
+                
+                // Final failsafe: skip by name
+                if (!G_LocalPlayerName.empty() && p.Name == G_LocalPlayerName) continue;
 
                 uint64_t movement = Read<uint64_t>(actor + telemetryOffsets::CharacterMovement);
                 if (movement) {
@@ -1105,11 +1501,8 @@ namespace telemetryContext {
                 ReadAnimState(mesh, p);
                 ReadAimAngles(actor, p);
                 
-                p.TeamID = NormalizeTeamId(Read<int>(actor + telemetryOffsets::LastTeamNum));
-                if (p.TeamID == 0 && playerState > 0x1000000) {
-                    p.TeamID = NormalizeTeamId(Read<int>(playerState + telemetryOffsets::TeamNumber));
-                    if (p.TeamID == 0) p.TeamID = NormalizeTeamId(Read<int>(playerState + 0x444));
-                }
+                p.TeamID = ReadTeamId(actor, playerState);
+                if (localPawnIsVehicle && localTeam != 0 && p.TeamID == localTeam) continue;
 
                 p.Health = telemetryHealth::DecryptHealth(actor);
                 p.GroggyHealth = Read<float>(actor + telemetryOffsets::GroggyHealth);
@@ -1215,15 +1608,20 @@ namespace telemetryContext {
             } 
             else {
                 // Throttle Item/Vehicle/Drop scan to save CPU
-                static ULONGLONG lastItemScanTime = 0;
-                if (now - lastItemScanTime > 500) {
+                if (shouldScanItems) {
+                    refreshedItems = true;
                     bool isLoot = (cname.find(skCrypt("Dropped")) != std::string::npos);
                     bool isVeh  = IsVehicleActorName(cname);
                     bool isAir  = (cname.find(skCrypt("AirDrop")) != std::string::npos || cname.find(skCrypt("CarePackage")) != std::string::npos);
                     bool isBox  = (cname.find(skCrypt("DeadBox")) != std::string::npos || cname.find(skCrypt("ItemPackage")) != std::string::npos);
-                    bool isProj = (cname.find(skCrypt("Proj")) != std::string::npos || cname.find(skCrypt("Grenade")) != std::string::npos || cname.find(skCrypt("Molotov")) != std::string::npos);
+                    bool isProj = IsProjectileActorName(cname);
 
                     if (isLoot || isVeh || isAir || isBox || isProj) {
+                        if (isProj && IsProjectileExpired(actor)) {
+                            g_ProjectileTracks.erase(actor);
+                            continue;
+                        }
+
                         uint64_t root = ReadXe(actor + telemetryOffsets::RootComponent);
                         if (root) {
                             Vector3 pos = Read<Vector3>(root + telemetryOffsets::ComponentLocation);
@@ -1267,19 +1665,26 @@ namespace telemetryContext {
                                     if (isVeh) item.Name = skCrypt("Vehicle");
                                     else if (isAir) item.Name = skCrypt("Air Drop");
                                     else if (isBox) item.Name = skCrypt("Dead Box");
+                                    else if (isProj) item.Name = ProjectileDisplayName(cname);
                                     else item.Name = cleanName;
 
                                     item.RenderType = isVeh ? ItemRenderType::Vehicle :
                                         (isAir ? ItemRenderType::AirDrop : (isBox ? ItemRenderType::DeadBox : 
                                         (isProj ? ItemRenderType::Projectile : ItemRenderType::Loot)));
                                     item.IsImportant = (isAir || isVeh || isProj || cleanName.find(skCrypt("Flare")) != std::string::npos);
+
+                                    if (isProj) {
+                                        item.TimeTillExplosion = Read<float>(actor + telemetryOffsets::TimeTillExplosion);
+                                        item.BlastRadius = ProjectileBlastRadius(cname);
+                                        item.Velocity = EstimateProjectileVelocity(actor, pos, scanStartTime);
+                                        item.HasTrajectory = item.Velocity.Length() > 20.0f;
+                                    }
                                     
                                     tempItems.push_back(item);
                                 }
                             }
                         }
                     }
-                    if (i == actorCount - 1) lastItemScanTime = now;
                 }
             }
         }
@@ -1298,10 +1703,13 @@ namespace telemetryContext {
         }
 
         static ULONGLONG lastItemScan = 0;
-        if (!tempItems.empty() || (GetTickCount64() - lastItemScan > 5000)) {
+        if (refreshedItems || !tempItems.empty() || (GetTickCount64() - lastItemScan > 5000)) {
             std::lock_guard<std::mutex> lock(CachedItemsMutex);
             CachedItems = std::move(tempItems);
             lastItemScan = GetTickCount64();
+        }
+        if (refreshedItems) {
+            lastItemScanTime = scanStartTime;
         }
     }
     void UpdateCamera() {

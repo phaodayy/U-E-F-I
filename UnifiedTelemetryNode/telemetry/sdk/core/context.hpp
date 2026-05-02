@@ -65,7 +65,9 @@ struct PlayerData {
     Vector3 Bone_RThigh, Bone_RKnee, Bone_RFoot;
 };
 
-extern uint64_t G_UWorld, G_GameInstance, G_PersistentLevel, G_LocalPlayer, G_PlayerController, G_LocalPawn, G_LocalHUD;
+extern uint64_t G_UWorld, G_GameInstance, G_PersistentLevel, G_LocalPlayer, G_PlayerController, G_LocalPawn, G_LocalPlayerState, G_LocalHUD;
+extern std::string G_LocalWeaponName;
+extern std::string G_MapMeshDebugStatus;
 extern bool G_IsMenuOpen;
 extern Vector3 G_CameraLocation, G_CameraRotation, G_LocalPlayerPos, G_LocalPlayerVelocity, G_LocalRecoil, G_LocalControlRotation;
 extern uint64_t G_LastScanTime;
@@ -112,6 +114,10 @@ struct ItemData {
     float Distance;
     bool IsImportant;
     ItemRenderType RenderType = ItemRenderType::Loot;
+    Vector3 Velocity = { 0, 0, 0 };
+    float TimeTillExplosion = 0.0f;
+    float BlastRadius = 0.0f;
+    bool HasTrajectory = false;
 };
 
 #include <mutex>

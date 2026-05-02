@@ -13,6 +13,28 @@
 
 namespace GamePhysX
 {
+	constexpr uint64_t kPhysicsSceneOffset = 0x3A0;
+	constexpr uint64_t kMPhysXSceneOffset = 0xD0;
+
+	__forceinline bool IsValidUserPtr(uint64_t value) {
+		return value >= 0x10000 && value <= 0x7FFFFFFFFFFF;
+	}
+
+	__forceinline uint64_t ResolvePxScenePtr() {
+		if (IsValidUserPtr(GameData.UWorld)) {
+			const uint64_t fPhysScene = mem.Read<uint64_t>(GameData.UWorld + kPhysicsSceneOffset);
+			if (IsValidUserPtr(fPhysScene)) {
+				const uint64_t pxScene = mem.Read<uint64_t>(fPhysScene + kMPhysXSceneOffset);
+				if (IsValidUserPtr(pxScene)) return pxScene;
+			}
+		}
+
+		const uint64_t pxInstance = mem.Read<uint64_t>(GameData.GameBase + Offset::Physx);
+		const uint64_t pxSceneArray = IsValidUserPtr(pxInstance) ? mem.Read<uint64_t>(pxInstance + 0x8) : 0;
+		const uint64_t pxScene = IsValidUserPtr(pxSceneArray) ? mem.Read<uint64_t>(pxSceneArray) : 0;
+		return IsValidUserPtr(pxScene) ? pxScene : 0;
+	}
+
 	inline PrunerPayload prunerPayloadExtractor(const TriangleMeshData& mesh) { return mesh.UniqueKey1; }
 	inline uint64_t int64Extractor(const TriangleMeshData& mesh) { return mesh.UniqueKey2; }
 
@@ -555,7 +577,7 @@ namespace GamePhysX
 
 	struct NpSceneT
 	{
-		/// https://www.notion.so/PhysX-6eccab27717c47d09a07917c4640e386
+		/// Note: Padding 0x3B78 is common but can change to 0x3C00 or 0x3D18 in newer versions (2026)
 		char mPad[0x3B78]{};
 		PrunerExtT exts[2];
 	};
@@ -933,7 +955,7 @@ namespace GamePhysX
 						MeshData.Vertices.push_back(v01);
 						MeshData.Vertices.push_back(v11);
 
-						size_t base_idx = (row * (NumColumns - 1) + col) * 4;
+						const uint32_t base_idx = static_cast<uint32_t>((row * (NumColumns - 1) + col) * 4);
 
 						MeshData.Indices.push_back(base_idx);
 						MeshData.Indices.push_back(base_idx + 1);
@@ -1048,9 +1070,8 @@ namespace GamePhysX
 		Vector3 currentPosition,
 		double radius
 	) {
-		auto px_instance_ptr = mem.Read<uint64_t>(GameData.GameBase + Offset::Physx);
-		auto px_scene_arr_ptr = mem.Read<uint64_t>(px_instance_ptr + 0x8);
-		auto px_scene_ptr = mem.Read<uint64_t>(px_scene_arr_ptr);
+		auto px_scene_ptr = ResolvePxScenePtr();
+		if (px_scene_ptr == 0) return std::vector<TriangleMeshData>{};
 		auto scene = mem.Read<NpSceneT>(px_scene_ptr);
 		auto pruner = mem.Read<PruningPoolT>(scene.exts[1].mPruner + 0x1A0);
 		std::vector<PrunerPayload> mObjects = ReadVec<PrunerPayload>((uintptr_t)pruner.mObjects, pruner.mNbObjects);
@@ -1186,12 +1207,10 @@ namespace GamePhysX
 		std::set<uint64_t>& HeightFieldSamplePtrSet,
 		std::set<uint64_t>& RemoveHeightFieldKey
 	) {
-		auto px_instance_ptr = mem.Read<uint64_t>(GameData.GameBase + Offset::Physx);
-		auto px_scene_arr_ptr = mem.Read<uint64_t>(px_instance_ptr + 0x8);
-		auto px_scene_ptr = mem.Read<uint64_t>(px_scene_arr_ptr);
+		auto px_scene_ptr = ResolvePxScenePtr();
 
 		// pxScenePtr phai la user-space pointer hop le
-		if (px_scene_ptr < 0x10000 || px_scene_ptr > 0x7FFFFFFFFFFF) {
+		if (!IsValidUserPtr(px_scene_ptr)) {
 			return std::vector<TriangleMeshData>{};
 		}
 
@@ -1298,12 +1317,10 @@ namespace GamePhysX
 		double radius,
 		uint32_t limit = 200
 	) {
-		auto px_instance_ptr = mem.Read<uint64_t>(GameData.GameBase + Offset::Physx);
-		auto px_scene_arr_ptr = mem.Read<uint64_t>(px_instance_ptr + 0x8);
-		auto px_scene_ptr = mem.Read<uint64_t>(px_scene_arr_ptr);
+		auto px_scene_ptr = ResolvePxScenePtr();
 
 		// pxScenePtr phai la user-space pointer hop le
-		if (px_scene_ptr < 0x10000 || px_scene_ptr > 0x7FFFFFFFFFFF) {
+		if (!IsValidUserPtr(px_scene_ptr)) {
 			return std::vector<TriangleMeshData>{};
 		}
 

@@ -21,6 +21,7 @@ namespace Offset {
     inline auto& GroggyHealth = telemetry_config::offsets::GroggyHealth;
     inline auto& EquippedWeapons = telemetry_config::offsets::EquippedWeapons;
     inline auto& CharacterName = telemetry_config::offsets::CharacterName;
+    inline auto& Physx = telemetry_config::offsets::PhysxSDK;
 
     inline auto& CameraCacheLocation = telemetry_config::offsets::CameraCacheLocation;
     inline auto& CameraCacheRotation = telemetry_config::offsets::CameraCacheRotation;

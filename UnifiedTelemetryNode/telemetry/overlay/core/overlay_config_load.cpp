@@ -95,6 +95,7 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("player_list_hold_required")) player_list_hold_required = j["player_list_hold_required"];
             if (j.contains("player_list_hold_key")) player_list_hold_key = j["player_list_hold_key"];
             if (j.contains("debug_loot_resolver")) debug_loot_resolver = j["debug_loot_resolver"];
+            if (j.contains("debug_map_mesh_esp")) debug_map_mesh_esp = j["debug_map_mesh_esp"];
             if (j.contains("active_preset")) active_preset = j["active_preset"];
             if (j.contains("flick_enabled")) flick_enabled = j["flick_enabled"];
             if (j.contains("flick_visible_only")) flick_visible_only = j["flick_visible_only"];

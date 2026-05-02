@@ -194,9 +194,11 @@ void DrawPlayerTeamBadge(ImDrawList* draw, const ImVec2& min, float size,
     const ImVec2 center(min.x + size * 0.5f, min.y + size * 0.5f);
     const float radius = size * 0.5f;
     const int alphaByte = static_cast<int>(220.0f * alpha);
+    /*
     draw->AddCircleFilled(ImVec2(center.x + 1.0f, center.y + 1.0f), radius, IM_COL32(0, 0, 0, alphaByte));
     draw->AddCircleFilled(center, radius, fillColor, 20);
     draw->AddCircle(center, radius - 1.0f, IM_COL32(255, 255, 255, static_cast<int>(90.0f * alpha)), 20, 1.0f);
+    */
 
     char teamText[16] = {};
     sprintf_s(teamText, "%d", teamID % 100);
@@ -406,7 +408,7 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                                 draw->AddLine(p1, p2, ApplyAlpha(skelCol, alphaMult), g_Menu.skel_thickness);
                                 if (g_Menu.esp_skeleton_dots && (finalBoxBottom - finalBoxTop) > 45.0f) {
                                     const float jointRadius = std::clamp((finalBoxBottom - finalBoxTop) * 0.012f, 1.0f, 2.1f);
-                                    draw->AddCircleFilled(p1, jointRadius, ApplyAlpha(skelCol, alphaMult * 0.92f), 8);
+                                 // draw->AddCircleFilled(p1, jointRadius, ApplyAlpha(skelCol, alphaMult * 0.92f), 8);
                                 }
                             }
                         };
@@ -433,7 +435,7 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                         ImU32 headCol = player.IsVisible ?
                             ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.skeleton_visible_color) :
                             ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.skeleton_invisible_color);
-                        draw->AddCircle(ImVec2(head_s.x, head_s.y), radius, ApplyAlpha(headCol, alphaMult), 22, 1.2f);
+                        // draw->AddCircle(ImVec2(head_s.x, head_s.y), radius, ApplyAlpha(headCol, alphaMult), 22, 1.2f);
                     }
 
                     if (g_Menu.esp_prediction && !player.IsTeammate && player.Distance < g_Menu.box_max_dist) {
@@ -444,8 +446,8 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                             ImU32 predCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.view_direction_color);
                             
                             // Draw predictive dot
-                            draw->AddCircleFilled(ImVec2(pred_s.x, pred_s.y), radius, ApplyAlpha(predCol, alphaMult * 0.75f), 12);
-                            draw->AddCircle(ImVec2(pred_s.x, pred_s.y), radius + 1.0f, IM_COL32(0, 0, 0, AlphaByte(0.45f * alphaMult)), 12, 1.0f);
+                            // draw->AddCircleFilled(ImVec2(pred_s.x, pred_s.y), radius, ApplyAlpha(predCol, alphaMult * 0.75f), 12);
+                            // draw->AddCircle(ImVec2(pred_s.x, pred_s.y), radius + 1.0f, IM_COL32(0, 0, 0, AlphaByte(0.45f * alphaMult)), 12, 1.0f);
                             
                             // Draw line from head to predicted position if moving fast
                             if (player.Velocity.Length() > 200.0f) {
@@ -492,7 +494,7 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                                 IM_COL32(0, 0, 0, AlphaByte(0.45f * alphaMult)), 2.8f);
                             draw->AddLine(ImVec2(dirStart.x, dirStart.y), ImVec2(dirEnd.x, dirEnd.y),
                                 ApplyAlpha(dirCol, alphaMult), 1.5f);
-                            draw->AddCircleFilled(ImVec2(dirEnd.x, dirEnd.y), 2.2f, ApplyAlpha(dirCol, alphaMult), 8);
+                            // draw->AddCircleFilled(ImVec2(dirEnd.x, dirEnd.y), 2.2f, ApplyAlpha(dirCol, alphaMult), 8);
                         }
                     }
 

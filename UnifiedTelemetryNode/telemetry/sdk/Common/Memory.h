@@ -199,6 +199,14 @@ public:
     VMMDLL_SCATTER_HANDLE CreateScatterHandle() { return reinterpret_cast<VMMDLL_SCATTER_HANDLE>(new std::vector<std::uint64_t>()); }
     void AddScatterRead(void*, const std::uint64_t address, void* const buffer, const std::uint64_t size = 8) { Read(address, buffer, size); }
     void AddScatterReadRequest(void*, const std::uint64_t address, void* const buffer, const std::uint64_t size = 8) { Read(address, buffer, size); }
+    template <typename value_type>
+    void AddScatterRead(void* handle, const std::uint64_t address, value_type* const buffer) {
+        AddScatterRead(handle, address, buffer, sizeof(value_type));
+    }
+    template <typename value_type>
+    void AddScatterReadRequest(void* handle, const std::uint64_t address, value_type* const buffer) {
+        AddScatterReadRequest(handle, address, buffer, sizeof(value_type));
+    }
     void ExecuteReadScatter(void*) {}
     void CloseScatterHandle(void* handle) { if (handle) delete reinterpret_cast<std::vector<std::uint64_t>*>(handle); }
 

@@ -18,12 +18,6 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
     auto Lang = Translation::Get();
     float totalWidth = windowSize.x - 60;
     ImGui::Columns(5, skCrypt("ItemColumns"), false);
-    struct VisualLootTile {
-        const char* label;
-        const char* folder;
-        const char* asset;
-        bool* enabled;
-    };
 
     auto DrawVisualLootTile = [&](const VisualLootTile& item, const ImVec2& tileSize) {
         ImGui::PushID(item.asset);
@@ -79,20 +73,40 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         ImGui::PopID();
     };
 
-    auto DrawVisualLootGrid = [&](const VisualLootTile* items, int count, int preferredPerRow = 3) {
+    auto DrawMasterToggle = [&](const VisualLootTile* items, int count, const char* uniqueID) {
+        ImGui::PushID(uniqueID);
+        // Align to the right of the current content region (the card)
+        float buttonGroupWidth = 95.0f; 
+        ImGui::SameLine(ImGui::GetContentRegionMax().x - buttonGroupWidth); 
+        
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+        
+        ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 180, 255, 75));
+        if (ImGui::Button(Lang.MasterToggleOn, ImVec2(44, 19))) {
+            for (int i = 0; i < count; ++i) *items[i].enabled = true;
+        }
+        ImGui::PopStyleColor();
+        
+        ImGui::SameLine(0, 4);
+        
+        ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(230, 40, 40, 75));
+        if (ImGui::Button(Lang.MasterToggleOff, ImVec2(44, 19))) {
+            for (int i = 0; i < count; ++i) *items[i].enabled = false;
+        }
+        ImGui::PopStyleColor();
+        
+        ImGui::PopStyleVar();
+        ImGui::PopID();
+    };
+
+    auto DrawVisualLootGrid = [&](const VisualLootTile* items, int count, int perRow = 3) {
         const float tileGap = 8.0f;
         const float tileHeight = 76.0f;
-        int perRow = preferredPerRow;
         float available = ImGui::GetContentRegionAvail().x;
-
-        // Standardize on 3 per row for better density as requested
-        perRow = 3;
-
         float tileWidth = (available - (perRow - 1) * tileGap) / perRow;
         if (tileWidth > 96.0f) tileWidth = 96.0f;
         if (tileWidth < 68.0f) tileWidth = 68.0f;
         ImVec2 tileSize(tileWidth, tileHeight);
-
         for (int i = 0; i < count; ++i) {
             DrawVisualLootTile(items[i], tileSize);
             if ((i % perRow) != (perRow - 1) && i != count - 1) {
@@ -100,6 +114,7 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
             }
         }
     };
+
     ImGui::SetColumnWidth(0, totalWidth / 5.0f);
     ImGui::SetColumnWidth(1, totalWidth / 5.0f);
     ImGui::SetColumnWidth(2, totalWidth / 5.0f);
@@ -135,6 +150,7 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { Lang.BackpackLv2, skCrypt("Backpack"), skCrypt("Item_Back_F_01_Lv2_C"), &g_Menu.loot_backpack_lv2 },
         { Lang.BackpackLv3, skCrypt("Backpack"), skCrypt("Item_Back_C_01_Lv3_C"), &g_Menu.loot_backpack_lv3 }
     };
+    DrawMasterToggle(gearTiles, IM_ARRAYSIZE(gearTiles), skCrypt("Gear"));
     DrawVisualLootGrid(gearTiles, IM_ARRAYSIZE(gearTiles), 3);
 
     ImGui::Separator();
@@ -150,6 +166,7 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { skCrypt("G:Mos"), skCrypt("Ghillie"), skCrypt("Item_Ghillie_05_C"), &g_Menu.loot_ghillie_mossy },
         { skCrypt("G:Brn"), skCrypt("Ghillie"), skCrypt("Item_Ghillie_06_C"), &g_Menu.loot_ghillie_brown }
     };
+    DrawMasterToggle(specialGearTiles, IM_ARRAYSIZE(specialGearTiles), skCrypt("SpecialGear"));
     DrawVisualLootGrid(specialGearTiles, IM_ARRAYSIZE(specialGearTiles), 3);
 
     ImGui::Separator();
@@ -162,6 +179,7 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { skCrypt("Trans"), skCrypt("Utility"), skCrypt("Item_Revival_Transmitter_C"), &g_Menu.loot_utility_vtransmitter },
         { skCrypt("Shld"), skCrypt("Utility"), skCrypt("Item_BulletproofShield_C"), &g_Menu.loot_utility_shield }
     };
+    DrawMasterToggle(tacticalTiles, IM_ARRAYSIZE(tacticalTiles), skCrypt("Tactical"));
     DrawVisualLootGrid(tacticalTiles, IM_ARRAYSIZE(tacticalTiles), 3);
     ImGui::EndChild();
 
@@ -173,6 +191,7 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { Lang.Healing, skCrypt("Medicine"), skCrypt("Item_Heal_FirstAid_C"), &g_Menu.loot_meds_healing },
         { Lang.Boosters, skCrypt("Medicine"), skCrypt("Item_Boost_EnergyDrink_C"), &g_Menu.loot_meds_boosts }
     };
+    DrawMasterToggle(medTiles, IM_ARRAYSIZE(medTiles), skCrypt("Meds"));
     DrawVisualLootGrid(medTiles, IM_ARRAYSIZE(medTiles), 2);
     ImGui::Separator();
 
@@ -188,6 +207,7 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { skCrypt("15x"), skCrypt("Attachment/Scope"), skCrypt("Item_Attach_Weapon_Upper_CQBSS_C"), &g_Menu.loot_scope_15x },
         { skCrypt("Trm"), skCrypt("Attachment/Scope"), skCrypt("Item_Attach_Weapon_Upper_Thermal_C"), &g_Menu.loot_scope_thermal }
     };
+    DrawMasterToggle(scopeTiles, IM_ARRAYSIZE(scopeTiles), skCrypt("Scopes"));
     DrawVisualLootGrid(scopeTiles, IM_ARRAYSIZE(scopeTiles), 3);
     ImGui::Separator();
 
@@ -200,6 +220,7 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { skCrypt("Thumb"), skCrypt("Attachment/Grip"), skCrypt("Item_Attach_Weapon_Lower_ThumbGrip_C"), &g_Menu.loot_grip_thumb },
         { skCrypt("Ext"), skCrypt("Attachment/Mag"), skCrypt("Item_Attach_Weapon_Magazine_ExtendedQuickDraw_Large_C"), &g_Menu.loot_mag_ext_quick }
     };
+    DrawMasterToggle(attachTiles, IM_ARRAYSIZE(attachTiles), skCrypt("Attach"));
     DrawVisualLootGrid(attachTiles, IM_ARRAYSIZE(attachTiles), 3);
 
     ImGui::EndChild();
@@ -222,6 +243,7 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { skCrypt("Flare"), skCrypt("Ammo"), skCrypt("Item_Ammo_Flare_C"), &g_Menu.loot_ammo_flare },
         { skCrypt("Mortar"), skCrypt("Ammo"), skCrypt("Item_Ammo_Mortar_C"), &g_Menu.loot_ammo_mortar }
     };
+    DrawMasterToggle(ammoTiles, IM_ARRAYSIZE(ammoTiles), skCrypt("Ammo"));
     DrawVisualLootGrid(ammoTiles, IM_ARRAYSIZE(ammoTiles), 3);
 
     ImGui::Separator();
@@ -234,6 +256,7 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { skCrypt("Chim"), skCrypt("Key"), skCrypt("Item_Chimera_Key_C"), &g_Menu.loot_key_chimera },
         { skCrypt("Havn"), skCrypt("Key"), skCrypt("Item_Heaven_Key_C"), &g_Menu.loot_key_haven }
     };
+    DrawMasterToggle(keyTiles, IM_ARRAYSIZE(keyTiles), skCrypt("Keys"));
     DrawVisualLootGrid(keyTiles, IM_ARRAYSIZE(keyTiles), 3);
 
     ImGui::Separator();
@@ -248,6 +271,7 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { skCrypt("BZ"), skCrypt("Gun/Throw"), skCrypt("Item_Weapon_BluezoneGrenade_C"), &g_Menu.loot_throw_bz },
         { skCrypt("Dcy"), skCrypt("Gun/Throw"), skCrypt("Item_Weapon_DecoyGrenade_C"), &g_Menu.loot_throw_decoy }
     };
+    DrawMasterToggle(throwTiles, IM_ARRAYSIZE(throwTiles), skCrypt("Throws"));
     DrawVisualLootGrid(throwTiles, IM_ARRAYSIZE(throwTiles), 3);
     ImGui::EndChild();
 
@@ -271,6 +295,7 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { skCrypt("G36C"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_G36C_C"), &g_Menu.loot_weapon_g36c },
         { skCrypt("Mutant"), skCrypt("Gun/AR"), skCrypt("Item_Weapon_Mk47Mutant_C"), &g_Menu.loot_weapon_mutant }
     };
+    DrawMasterToggle(arTiles, IM_ARRAYSIZE(arTiles), skCrypt("AR"));
     DrawVisualLootGrid(arTiles, IM_ARRAYSIZE(arTiles), 3);
     ImGui::Separator();
 
@@ -290,6 +315,7 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { skCrypt("VSS"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_VSS_C"), &g_Menu.loot_weapon_vss },
         { skCrypt("QBU"), skCrypt("Gun/DMR"), skCrypt("Item_Weapon_QBU88_C"), &g_Menu.loot_weapon_qbu }
     };
+    DrawMasterToggle(srTiles, IM_ARRAYSIZE(srTiles), skCrypt("SR"));
     DrawVisualLootGrid(srTiles, IM_ARRAYSIZE(srTiles), 3);
     ImGui::Separator();
 
@@ -308,6 +334,7 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { skCrypt("MG3"), skCrypt("Gun/LMG"), skCrypt("Item_Weapon_MG3_C"), &g_Menu.loot_weapon_mg3 },
         { skCrypt("DP-28"), skCrypt("Gun/LMG"), skCrypt("Item_Weapon_DP28_C"), &g_Menu.loot_weapon_dp28 }
     };
+    DrawMasterToggle(smgTiles, IM_ARRAYSIZE(smgTiles), skCrypt("SMG"));
     DrawVisualLootGrid(smgTiles, IM_ARRAYSIZE(smgTiles), 3);
     ImGui::Separator();
 
@@ -322,6 +349,7 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { skCrypt("Rhino"), skCrypt("Gun/HG"), skCrypt("Item_Weapon_Rhino_C"), &g_Menu.loot_weapon_rhino },
         { skCrypt("Stun"), skCrypt("Gun/HG"), skCrypt("Item_Weapon_StunGun_C"), &g_Menu.loot_weapon_stungun }
     };
+    DrawMasterToggle(sgTiles, IM_ARRAYSIZE(sgTiles), skCrypt("SG"));
     DrawVisualLootGrid(sgTiles, IM_ARRAYSIZE(sgTiles), 3);
     ImGui::Separator();
 
@@ -334,6 +362,7 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { skCrypt("Pan"), skCrypt("Gun/Melee"), skCrypt("Item_Weapon_Pan_C"), &g_Menu.loot_weapon_pan },
         { skCrypt("Spike"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_SpikeTrap_C"), &g_Menu.loot_weapon_spike }
     };
+    DrawMasterToggle(miscWeaponTiles, IM_ARRAYSIZE(miscWeaponTiles), skCrypt("MiscWeap"));
     DrawVisualLootGrid(miscWeaponTiles, IM_ARRAYSIZE(miscWeaponTiles), 3);
 
     ImGui::EndChild();
@@ -369,7 +398,7 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { Lang.VehicleBlanc, skCrypt("Vehicle"), skCrypt("BP_Blanc_C"), &g_Menu.loot_vehicle_blanc },
         { Lang.VehicleAir, skCrypt("Vehicle"), skCrypt("BP_Motorglider_C"), &g_Menu.loot_vehicle_air }
     };
-
+    DrawMasterToggle(vehicleTiles, IM_ARRAYSIZE(vehicleTiles), skCrypt("Vehicles"));
     // Draw 3 items per row as requested
     DrawVisualLootGrid(vehicleTiles, IM_ARRAYSIZE(vehicleTiles), 3);
     ImGui::EndChild();

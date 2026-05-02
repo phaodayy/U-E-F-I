@@ -254,7 +254,12 @@ void PhysXManager::Cleanup() {
 }
 
 bool PhysXManager::Raycast(const FVector& origin, const FVector& target, uint32_t collisionMask) {
-    if (!IsFiniteVector(origin) || !IsFiniteVector(target)) return true;
+    FVector hitPoint{};
+    return !RaycastHit(origin, target, hitPoint, collisionMask);
+}
+
+bool PhysXManager::RaycastHit(const FVector& origin, const FVector& target, FVector& hitPoint, uint32_t collisionMask) {
+    if (!IsFiniteVector(origin) || !IsFiniteVector(target)) return false;
 
     PxVec3 pxOrigin(origin.X * kPhysxUnitsPerUnrealUnit,
         origin.Y * kPhysxUnitsPerUnrealUnit,
@@ -265,18 +270,18 @@ bool PhysXManager::Raycast(const FVector& origin, const FVector& target, uint32_
 
     PxVec3 dir = pxTarget - pxOrigin;
     PxReal dist = dir.magnitude();
-    if (!std::isfinite(dist) || dist < kMinRayDistanceMeters || dist > kMaxRayDistanceMeters) return true;
+    if (!std::isfinite(dist) || dist < kMinRayDistanceMeters || dist > kMaxRayDistanceMeters) return false;
     dir.normalize();
 
     PxRaycastBuffer hit;
     std::lock_guard<std::mutex> lock(sceneMutex);
-    if (!SceneLooksUsable(gScene)) return true;
+    if (!SceneLooksUsable(gScene)) return false;
 
     stats.totalRaycasts++;
 
     bool status = false;
     if (!SafePhysxRaycast(gScene, pxOrigin, dir, dist, &hit, &status)) {
-        return true;
+        return false;
     }
 
     if (status && hit.hasBlock && collisionMask != PhysXCollisionGroup::GROUP_ALL) {
@@ -288,14 +293,22 @@ bool PhysXManager::Raycast(const FVector& origin, const FVector& target, uint32_
             if (it != actorGroupMap.end()) {
                 if ((it->second & collisionMask) == 0) {
                     // Actor nay thuoc nhom bi bo qua (vd: Foliage)
-                    return true; // Coi nhu khong bi chan
+                    return false; // Coi nhu khong bi chan
                 }
             }
         }
         stats.raycastHits++;
     }
 
-    return !status; 
+    if (status && hit.hasBlock) {
+        hitPoint = FVector(
+            hit.block.position.x / kPhysxUnitsPerUnrealUnit,
+            hit.block.position.y / kPhysxUnitsPerUnrealUnit,
+            hit.block.position.z / kPhysxUnitsPerUnrealUnit);
+        return true;
+    }
+
+    return false;
 }
 
 void PhysXManager::UpdateScene(const std::vector<TriangleMeshData>& meshes, const std::set<PrunerPayload>& removeObjects) {

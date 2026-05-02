@@ -54,16 +54,19 @@ public:
                         auto* CacheProject = activeProjects[j];
                         if (CacheProject->bVisible == 1) continue;
 
-                        if (CacheProject->EntityName != skCrypt("ProjGrenade_C"))
+                        if (CacheProject->ExplodeState != EProjectileExplodeState::NotExplode)
                         {
-                            if (abs(CacheProject->TimeTillExplosion) > 0.0f && CacheProject->TimeTillExplosion == Times[CacheProject->Entity])
-                            {
-                                CacheProject->bVisible = 1;
-                                continue;
-                            }
-                            else {
-                                Times[CacheProject->Entity] = CacheProject->TimeTillExplosion;
-                            }
+                            CacheProject->bVisible = 1;
+                            continue;
+                        }
+
+                        if (CacheProject->TimeTillExplosion == Times[CacheProject->Entity])
+                        {
+                            CacheProject->bVisible = 1;
+                            continue;
+                        }
+                        else {
+                            Times[CacheProject->Entity] = CacheProject->TimeTillExplosion;
                         }
 
                         CacheProject->RootComponent = Decrypt::Xe(CacheProject->RootComponent);

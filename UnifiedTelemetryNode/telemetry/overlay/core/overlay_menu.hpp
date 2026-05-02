@@ -112,6 +112,7 @@ public:
   float offscreen_far_color[4] = {0.0f, 1.0f, 0.4f, 1.00f};
   bool debug_actor_esp = false;
   bool debug_loot_resolver = false;
+  bool debug_map_mesh_esp = false;
   int active_preset = 0;
   
   bool esp_show_enemies = true;

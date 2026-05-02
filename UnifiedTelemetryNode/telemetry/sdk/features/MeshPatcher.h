@@ -1,6 +1,5 @@
 #pragma once
 #include <string>
-#include <format>
 #include "Utils/Utils.h"
 #include <unordered_map>
 class MeshPatcher {
@@ -2737,7 +2736,7 @@ public:
     }
 
     void PatchMesh(TriangleMeshData& mesh) {
-        std::string keyStr = std::format("{}_{}", mesh.Vertices.size(), mesh.Indices.size());
+        std::string keyStr = std::to_string(mesh.Vertices.size()) + "_" + std::to_string(mesh.Indices.size());
 
         if (auto it = patch.find(keyStr); it != patch.end()) {
             //Utils::Log(1, "Patching mesh indices for key: %s", keyStr.c_str());

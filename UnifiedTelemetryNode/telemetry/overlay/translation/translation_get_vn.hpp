@@ -431,6 +431,8 @@ inline void FillVietnamese(Strings& s) {
     s.FOVColor = (const char*)u8"Màu vòng tròn FOV";
     s.FlickAutoShot = (const char*)u8"Tự bắn sau khi Flick";
     s.Target = (const char*)u8"Vùng ngắm";
+    s.MasterToggleOn = (const char*)u8"BẬT";
+    s.MasterToggleOff = (const char*)u8"TẮT";
 }
 
 } // namespace Translation

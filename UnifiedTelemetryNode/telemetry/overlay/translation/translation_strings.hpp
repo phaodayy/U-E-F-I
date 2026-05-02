@@ -318,6 +318,8 @@ namespace Translation {
     const char* FOVColor;
     const char* FlickAutoShot;
         const char* Target;
+        const char* MasterToggleOn;
+        const char* MasterToggleOff;
     };
 
 } // namespace Translation

@@ -6,7 +6,13 @@
 #include "../core/overlay_texture_cache.hpp"
 #include "../vehicle/vehicle_resolver.hpp"
 #include "../../sdk/core/context.hpp"
+#include "../../sdk/Common/Data.h"
 #include <protec/skCrypt.h>
+#include <algorithm>
+#include <cfloat>
+#include <cmath>
+#include <cstdio>
+#include <vector>
 
 namespace {
 
@@ -34,10 +40,325 @@ bool ShouldDrawVehicle(const OverlayMenu& menu, const std::string& name) {
     }
 }
 
+Vector3 PredictProjectilePoint(const ItemData& item, float t) {
+    constexpr float kGravityCm = 980.0f;
+    return item.Position + (item.Velocity * t) + Vector3{ 0.0f, 0.0f, -0.5f * kGravityCm * t * t };
+}
+
+FVector ToFVector(const Vector3& value) {
+    return FVector(value.x, value.y, value.z);
+}
+
+Vector3 ToVector3(const FVector& value) {
+    return Vector3(value.X, value.Y, value.Z);
+}
+
+bool RaycastSceneHit(const Vector3& origin, const Vector3& target, Vector3& hitPoint) {
+    const Vector3 segment = target - origin;
+    const float maxDistance = segment.Length();
+    if (maxDistance <= 1.0f) return false;
+
+    const Vector3 dir = segment * (1.0f / maxDistance);
+    constexpr float kEpsilon = 0.0001f;
+    float closest = FLT_MAX;
+    bool hit = false;
+
+    std::shared_lock<std::shared_mutex> lock(GameData.Actors.ClonedMapMutex, std::try_to_lock);
+    if (!lock.owns_lock()) return false;
+
+    for (const TriangleMeshData& mesh : GameData.Actors.ClonedMapMeshes) {
+        if (mesh.Vertices.empty() || mesh.Indices.size() < 3) continue;
+
+        for (size_t i = 0; i + 2 < mesh.Indices.size(); i += 3) {
+            const uint32_t i0 = mesh.Indices[i];
+            const uint32_t i1 = mesh.Indices[i + 1];
+            const uint32_t i2 = mesh.Indices[i + 2];
+            if (i0 >= mesh.Vertices.size() || i1 >= mesh.Vertices.size() || i2 >= mesh.Vertices.size()) continue;
+
+            const Vector3& v0 = mesh.Vertices[i0];
+            const Vector3& v1 = mesh.Vertices[i1];
+            const Vector3& v2 = mesh.Vertices[i2];
+
+            const Vector3 edge1 = v1 - v0;
+            const Vector3 edge2 = v2 - v0;
+            const Vector3 pvec = dir.cross(edge2);
+            const float det = edge1.dot(pvec);
+            if (std::fabs(det) < kEpsilon) continue;
+
+            const float invDet = 1.0f / det;
+            const Vector3 tvec = origin - v0;
+            const float u = tvec.dot(pvec) * invDet;
+            if (u < 0.0f || u > 1.0f) continue;
+
+            const Vector3 qvec = tvec.cross(edge1);
+            const float v = dir.dot(qvec) * invDet;
+            if (v < 0.0f || (u + v) > 1.0f) continue;
+
+            const float distance = edge2.dot(qvec) * invDet;
+            if (distance >= 0.0f && distance <= maxDistance && distance < closest) {
+                closest = distance;
+                hit = true;
+            }
+        }
+    }
+
+    if (!hit) return false;
+    hitPoint = origin + (dir * closest);
+    return true;
+}
+
+void DrawMapMeshDebugEsp(ImDrawList* draw) {
+    if (!draw || !g_Menu.debug_map_mesh_esp) return;
+
+    constexpr float kMaxDrawDistanceCm = 18000.0f;
+    constexpr float kMaxDrawDistanceSq = kMaxDrawDistanceCm * kMaxDrawDistanceCm;
+    constexpr size_t kMaxDrawTriangles = 2600;
+    constexpr size_t kMeshStep = 1;
+
+    size_t meshCount = 0;
+    size_t totalTriangles = 0;
+    size_t drawnTriangles = 0;
+    bool lockBusy = false;
+
+    std::shared_lock<std::shared_mutex> lock(GameData.Actors.ClonedMapMutex, std::try_to_lock);
+    if (!lock.owns_lock()) {
+        lockBusy = true;
+    } else {
+        meshCount = GameData.Actors.ClonedMapMeshes.size();
+        for (size_t m = 0; m < GameData.Actors.ClonedMapMeshes.size(); m += kMeshStep) {
+            const TriangleMeshData& mesh = GameData.Actors.ClonedMapMeshes[m];
+            if (mesh.Vertices.empty() || mesh.Indices.size() < 3) continue;
+
+            totalTriangles += mesh.Indices.size() / 3;
+
+            Vector3 center{0.0f, 0.0f, 0.0f};
+            const size_t sampleCount = (std::min)(mesh.Vertices.size(), static_cast<size_t>(8));
+            for (size_t i = 0; i < sampleCount; ++i) center = center + mesh.Vertices[i];
+            if (sampleCount > 0) center = center * (1.0f / static_cast<float>(sampleCount));
+            const Vector3 delta = center - G_CameraLocation;
+            const float distSq = (delta.x * delta.x) + (delta.y * delta.y) + (delta.z * delta.z);
+            if (!G_CameraLocation.IsZero() && distSq > kMaxDrawDistanceSq) continue;
+
+            for (size_t i = 0; i + 2 < mesh.Indices.size() && drawnTriangles < kMaxDrawTriangles; i += 3) {
+                const uint32_t i0 = mesh.Indices[i];
+                const uint32_t i1 = mesh.Indices[i + 1];
+                const uint32_t i2 = mesh.Indices[i + 2];
+                if (i0 >= mesh.Vertices.size() || i1 >= mesh.Vertices.size() || i2 >= mesh.Vertices.size()) continue;
+
+                Vector2 s0{}, s1{}, s2{};
+                if (!telemetryContext::WorldToScreen(mesh.Vertices[i0], s0) ||
+                    !telemetryContext::WorldToScreen(mesh.Vertices[i1], s1) ||
+                    !telemetryContext::WorldToScreen(mesh.Vertices[i2], s2)) {
+                    continue;
+                }
+
+                const ImU32 edge = IM_COL32(0, 235, 255, 145);
+                const ImU32 fill = IM_COL32(0, 160, 255, 18);
+                draw->AddTriangleFilled(ImVec2(s0.x, s0.y), ImVec2(s1.x, s1.y), ImVec2(s2.x, s2.y), fill);
+                draw->AddTriangle(ImVec2(s0.x, s0.y), ImVec2(s1.x, s1.y), ImVec2(s2.x, s2.y), edge, 1.0f);
+                ++drawnTriangles;
+            }
+
+            if (drawnTriangles >= kMaxDrawTriangles) break;
+        }
+    }
+
+    char status[160] = {};
+    std::snprintf(status, sizeof(status), "MapMesh: %zu meshes | %zu tris | drawn %zu%s",
+        meshCount, totalTriangles, drawnTriangles, lockBusy ? " | lock busy" : "");
+    // draw->AddText(ImGui::GetFont(), 14.0f, ImVec2(21.0f, 121.0f), IM_COL32(0, 0, 0, 220), status);
+    // draw->AddText(ImGui::GetFont(), 14.0f, ImVec2(20.0f, 120.0f), IM_COL32(0, 235, 255, 245), status);
+
+    if (!G_MapMeshDebugStatus.empty()) {
+        // draw->AddText(ImGui::GetFont(), 13.0f, ImVec2(21.0f, 139.0f), IM_COL32(0, 0, 0, 220), G_MapMeshDebugStatus.c_str());
+        // draw->AddText(ImGui::GetFont(), 13.0f, ImVec2(20.0f, 138.0f), IM_COL32(255, 220, 80, 245), G_MapMeshDebugStatus.c_str());
+    }
+}
+
+Vector3 PredictProjectileEnd(const ItemData& item) {
+    const float t = item.HasTrajectory
+        ? std::clamp(item.TimeTillExplosion, 0.25f, 4.0f)
+        : 0.0f;
+    return t > 0.0f ? PredictProjectilePoint(item, t) : item.Position;
+}
+
+void DrawWorldCircle(ImDrawList* draw, const Vector3& center, float radius, ImU32 color) {
+    if (radius <= 0.0f) return;
+
+    constexpr int kSegments = 48;
+    Vector2 prev{};
+    bool hasPrev = false;
+    for (int i = 0; i <= kSegments; ++i) {
+        const float a = (static_cast<float>(i) / static_cast<float>(kSegments)) * 6.28318530718f;
+        const Vector3 world = center + Vector3{ std::cos(a) * radius, std::sin(a) * radius, 0.0f };
+        Vector2 screen{};
+        const bool visible = telemetryContext::WorldToScreen(world, screen);
+        if (visible && hasPrev) {
+            draw->AddLine(ImVec2(prev.x, prev.y), ImVec2(screen.x, screen.y), color, 1.6f);
+        }
+        prev = screen;
+        hasPrev = visible;
+    }
+}
+
+void DrawProjectileThreat(ImDrawList* draw, const ItemData& item, const Vector2& itemScreen, ImU32 color) {
+    const Vector3 endWorld = PredictProjectileEnd(item);
+    Vector2 endScreen{};
+    const bool hasEnd = telemetryContext::WorldToScreen(endWorld, endScreen);
+
+    if (item.HasTrajectory) {
+        std::vector<ImVec2> points;
+        const float duration = std::clamp(item.TimeTillExplosion, 0.25f, 4.0f);
+        constexpr int kSteps = 18;
+        points.reserve(kSteps + 1);
+        for (int i = 0; i <= kSteps; ++i) {
+            const float t = duration * (static_cast<float>(i) / static_cast<float>(kSteps));
+            Vector2 screen{};
+            if (telemetryContext::WorldToScreen(PredictProjectilePoint(item, t), screen)) {
+                points.emplace_back(screen.x, screen.y);
+            }
+        }
+        if (points.size() >= 2) {
+            draw->AddPolyline(points.data(), static_cast<int>(points.size()), IM_COL32(0, 0, 0, 150), 0, 3.6f);
+            draw->AddPolyline(points.data(), static_cast<int>(points.size()), IM_COL32(255, 210, 70, 235), 0, 1.8f);
+        }
+    }
+
+    DrawWorldCircle(draw, endWorld, item.BlastRadius, IM_COL32(255, 45, 45, 180));
+
+    if (hasEnd) {
+        draw->AddCircleFilled(ImVec2(endScreen.x, endScreen.y), 4.0f, IM_COL32(255, 40, 40, 220), 16);
+        draw->AddCircle(ImVec2(endScreen.x, endScreen.y), 8.0f, IM_COL32(255, 40, 40, 160), 18, 1.4f);
+        draw->AddLine(ImVec2(itemScreen.x, itemScreen.y), ImVec2(endScreen.x, endScreen.y),
+            IM_COL32(255, 210, 70, 120), 1.0f);
+    }
+
+    char label[96] = {};
+    if (item.TimeTillExplosion > 0.03f && item.TimeTillExplosion < 120.0f) {
+        std::snprintf(label, sizeof(label), "%s %.1fs [%dm]", item.Name.c_str(), item.TimeTillExplosion,
+            static_cast<int>(item.Distance));
+    } else {
+        std::snprintf(label, sizeof(label), "%s [%dm]", item.Name.c_str(), static_cast<int>(item.Distance));
+    }
+    const float fontSize = g_Menu.loot_distance_font_size + 1.0f;
+    const ImVec2 size = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, label);
+    const ImVec2 pos(itemScreen.x - size.x * 0.5f, itemScreen.y - 14.0f);
+    draw->AddText(ImGui::GetFont(), fontSize, ImVec2(pos.x + 1.0f, pos.y + 1.0f), IM_COL32(0, 0, 0, 190), label);
+    draw->AddText(ImGui::GetFont(), fontSize, pos, color, label);
+}
+
+bool IsHeldThrowableName(const std::string& name) {
+    return name.find(skCrypt("Nade")) != std::string::npos ||
+           name.find(skCrypt("Grenade")) != std::string::npos ||
+           name.find(skCrypt("Molotov")) != std::string::npos ||
+           name.find(skCrypt("Bomb")) != std::string::npos ||
+           name == skCrypt("C4") ||
+           name == skCrypt("Decoy");
+}
+
+float HeldThrowableSpeed(const std::string& name) {
+    if (name.find(skCrypt("Molotov")) != std::string::npos) return 1050.0f;
+    if (name.find(skCrypt("Smoke")) != std::string::npos) return 1150.0f;
+    if (name.find(skCrypt("Bluezone")) != std::string::npos) return 1050.0f;
+    if (name.find(skCrypt("Sticky")) != std::string::npos) return 900.0f;
+    return 1250.0f;
+}
+
+float HeldThrowableBlastRadius(const std::string& name) {
+    if (name.find(skCrypt("Molotov")) != std::string::npos) return 350.0f;
+    if (name.find(skCrypt("Bluezone")) != std::string::npos) return 650.0f;
+    if (name.find(skCrypt("C4")) != std::string::npos) return 2500.0f;
+    if (name.find(skCrypt("Sticky")) != std::string::npos) return 650.0f;
+    return 550.0f;
+}
+
+Vector3 CameraForward() {
+    const Vector3 rot = !G_LocalControlRotation.IsZero() ? G_LocalControlRotation : G_CameraRotation;
+    const float pitchRad = rot.x * 0.017453292519943f;
+    const float yawRad = rot.y * 0.017453292519943f;
+    const float cp = std::cos(pitchRad);
+    return Vector3{
+        static_cast<float>(std::cos(yawRad) * cp),
+        static_cast<float>(std::sin(yawRad) * cp),
+        static_cast<float>(std::sin(pitchRad))
+    }.normalized();
+}
+
+void DrawHeldThrowablePrediction(ImDrawList* draw) {
+    if (!draw || !g_Menu.esp_grenade_prediction || !IsHeldThrowableName(G_LocalWeaponName)) return;
+    if (G_CameraLocation.IsZero() && G_LocalPlayerPos.IsZero()) return;
+
+    constexpr float kGravityCm = 980.0f;
+    const Vector3 forward = CameraForward();
+    if (forward.IsZero()) return;
+
+    const Vector3 playerOrigin = !G_LocalPlayerPos.IsZero() ? G_LocalPlayerPos : G_CameraLocation;
+    const Vector3 start = playerOrigin + Vector3{0.0f, 0.0f, 115.0f} + (forward * 70.0f);
+    const float speed = HeldThrowableSpeed(G_LocalWeaponName);
+    const Vector3 velocity = forward * speed;
+    constexpr float duration = 6.0f;
+    constexpr int steps = 72;
+    const float fallbackGroundZ = !G_LocalPlayerPos.IsZero() ? (G_LocalPlayerPos.z + 6.0f) : (start.z - 115.0f);
+
+    std::vector<ImVec2> points;
+    points.reserve(steps + 1);
+    Vector3 previousWorld = start;
+    Vector3 landingWorld = start;
+    bool hitLanding = false;
+    for (int i = 0; i <= steps; ++i) {
+        const float t = duration * (static_cast<float>(i) / static_cast<float>(steps));
+        Vector3 world = start + (velocity * t) + Vector3{0.0f, 0.0f, -0.5f * kGravityCm * t * t};
+
+        if (i > 0) {
+            Vector3 hitPoint{};
+            if (RaycastSceneHit(previousWorld, world, hitPoint)) {
+                world = hitPoint;
+                hitLanding = true;
+            } else if (i > 2 && previousWorld.z > fallbackGroundZ && world.z <= fallbackGroundZ) {
+                const float denom = previousWorld.z - world.z;
+                const float alpha = denom > 0.001f ? std::clamp((previousWorld.z - fallbackGroundZ) / denom, 0.0f, 1.0f) : 1.0f;
+                world = previousWorld + ((world - previousWorld) * alpha);
+                world.z = fallbackGroundZ;
+                hitLanding = true;
+            }
+        }
+
+        Vector2 screen{};
+        if (telemetryContext::WorldToScreen(world, screen)) {
+            points.emplace_back(screen.x, screen.y);
+        }
+        landingWorld = world;
+        if (hitLanding) break;
+        previousWorld = world;
+    }
+
+    if (points.size() < 2) return;
+
+    draw->AddPolyline(points.data(), static_cast<int>(points.size()), IM_COL32(0, 0, 0, 170), 0, 4.4f);
+    draw->AddPolyline(points.data(), static_cast<int>(points.size()), IM_COL32(255, 226, 90, 240), 0, 2.1f);
+
+    DrawWorldCircle(draw, landingWorld, HeldThrowableBlastRadius(G_LocalWeaponName), IM_COL32(255, 70, 45, 155));
+    Vector2 endScreen{};
+    if (telemetryContext::WorldToScreen(landingWorld, endScreen)) {
+        draw->AddCircleFilled(ImVec2(endScreen.x, endScreen.y), 4.5f, IM_COL32(255, 55, 40, 230), 16);
+        draw->AddCircle(ImVec2(endScreen.x, endScreen.y), 9.0f, IM_COL32(255, 55, 40, 170), 18, 1.5f);
+
+        char label[96] = {};
+        std::snprintf(label, sizeof(label), "%s landing", G_LocalWeaponName.c_str());
+        const float fontSize = g_Menu.loot_distance_font_size + 1.0f;
+        const ImVec2 size = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, label);
+        const ImVec2 pos(endScreen.x - size.x * 0.5f, endScreen.y + 10.0f);
+        draw->AddText(ImGui::GetFont(), fontSize, ImVec2(pos.x + 1.0f, pos.y + 1.0f), IM_COL32(0, 0, 0, 190), label);
+        draw->AddText(ImGui::GetFont(), fontSize, pos, IM_COL32(255, 226, 90, 245), label);
+    }
+}
+
 } // namespace
 
 void OverlayMenu::RenderLootEsp(ImDrawList* draw) {
     if (!draw || !esp_toggle) return;
+            DrawMapMeshDebugEsp(draw);
+            DrawHeldThrowablePrediction(draw);
 
             std::vector<ItemData> allLoot = LootSourceMerge::BuildAllLoot();
 
@@ -79,7 +400,9 @@ void OverlayMenu::RenderLootEsp(ImDrawList* draw) {
                 } else if (item.RenderType == ItemRenderType::DeadBox) {
                     if (g_Menu.esp_deadboxes && item.Distance < 200.0f) { should_draw = true; col = IM_COL32(255, 140, 0, 255); }
                 } else if (item.RenderType == ItemRenderType::Projectile) {
-                    should_draw = true; col = IM_COL32(255, 0, 0, 255); // BRIGHT RED FOR DANGER
+                    if (g_Menu.esp_projectile_tracer) {
+                        should_draw = true; col = IM_COL32(255, 0, 0, 255); // BRIGHT RED FOR DANGER
+                    }
                 } else { // Generic items
                     if (g_Menu.esp_items && item.Distance > 5.0f && item.Distance < static_cast<float>(g_Menu.loot_max_dist)) {
                         const std::string& id = item.Name; // e.g. Item_Weapon_AK47_C
@@ -237,6 +560,11 @@ void OverlayMenu::RenderLootEsp(ImDrawList* draw) {
                     }
 
                     if (should_draw) {
+                        if (item.RenderType == ItemRenderType::Projectile) {
+                            DrawProjectileThreat(draw, item, itemScreen, col);
+                            continue;
+                        }
+
                         TextureInfo* icon = nullptr;
                         float iconSize = g_Menu.item_icon_size;
                         if (g_Menu.esp_icons) {

@@ -14,6 +14,9 @@ void OverlayMenu::RenderTabAdmin(ImVec2 windowSize) {
     ImGui::Checkbox(skCrypt("SHOW DEBUG ACTOR ESP IN WORLD"), &debug_actor_esp);
     ImGui::SameLine();
     ImGui::TextDisabled(skCrypt("(Use this to find class names for missing items)"));
+    ImGui::Checkbox(skCrypt("Map Mesh Debug ESP"), &debug_map_mesh_esp);
+    ImGui::SameLine();
+    ImGui::TextDisabled(skCrypt("(Draw ClonedMapMeshes wireframe for nade collision checks)"));
     ImGui::Spacing();
 
     if (ImGui::BeginTable(skCrypt("##DebugActorsTable"), 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, ImVec2(0, -1))) {

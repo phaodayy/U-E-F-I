@@ -266,7 +266,7 @@ namespace telemetry_config {
         inline SecureOffset AnimScriptInstance = 0xE30;
         inline SecureOffset PreEvalPawnState = 0x630;
         inline SecureOffset Antiintegrity_monitorCharacterSyncManager = 0xD28;
-        inline SecureOffset PhysxSDK = 0x11B90808;
+        inline SecureOffset PhysxSDK = 0x11B8F808;
         inline SecureOffset TimeSeconds = 0x810;
         inline SecureOffset TimeTillExplosion = 0x824;
         inline SecureOffset ExplodeState = 0x628;
