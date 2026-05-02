@@ -1,0 +1,89 @@
+
+constexpr uint64_t Version = 1002;
+constexpr uint64_t GWorld = 0xC19A0C0;
+constexpr uint64_t UWorldState = 0x0;
+constexpr uint64_t GObjects = 0x0;
+constexpr uint64_t FNameState = 0xC514600;
+constexpr uint64_t FNameKey = 0xC2EB9F8;
+constexpr uint64_t FNamePool = 0xC334000;
+
+constexpr uint64_t PersistentLevel = 0x0038;
+constexpr uint64_t GameInstance = 0x01D8;
+constexpr uint64_t GameState = 0x0178;
+constexpr uint64_t LocalPlayers = 0x0040;
+constexpr uint64_t PlayerController = 0x0038;
+
+constexpr uint64_t ActorArray = 0xA0;
+constexpr uint64_t ActorCount = 0xA8;
+constexpr uint64_t AcknowledgedPawn = 0x0510;
+constexpr uint64_t PlayerState = 0x0480;
+constexpr uint64_t PlayerArray = 0x0478;
+constexpr uint64_t SpawnedCharacter = 0x0B48;
+constexpr uint64_t PawnPrivate = 0x0308;
+
+constexpr uint64_t RootComponent = 0x0288;
+constexpr uint64_t RelativeLocation = 0x0170;
+constexpr uint64_t RelativeRotation = 0x0188;
+constexpr uint64_t ComponentToWorld = 0x02D0;
+
+constexpr uint64_t Mesh = 0x04E8;
+constexpr uint64_t BoneArray = 0x0738;
+constexpr uint64_t BoneArrayCache = 0x0748;
+constexpr uint64_t BoneCount = 0x0740;
+constexpr uint64_t BoundsScale = 0x047C;
+constexpr uint64_t LastSubmitTime = 0x0480;
+constexpr uint64_t LastSubmitTimeOnScreen = 0x0484;
+
+constexpr uint64_t DamageHandler = 0x0C68;
+constexpr uint64_t DamageSections = 0x01E8;
+constexpr uint64_t Health = 0x0200;
+constexpr uint64_t bIsDormant = 0x021D;
+constexpr uint64_t bAlive = 0x01F9;
+constexpr uint64_t WasAlly = 0x0F58;
+constexpr uint64_t bIsPlayerCharacter = 0x09D8;
+
+constexpr uint64_t TeamComponent = 0x0690;
+constexpr uint64_t TeamID = 0x00F8;
+
+constexpr uint64_t PlayerCameraManager = 0x0520;
+constexpr uint64_t CameraCachePrivate = 0x17B0;
+constexpr uint64_t CameraPosition = 0x0384;
+constexpr uint64_t CameraRotation = 0x0396;
+constexpr uint64_t CameraFOV = 0x03A2;
+
+constexpr uint64_t Inventory = 0x09A8;
+constexpr uint64_t CurrentEquippable = 0x0248;
+constexpr uint64_t MagazineAmmo = 0x11D8;
+constexpr uint64_t MaxAmmo = 0x0130;
+
+constexpr uint64_t BombTimeRemaining = 0x05A8;
+constexpr uint64_t PlantedASite = 0x05B8;
+constexpr uint64_t CurrentDefuser = 0x05C0;
+constexpr uint64_t DefuseProgress = 0x05D0;
+
+constexpr uint64_t Ping = 0x03D4;
+constexpr uint64_t PlayerNamePrivate = 0x04B8;
+constexpr uint64_t UniqueID = 0x0038;
+
+constexpr uint64_t ProcessEvent = 0x1B437A0;
+constexpr uint64_t StaticFindObject = 0x1B6D070;
+constexpr uint64_t StaticLoadObject = 0x1B70BA0;
+constexpr uint64_t BoneMatrix = 0x40C1190;
+constexpr uint64_t SetOutlineMode = 0x4055840;
+constexpr uint64_t FMemoryMalloc = 0x1724140;
+constexpr uint64_t PlayFinisher = 0x624EB20;
+constexpr uint64_t GetSpreadValues = 0x62EE2C0;
+constexpr uint64_t GetSpreadAngles = 0x6F28690;
+constexpr uint64_t ToVectorAndNormalize = 0x18238B0;
+constexpr uint64_t ToAngleAndNormalize = 0x181E0B0;
+constexpr uint64_t GetFiringLocationAndDirection = 0x6A41070;
+constexpr uint64_t TriggerVeh = 0x175BA46;
+
+constexpr uint64_t MarkRenderStateDirty = 0x1742130;
+constexpr uint64_t OnActorDeath = 0x6AB88F0;
+constexpr uint64_t VpcDrawTransition = 0x4307E50;
+constexpr uint64_t VpcDraw = 0x0;
+constexpr uint64_t SkinChanger1 = 0x3A8;
+constexpr uint64_t SkinChanger2 = 0xB0;
+constexpr uint64_t SkinChanger3 = 0x80;
+constexpr uint64_t SkyMesh = 0x288;
