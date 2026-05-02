@@ -275,6 +275,7 @@ void TypewriterPrint(const std::string& text, int delay_ms = 20, int color = 7) 
 }
 
 void EnsureLoaderConsole() {
+#ifdef _DEBUG
     if (GetConsoleWindow()) return;
     if (!AllocConsole()) return;
 
@@ -283,6 +284,10 @@ void EnsureLoaderConsole() {
     freopen_s(&stream, skCrypt("CONOUT$"), skCrypt("w"), stderr);
     freopen_s(&stream, skCrypt("CONIN$"), skCrypt("r"), stdin);
     SetConsoleTitleA(skCrypt("GZ Loader"));
+#else
+    HWND hConsole = GetConsoleWindow();
+    if (hConsole) ShowWindow(hConsole, SW_HIDE);
+#endif
 }
 
 void DebugPause() {
@@ -291,8 +296,14 @@ void DebugPause() {
 #endif
 }
 
-// --- LINKER CONFIG: BOTH USER AND DEV BUILDS USE A CONSOLE WINDOW ---
+// --- STARTUP NOTIFICATION HELPER ---
+extern "C" int WINAPI MessageBoxTimeoutA(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType, WORD wLanguageId, DWORD dwMilliseconds);
+
+#ifdef _DEBUG
 #pragma comment(linker, "/SUBSYSTEM:CONSOLE")
+#else
+#pragma comment(linker, "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
+#endif
 
 void SelectLanguage() {
     g_is_vietnamese = true;
@@ -1609,6 +1620,11 @@ static void StartQuickExitHotkey() {
 }
 
 int main() {
+#ifndef _DEBUG
+    MessageBoxTimeoutA(NULL, 
+        skCrypt("GZ-telemetry is starting...\nHe thong dang khoi chay, vui long cho trong giay lat..."), 
+        skCrypt("GZ-telemetry"), MB_OK | MB_ICONINFORMATION | MB_SYSTEMMODAL | MB_TOPMOST, 0, 2000);
+#endif
   StartupLog("main-start");
   ProcessSingleInstance::Guard singleInstance;
   if (!singleInstance.Acquire()) {
