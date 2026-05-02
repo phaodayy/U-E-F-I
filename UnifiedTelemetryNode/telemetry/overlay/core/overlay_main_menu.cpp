@@ -2,6 +2,7 @@
 #include "../translation/translation.hpp"
 #include "../../sdk/core/app_shutdown.hpp"
 #include <protec/skCrypt.h>
+#include <algorithm>
 #include <cctype>
 #include <string>
 
@@ -33,7 +34,13 @@ void OverlayMenu::RenderMainMenuWindow(ImDrawList* draw, float ScreenWidth, floa
             ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabHovered, ImVec4(0.00f, 0.78f, 1.00f, 0.50f));
             ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabActive, ImVec4(0.00f, 0.78f, 1.00f, 0.70f));
 
-            ImGui::Begin(skCrypt("##overlay_new"), &showmenu, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoResize);
+            ImGui::Begin(skCrypt("##overlay_new"), nullptr,
+                ImGuiWindowFlags_NoTitleBar |
+                ImGuiWindowFlags_NoScrollbar |
+                ImGuiWindowFlags_NoCollapse |
+                ImGuiWindowFlags_NoBackground |
+                ImGuiWindowFlags_NoResize |
+                ImGuiWindowFlags_NoMove);
 
             ImVec2 windowPos = ImGui::GetWindowPos();
             ImVec2 windowSize = ImGui::GetWindowSize();
@@ -65,6 +72,14 @@ void OverlayMenu::RenderMainMenuWindow(ImDrawList* draw, float ScreenWidth, floa
             drawList->AddRect(windowPos, ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y), IM_COL32(0, 200, 255, 80), 16.0f, 0, 1.5f);
 
             // Top Bar
+            ImGui::SetCursorPos(ImVec2(0, 0));
+            ImGui::InvisibleButton(skCrypt("##MenuDragHandle"), ImVec2((std::max)(windowSize.x - 95.0f, 0.0f), 60.0f));
+            if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+                const ImVec2 delta = ImGui::GetIO().MouseDelta;
+                ImGui::SetWindowPos(ImVec2(windowPos.x + delta.x, windowPos.y + delta.y));
+                windowPos = ImGui::GetWindowPos();
+            }
+
             ImGui::SetCursorPos(ImVec2(0, 0));
             ImGui::BeginChild(skCrypt("##TopBar"), ImVec2(windowSize.x, 60), false, ImGuiWindowFlags_NoBackground);
 

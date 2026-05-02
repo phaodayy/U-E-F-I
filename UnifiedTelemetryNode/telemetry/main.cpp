@@ -1807,17 +1807,17 @@ int main() {
       }
 
       if (sync_count % 5 == 0) {
+          // Automatic recovery: Force clear cache and re-query process data
+          telemetryMemory::HardResetProcessContext();
+          
           query_process_data_packet live_data = {};
           const bool live_ok = telemetryHyperProcess::QueryProcessData(pid, &live_data);
           if (live_ok && live_data.process_id != 0) {
               const uint64_t live_base = reinterpret_cast<uint64_t>(live_data.base_address);
-              // Silent refresh check
-              if (live_data.cr3 != telemetryMemory::g_ProcessCr3 || live_base != telemetryMemory::g_BaseAddress) {
-                  telemetryMemory::g_ProcessCr3 = live_data.cr3;
-                  telemetryMemory::g_BaseAddress = live_base;
-                  telemetryMemory::g_LastRefreshTime = 0;
-                  base = live_base;
-              }
+              telemetryMemory::g_ProcessCr3 = live_data.cr3;
+              telemetryMemory::g_BaseAddress = live_base;
+              base = live_base;
+              UTN_DEV_LOG(std::cout << skCrypt(" [RESET-OK]") << std::flush);
           }
       }
 

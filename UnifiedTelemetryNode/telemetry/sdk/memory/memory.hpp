@@ -60,6 +60,12 @@ namespace telemetryMemory {
         return g_ProcessCr3 != 0;
     }
 
+    inline void HardResetProcessContext() {
+        g_ProcessCr3 = 0;
+        g_BaseAddress = 0;
+        g_LastRefreshTime = 0;
+    }
+
     inline NTSTATUS issue_syscall(c_packet*) {
         return static_cast<NTSTATUS>(0xC00000BBL);
     }
