@@ -12,6 +12,8 @@
 #include "../../sdk/core/console_log.hpp"
 #include <protec/skCrypt.h>
 
+extern LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+
 namespace VisualizationBridgeDiscovery {
 
 inline HWND FindGameWindow() {
@@ -75,8 +77,14 @@ inline void LaunchMovaviIfNeeded() {
 inline bool ConfigureStealthOverlay(HWND hwnd) {
     if (!hwnd || !IsWindow(hwnd)) return false;
 
+    // Lưu lại trạng thái gốc để khôi phục sau này
+    if (g_Menu.original_style == 0) {
+        g_Menu.original_style = GetWindowLongPtr(hwnd, GWL_STYLE);
+        g_Menu.original_ex_style = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+        GetWindowRect(hwnd, &g_Menu.original_rect);
+    }
+
     // 1. Chống chụp ảnh màn hình (Anti-Screenshot)
-    // Kỹ thuật này khiến cửa sổ hoàn toàn biến mất trong ảnh chụp của Game/Anti-cheat
     #ifndef WDA_EXCLUDEFROMCAPTURE
     #define WDA_EXCLUDEFROMCAPTURE 0x00000011
     #endif
@@ -94,9 +102,6 @@ inline bool ConfigureStealthOverlay(HWND hwnd) {
     const int height = target_rect.bottom - target_rect.top;
     if (width <= 0 || height <= 0) return false;
 
-    // 2. Thiết lập Style một cách tinh tế
-    // WS_EX_TRANSPARENT giúp click chuột xuyên qua Overlay vào Game
-    // WS_EX_TOOLWINDOW giúp giấu cửa sổ khỏi Alt-Tab
     SetWindowLongPtr(hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
     SetWindowLongPtr(hwnd, GWL_EXSTYLE,
         WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
@@ -104,7 +109,6 @@ inline bool ConfigureStealthOverlay(HWND hwnd) {
     SetLayeredWindowAttributes(hwnd, RGB(0, 0, 0), 255, LWA_ALPHA);
     MoveWindow(hwnd, target_rect.left, target_rect.top, width, height, TRUE);
     
-    // 3. Kích hoạt tính năng "Kính" (Glass effect) qua DWM
     MARGINS margins = { -1, -1, -1, -1 };
     DwmExtendFrameIntoClientArea(hwnd, &margins);
 
@@ -115,21 +119,26 @@ inline bool ConfigureStealthOverlay(HWND hwnd) {
     return true;
 }
 
-#if 0
-inline VisualizationBridgeHost FromNvidiaHost() {
-    VisualizationBridgeHost bridge = {};
-    // NVIDIA Overlay cực kỳ an toàn vì nó là tiến trình Driver
-    HWND hwnd = FindWindowA(skCrypt("CEF-Standard-Window"), skCrypt("NVIDIA GeForce Overlay"));
-    if (hwnd && IsWindowVisible(hwnd) && ConfigureStealthOverlay(hwnd)) {
-        bridge.hwnd = hwnd;
-        bridge.clear_before_render = true;
-        bridge.present_after_render = true;
-        UTN_DEV_LOG(std::cout << skCrypt("[DEV] NVIDIA Stealth Host active.") << std::endl);
-    }
-    return bridge;
-}
+inline void RestoreStealthOverlay(HWND hwnd) {
+    if (!hwnd || !IsWindow(hwnd) || g_Menu.original_style == 0) return;
 
-#endif
+    // Trả lại Style gốc
+    SetWindowLongPtr(hwnd, GWL_STYLE, g_Menu.original_style);
+    SetWindowLongPtr(hwnd, GWL_EXSTYLE, g_Menu.original_ex_style);
+    
+    // Tắt Anti-Screenshot
+    SetWindowDisplayAffinity(hwnd, 0);
+
+    // Trả lại vị trí và kích thước gốc
+    int w = g_Menu.original_rect.right - g_Menu.original_rect.left;
+    int h = g_Menu.original_rect.bottom - g_Menu.original_rect.top;
+    MoveWindow(hwnd, g_Menu.original_rect.left, g_Menu.original_rect.top, w, h, TRUE);
+
+    // Đưa cửa sổ về trạng thái bình thường (không còn Topmost)
+    SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+    
+    UTN_DEV_LOG(std::cout << skCrypt("[DEV] Stealth Host restored to original state.") << std::endl);
+}
 
 inline VisualizationBridgeHost FromMovaviHost() {
     VisualizationBridgeHost bridge = {};
@@ -154,52 +163,59 @@ inline VisualizationBridgeHost FromMovaviHost() {
     return bridge;
 }
 
-#if 0
-inline VisualizationBridgeHost FromDiscordFallback() {
+inline VisualizationBridgeHost FromGhostHost() {
     VisualizationBridgeHost bridge = {};
-    std::vector<uint32_t> discord_pids = telemetryHyperProcess::FindAllPidsByGhostWalk(skCrypt("Discord"));
+    
+    static bool class_registered = false;
+    static wchar_t randClass[32] = { 0 };
+    static wchar_t randTitle[32] = { 0 };
 
-    if (!discord_pids.empty()) {
-        HWND hwnd = GetTopWindow(nullptr);
-        while (hwnd) {
-            DWORD pid = 0;
-            GetWindowThreadProcessId(hwnd, &pid);
-            bool is_match = false;
-            for (uint32_t d_pid : discord_pids) { if (pid == d_pid) { is_match = true; break; } }
-
-            if (is_match) {
-                char class_name[256] = {};
-                char window_name[256] = {};
-                GetClassNameA(hwnd, class_name, sizeof(class_name));
-                GetWindowTextA(hwnd, window_name, sizeof(window_name));
-
-                if (strcmp(class_name, skCrypt("Chrome_WidgetWin_1")) == 0 &&
-                    (strstr(window_name, skCrypt("Discord Overlay")) != nullptr || (window_name[0] == '\0' && IsWindowVisible(hwnd)))) {
-                    
-                    RECT rc = {}; GetWindowRect(hwnd, &rc);
-                    if ((rc.right - rc.left) > 100 && (rc.bottom - rc.top) > 100) {
-                        // Với Discord chúng ta không cần ConfigureStealthOverlay vì nó đã chuẩn sẵn
-                        SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
-                        bridge.hwnd = hwnd;
-                        break;
-                    }
-                }
-            }
-            hwnd = GetNextWindow(hwnd, GW_HWNDNEXT);
+    if (!class_registered) {
+        srand((unsigned int)GetTickCount64());
+        for (int i = 0; i < 15; i++) {
+            randClass[i] = (wchar_t)((rand() % 26) + (rand() % 2 ? 'a' : 'A'));
+            randTitle[i] = (wchar_t)((rand() % 26) + (rand() % 2 ? 'a' : 'A'));
         }
+
+        WNDCLASSEXW wc = { sizeof(WNDCLASSEXW), CS_CLASSDC, WindowProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, randClass, NULL };
+        RegisterClassExW(&wc);
+        class_registered = true;
     }
 
-    if (bridge.hwnd) {
-        bridge.clear_before_render = false;
+    HWND hwnd = CreateWindowExW(
+        WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_LAYERED,
+        randClass, randTitle, WS_POPUP, 0, 0, GetSystemMetrics(SM_CXSCREEN),
+        GetSystemMetrics(SM_CYSCREEN), NULL, NULL, GetModuleHandle(NULL), NULL);
+
+    if (hwnd) {
+        SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
+        MARGINS margin = { -1 };
+        DwmExtendFrameIntoClientArea(hwnd, &margin);
+        
+        // Anti-Screenshot for Ghost window too
+        #ifndef WDA_EXCLUDEFROMCAPTURE
+        #define WDA_EXCLUDEFROMCAPTURE 0x00000011
+        #endif
+        SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
+
+        ShowWindow(hwnd, SW_SHOWDEFAULT);
+        UpdateWindow(hwnd);
+
+        bridge.hwnd = hwnd;
+        bridge.clear_before_render = true;
         bridge.present_after_render = true;
+        UTN_DEV_LOG(std::cout << skCrypt("[DEV] Ghost Stealth Host created: ") << (int)hwnd << std::endl);
     }
+    
     return bridge;
 }
 
-#endif
-
 inline VisualizationBridgeHost ResolveHost() {
-    UTN_DEV_LOG(std::cout << skCrypt("[DEV] Negotiating Stealth Bridge Link...") << std::endl);
+    UTN_DEV_LOG(std::cout << skCrypt("[DEV] Negotiating Stealth Bridge Link (Mode: ") << g_Menu.overlay_mode << skCrypt(")...") << std::endl);
+
+    if (g_Menu.overlay_mode == 1) {
+        return FromGhostHost();
+    }
 
     int attempt = 0;
     while (!AppShutdown::IsRequested()) {

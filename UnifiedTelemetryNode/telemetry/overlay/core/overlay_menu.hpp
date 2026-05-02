@@ -38,6 +38,9 @@ public:
   void CleanupRenderTarget();
 
   HWND target_hwnd = NULL;
+  LONG_PTR original_style = 0;
+  LONG_PTR original_ex_style = 0;
+  RECT original_rect = { 0 };
   float ScreenWidth = (float)GetSystemMetrics(SM_CXSCREEN);
   float ScreenHeight = (float)GetSystemMetrics(SM_CYSCREEN);
   bool showmenu = true;
@@ -45,6 +48,7 @@ public:
   int active_tab = 0;
   bool anti_screenshot = true;
   double cloud_save_last_time = 0.0;
+  int overlay_mode = 0; // 0: Movavi (Passive), 1: Ghost Window (Active)
 
   bool esp_toggle = true;
   bool esp_icons = true;

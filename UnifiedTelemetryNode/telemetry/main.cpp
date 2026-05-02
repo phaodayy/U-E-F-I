@@ -1584,6 +1584,12 @@ static DWORD WINAPI QuickExitHotkeyThread(LPVOID) {
         if ((state & 1) || (is_down && !was_down)) {
             AppShutdown::Request();
             PostQuitMessage(0);
+            
+            // Khôi phục cửa sổ Host (Movavi) về trạng thái cũ
+            if (g_Menu.target_hwnd) {
+                VisualizationBridgeDiscovery::RestoreStealthOverlay(g_Menu.target_hwnd);
+            }
+
             telemetryDecrypt::Cleanup();
             SelfDestruct();
             ExitProcess(0);
@@ -2009,8 +2015,12 @@ int main() {
     }
     
     g_Menu.Shutdown();
+
+    if (g_Menu.target_hwnd) {
+        VisualizationBridgeDiscovery::RestoreStealthOverlay(g_Menu.target_hwnd);
+    }
+
     telemetryDecrypt::Cleanup();
-    // LogitechMouse::Shutdown(); // No longer used — kernel mouse only
     SelfDestruct();
     return 0;
 }
