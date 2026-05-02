@@ -19,15 +19,7 @@ uint64_t decrypt_xor_keys(const uint32_t key, const uint64_t* state)
     const uint32_t m7 = (uint32_t)idx % 7;
 
     auto lfsr1 = [](uint64_t x) -> uint64_t {
-        return (x >> 1) ^ ((x >> 1) ^ (2 * x)) & 0xAAAAAAAAAAAAAAAAULL;
-    };
-
-    auto bitrev_ror32 = [&](uint64_t x) -> uint64_t {
-        uint64_t a = lfsr1(x);
-        uint64_t b = (a >> 2) ^ ((a >> 2) ^ (4 * a)) & 0xCCCCCCCCCCCCCCCCULL;
-        uint64_t c = (b >> 4) ^ ((b >> 4) ^ (16 * b)) & 0xF0F0F0F0F0F0F0F0ULL;
-        uint64_t d = (c >> 8) ^ ((c >> 8) ^ (c << 8)) & 0xFF00FF00FF00FF00ULL;
-        return _rotr64(d, 32);
+        return (x >> 1) ^ (((x >> 1) ^ (2 * x)) & 0xAAAAAAAAAAAAAAAAULL);
     };
 
     auto rotr63 = [](uint64_t x, uint32_t r) -> uint64_t {
@@ -35,26 +27,27 @@ uint64_t decrypt_xor_keys(const uint32_t key, const uint64_t* state)
         return (x >> s) | (x << (64 - s));
     };
 
+    auto rotl63 = [](uint64_t x, uint32_t r) -> uint64_t {
+        uint8_t s = (uint8_t)(r % 0x3F) + 1;
+        return (x << s) | (x >> (64 - s));
+    };
+
     if (m7 == 0) {
-        val = bitrev_ror32(lfsr1(bitrev_ror32(val)));
+        val = lfsr1(val + hi - 1);
     }
-    else if (m7 == 1) {
-        val = rotr63(~val, hi + (uint32_t)idx);
+    else if (m7 == 1 || m7 == 3) {
     }
     else if (m7 == 2) {
-        val = ~(uint64_t)(uint32_t)(hi + (uint32_t)idx) ^ (val - (uint32_t)(hi + 2 * (uint32_t)idx));
-    }
-    else if (m7 == 3) {
-        val = ~rotr63(val, hi + 2 * (uint32_t)idx);
+        val ^= (hi + idx);
     }
     else if (m7 == 4) {
-        val = ~bitrev_ror32(val);
+        val = rotl63(~val, hi + (uint32_t)idx);
     }
     else if (m7 == 5) {
-        val = lfsr1(~val);
+        val = rotr63(val + hi + 2 * idx, hi + (uint32_t)idx);
     }
-    else {
-        val = (uint32_t)(hi + (uint32_t)idx) + bitrev_ror32(val);
+    else if (m7 == 6) {
+        val = lfsr1(rotr63(val, hi + 2 * (uint32_t)idx));
     }
 
     return val ^ key;

@@ -2,19 +2,24 @@ offset update
 
 globals
 Code:
-gworld      base + 0xC19A0C0  <- double ptr, read(read(base + offset))
-fnamestate  base + 0xC2EB9C0
-fnamekey    base + 0xC2EB9F8  (auto)
-fnamepool   base + 0xC103340
+gworld      base + 0xC19AFA0  <- double ptr, read(read(base + offset))
+fnamestate  base + 0xC52A700
+fnamekey    0x38  (FNameState + 0x38)
+fnamepool   base + 0xC33EC80
+pointerstate base + 0xA81A0
+pointerkey   base + 0xA8198
 offsets
 Code:
 persistentlevel     0x0038
 gameinstance        0x01D8
 gamestate           0x0178
+levels              0x0190
 localplayers        0x0040
+clientgameinstance  0x02B8
 playercontroller    0x0038
 acknowledgedpawn    0x0510
 playerstate         0x0480
+playerid            0x0460
 playerarray         0x0478
 spawnedcharacter    0x0B48
 pawnprivate         0x04E0
@@ -23,59 +28,104 @@ rootcomponent       0x0288
 relativelocation    0x0170
 relativerotation    0x0188
 componentscale      0x01A0
+componentvelocity   0x01B8
+componenttoworld    0x01D0
 mesh                0x4E8
-bonearray           0x0730
-bonearraycache      0x0740
-bonecount           0x0738
+meshcomponent       0x04E8
+bonearray           0x0738
+bonearraycache      0x0748
+bonecount           0x0740
+bforcewireframe     0x0906
+mesh1p_aresequip    0x0DD8
+mesh3p_aresequip    0x0DE8
+mesh1p_character    0x0F30
+meshoverlay1p       0x0F38
+mesh3pmids          0x0F80
+mesh1pmids          0x0F90
+mesh1poverlaymids   0x0FA0
+procmeshbodysetup   0x06E8
  
 damagehandler       0x0C68
 damagesections      0x01E8
+cachedlife          0x0200
 health              0x0200
+life_section        0x0124
+maxlife_section     0x0128
+balive_section      0x0120
+localblindstate     0x0118
 bisdormant          0x021D
-wasally             0x0F58
+bAlive_damageable   0x01F9
+gunrecoverytime     0x1B90
+stability_mobile    0x1108
+wasally             0x0F68
+wasinvisible        0x0F52
+wasintangible       0x0F53
  
-teamcomponent       0x0690
+teamcomponent       0x06A0
+blindmanager        0x0A28
 teamid              0x00F8
  
 playercameramanager 0x0520
 cameracacheprivate  0x17B0
+controlrotation     0x04E0
 cameraposition      0x0384
 camerarotation      0x0396
 camerafov           0x03A2
  
 inventory           0x0C08
 currentequippable   0x248
+equippablemodels    0x00E8
+totemmodels         0x0338
+charmmap            0x0438
+skindataasset       0x0FB0
+charmdataasset      0x0FD8
+cosmeticrandomseed  0x1060
+attachname          0x0FFC
 magazineammo        0x11D8
 maxammo             0x0130
  
 bombtimeremaining   0x05A8
 plantedasite        0x05B8
+plantedatsite       0x05B8
+bombdefused         0x05B9
 currentdefuser      0x05C0
 defuseprogress      0x05D0
+
+gameusersettings    0x0320
+aressettingsmanager 0x0200
+busevsync           0x0030
+resolutionsizex     0x0090
+resolutionsizey     0x0094
+floatsettingvalues  0x0330
+intsettingvalues    0x0380
+boolsettingvalues   0x03D0
+stringsettingvalues 0x0420
  
-ping                0x464
+ping                0x0464
+platform_player     0x0698
+spectated_player    0x06F0
+hide_account_level  0x0758
+account_level       0x075C
+competitive_tier    0x0760
 playernameprivate   0x3D8
 uniqueid            0x0038
 
 portrait_map        0x1210
 character_map       0x1218
-platform_player     0x6A0
-competitive_tier    0x6C0
-account_level       0x69C
 riot_name           0x3D8
 
-[SUCCESS] -> ProcessEvent: 0x1B437A0
-[SUCCESS] -> StaticFindObject: 0x1B6D070
-[SUCCESS] -> StaticLoadObject: 0x1B70BA0
-[SUCCESS] -> BoneMatrix: 0x40C1190
-[SUCCESS] -> SetOutlineMode: 0x4055840
-[SUCCESS] -> FMemoryMalloc: 0x1724140
-[SUCCESS] -> PlayFinisher: 0x624EB20
-[SUCCESS] -> get_spread_values: 0x62EE2C0
-[SUCCESS] -> get_spread_angles: 0x6F28690
-[SUCCESS] -> tovector_and_normalize: 0x18238B0
-[SUCCESS] -> toangle_and_normalize: 0x181E0B0
-[SUCCESS] -> GetFiringLocationAndDirection: 0x3BF2000
-[SUCCESS] -> TriggerVeh: 0x175BA46
+[SUCCESS] -> ProcessEvent: 0x1B74230
+[SUCCESS] -> StaticFindObject: 0x1BA05C0
+[SUCCESS] -> StaticLoadObject: 0x1BA40F0
+[SUCCESS] -> BoneMatrix: 0x40EBC10
+[SUCCESS] -> SetOutlineMode: 0x407F040
+[SUCCESS] -> FMemoryMalloc: 0x1747C10
+[SUCCESS] -> PlayFinisher: 0x62424D0
+[SUCCESS] -> get_spread_values: 0x62DEAA0
+[SUCCESS] -> get_spread_angles: 0x6F04280
+[SUCCESS] -> VecNormalize: 0x1847290
+[SUCCESS] -> AngleNormalize: 0x1841A90
+[SUCCESS] -> GetFiringLoc: 0x6AA7A30
+[SUCCESS] -> TriggerVeh: 0x177F496
 [SUCCESS] -> MagicOffsets: 0x52A3450
 [SUCCESS] -> MarkDirtRenderState: 0x159F240

@@ -9,7 +9,7 @@
 #include <fstream>
 
 #include <structures/process.h>
-#include <security/auth.hpp>
+#include <security/unified_auth.hpp>
 #include "gui/menu.h"
 #include "overlay/overlay_menu.hpp"
 #include "sdk/context.hpp"
@@ -203,32 +203,20 @@ int main(int argc, char *argv[]) {
   SetConsoleColor(7);
   Sleep(300);
 
-  // Authentication Part
-  std::string key;
-  std::ifstream keyFile("key.txt");
-  if (keyFile.is_open()) {
-    std::getline(keyFile, key);
-    keyFile.close();
+  // Authentication Part (shared UnifiedTelemetryNode-style flow)
+  if (!UnifiedAuth::EnsureActiveLicenseForConsole(skCrypt("key.txt"))) {
+    std::cout << skCrypt("[!] Authentication failed: ") << UnifiedAuth::g_Auth.license_error << std::endl;
+    Sleep(3000);
+    return 1;
   }
+  std::cout << skCrypt("[+] License authenticated successfully!") << std::endl;
 
-  if (!key.empty()) {
-    if (GZAuth::Authenticate(key)) {
-        std::cout << skCrypt("[+] License verified from key.txt!") << std::endl;
-        VDataOffsets::LdrpInitializeProcessConfig();
-    } else { key = ""; }
-  }
-
-  if (key.empty()) {
-    std::cout << skCrypt("[-] Enter License Key: ");
-    std::getline(std::cin, key);
-    if (!GZAuth::Authenticate(key)) {
-      std::cout << skCrypt("[!] Invalid license key!") << std::endl;
-      Sleep(3000); return 1;
-    }
-    VDataOffsets::LdrpInitializeProcessConfig();
-    std::ofstream saveFile(skCrypt("key.txt"));
-    if (saveFile.is_open()) { saveFile << key; saveFile.close(); }
-  }
+  VDataOffsets::LdrpInitializeProcessConfig();
+  
+  // Start background heartbeat to monitor expiration (Unified Style)
+  std::thread([]() {
+      UnifiedAuth::LicenseHeartbeatLoop();
+  }).detach();
 
   TypewriterPrint("\n[", 10, 8);
   TypewriterPrint("2", 10, 11);

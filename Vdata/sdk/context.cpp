@@ -334,24 +334,6 @@ void UpdateGameData() {
     player.HeadPosition = headPos;
     player.DistanceToMe = dist / 100.0f;
 
-    static const std::unordered_map<std::string, std::string> agentMap = {
-        {"Rift_PC_C", "Astra"},        {"Breach_PC_C", "Breach"},
-        {"Sarge_PC_C", "Brimstone"},   {"Deadeye_PC_C", "Chamber"},
-        {"Gumshoe_PC_C", "Cypher"},    {"Wushu_PC_C", "Jett"},
-        {"Grenadier_PC_C", "Kay/o"},   {"Killjoy_PC_C", "Killjoy"},
-        {"Sprinter_PC_C", "Neon"},     {"Wraith_PC_C", "Omen"},
-        {"Phoenix_PC_C", "Phoenix"},   {"Clay_PC_C", "Raze"},
-        {"Vampire_PC_C", "Reyna"},     {"Thorne_PC_C", "Sage"},
-        {"Guide_PC_C", "Skye"},        {"Hunter_PC_C", "Sova"},
-        {"Pandemic_PC_C", "Viper"},    {"Stealth_PC_C", "Yoru"},
-        {"BountyHunter_PC_C", "Fade"}, {"Mage_PC_C", "Harbor"},
-        {"AggroBot_PC_C", "Gekko"},    {"Cable_PC_C", "DeadLock"},
-        {"Sequoia_PC_C", "Iso"},       {"Smonk_PC_C", "Clove"},
-        {"Nox_PC_C", "Vyse"},          {"Terra_PC_C", "Waylay"},
-        {"Cashew_PC_C", "Tejo"},       {"TrainingBot_PC_C", "Bot"},
-        {"Training", "Bot Lobby"}
-    };
-
     {
       uint64_t clazz = Read<uint64_t>(actor + 0x10);
       std::string agentName;
@@ -371,9 +353,10 @@ void UpdateGameData() {
             if (raw.find("Default__") == 0)
               raw = raw.substr(9);
 
-            auto it = agentMap.find(raw);
-            if (it != agentMap.end()) {
-              agentName = it->second;
+            agentName = FNameUtils::GetCharacterName(raw);
+            if (!agentName.empty()) {
+              if (agentName == "Bot Lobby")
+                isBot = true;
             } else if (raw.find("Bot") != std::string::npos ||
                        raw.find("Target") != std::string::npos ||
                        raw.find("Dummy") != std::string::npos ||
