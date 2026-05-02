@@ -336,8 +336,20 @@ void OverlayMenu::RenderFrame() {
             POINT p; GetCursorPos(&p);
             ScreenToClient(target_hwnd, &p);
             io.MousePos = ImVec2((float)p.x, (float)p.y);
-            io.MouseDown[0] = telemetryMemory::IsKeyDown(VK_LBUTTON);
-            io.MouseDown[1] = telemetryMemory::IsKeyDown(VK_RBUTTON);
+            io.MouseDown[0] = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
+            io.MouseDown[1] = (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
+
+            // Ensure window stays on top and focused when menu is active
+            static uint64_t lastFocusCheck = 0;
+            uint64_t now_ms = GetTickCount64();
+            if (now_ms - lastFocusCheck > 500) {
+                if (GetForegroundWindow() != target_hwnd) {
+                    if (!IsIconic(target_hwnd)) {
+                        SetWindowPos(target_hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                    }
+                }
+                lastFocusCheck = now_ms;
+            }
 
             // Manual Keyboard Input Sync (Since captured window messages don't reach us for hijacked windows)
             static bool key_states[256] = { false };
@@ -398,26 +410,6 @@ void OverlayMenu::RenderFrame() {
              telemetryMemory::IsKeyDown(VK_TAB) || telemetryMemory::IsKeyDown('M') || telemetryMemory::IsKeyDown('G') || telemetryMemory::IsKeyDown('F'))) {
             MacroEngine::ForceScan();
         }
-
-        /*
-        // --- MOUSE TEST KEY (F8) ---
-        if (telemetryMemory::IsKeyDown(VK_F8)) {
-            printf("[DEBUG] F8 pressed: Attempting mouse movement test...\n");
-            bool success = true;
-            for (int i = 0; i < 20; i++) {
-                if (!telemetryMemory::MoveMouse(0, 15, 0)) {
-                    success = false;
-                    break;
-                }
-                telemetryMemory::StealthSleep(2);
-            }
-            if (success) {
-                printf("[DEBUG] Mouse Move test successful!\n");
-            } else {
-                printf("[DEBUG] ERROR: Mouse Move FAILED (Driver/Logitech not ready).\n");
-            }
-        }
-        */
 
         ImGui_ImplDX11_NewFrame();
         ImGui_ImplWin32_NewFrame();

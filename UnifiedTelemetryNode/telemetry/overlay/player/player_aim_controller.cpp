@@ -254,6 +254,9 @@ FlickTargetCandidate BuildFlickTargetFromEspBox(const PlayerData& player, const 
         finalBoxRight = headS.x + w / 2.0f;
     }
 
+    if (finalBoxLeft > finalBoxRight) std::swap(finalBoxLeft, finalBoxRight);
+    if (finalBoxTop > finalBoxBottom) std::swap(finalBoxTop, finalBoxBottom);
+
     const float closestX = std::clamp(screenCenterX, finalBoxLeft, finalBoxRight);
     const float closestY = std::clamp(screenCenterY, finalBoxTop, finalBoxBottom);
     const float boxDx = closestX - screenCenterX;

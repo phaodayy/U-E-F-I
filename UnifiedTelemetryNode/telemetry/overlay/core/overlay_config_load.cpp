@@ -98,7 +98,7 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("active_preset")) active_preset = j["active_preset"];
             if (j.contains("flick_enabled")) flick_enabled = j["flick_enabled"];
             if (j.contains("flick_visible_only")) flick_visible_only = j["flick_visible_only"];
-            flick_auto_shot = true;
+            if (j.contains("flick_auto_shot")) flick_auto_shot = j["flick_auto_shot"];
             if (j.contains("flick_shot_hold")) flick_shot_hold = j["flick_shot_hold"];
             if (j.contains("flick_return")) flick_return = j["flick_return"];
             if (j.contains("flick_behavior_mode")) {
@@ -123,6 +123,12 @@ void OverlayMenu::LoadConfig(const char* path) {
                 flick_category_visible_only.clear();
                 for (auto it = j["flick_category_visible_only"].begin(); it != j["flick_category_visible_only"].end(); ++it) {
                     if (it.value().is_boolean()) flick_category_visible_only[it.key()] = it.value().get<bool>();
+                }
+            }
+            if (j.contains("flick_category_auto_shot") && j["flick_category_auto_shot"].is_object()) {
+                flick_category_auto_shot.clear();
+                for (auto it = j["flick_category_auto_shot"].begin(); it != j["flick_category_auto_shot"].end(); ++it) {
+                    if (it.value().is_boolean()) flick_category_auto_shot[it.key()] = it.value().get<bool>();
                 }
             }
             if (j.contains("flick_category_shot_hold") && j["flick_category_shot_hold"].is_object()) {
@@ -286,6 +292,18 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("esp_damage_pos")) esp_damage_pos = j["esp_damage_pos"];
             if (j.contains("esp_speed_pos")) esp_speed_pos = j["esp_speed_pos"];
             if (j.contains("esp_ammo_pos")) esp_ammo_pos = j["esp_ammo_pos"];
+            if (j.contains("esp_health_row")) esp_health_row = j["esp_health_row"];
+            if (j.contains("esp_distance_row")) esp_distance_row = j["esp_distance_row"];
+            if (j.contains("esp_name_row")) esp_name_row = j["esp_name_row"];
+            if (j.contains("esp_rank_row")) esp_rank_row = j["esp_rank_row"];
+            if (j.contains("esp_weapon_row")) esp_weapon_row = j["esp_weapon_row"];
+            if (j.contains("esp_spectated_row")) esp_spectated_row = j["esp_spectated_row"];
+            if (j.contains("esp_teamid_row")) esp_teamid_row = j["esp_teamid_row"];
+            if (j.contains("esp_killcount_row")) esp_killcount_row = j["esp_killcount_row"];
+            if (j.contains("esp_survival_level_row")) esp_survival_level_row = j["esp_survival_level_row"];
+            if (j.contains("esp_damage_row")) esp_damage_row = j["esp_damage_row"];
+            if (j.contains("esp_speed_row")) esp_speed_row = j["esp_speed_row"];
+            if (j.contains("esp_ammo_row")) esp_ammo_row = j["esp_ammo_row"];
             if (j.contains("esp_items")) esp_items = j["esp_items"];
             if (j.contains("esp_items_toggle_key")) esp_items_toggle_key = j["esp_items_toggle_key"];
             if (j.contains("esp_vehicles_toggle_key")) esp_vehicles_toggle_key = j["esp_vehicles_toggle_key"];
@@ -430,6 +448,7 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("share_radar")) share_radar = j["share_radar"];
             if (j.contains("share_radar_ip")) strcpy_s(share_radar_ip, j["share_radar_ip"].get<std::string>().c_str());
             if (j.contains("esp_grenade_prediction")) esp_grenade_prediction = j["esp_grenade_prediction"];
+            if (j.contains("esp_prediction")) esp_prediction = j["esp_prediction"];
             if (j.contains("esp_projectile_tracer")) esp_projectile_tracer = j["esp_projectile_tracer"];
             if (j.contains("esp_threat_warning")) esp_threat_warning = j["esp_threat_warning"];
 

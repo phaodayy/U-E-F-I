@@ -44,6 +44,7 @@ public:
   Scene current_scene = Scene::Lobby;
   int active_tab = 0;
   bool anti_screenshot = true;
+  double cloud_save_last_time = 0.0;
 
   bool esp_toggle = true;
   bool esp_icons = true;
@@ -65,6 +66,20 @@ public:
   int esp_damage_pos = 2;
   int esp_speed_pos = 3;
   int esp_ammo_pos = 2;
+
+  int esp_health_row = 0;
+  int esp_distance_row = 1;
+  int esp_name_row = 0;
+  int esp_rank_row = 0;
+  int esp_weapon_row = 0;
+  int esp_spectated_row = 0;
+  int esp_teamid_row = 0;
+  int esp_killcount_row = 0;
+  int esp_survival_level_row = 0;
+  int esp_damage_row = 0;
+  int esp_speed_row = 0;
+  int esp_ammo_row = 0;
+
   int esp_health_color_mode = 0;
   bool esp_distance = true;
   bool esp_name = true;
@@ -134,7 +149,7 @@ public:
 
   bool flick_enabled = true;
   bool flick_visible_only = true;
-  bool flick_auto_shot = true;
+  bool flick_auto_shot = false;
   bool flick_shot_hold = true;
   bool flick_return = true;
   int flick_behavior_mode = 1;
@@ -260,17 +275,18 @@ public:
     {1.0f, 0.76f, 0.18f, 1.0f}
   };
   bool esp_multilayer_nameplate = true;
-  bool language = 0;
+  int language = 0; // 0: English, 1: Vietnamese
 
-  int render_distance = 600;
+  int render_distance = 400;
   int render_sleep = 5;
-  int box_max_dist = 600; 
+  int box_max_dist = 400; 
   int hp_max_dist = 400; 
-  int distance_txt_max_dist = 500; 
+  int distance_txt_max_dist = 400; 
   int skeleton_max_dist = 300;
   int name_max_dist = 200;
   int weapon_max_dist = 150;
   bool esp_distance_lod = true;
+  bool esp_prediction = true;
   bool esp_grenade_prediction = true;
   bool esp_projectile_tracer = false;
   bool esp_threat_warning = true;
@@ -341,7 +357,6 @@ public:
   bool loot_ghillie_forest = true;
   bool loot_ghillie_mossy = true;
   bool loot_ghillie_brown = true;
-
   bool loot_meds_boosts = true;
   bool loot_meds_healing = true;
   bool loot_utility_all = true;

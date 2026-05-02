@@ -25,6 +25,7 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
     BeginGlassCard(skCrypt("##ESPCol1"), Lang.HeaderVisualCore, ImVec2(totalWidth / 4.0f - 15, 0));
     ImGui::Checkbox(Lang.MasterToggle, &g_Menu.esp_toggle);
     ImGui::Checkbox(Lang.ESP_Icons, &g_Menu.esp_icons);
+    ImGui::Checkbox(skCrypt("Predictive Movement"), &g_Menu.esp_prediction);
     ImGui::Checkbox(Lang.ESP_Offscreen, &g_Menu.esp_offscreen);
     ImGui::Checkbox(Lang.VisCheck, &g_Menu.flick_visible_only);
     ImGui::Checkbox(Lang.ESP_Spectated, &g_Menu.esp_spectated);
@@ -133,8 +134,8 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
     ImGui::Checkbox(skCrypt("Text BG"), &g_Menu.esp_text_background);
     ImGui::SliderFloat(skCrypt("Text BG Alpha"), &g_Menu.esp_text_bg_alpha, 0.0f, 0.70f, skCrypt("%.2f"));
     ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.6f, 1.0f), Lang.DistThresholds);
-    ImGui::SliderInt(Lang.RenderDist, &g_Menu.render_distance, 50, 1000, skCrypt("%d m"));
-    ImGui::SliderInt(Lang.InfoESP, &g_Menu.name_max_dist, 50, 600, skCrypt("%d m"));
+    ImGui::SliderInt(Lang.RenderDist, &g_Menu.render_distance, 50, 400, skCrypt("%d m"));
+    ImGui::SliderInt(Lang.InfoESP, &g_Menu.name_max_dist, 50, 400, skCrypt("%d m"));
     ImGui::SliderFloat(skCrypt("Thick"), &g_Menu.skel_thickness, 1.0f, 5.0f, skCrypt("%.1f px"));
     ImGui::SliderFloat(skCrypt("View Dir"), &g_Menu.esp_view_direction_length, 5.0f, 120.0f, skCrypt("%.0f m"));
     ImGui::SliderFloat(skCrypt("Close Warn"), &g_Menu.esp_close_warning_distance, 10.0f, 150.0f, skCrypt("%.0f m"));
@@ -284,41 +285,75 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
                 lineCol, 7.0f, 0, 1.0f);
         };
 
-        auto SideFromPreviewMouse = [&]() {
+        auto SideFromPreviewMouse = [&](int* outRow = nullptr) {
             const ImVec2 mouse = ImGui::GetIO().MousePos;
             const float distLeft = std::fabs(mouse.x - cursorPos.x);
             const float distRight = std::fabs(mouse.x - (cursorPos.x + previewW));
             const float distTop = std::fabs(mouse.y - cursorPos.y);
             const float distBottom = std::fabs(mouse.y - (cursorPos.y + previewH));
+            
             float best = distLeft;
             int side = 0;
+            float verticalOffset = 0.0f;
+
             if (distRight < best) { best = distRight; side = 1; }
-            if (distTop < best) { best = distTop; side = 2; }
-            if (distBottom < best) { side = 3; }
+            if (distTop < best) { best = distTop; side = 2; verticalOffset = mouse.y - cursorPos.y; }
+            if (distBottom < best) { side = 3; verticalOffset = mouse.y - (cursorPos.y + previewH); }
+            
+            if (outRow) {
+                // If we are at top or bottom, we use the vertical offset to determine the row
+                if (side == 2) { // Top
+                    *outRow = std::clamp((int)(-verticalOffset / 25.0f), 0, 3);
+                } else if (side == 3) { // Bottom
+                    *outRow = std::clamp((int)(verticalOffset / 25.0f), 0, 3);
+                } else {
+                    *outRow = 0;
+                }
+            }
             return side;
         };
 
-        auto DragPreviewHandle = [&](const char* id, ImVec2 pos, ImVec2 size, int* target) {
+        static const char* draggingId = nullptr;
+        static int dragStartPos = 0;
+        static int dragStartRow = 0;
+
+        auto DragPreviewHandle = [&](const char* id, ImVec2 currentPos, ImVec2 size, int* targetPos, int* targetRow) {
             const ImVec2 savedCursor = ImGui::GetCursorScreenPos();
-            const ImVec2 hitPad(10.0f, 8.0f);
-            const ImVec2 hitMin(pos.x - hitPad.x, pos.y - hitPad.y);
-            const ImVec2 hitSize((std::max)(22.0f, size.x + hitPad.x * 2.0f),
-                (std::max)(20.0f, size.y + hitPad.y * 2.0f));
+            const ImVec2 hitPad(12.0f, 10.0f);
+            const ImVec2 hitMin(currentPos.x - hitPad.x, currentPos.y - hitPad.y);
+            const ImVec2 hitSize((std::max)(24.0f, size.x + hitPad.x * 2.0f),
+                (std::max)(22.0f, size.y + hitPad.y * 2.0f));
+            
             ImGui::SetCursorScreenPos(hitMin);
             ImGui::InvisibleButton(id, hitSize);
-            if (ImGui::IsItemActive() && (ImGui::IsMouseDragging(0) || ImGui::IsMouseClicked(0))) {
-                *target = SideFromPreviewMouse();
-            }
-            if (ImGui::IsItemHovered() || ImGui::IsItemActive()) {
-                draw->AddRect(hitMin, ImVec2(hitMin.x + hitSize.x, hitMin.y + hitSize.y),
-                    IM_COL32(0, 220, 255, 145), 5.0f, 0, 1.0f);
-                draw->AddCircleFilled(ImVec2(pos.x + size.x * 0.5f, pos.y + size.y * 0.5f),
-                    3.0f, IM_COL32(0, 220, 255, 190), 10);
-            }
-            if (ImGui::IsItemActive()) {
+            
+            bool isActive = ImGui::IsItemActive();
+            bool isHovered = ImGui::IsItemHovered();
+
+            if (isActive) {
+                if (draggingId == nullptr) {
+                    draggingId = id;
+                    dragStartPos = *targetPos;
+                    dragStartRow = *targetRow;
+                }
                 DrawPreviewDropZones();
+                // Update target based on mouse but don't move the actual chip in layout yet
+                // We show where it WOULD land in the drop zones
             }
+
+            if (draggingId == id && !ImGui::IsMouseDown(0)) {
+                // Drop!
+                *targetPos = SideFromPreviewMouse(targetRow);
+                draggingId = nullptr;
+            }
+
+            if (isHovered || isActive) {
+                draw->AddRect(hitMin, ImVec2(hitMin.x + hitSize.x, hitMin.y + hitSize.y),
+                    IM_COL32(0, 220, 255, 145), 5.0f, 0, 1.5f);
+            }
+            
             ImGui::SetCursorScreenPos(savedCursor);
+            return isActive;
         };
 
         auto ColorFromFloats = [](const float* col) {
@@ -326,14 +361,27 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
         };
 
         auto DrawPreviewChip = [&](const char* id, const char* text, float fontSize,
-                                   ImU32 color, int* target, float spacing = 1.0f,
+                                   ImU32 color, int* targetPos, int* targetRow, float spacing = 1.0f,
                                    bool warning = false) {
             const ImVec2 textSize = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, text);
             const ImVec2 chipSize(textSize.x + 10.0f, textSize.y + 5.0f);
-            ImVec2 chipPos = previewLayout.Take(
-                PlayerEspLayout::SideFromMenu(*target),
-                chipSize,
-                spacing);
+            
+            ImVec2 chipPos;
+            bool isBeingDragged = (draggingId != nullptr && strcmp(draggingId, id) == 0);
+
+            if (isBeingDragged) {
+                // Draw at mouse position while dragging to avoid flickering layout shifts
+                ImVec2 mouse = ImGui::GetIO().MousePos;
+                chipPos = ImVec2(mouse.x - chipSize.x * 0.5f, mouse.y - chipSize.y * 0.5f);
+            } else {
+                // Draw in its layout position
+                chipPos = previewLayout.Take(
+                    PlayerEspLayout::SideFromMenu(*targetPos),
+                    chipSize,
+                    spacing,
+                    *targetRow);
+            }
+
             const int bgAlpha = static_cast<int>((std::clamp)(g_Menu.esp_text_bg_alpha, 0.0f, 0.70f) * (warning ? 255.0f : 210.0f));
             if (g_Menu.esp_text_background || warning) {
                 draw->AddRectFilled(chipPos, ImVec2(chipPos.x + chipSize.x, chipPos.y + chipSize.y),
@@ -344,7 +392,8 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
                 }
             }
             draw->AddText(ImGui::GetFont(), fontSize, ImVec2(chipPos.x + 5.0f, chipPos.y + 2.0f), color, text);
-            DragPreviewHandle(id, chipPos, chipSize, target);
+            
+            DragPreviewHandle(id, chipPos, chipSize, targetPos, targetRow);
         };
 
         // 2. Health Demo (Multi-Position & Multi-Color Mode)
@@ -360,7 +409,7 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
 
             if (g_Menu.esp_health_display_mode == 1) {
                 DrawPreviewChip(skCrypt("##DragHealthText"), skCrypt("76 HP"), 11.0f,
-                    hpColor, &g_Menu.esp_health_pos, 2.0f, previewHealthSim < 0.35f);
+                    hpColor, &g_Menu.esp_health_pos, &g_Menu.esp_health_row, 2.0f, previewHealthSim < 0.35f);
             } else {
                 const float previewHealthThickness =
                     (g_Menu.esp_health_bar_style == 1 || g_Menu.esp_health_bar_style == 3) ? 9.0f : 8.0f;
@@ -374,7 +423,7 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
                     !healthSlot.Horizontal, g_Menu.esp_health_bar_style, 1.0f,
                     previewHealthSim < 0.35f);
                 DragPreviewHandle(skCrypt("##DragHealth"), hpTop,
-                    ImVec2(hpBot.x - hpTop.x, hpBot.y - hpTop.y), &g_Menu.esp_health_pos);
+                    ImVec2(hpBot.x - hpTop.x, hpBot.y - hpTop.y), &g_Menu.esp_health_pos, &g_Menu.esp_health_row);
             }
         }
 
@@ -393,7 +442,8 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
             ImVec2 badgePos = previewLayout.Take(
                 PlayerEspLayout::SideFromMenu(g_Menu.esp_teamid_pos),
                 ImVec2(size, size),
-                2.0f);
+                2.0f,
+                g_Menu.esp_teamid_row);
             ImVec2 center(badgePos.x + size * 0.5f, badgePos.y + size * 0.5f);
             ImU32 badgeCol = g_Menu.team_color_custom ?
                 ImGui::ColorConvertFloat4ToU32(ImVec4(g_Menu.team_custom_colors[0][0], g_Menu.team_custom_colors[0][1], g_Menu.team_custom_colors[0][2], g_Menu.team_custom_colors[0][3])) :
@@ -405,44 +455,44 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
             ImVec2 textSize = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, teamText);
             draw->AddText(ImGui::GetFont(), fontSize, ImVec2(center.x - textSize.x * 0.5f, center.y - textSize.y * 0.5f),
                 IM_COL32(255, 255, 255, 255), teamText);
-            DragPreviewHandle(skCrypt("##DragTeam"), badgePos, ImVec2(size, size), &g_Menu.esp_teamid_pos);
+            DragPreviewHandle(skCrypt("##DragTeam"), badgePos, ImVec2(size, size), &g_Menu.esp_teamid_pos, &g_Menu.esp_teamid_row);
         }
 
         if (g_Menu.esp_aim_warning || g_Menu.esp_status_badges) {
             DrawPreviewChip(skCrypt("##DragStatus"), skCrypt("AIM | ADS"),
                 (std::max)(9.0f, g_Menu.spectated_font_size - 2.0f),
-                ColorFromFloats(g_Menu.aim_warning_color), &g_Menu.esp_spectated_pos, 1.0f, true);
+                ColorFromFloats(g_Menu.aim_warning_color), &g_Menu.esp_spectated_pos, &g_Menu.esp_spectated_row, 1.0f, true);
         }
 
         if (g_Menu.esp_close_warning) {
             DrawPreviewChip(skCrypt("##DragClose"), skCrypt("!"),
                 (std::max)(10.0f, g_Menu.spectated_font_size - 1.0f),
-                ColorFromFloats(g_Menu.close_warning_color), &g_Menu.esp_spectated_pos, 1.0f, true);
+                ColorFromFloats(g_Menu.close_warning_color), &g_Menu.esp_spectated_pos, &g_Menu.esp_spectated_row, 1.0f, true);
         }
 
         if (g_Menu.esp_killcount) {
             DrawPreviewChip(skCrypt("##DragKills"), skCrypt("K: 12"), g_Menu.kill_font_size,
-                ColorFromFloats(g_Menu.kill_color), &g_Menu.esp_killcount_pos);
+                ColorFromFloats(g_Menu.kill_color), &g_Menu.esp_killcount_pos, &g_Menu.esp_killcount_row);
         }
 
         if (g_Menu.esp_damage) {
             DrawPreviewChip(skCrypt("##DragDamage"), skCrypt("DMG: 184"), g_Menu.damage_font_size,
-                ColorFromFloats(g_Menu.damage_color), &g_Menu.esp_damage_pos);
+                ColorFromFloats(g_Menu.damage_color), &g_Menu.esp_damage_pos, &g_Menu.esp_damage_row);
         }
 
         if (g_Menu.esp_speed) {
             DrawPreviewChip(skCrypt("##DragSpeed"), skCrypt("SPD: 42"), g_Menu.speed_font_size,
-                ColorFromFloats(g_Menu.speed_color), &g_Menu.esp_speed_pos);
+                ColorFromFloats(g_Menu.speed_color), &g_Menu.esp_speed_pos, &g_Menu.esp_speed_row);
         }
 
         if (g_Menu.esp_survival_level) {
             DrawPreviewChip(skCrypt("##DragLevel"), skCrypt("Lv.50"), g_Menu.survival_level_font_size,
-                ColorFromFloats(g_Menu.survival_level_color), &g_Menu.esp_survival_level_pos);
+                ColorFromFloats(g_Menu.survival_level_color), &g_Menu.esp_survival_level_pos, &g_Menu.esp_survival_level_row);
         }
 
         if (g_Menu.esp_distance) {
             DrawPreviewChip(skCrypt("##DragDistance"), skCrypt("[145m]"), g_Menu.distance_font_size,
-                ColorFromFloats(g_Menu.distance_color), &g_Menu.esp_distance_pos, 2.0f);
+                ColorFromFloats(g_Menu.distance_color), &g_Menu.esp_distance_pos, &g_Menu.esp_distance_row, 2.0f);
         }
 
         if (g_Menu.esp_ammo) {
@@ -453,7 +503,8 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
             ImVec2 ammoPos = previewLayout.Take(
                 PlayerEspLayout::SideFromMenu(g_Menu.esp_ammo_pos),
                 badgeSize,
-                1.0f);
+                1.0f,
+                g_Menu.esp_ammo_row);
             const ImU32 ammoCol = ColorFromFloats(g_Menu.ammo_color);
             draw->AddRectFilled(ammoPos, ImVec2(ammoPos.x + badgeSize.x, ammoPos.y + badgeSize.y),
                 IM_COL32(5, 8, 12, 165), 4.0f);
@@ -461,7 +512,7 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
                 ImVec2(ammoPos.x + 4.0f + (badgeSize.x - 8.0f) * 0.60f, ammoPos.y + badgeSize.y - 2.0f),
                 ammoCol, 2.0f);
             draw->AddText(ImGui::GetFont(), ammoFont, ImVec2(ammoPos.x + 8.0f, ammoPos.y + 3.0f), ammoCol, ammoText);
-            DragPreviewHandle(skCrypt("##DragAmmo"), ammoPos, badgeSize, &g_Menu.esp_ammo_pos);
+            DragPreviewHandle(skCrypt("##DragAmmo"), ammoPos, badgeSize, &g_Menu.esp_ammo_pos, &g_Menu.esp_ammo_row);
         }
 
         if (g_Menu.esp_weapon) {
@@ -476,7 +527,8 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
                 ImVec2 weaponPos = previewLayout.Take(
                     PlayerEspLayout::SideFromMenu(g_Menu.esp_weapon_pos),
                     iconSize,
-                    2.0f);
+                    2.0f,
+                    g_Menu.esp_weapon_row);
                 ImU32 weaponCol = ColorFromFloats(g_Menu.weapon_color);
                 draw->AddRectFilled(weaponPos, ImVec2(weaponPos.x + iconSize.x, weaponPos.y + iconSize.y),
                     IM_COL32(5, 8, 12, 118), 4.0f);
@@ -487,27 +539,27 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
                     ImVec2(weaponPos.x + iconW + 3.0f, weaponPos.y + iconH + 2.0f),
                     IM_COL32(255, 255, 255, 255),
                     0.88f);
-                DragPreviewHandle(skCrypt("##DragWeapon"), weaponPos, iconSize, &g_Menu.esp_weapon_pos);
+                DragPreviewHandle(skCrypt("##DragWeapon"), weaponPos, iconSize, &g_Menu.esp_weapon_pos, &g_Menu.esp_weapon_row);
             } else {
                 DrawPreviewChip(skCrypt("##DragWeapon"), skCrypt("M416"), g_Menu.weapon_font_size,
-                    ColorFromFloats(g_Menu.weapon_color), &g_Menu.esp_weapon_pos, 2.0f);
+                    ColorFromFloats(g_Menu.weapon_color), &g_Menu.esp_weapon_pos, &g_Menu.esp_weapon_row, 2.0f);
             }
         }
 
         if (g_Menu.esp_rank) {
             DrawPreviewChip(skCrypt("##DragRank"), skCrypt("Diamond"), g_Menu.rank_font_size,
-                ColorFromFloats(g_Menu.rank_color), &g_Menu.esp_rank_pos);
+                ColorFromFloats(g_Menu.rank_color), &g_Menu.esp_rank_pos, &g_Menu.esp_rank_row);
         }
 
         if (g_Menu.esp_name) {
             const float* targetCol = bPreviewOccluded ? g_Menu.name_invisible_color : g_Menu.name_visible_color;
             DrawPreviewChip(skCrypt("##DragName"), skCrypt("GZ-Preview"), g_Menu.name_font_size,
-                ColorFromFloats(targetCol), &g_Menu.esp_name_pos, 2.0f);
+                ColorFromFloats(targetCol), &g_Menu.esp_name_pos, &g_Menu.esp_name_row, 2.0f);
         }
 
         if (g_Menu.esp_spectated) {
             DrawPreviewChip(skCrypt("##DragWatch"), skCrypt("EYE: 2"), g_Menu.spectated_font_size,
-                ColorFromFloats(g_Menu.spectated_color), &g_Menu.esp_spectated_pos, 2.0f, true);
+                ColorFromFloats(g_Menu.spectated_color), &g_Menu.esp_spectated_pos, &g_Menu.esp_spectated_row, 2.0f, true);
         }
 
         // 3. Skeleton Demo (PIXEL-PERFECT FROM USER COORDINATES)

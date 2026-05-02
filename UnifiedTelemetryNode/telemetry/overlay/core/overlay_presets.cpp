@@ -75,11 +75,13 @@ void ApplySharedDefaults(OverlayMenu& menu) {
     menu.flick_max_dist = 400.0f;
     menu.flick_target_part = 3;
     menu.flick_behavior_mode = 0;
+    menu.flick_auto_shot = false;
     menu.flick_follow_auto_shot = false;
     menu.flick_return = true;
     menu.flick_weapon_enabled.clear();
     menu.flick_category_enabled.clear();
     menu.flick_category_visible_only.clear();
+    menu.flick_category_auto_shot.clear();
     menu.flick_category_shot_hold.clear();
     menu.flick_category_follow_auto_shot.clear();
     menu.flick_category_behavior_mode.clear();
@@ -142,7 +144,7 @@ void Apply(OverlayMenu& menu, Preset preset) {
         menu.esp_spectated = true;
         menu.esp_items = false;
         menu.esp_vehicles = false;
-        menu.render_distance = 450;
+        menu.render_distance = 400;
         menu.name_max_dist = 180;
         menu.weapon_max_dist = 120;
         return;
@@ -183,7 +185,7 @@ void Apply(OverlayMenu& menu, Preset preset) {
         menu.esp_spectated = true;
         menu.esp_items = false;
         menu.esp_vehicles = false;
-        menu.render_distance = 700;
+        menu.render_distance = 400;
         menu.name_max_dist = 260;
         menu.weapon_max_dist = 200;
         return;

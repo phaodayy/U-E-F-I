@@ -636,26 +636,27 @@ void Draw(ImDrawList* draw, OverlayMenu& menu, const std::vector<PlayerData>& pl
     const float screenWidth = menu.ScreenWidth;
     const float screenHeight = menu.ScreenHeight;
     const float miniMapViewScale = CurrentMiniMapViewScale();
-    const ULONGLONG nowMs = GetTickCount64();
-    static bool forcedMiniMapRoomOpen = false;
-    static bool previousNDown = false;
-    static ULONGLONG lastMiniMapToggleMs = 0;
-    static ULONGLONG lastMiniMapReleaseMs = 0;
-    const bool keyMiniMapPressed = telemetryMemory::IsKeyDown('N');
-    if (keyMiniMapPressed && !previousNDown &&
-        nowMs - lastMiniMapToggleMs > 450 &&
-        (lastMiniMapReleaseMs == 0 || nowMs - lastMiniMapReleaseMs > 80)) {
-        forcedMiniMapRoomOpen = !forcedMiniMapRoomOpen;
-        previousNDown = true;
-        lastMiniMapToggleMs = nowMs;
+
+    // Manual toggle for N (minimap expansion)
+    static bool localNState = false;
+    static bool nWasDown = false;
+    bool nIsDown = (GetAsyncKeyState('N') & 0x8000);
+    if (nIsDown && !nWasDown && !menu.showmenu) {
+        localNState = !localNState;
     }
-    if (!keyMiniMapPressed && previousNDown) {
-        previousNDown = false;
-        lastMiniMapReleaseMs = nowMs;
+    nWasDown = nIsDown;
+
+    // Auto-correction: If memory definitely says it's small, reset our local toggle to prevent "reversed" state
+    const bool isLargeWidget = G_Radar.ScreenSize > 300.0f; 
+    const bool isDefinitivelySmall = G_Radar.ScreenSize > 40.0f && G_Radar.ScreenSize < 280.0f;
+    
+    if (isDefinitivelySmall) {
+        localNState = false; // Force sync if the widget is physically small
+    } else if (isLargeWidget || G_Radar.SelectMinimapSizeIndex > 0) {
+        localNState = true; // Force sync if the widget is physically large
     }
 
-    const bool gameMiniMapExpanded = G_Radar.SelectMinimapSizeIndex > 0 || miniMapViewScale > 1.05f;
-    const bool expandedMiniMap = forcedMiniMapRoomOpen || gameMiniMapExpanded;
+    const bool expandedMiniMap = localNState || G_Radar.SelectMinimapSizeIndex > 0 || miniMapViewScale > 1.05f || isLargeWidget;
     const float miniMapSizeScale = ExpandedMiniMapScale(miniMapViewScale, expandedMiniMap);
     const bool hasHudMiniMapRect = G_Radar.ScreenPosX > 1.0f && G_Radar.ScreenPosY > 1.0f &&
         G_Radar.ScreenSize > 40.0f && G_Radar.ScreenSizeY > 40.0f;
@@ -711,73 +712,13 @@ void Draw(ImDrawList* draw, OverlayMenu& menu, const std::vector<PlayerData>& pl
     }
     const float worldRange = MiniMapWorldRange(miniMapSizeScale, expandedMiniMap);
 
-/*
-#ifdef _DEBUG
-    static uint64_t lastMiniMapScaleLogMs = 0;
-    static float lastLoggedMiniMapScale = 0.0f;
-    static bool lastLoggedMiniMapExpanded = false;
-    const bool miniMapScaleChanged = std::fabs(miniMapSizeScale - lastLoggedMiniMapScale) > 0.03f ||
-        expandedMiniMap != lastLoggedMiniMapExpanded;
-    if ((keyMiniMapPressed || miniMapScaleChanged) && nowMs - lastMiniMapScaleLogMs > 450) {
-        lastMiniMapScaleLogMs = nowMs;
-        lastLoggedMiniMapScale = miniMapSizeScale;
-        lastLoggedMiniMapExpanded = expandedMiniMap;
-        std::cout << "[DEBUG][MINIMAP_SCALE] key_n=" << (keyMiniMapPressed ? 1 : 0)
-            << " forced=" << (forcedMiniMapRoomOpen ? 1 : 0)
-            << " game_expanded=" << (gameMiniMapExpanded ? 1 : 0)
-            << " visible=" << (G_Radar.IsMiniMapVisible ? 1 : 0)
-            << " size_index=" << G_Radar.SelectMinimapSizeIndex
-            << " raw_scale=" << G_Radar.CurrentMinimapViewScale
-            << " used_scale=" << miniMapViewScale
-            << " size_scale=" << miniMapSizeScale
-            << " expanded=" << (expandedMiniMap ? 1 : 0)
-            << " map_div=" << mapDiv
-            << " world_range=" << worldRange
-            << " px_per_world=" << (mapDiv / worldRange)
-            << " rect=(" << miniLeft << "," << miniTop << "," << miniRight << "," << miniBottom << ")"
-            << " hud_rect=(" << G_Radar.ScreenPosX << "," << G_Radar.ScreenPosY
-            << "," << G_Radar.ScreenSize << "," << G_Radar.ScreenSizeY << ")"
-            << std::endl;
-    }
-#endif
-*/
-
-    static bool forcedWorldMapOpen = false;
-    static bool previousMDown = false;
-    static ULONGLONG lastMapToggleMs = 0;
-    static ULONGLONG lastMapReleaseMs = 0;
-    const bool keyWorldMapPressed = telemetryMemory::IsKeyDown('M');
-    if (keyWorldMapPressed && !previousMDown &&
-        nowMs - lastMapToggleMs > 900 &&
-        (lastMapReleaseMs == 0 || nowMs - lastMapReleaseMs > 120)) {
-        forcedWorldMapOpen = !forcedWorldMapOpen;
-        previousMDown = true;
-        lastMapToggleMs = nowMs;
-    }
-    if (!keyWorldMapPressed && previousMDown) {
-        previousMDown = false;
-        lastMapReleaseMs = nowMs;
-    }
-    if (telemetryMemory::IsKeyDown(VK_ESCAPE)) {
-        forcedWorldMapOpen = false;
-        previousMDown = false;
-    }
-
     const bool canDrawWorldMap = menu.bigmap_enabled &&
-        (G_Radar.IsWorldMapVisible || forcedWorldMapOpen) &&
+        G_Radar.IsWorldMapVisible &&
         G_Radar.MapWorldSize > 1000.0f;
     bool worldMapDrawn = false;
 
     if (canDrawWorldMap) {
-        BigMapRect bigMapRect{};
-        if (G_Radar.IsWorldMapVisible) {
-            bigMapRect = { 0.0f, 0.0f, screenWidth, screenHeight };
-        } else {
-            const float baseMapSize = (std::min)(screenWidth, screenHeight);
-            const float worldLeft = (screenWidth - baseMapSize) * 0.5f;
-            const float worldTop = (screenHeight - baseMapSize) * 0.5f;
-            bigMapRect = { worldLeft, worldTop, worldLeft + baseMapSize, worldTop + baseMapSize };
-        }
+        BigMapRect bigMapRect = { 0.0f, 0.0f, screenWidth, screenHeight };
 
         if (IsValidBigMapRect(bigMapRect)) {
             DrawBigMapItems(draw, menu, bigMapRect);

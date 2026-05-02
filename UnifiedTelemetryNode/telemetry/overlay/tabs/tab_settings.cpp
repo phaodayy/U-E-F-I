@@ -40,18 +40,6 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
     const float accountCardWidth = isLoggedIn ? totalWidth / 3.0f - 20.0f : totalWidth - 20.0f;
     BeginGlassCard(skCrypt("##SetCol1"), Lang.HeaderAccount, ImVec2(accountCardWidth, 0));
     
-    extern std::string global_account_token;
-    extern std::string global_account_username;
-    extern std::string global_active_key;
-    extern std::string g_expiry_str;
-    extern std::string global_license_error;
-    extern std::string GetHWID();
-    extern void ClearActiveEntitlementState();
-    extern bool ParseAuthSessionResponse(const std::string& responseStr, bool allowNoActiveKey);
-    extern void SaveLoaderSessionFile();
-    extern void ClearLoaderSessionFile();
-    extern bool DoAPIRequest(const std::string& key, const std::string& hwid, bool silent);
-
     if (!isLoggedIn) {
         static char user_buf[64] = {0};
         static char pass_buf[64] = {0};
@@ -72,7 +60,6 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
             req["password"] = pass_buf;
             req["hwid"] = GetHWID();
             std::string resp;
-            extern bool HttpJsonPost(const wchar_t* path, const nlohmann::json& requestBody, const std::string& token, std::string& response);
             if (HttpJsonPost(LOADER_LOGIN_PATH, req, "", resp)) {
                 if (ParseAuthSessionResponse(resp, true)) {
                     if (HasActiveLoaderEntitlement()) {
@@ -139,7 +126,6 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
     // --- COL 2: CLOUD CONFIG & SETTINGS ---
     BeginGlassCard(skCrypt("##SetCol2"), Lang.CloudConfig, ImVec2(totalWidth / 3.0f - 20, 0));
     
-    extern std::string global_config_code;
     if (!global_config_code.empty()) {
         ImGui::Text("%s: ", Lang.ConfigCode);
         ImGui::SameLine();
@@ -150,11 +136,29 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
     }
 
     ImGui::Spacing();
-    if (ImGui::Button(Lang.SaveCloud, ImVec2(-1, 35))) {
+    
+    double currentTime = ImGui::GetTime();
+    double elapsed = currentTime - cloud_save_last_time;
+    double timeLeft = 60.0 - elapsed;
+    bool canSave = (timeLeft <= 0.0);
+
+    if (!canSave) ImGui::BeginDisabled();
+
+    char saveLabel[128];
+    if (canSave) {
+        strcpy_s(saveLabel, Lang.SaveCloud);
+    } else {
+        sprintf_s(saveLabel, skCrypt("%s (%ds)"), Lang.SaveCloud, (int)ceil(timeLeft));
+    }
+
+    if (ImGui::Button(saveLabel, ImVec2(-1, 35))) {
+        cloud_save_last_time = currentTime;
         g_Menu.SaveConfig("dataMacro/Config/settings.json");
         extern bool UploadLoaderConfig();
         UploadLoaderConfig();
     }
+
+    if (!canSave) ImGui::EndDisabled();
     
     static char import_buf[32] = {0};
     ImGui::SetNextItemWidth(-1);
@@ -166,8 +170,25 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
         }
     }
 
+    ImGui::Spacing();
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 0.4f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.2f, 0.2f, 0.6f));
+    if (ImGui::Button(skCrypt("RESET ALL SETTINGS"), ImVec2(-1, 35))) {
+        extern bool ImportLoaderConfigCode(const std::string& code);
+        if (ImportLoaderConfigCode(skCrypt("CFG-3Y4K4U2K6R216M4L"))) {
+            g_Menu.LoadConfig("dataMacro/Config/settings.json");
+        }
+    }
+    ImGui::PopStyleColor(2);
+
     ImGui::Separator();
-    ImGui::Checkbox(Lang.Language, &g_Menu.language);
+    
+    const char* languages[] = { "English", "Vietnamese" };
+    ImGui::SetNextItemWidth(-1);
+    if (ImGui::Combo(Lang.Language, &g_Menu.language, languages, IM_ARRAYSIZE(languages))) {
+        Translation::CurrentLanguage = g_Menu.language;
+    }
+    
     ImGui::Checkbox(Lang.AntiScreenshot, &g_Menu.anti_screenshot);
 
     ImGui::EndChild();

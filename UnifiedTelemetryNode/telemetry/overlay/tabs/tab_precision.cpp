@@ -269,13 +269,6 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     
     ImGui::Separator();
     ImGui::Spacing();
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.45f, 0.8f, 0.6f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.55f, 0.95f, 0.8f));
-    if (ImGui::Button(Lang.SaveConfig, ImVec2(-1, 38.0f))) {
-        g_Menu.SaveConfig("dataMacro/Config/settings.json");
-        UploadActiveLoaderConfigAsync();
-    }
-    ImGui::PopStyleColor(2);
 
     ImGui::EndChild();
 

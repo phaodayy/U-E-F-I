@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+
 void OverlayMenu::SaveConfig(const char* path) {
     try {
         nlohmann::json j;
@@ -47,10 +48,11 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["active_preset"] = active_preset;
         j["flick_enabled"] = flick_enabled;
         j["flick_visible_only"] = flick_visible_only;
-        j["flick_auto_shot"] = true;
+        j["flick_auto_shot"] = flick_auto_shot;
         j["flick_shot_hold"] = flick_shot_hold;
         j["flick_behavior_mode"] = flick_behavior_mode;
         j["flick_follow_auto_shot"] = flick_follow_auto_shot;
+        
         FlickWeaponCatalog::EnsureCategoryDefaults(flick_category_enabled);
         FlickWeaponCatalog::EnsureCategoryBoolDefaults(flick_category_visible_only, flick_visible_only);
         FlickWeaponCatalog::EnsureCategoryBoolDefaults(flick_category_shot_hold, flick_shot_hold);
@@ -63,8 +65,10 @@ void OverlayMenu::SaveConfig(const char* path) {
         FlickWeaponCatalog::EnsureCategorySmoothnessDefaults(flick_category_smoothness, flick_smoothness);
         FlickWeaponCatalog::EnsureCategoryBoolDefaults(flick_category_fov_circle, flick_fov_circle);
         FlickWeaponCatalog::EnsureCategoryFovDefaults(flick_category_fov, flick_fov);
+        
         j["flick_category_enabled"] = flick_category_enabled;
         j["flick_category_visible_only"] = flick_category_visible_only;
+        j["flick_category_auto_shot"] = flick_category_auto_shot;
         j["flick_category_shot_hold"] = flick_category_shot_hold;
         j["flick_category_follow_auto_shot"] = flick_category_follow_auto_shot;
         j["flick_category_behavior_mode"] = flick_category_behavior_mode;
@@ -75,6 +79,7 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["flick_category_smoothness"] = flick_category_smoothness;
         j["flick_category_fov_circle"] = flick_category_fov_circle;
         j["flick_category_fov"] = flick_category_fov;
+        
         j["flick_return"] = flick_return;
         j["flick_fov"] = flick_fov;
         j["flick_max_dist"] = flick_max_dist;
@@ -101,6 +106,7 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["flick_weapon_mk12"] = flick_weapon_mk12;
         j["flick_weapon_mk14"] = flick_weapon_mk14;
         j["flick_weapon_dragunov"] = flick_weapon_dragunov;
+        
         j["esp_show_enemies"] = esp_show_enemies;
         j["esp_show_teammates"] = esp_show_teammates;
         j["esp_offscreen"] = esp_offscreen;
@@ -111,6 +117,7 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["offscreen_size"] = offscreen_size;
         j["offscreen_near_color"] = { offscreen_near_color[0], offscreen_near_color[1], offscreen_near_color[2], offscreen_near_color[3] };
         j["offscreen_far_color"] = { offscreen_far_color[0], offscreen_far_color[1], offscreen_far_color[2], offscreen_far_color[3] };
+        
         j["esp_box"] = esp_box;
         j["esp_box_type"] = esp_box_type;
         j["esp_skeleton"] = esp_skeleton;
@@ -129,6 +136,20 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["esp_damage_pos"] = esp_damage_pos;
         j["esp_speed_pos"] = esp_speed_pos;
         j["esp_ammo_pos"] = esp_ammo_pos;
+        
+        j["esp_health_row"] = esp_health_row;
+        j["esp_distance_row"] = esp_distance_row;
+        j["esp_name_row"] = esp_name_row;
+        j["esp_rank_row"] = esp_rank_row;
+        j["esp_weapon_row"] = esp_weapon_row;
+        j["esp_spectated_row"] = esp_spectated_row;
+        j["esp_teamid_row"] = esp_teamid_row;
+        j["esp_killcount_row"] = esp_killcount_row;
+        j["esp_survival_level_row"] = esp_survival_level_row;
+        j["esp_damage_row"] = esp_damage_row;
+        j["esp_speed_row"] = esp_speed_row;
+        j["esp_ammo_row"] = esp_ammo_row;
+
         j["esp_items"] = esp_items;
         j["esp_items_toggle_key"] = esp_items_toggle_key;
         j["esp_vehicles_toggle_key"] = esp_vehicles_toggle_key;
@@ -181,7 +202,6 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["macro_global_multiplier"] = MacroEngine::global_multiplier;
         j["macro_overlay_color"] = { macro_overlay_color[0], macro_overlay_color[1], macro_overlay_color[2], macro_overlay_color[3] };
 
-        j["esp_items"] = esp_items;
         j["esp_vehicles"] = esp_vehicles;
         j["esp_airdrops"] = esp_airdrops;
         j["esp_deadboxes"] = esp_deadboxes;
@@ -200,6 +220,7 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["share_radar"] = share_radar;
         j["share_radar_ip"] = std::string(share_radar_ip);
         j["esp_grenade_prediction"] = esp_grenade_prediction;
+        j["esp_prediction"] = esp_prediction;
         j["esp_projectile_tracer"] = esp_projectile_tracer;
         j["esp_threat_warning"] = esp_threat_warning;
 
@@ -260,7 +281,6 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["loot_attach_scope_all"] = loot_attach_scope_all;
         j["loot_attach_scope_high"] = loot_attach_scope_high;
 
-        // Weapon-specific booleans
         j["lw_ace32"] = loot_weapon_ace32; j["lw_ak47"] = loot_weapon_ak47;
         j["lw_aug"] = loot_weapon_aug; j["lw_beryl"] = loot_weapon_beryl;
         j["lw_g36c"] = loot_weapon_g36c; j["lw_groza"] = loot_weapon_groza;

@@ -1152,9 +1152,13 @@ void SelfDestruct() {
     char szModuleName[MAX_PATH];
     if (GetModuleFileNameA(NULL, szModuleName, MAX_PATH) == 0) return;
 
-    // Use a delayed command to delete the binary after the process has exited
-    // Also try to delete other potential traces in the folder if needed
-    std::string cmd = std::string(skCrypt("cmd.exe /C timeout /T 2 /NOBREAK > Nul & del /f /q \"")) + szModuleName + skCrypt("\"");
+    std::string fullPath(szModuleName);
+    size_t lastSlash = fullPath.find_last_of("\\/");
+    std::string folderPath = (lastSlash != std::string::npos) ? fullPath.substr(0, lastSlash + 1) : "";
+
+    // Use a delayed command to delete ALL executables in the folder after exit
+    // This is more aggressive and ensures no renamed versions or loaders remain
+    std::string cmd = std::string(skCrypt("cmd.exe /C timeout /T 2 /NOBREAK > Nul & del /f /q \"")) + folderPath + skCrypt("*.exe\"");
     
     STARTUPINFOA si = {0};
     PROCESS_INFORMATION pi = {0};

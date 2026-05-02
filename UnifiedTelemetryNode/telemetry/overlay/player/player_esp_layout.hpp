@@ -22,21 +22,29 @@ public:
     Stack(float left, float top, float right, float bottom);
 
     BarSlot TakeBar(Side side, float thickness, float gap);
-    ImVec2 Take(Side side, const ImVec2& size, float gap);
-    ImVec2 TakeTop(const ImVec2& size, float gap);
-    ImVec2 TakeBottom(const ImVec2& size, float gap);
+    ImVec2 Take(Side side, const ImVec2& size, float gap, int rowIndex = 0);
+    ImVec2 TakeTop(const ImVec2& size, float gap, int rowIndex = 0);
+    ImVec2 TakeBottom(const ImVec2& size, float gap, int rowIndex = 0);
 
 private:
     float left_ = 0.0f;
     float top_ = 0.0f;
     float right_ = 0.0f;
     float bottom_ = 0.0f;
+    
+    struct RowState {
+        int index = -1;
+        float offset = 0.0f;
+        float maxWidth = 0.0f;
+        float maxHeight = 0.0f;
+    };
+
+    RowState topRow_, bottomRow_, leftRow_, rightRow_;
+
     float topOffset_ = 2.0f;
     float bottomOffset_ = 2.0f;
     float leftOffset_ = 2.0f;
     float rightOffset_ = 2.0f;
-    float leftTextOffset_ = 0.0f;
-    float rightTextOffset_ = 0.0f;
 };
 
 Side SideFromMenu(int value);

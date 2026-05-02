@@ -104,6 +104,13 @@ namespace {
                className.find(skCrypt("ChildCenter")) != std::string::npos;
     }
 
+    bool IsMinimapWidgetClass(const std::string& className) {
+        return className.find(skCrypt("MinimapOriginalType")) != std::string::npos ||
+               className.find(skCrypt("MinimapWidget")) != std::string::npos ||
+               className.find(skCrypt("DefaultMinimap")) != std::string::npos ||
+               className.find(skCrypt("TslMinimap")) != std::string::npos;
+    }
+
     __forceinline uint64_t ReadXe(uint64_t addr) {
         uint64_t val = 0;
         if (telemetryMemory::ReadMemory(addr, &val, sizeof(uint64_t)))
@@ -803,9 +810,13 @@ namespace telemetryContext {
                         const std::string className = FNameUtils::GetNameFast(objID);
                         if (className.empty()) continue;
 
-                        if (className.find(skCrypt("MinimapOriginalType")) != std::string::npos) {
+                        if (IsMinimapWidgetClass(className)) {
                             const uint8_t visibility = Read<uint8_t>(widget + telemetryOffsets::Visibility);
-                            G_Radar.IsMiniMapVisible = IsSlateVisible(visibility);
+                            const bool isVisible = IsSlateVisible(visibility);
+                            G_Radar.IsMiniMapVisible = isVisible;
+                            
+                            if (!isVisible) continue;
+
                             G_Radar.SelectMinimapSizeIndex = Read<int>(widget + telemetryOffsets::SelectMinimapSizeIndex);
                             G_Radar.MiniMapSizeIndex = G_Radar.SelectMinimapSizeIndex;
                             const float rawMiniMapViewScale = Read<float>(widget + telemetryOffsets::CurrentMinimapViewScale1D);
@@ -1039,24 +1050,23 @@ namespace telemetryContext {
 
             if (actor == G_LocalPawn) continue;
             
-            const bool isBot = (cname.find(skCrypt("AIPawn")) != std::string::npos ||
-                                cname.find(skCrypt("NPC_")) != std::string::npos ||
-                                cname.find(skCrypt("ZombieNpc")) != std::string::npos ||
-                                cname.find(skCrypt("UltAIPawn")) != std::string::npos ||
-                                cname.find(skCrypt("ZDF2_NPC")) != std::string::npos);
+            const bool isBotClass = (cname.find(skCrypt("AIPawn")) != std::string::npos ||
+                                    cname.find(skCrypt("NPC_")) != std::string::npos ||
+                                    cname.find(skCrypt("ZombieNpc")) != std::string::npos ||
+                                    cname.find(skCrypt("UltAIPawn")) != std::string::npos ||
+                                    cname.find(skCrypt("ZDF2_NPC")) != std::string::npos);
 
             bool isPlayer = (cname.find(skCrypt("PlayerMale")) != std::string::npos ||
                              cname.find(skCrypt("PlayerFemale")) != std::string::npos ||
-                             isBot);
+                             isBotClass);
 
             if (isPlayer) {
                 uint64_t mesh = Read<uintptr_t>(actor + telemetryOffsets::Mesh);
                 if (!mesh) continue;
 
                 uint64_t playerState = Read<uintptr_t>(actor + telemetryOffsets::PlayerState);
-                if (playerState < 0x1000000) playerState = ReadXe(actor + telemetryOffsets::PlayerState); // Fallback try decrypt if valid
+                if (playerState < 0x1000000) playerState = ReadXe(actor + telemetryOffsets::PlayerState);
 
-                // Duplicate filter: multiple actors can point to the same PlayerState
                 if (playerState > 0x1000000) {
                     bool alreadySeen = false;
                     for (auto s : seenPlayerStates) if (s == playerState) { alreadySeen = true; break; }
@@ -1072,16 +1082,16 @@ namespace telemetryContext {
                 if (dist > 1000.0f) continue;
 
                 PlayerData p{};
-                p.ActorPtr = actor; p.MeshAddr = mesh; p.Position = pos; p.Distance = dist; p.IsBot = isBot;
-                // Read CharacterName directly from Pawn as per gamebaseRael.txt
+                p.ActorPtr = actor; p.MeshAddr = mesh; p.Position = pos; p.Distance = dist; p.IsBot = isBotClass;
+                
                 uint64_t pNameData = Read<uint64_t>(actor + telemetryOffsets::CharacterName); 
                 if (pNameData > 0x1000000) {
                     wchar_t buf[32] = {0};
                     if (telemetryContext::ReadMemory(pNameData, buf, 31 * sizeof(wchar_t))) {
                         std::string narrowName;
-                        for (int k = 0; k < 31 && buf[k]; ++k) { // Break on null-terminator
-                            if (buf[k] >= 32 && buf[k] <= 126) narrowName += (char)buf[k]; // safe ASCII limit
-                            else narrowName += '?'; // fallback for weird unicode or chinese chars
+                        for (int k = 0; k < 31 && buf[k]; ++k) {
+                            if (buf[k] >= 32 && buf[k] <= 126) narrowName += (char)buf[k];
+                            else narrowName += '?';
                         }
                         if (!narrowName.empty() && narrowName != skCrypt("Player")) p.Name = narrowName;
                     }
@@ -1095,13 +1105,10 @@ namespace telemetryContext {
                 ReadAnimState(mesh, p);
                 ReadAimAngles(actor, p);
                 
-                // PAOD-style priority: LastTeamNum on actor, then PlayerState TeamNumber fallback.
                 p.TeamID = NormalizeTeamId(Read<int>(actor + telemetryOffsets::LastTeamNum));
                 if (p.TeamID == 0 && playerState > 0x1000000) {
                     p.TeamID = NormalizeTeamId(Read<int>(playerState + telemetryOffsets::TeamNumber));
-                    if (p.TeamID == 0) {
-                        p.TeamID = NormalizeTeamId(Read<int>(playerState + 0x444));
-                    }
+                    if (p.TeamID == 0) p.TeamID = NormalizeTeamId(Read<int>(playerState + 0x444));
                 }
 
                 p.Health = telemetryHealth::DecryptHealth(actor);
@@ -1109,7 +1116,21 @@ namespace telemetryContext {
                 p.IsGroggy = (p.GroggyHealth > 0.0f && p.Health <= 0.0f);
                 p.SpectatedCount = Read<int>(playerState + telemetryOffsets::SpectatedCount);
                 p.Gender = NormalizeGender(Read<uint8_t>(actor + telemetryOffsets::Gender));
+                
                 ReadPlayerStats(playerState, p);
+                
+                // REFINED BOT DETECTION (PAOD-style)
+                if (!p.IsBot && p.SurvivalLevel == 0) {
+                    if (p.Name.empty() || p.Name == skCrypt("Player")) {
+                        p.IsBot = true;
+                    }
+                }
+                
+                // Prediction Logic (Movement Lead)
+                float bulletSpeed = 80000.0f; // 800 m/s in cm/s
+                float travelTime = (dist * 100.0f) / bulletSpeed;
+                p.PredictedPosition = p.Position + (p.Velocity * travelTime);
+                
                 ReadPlayerEquipment(actor, p);
                 
                 float enemyEyes = Read<float>(mesh + telemetryOffsets::LastRenderTimeOnScreen);

@@ -49,6 +49,7 @@ struct PlayerData {
     bool IsFiring = false;
     bool HasAmmo = false;
     bool HasAimYaw = false;
+    Vector3 PredictedPosition = { 0, 0, 0 };
     PlayerGender Gender = PlayerGender::Male;
     Vector3 RecoilADSRotation = { 0, 0, 0 };
     Vector3 RecoilValueVector = { 0, 0, 0 };

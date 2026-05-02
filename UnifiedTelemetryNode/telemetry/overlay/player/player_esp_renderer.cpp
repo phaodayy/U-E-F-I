@@ -436,6 +436,25 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                         draw->AddCircle(ImVec2(head_s.x, head_s.y), radius, ApplyAlpha(headCol, alphaMult), 22, 1.2f);
                     }
 
+                    if (g_Menu.esp_prediction && !player.IsTeammate && player.Distance < g_Menu.box_max_dist) {
+                        Vector2 pred_s;
+                        if (telemetryContext::WorldToScreen(player.PredictedPosition + delta, pred_s)) {
+                            const float boxW = finalBoxRight - finalBoxLeft;
+                            const float radius = std::clamp(boxW * 0.12f, 2.5f, 6.0f);
+                            ImU32 predCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.view_direction_color);
+                            
+                            // Draw predictive dot
+                            draw->AddCircleFilled(ImVec2(pred_s.x, pred_s.y), radius, ApplyAlpha(predCol, alphaMult * 0.75f), 12);
+                            draw->AddCircle(ImVec2(pred_s.x, pred_s.y), radius + 1.0f, IM_COL32(0, 0, 0, AlphaByte(0.45f * alphaMult)), 12, 1.0f);
+                            
+                            // Draw line from head to predicted position if moving fast
+                            if (player.Velocity.Length() > 200.0f) {
+                                draw->AddLine(ImVec2(head_s.x, head_s.y), ImVec2(pred_s.x, pred_s.y), 
+                                    ApplyAlpha(predCol, alphaMult * 0.45f), 1.0f);
+                            }
+                        }
+                    }
+
                     if (esp_snapline) {
                         ImVec2 start(ScreenCenterX, ScreenHeight);
                         if (g_Menu.snapline_type == 1) {
@@ -482,7 +501,8 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                         ImVec2 badgePos = espLayout.Take(
                             PlayerEspLayout::SideFromMenu(g_Menu.esp_teamid_pos),
                             badgeSize,
-                            2.0f);
+                            2.0f,
+                            g_Menu.esp_teamid_row);
                         ImU32 badgeCol = g_Menu.team_color_custom ?
                             TeamColorFromMenu(player.TeamID) :
                             ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.teamid_color);
@@ -522,7 +542,8 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                             ImVec2 statusPos = espLayout.Take(
                                 PlayerEspLayout::SideFromMenu(g_Menu.esp_spectated_pos),
                                 statusSize,
-                                2.0f);
+                                2.0f,
+                                g_Menu.esp_spectated_row);
                             ImU32 statusCol = statusWarning ?
                                 ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.aim_warning_color) :
                                 ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.view_direction_color);
@@ -538,7 +559,8 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                         ImVec2 closePos = espLayout.Take(
                             PlayerEspLayout::SideFromMenu(g_Menu.esp_spectated_pos),
                             closeSize,
-                            2.0f);
+                            2.0f,
+                            g_Menu.esp_spectated_row);
                         ImU32 closeCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.close_warning_color);
                         DrawTextChip(draw, closePos, closeText, closeFont, closeCol, alphaMult, true);
                     }
@@ -549,7 +571,8 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                         ImVec2 killPos = espLayout.Take(
                             PlayerEspLayout::SideFromMenu(g_Menu.esp_killcount_pos),
                             killSize,
-                            1.0f);
+                            1.0f,
+                            g_Menu.esp_killcount_row);
                         ImU32 killCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.kill_color);
                         DrawTextChip(draw, killPos, killText.c_str(), g_Menu.kill_font_size, killCol, alphaMult);
                     }
@@ -560,7 +583,8 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                         ImVec2 damagePos = espLayout.Take(
                             PlayerEspLayout::SideFromMenu(g_Menu.esp_damage_pos),
                             damageSize,
-                            1.0f);
+                            1.0f,
+                            g_Menu.esp_damage_row);
                         ImU32 damageCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.damage_color);
                         DrawTextChip(draw, damagePos, damageText.c_str(), g_Menu.damage_font_size, damageCol, alphaMult);
                     }
@@ -573,7 +597,8 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                             ImVec2 speedPos = espLayout.Take(
                                 PlayerEspLayout::SideFromMenu(g_Menu.esp_speed_pos),
                                 speedSize,
-                                1.0f);
+                                1.0f,
+                                g_Menu.esp_speed_row);
                             ImU32 speedCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.speed_color);
                             DrawTextChip(draw, speedPos, speedText.c_str(), g_Menu.speed_font_size, speedCol, alphaMult);
                         }
@@ -585,7 +610,8 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                         ImVec2 levelPos = espLayout.Take(
                             PlayerEspLayout::SideFromMenu(g_Menu.esp_survival_level_pos),
                             levelSize,
-                            1.0f);
+                            1.0f,
+                            g_Menu.esp_survival_level_row);
                         ImU32 levelCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.survival_level_color);
                         DrawTextChip(draw, levelPos, levelText.c_str(), g_Menu.survival_level_font_size, levelCol, alphaMult);
                     }
@@ -608,7 +634,8 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                         ImVec2 distPos = espLayout.Take(
                             PlayerEspLayout::SideFromMenu(g_Menu.esp_distance_pos),
                             distSize,
-                            2.0f);
+                            2.0f,
+                            g_Menu.esp_distance_row);
                         DrawTextChip(draw, distPos, distStr, baseFontSize * textScale, distCol, alphaMult);
                     }
 
@@ -617,7 +644,8 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                         ImVec2 ammoPos = espLayout.Take(
                             PlayerEspLayout::SideFromMenu(g_Menu.esp_ammo_pos),
                             ammoSize,
-                            1.0f);
+                            1.0f,
+                            g_Menu.esp_ammo_row);
                         ImU32 ammoCol = player.IsReloading ?
                             ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.aim_warning_color) :
                             ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.ammo_color);
@@ -643,7 +671,8 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                                 ImVec2 iconPos = espLayout.Take(
                                     PlayerEspLayout::SideFromMenu(g_Menu.esp_weapon_pos),
                                     ImVec2(iconW + 6.0f, iconH + 4.0f),
-                                    2.0f);
+                                    2.0f,
+                                    g_Menu.esp_weapon_row);
                                 ImU32 weaponCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.weapon_color);
                                 draw->AddRectFilled(iconPos, ImVec2(iconPos.x + iconW + 6.0f, iconPos.y + iconH + 4.0f),
                                     IM_COL32(5, 8, 12, AlphaByte(0.46f * alphaMult)), 4.0f);
@@ -659,7 +688,8 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                                 ImVec2 weaponPos = espLayout.Take(
                                     PlayerEspLayout::SideFromMenu(g_Menu.esp_weapon_pos),
                                     ws,
-                                    2.0f);
+                                    2.0f,
+                                    g_Menu.esp_weapon_row);
                                 ImU32 weaponCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.weapon_color);
                                 DrawTextChip(draw, weaponPos, player.WeaponName.c_str(), g_Menu.weapon_font_size, weaponCol, alphaMult);
                             }
@@ -670,7 +700,8 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                             ImVec2 weaponPos = espLayout.Take(
                                 PlayerEspLayout::SideFromMenu(g_Menu.esp_weapon_pos),
                                 ws,
-                                2.0f);
+                                2.0f,
+                                g_Menu.esp_weapon_row);
                             DrawTextChip(draw, weaponPos, player.WeaponName.c_str(), baseFontSize, weaponCol, alphaMult);
                         }
                     }
@@ -688,7 +719,8 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                         ImVec2 rankPos = espLayout.Take(
                             PlayerEspLayout::SideFromMenu(g_Menu.esp_rank_pos),
                             rs,
-                            1.0f);
+                            1.0f,
+                            g_Menu.esp_rank_row);
                         ImU32 rankCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.rank_color);
 
                         DrawTextChip(draw, rankPos, rankStr.c_str(), baseFontSize * textScale, rankCol, alphaMult);
@@ -703,7 +735,14 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                         }
 
                         std::string nameText = player.Name;
-                        if (nameText.empty() || nameText == "Player") nameText = "Unknown";
+                        if (player.IsBot) {
+                            if (nameText.empty() || nameText == skCrypt("Player") || nameText == skCrypt("Unknown")) 
+                                nameText = skCrypt("AI BOT");
+                            else
+                                nameText = std::string(skCrypt("[AI] ")) + nameText;
+                        } else if (nameText.empty() || nameText == skCrypt("Player")) {
+                            nameText = skCrypt("Unknown");
+                        }
 
                         float baseFontSize = g_Menu.name_font_size;
                         const ImVec2 nameTextSize = TextSize(nameText.c_str(), baseFontSize * textScale);
@@ -713,15 +752,20 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                         ImVec2 namePos = espLayout.Take(
                             PlayerEspLayout::SideFromMenu(g_Menu.esp_name_pos),
                             ns,
-                            2.0f);
+                            2.0f,
+                            g_Menu.esp_name_row);
 
                         ImU32 nameCol = player.IsVisible ?
                             ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.name_visible_color) :
                             ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.name_invisible_color);
+                        
                         if (player.IsGroggy) nameCol = IM_COL32(255, 0, 0, 255);
+                        else if (player.IsBot) nameCol = IM_COL32(200, 200, 200, 255); // Grayish for bots
+
+                        ImU32 accentCol = player.IsBot ? IM_COL32(150, 150, 150, 255) : TeamColorFromMenu(player.TeamID);
 
                         DrawNameplateChip(draw, namePos, nameText.c_str(), baseFontSize * textScale,
-                            nameCol, TeamColorFromMenu(player.TeamID), alphaMult, player.IsGroggy);
+                            nameCol, accentCol, alphaMult, player.IsGroggy);
                     }
 
                     // 4. SPECTATED COUNT (EYE WARNING)
@@ -740,7 +784,8 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                         ImVec2 specPos = espLayout.Take(
                             PlayerEspLayout::SideFromMenu(g_Menu.esp_spectated_pos),
                             ss,
-                            2.0f);
+                            2.0f,
+                            g_Menu.esp_spectated_row);
 
                         // Vibrant Orange/Yellow Warning Color
                         ImU32 specCol = ImGui::ColorConvertFloat4ToU32(*(ImVec4*)g_Menu.spectated_color);
