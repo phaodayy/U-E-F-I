@@ -1970,7 +1970,7 @@ int main() {
     // RELEASE MODE: Use Bilingual System Modal (Top 1) MessageBox
     MessageBoxA(NULL, 
         skCrypt("System Ready!\nHe thong da san sang!\n\nPress [F5] for Menu. Press [F11] to exit.\nBam [F5] de Dong/Mo Menu. Bam [F11] de Tat Tool."), 
-        skCrypt("GZ-telemetry - System Ready"), MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND | MB_TOPMOST);
+        skCrypt("GZ-telemetry - System Ready"), MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND | MB_TOPMOST | MB_SYSTEMMODAL);
 
     CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)[](LPVOID) {
         while (!AppShutdown::IsRequested()) {
