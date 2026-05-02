@@ -8,7 +8,7 @@
 #include <features/VisibleCheck.h>
 #include <Common/Offset.h>
 #include "MouseDispatcher.h"
-//#include <features/Mortar.h>
+#include <features/Mortar.h>
 #include <set>
 
 #define MAX_flt			(3.402823466e+38F)
@@ -1025,6 +1025,7 @@ public:
             mem.Read(g_currentWeaponData.RichCurveKeyArray.Data, keys.data(), sizeof(FRichCurveKey) * g_currentWeaponData.RichCurveKeyArray.Count);
             g_currentWeaponData.RichCurveKeys = keys;
 
+            g_isMortars = (GameData.LocalPlayerInfo.WeaponEntityInfo.WeaponType == WeaponType::Mortar);
             g_lastCurrentWeapon = GameData.LocalPlayerInfo.CurrentWeapon;
         }
         return true;
@@ -1097,7 +1098,9 @@ public:
 
             // SỬ DỤNG XƯƠNG ĐÃ ĐƯỢC CHỌN TỰ ĐỘNG TỪ PLAYERS.H
             int aimBone = GameData.precision_calibration.Bone;
-            if (aimBone <= 0) aimBone = 15; 
+            if (g_isMortars) aimBone = 1; // Always aim for Pelvis when using Mortar
+            else if (aimBone <= 0) aimBone = 15; 
+
 
             // Kiểm tra vật cản nếu bật VisibleCheck
             if (config.VisibleCheck && !player.IsVisible) {
@@ -1124,6 +1127,12 @@ public:
             }
 
             FRotator targetRotation = (targetPos - cameraLocation).GetDirectionRotator();
+            if (g_isMortars) {
+                float horizontalDist = std::sqrt(std::pow(targetPos.x - cameraLocation.x, 2) + std::pow(targetPos.y - cameraLocation.y, 2)) / 100.0f; 
+                double mPitch = Mortar::GetPitch(horizontalDist, (targetPos.z - cameraLocation.z) / 100.0f);
+                if (mPitch > 0) targetRotation.Pitch = -static_cast<float>(mPitch);
+            }
+
             FRotator deltaRotation = targetRotation - currentRotation;
             deltaRotation.Clamp();
 
