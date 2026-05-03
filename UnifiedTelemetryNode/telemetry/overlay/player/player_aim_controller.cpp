@@ -686,9 +686,9 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
 
             // Vertical Auto Calibration (Pitch via MouseWheel)
             static ULONGLONG lastMortarScroll = 0;
-            if (nowMs - lastMortarScroll > 40) { // Limit scroll frequency to 25Hz to allow game to catch up
+            if (nowMs - lastMortarScroll > 80) { // Slower frequency (12.5Hz) to prevent bobbing
                 float pitchError = targetPitch - G_LocalMortarRotation.x;
-                if (std::abs(pitchError) > 0.5f) { // Increased deadzone to 0.5 to prevent back-and-forth jitter
+                if (std::abs(pitchError) > 0.8f) { // Increased deadzone to 0.8 to prevent jitter
                     // WHEEL_DELTA is 120. If we need to increase pitch, we scroll UP (120).
                     int scrollAmount = (pitchError > 0.0f) ? 120 : -120;
                     telemetryMemory::MouseWheel(scrollAmount);

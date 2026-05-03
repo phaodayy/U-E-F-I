@@ -405,7 +405,6 @@ bool TryResolveGearOrUtilityLoot(const std::string& id, const OverlayMenu& menu,
 
     return false;
 }
-
 bool TryResolveKeyOrRepairLoot(const std::string& id, const OverlayMenu& menu, ImU32& col, bool& shouldDraw) {
     const ImU32 keyColor = IM_COL32(255, 215, 0, 255);
     const ImU32 repairColor = IM_COL32(0, 255, 0, 255);
@@ -433,6 +432,160 @@ bool TryResolveKeyOrRepairLoot(const std::string& id, const OverlayMenu& menu, I
             repairColor, col, shouldDraw);
     }
 
+    return false;
+}
+
+bool TryResolveWeaponLoot(const std::string& id, const OverlayMenu& menu, ImU32& col, bool& shouldDraw) {
+    // AR
+    if      (id == skCrypt("Item_Weapon_HK416_C")) { if(menu.loot_weapon_hk416) { shouldDraw = true; col = IM_COL32(0, 255, 255, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_AK47_C"))  { if(menu.loot_weapon_ak47)  { shouldDraw = true; col = IM_COL32(0, 255, 255, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_BerylM762_C")) { if(menu.loot_weapon_beryl) { shouldDraw = true; col = IM_COL32(255, 120, 0, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_SCAR-L_C")) { if(menu.loot_weapon_scar)  { shouldDraw = true; col = IM_COL32(0, 255, 255, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_AUG_C"))    { if(menu.loot_weapon_aug)   { shouldDraw = true; col = IM_COL32(255, 255, 255, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_Groza_C"))  { if(menu.loot_weapon_groza) { shouldDraw = true; col = IM_COL32(255, 100, 0, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_ACE32_C"))  { if(menu.loot_weapon_ace32) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_FAMASG2_C")) { if(menu.loot_weapon_famas) { shouldDraw = true; col = IM_COL32(255, 100, 0, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_G36C_C"))   { if(menu.loot_weapon_g36c)  { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_QBZ95_C"))  { if(menu.loot_weapon_qbz)   { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_K2_C"))     { if(menu.loot_weapon_k2)    { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_Mk47Mutant_C")) { if(menu.loot_weapon_mutant) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_M16A4_C"))  { if(menu.loot_weapon_m16)   { shouldDraw = true; } return true; }
+    
+    // Snipers/DMRs
+    else if (id == skCrypt("Item_Weapon_AWM_C"))    { if(menu.loot_weapon_awm)   { shouldDraw = true; col = IM_COL32(255, 0, 0, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_M24_C"))    { if(menu.loot_weapon_m24)   { shouldDraw = true; col = IM_COL32(255, 150, 0, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_Kar98k_C")) { if(menu.loot_weapon_kar98) { shouldDraw = true; col = IM_COL32(255, 150, 0, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_Mosin_C"))  { if(menu.loot_weapon_mosin) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_Win1894_C")) { if(menu.loot_weapon_win94) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_Mk14_C"))   { if(menu.loot_weapon_mk14)  { shouldDraw = true; col = IM_COL32(255, 0, 255, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_FNFal_C"))  { if(menu.loot_weapon_slr)   { shouldDraw = true; col = IM_COL32(0, 255, 200, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_SKS_C"))    { if(menu.loot_weapon_sks)   { shouldDraw = true; col = IM_COL32(0, 255, 200, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_Mk12_C"))   { if(menu.loot_weapon_mk12)  { shouldDraw = true; col = IM_COL32(0, 255, 200, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_Dragunov_C")) { if(menu.loot_weapon_dragunov) { shouldDraw = true; col = IM_COL32(255, 0, 255, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_Mini14_C")) { if(menu.loot_weapon_mini14) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_QBU88_C"))  { if(menu.loot_weapon_qbu)   { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_VSS_C"))    { if(menu.loot_weapon_vss)   { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_L6_C"))     { if(menu.loot_weapon_lynx)  { shouldDraw = true; col = IM_COL32(255, 0, 0, 255); } return true; }
+
+    // SMG/LMG
+    else if (id == skCrypt("Item_Weapon_P90_C"))    { if(menu.loot_weapon_p90)   { shouldDraw = true; col = IM_COL32(255, 255, 0, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_UMP_C"))    { if(menu.loot_weapon_ump)   { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_Vector_C")) { if(menu.loot_weapon_vector){ shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_UZI_C"))    { if(menu.loot_weapon_uzi)   { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_MP5K_C"))   { if(menu.loot_weapon_mp5)   { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_MP9_C"))    { if(menu.loot_weapon_mp9)   { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_JS9_C"))    { if(menu.loot_weapon_js9)   { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_BizonPP19_C")) { if(menu.loot_weapon_bizon) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_Thompson_C")) { if(menu.loot_weapon_thompson) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_MG3_C"))    { if(menu.loot_weapon_mg3)   { shouldDraw = true; col = IM_COL32(255, 100, 0, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_M249_C"))   { if(menu.loot_weapon_m249)  { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_DP28_C"))   { if(menu.loot_weapon_dp28)  { shouldDraw = true; } return true; }
+
+    // Shotguns/Misc
+    else if (id == skCrypt("Item_Weapon_DP12_C"))   { if(menu.loot_weapon_dp12)  { shouldDraw = true; col = IM_COL32(0, 255, 0, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_Saiga12_C")) { if(menu.loot_weapon_s12k)  { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_OriginS12_C")) { if(menu.loot_weapon_saiga) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_Berreta686_C")) { if(menu.loot_weapon_db)  { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_Winchester_C")) { if(menu.loot_weapon_s1897) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_Sawnoff_C")) { if(menu.loot_weapon_sawedoff) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_DesertEagle_C")) { if(menu.loot_weapon_deagle) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_vz61Skorpion_C")) { if(menu.loot_weapon_skorpion) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_M1911_C"))  { if(menu.loot_weapon_m1911) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_M9_C"))     { if(menu.loot_weapon_p92)   { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_G18_C"))    { if(menu.loot_weapon_p18c)  { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_Rhino_C"))  { if(menu.loot_weapon_rhino) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_NagantM1895_C")) { if(menu.loot_weapon_nagant) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_StunGun_C")) { if(menu.loot_weapon_stungun) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_FlareGun_C")) { if(menu.loot_weapon_flare) { shouldDraw = true; col = IM_COL32(255, 80, 40, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_Crossbow_C")) { if(menu.loot_weapon_crossbow) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_PanzerFaust100M_C") || id.find(skCrypt("PanzerFaust")) != std::string::npos) { if(menu.loot_weapon_panzer) { shouldDraw = true; col = IM_COL32(255, 120, 0, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_M79_C")) { if(menu.loot_weapon_m79) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_Pan_C")) { if(menu.loot_weapon_pan) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_Cowbar_C")) { if(menu.loot_weapon_crowbar) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_Machete_C")) { if(menu.loot_weapon_machete) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_Sickle_C")) { if(menu.loot_weapon_sickle) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_Pickaxe_C")) { if(menu.loot_weapon_pickaxe) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_SpikeTrap_C")) { if(menu.loot_weapon_spike) { shouldDraw = true; } return true; }
+    
+    return false;
+}
+
+bool TryResolveAmmoLoot(const std::string& id, const OverlayMenu& menu, ImU32& col, bool& shouldDraw) {
+    if      (id == skCrypt("Item_Ammo_556mm_C"))    { if(menu.loot_ammo_556) { shouldDraw = true; col = IM_COL32(100, 255, 100, 220); } return true; }
+    else if (id == skCrypt("Item_Ammo_762mm_C"))    { if(menu.loot_ammo_762) { shouldDraw = true; col = IM_COL32(255, 120, 100, 220); } return true; }
+    else if (id == skCrypt("Item_Ammo_300Magnum_C")) { if(menu.loot_ammo_300) { shouldDraw = true; col = IM_COL32(255, 0, 0, 255); } return true; }
+    else if (id == skCrypt("Item_Ammo_9mm_C"))      { if(menu.loot_ammo_9mm) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Ammo_45ACP_C"))    { if(menu.loot_ammo_45)  { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Ammo_12Guage_C"))  { if(menu.loot_ammo_12g) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Ammo_12GuageSlug_C")) { if(menu.loot_ammo_slug) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Ammo_57mm_C"))     { if(menu.loot_ammo_57)  { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Ammo_40mm_C"))     { if(menu.loot_ammo_40)  { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Ammo_Bolt_C"))     { if(menu.loot_ammo_bolt) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Ammo_Flare_C"))    { if(menu.loot_ammo_flare) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Ammo_Mortar_C"))   { if(menu.loot_ammo_mortar) { shouldDraw = true; } return true; }
+    return false;
+}
+
+bool TryResolveAttachmentLoot(const std::string& id, const OverlayMenu& menu, ImU32& col, bool& shouldDraw) {
+    // Scopes
+    if      (id.find(skCrypt("DotSight")) != std::string::npos) { if(menu.loot_scope_reddot) { shouldDraw = true; } return true; }
+    else if (id.find(skCrypt("Holosight")) != std::string::npos) { if(menu.loot_scope_holo) { shouldDraw = true; } return true; }
+    else if (id.find(skCrypt("Aimpoint")) != std::string::npos) { if(menu.loot_scope_2x) { shouldDraw = true; } return true; }
+    else if (id.find(skCrypt("Scope3x")) != std::string::npos) { if(menu.loot_scope_3x) { shouldDraw = true; } return true; }
+    else if (id.find(skCrypt("ACOG")) != std::string::npos) { if(menu.loot_scope_4x) { shouldDraw = true; } return true; }
+    else if (id.find(skCrypt("Scope6x")) != std::string::npos) { if(menu.loot_scope_6x) { shouldDraw = true; } return true; }
+    else if (id.find(skCrypt("CQBSS")) != std::string::npos) { if(menu.loot_scope_8x) { shouldDraw = true; col = IM_COL32(255, 0, 255, 255); } return true; }
+    else if (id.find(skCrypt("PM2")) != std::string::npos) { if(menu.loot_scope_15x) { shouldDraw = true; col = IM_COL32(255, 0, 255, 255); } return true; }
+    else if (id.find(skCrypt("Thermal")) != std::string::npos) { if(menu.loot_scope_thermal) { shouldDraw = true; col = IM_COL32(255, 0, 255, 255); } return true; }
+
+    // Muzzles
+    else if (id.find(skCrypt("Compensator")) != std::string::npos) { if(menu.loot_muzzle_comp) { shouldDraw = true; } return true; }
+    else if (id.find(skCrypt("FlashHider")) != std::string::npos) { if(menu.loot_muzzle_flash) { shouldDraw = true; } return true; }
+    else if (id.find(skCrypt("Suppressor")) != std::string::npos) { if(menu.loot_muzzle_supp) { shouldDraw = true; col = IM_COL32(0, 255, 0, 255); } return true; }
+    else if (id.find(skCrypt("Choke")) != std::string::npos) { if(menu.loot_muzzle_choke) { shouldDraw = true; } return true; }
+
+    // Grips/Stocks
+    else if (id.find(skCrypt("AngledForeGrip")) != std::string::npos) { if(menu.loot_grip_angled) { shouldDraw = true; } return true; }
+    else if (id.find(skCrypt("HalfGrip")) != std::string::npos) { if(menu.loot_grip_half) { shouldDraw = true; } return true; }
+    else if (id.find(skCrypt("ThumbGrip")) != std::string::npos) { if(menu.loot_grip_thumb) { shouldDraw = true; } return true; }
+    else if (id.find(skCrypt("Lightweight")) != std::string::npos) { if(menu.loot_grip_light) { shouldDraw = true; } return true; }
+    else if (id.find(skCrypt("Foregrip")) != std::string::npos) { if(menu.loot_grip_vertical) { shouldDraw = true; } return true; }
+    else if (id.find(skCrypt("Stock_AR_Heavy")) != std::string::npos) { if(menu.loot_stock_heavy) { shouldDraw = true; } return true; }
+    else if (id.find(skCrypt("CheekPad")) != std::string::npos) { if(menu.loot_stock_cheek) { shouldDraw = true; } return true; }
+
+    // Magazines
+    else if (id.find(skCrypt("ExtendedQuickDraw")) != std::string::npos) { if(menu.loot_mag_ext_quick) { shouldDraw = true; } return true; }
+    else if (id.find(skCrypt("Extended_")) != std::string::npos) { if(menu.loot_mag_ext) { shouldDraw = true; } return true; }
+    else if (id.find(skCrypt("QuickDraw_")) != std::string::npos) { if(menu.loot_mag_quick) { shouldDraw = true; } return true; }
+    
+    return false;
+}
+
+bool TryResolveThrowableLoot(const std::string& id, const OverlayMenu& menu, ImU32& col, bool& shouldDraw) {
+    if      (id == skCrypt("Item_Weapon_Grenade_C")) { if(menu.loot_throw_frag) { shouldDraw = true; col = IM_COL32(255, 50, 50, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_SmokeBomb_C")) { if(menu.loot_throw_smoke) { shouldDraw = true; col = IM_COL32(200, 200, 200, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_FlashBang_C")) { if(menu.loot_throw_flash) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_Molotov_C")) { if(menu.loot_throw_molotov) { shouldDraw = true; col = IM_COL32(255, 150, 0, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_C4_C"))      { if(menu.loot_throw_c4)    { shouldDraw = true; col = IM_COL32(255, 0, 0, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_StickyGrenade_C")) { if(menu.loot_throw_sticky) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Weapon_BluezoneGrenade_C")) { if(menu.loot_throw_bz) { shouldDraw = true; col = IM_COL32(0, 100, 255, 255); } return true; }
+    else if (id == skCrypt("Item_Weapon_DecoyGrenade_C")) { if(menu.loot_throw_decoy) { shouldDraw = true; } return true; }
+    return false;
+}
+
+bool TryResolveRecoveryLoot(const std::string& id, const OverlayMenu& menu, ImU32& col, bool& shouldDraw) {
+    if (id == skCrypt("Item_Heal_MedKit_C") || id == skCrypt("Item_Heal_FirstAid_C")) { if(menu.loot_meds_healing) { shouldDraw = true; col = IM_COL32(100, 255, 100, 255); } return true; }
+    else if (id.find(skCrypt("Item_Boost")) != std::string::npos) { if(menu.loot_meds_boosts) { shouldDraw = true; col = IM_COL32(255, 255, 0, 255); } return true; }
+    return false;
+}
+
+bool TryResolveSpecialLoot(const std::string& id, const OverlayMenu& menu, ImU32& col, bool& shouldDraw) {
+    if      (id == skCrypt("Item_Ghillie_01_C")) { if(menu.loot_ghillie_arctic) { shouldDraw = true; col = IM_COL32(255, 255, 255, 255); } return true; }
+    else if (id == skCrypt("Item_Ghillie_02_C")) { if(menu.loot_ghillie_desert) { shouldDraw = true; col = IM_COL32(255, 200, 100, 255); } return true; }
+    else if (id == skCrypt("Item_Ghillie_03_C")) { if(menu.loot_ghillie_jungle) { shouldDraw = true; col = IM_COL32(0, 255, 0, 255); } return true; }
+    else if (id == skCrypt("Item_Ghillie_04_C")) { if(menu.loot_ghillie_forest) { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Ghillie_05_C")) { if(menu.loot_ghillie_mossy)  { shouldDraw = true; } return true; }
+    else if (id == skCrypt("Item_Ghillie_06_C")) { if(menu.loot_ghillie_brown)  { shouldDraw = true; } return true; }
     return false;
 }
 
@@ -495,151 +648,16 @@ void OverlayMenu::RenderLootEsp(ImDrawList* draw) {
                     }
                 } else { // Generic items
                     if (g_Menu.esp_items && item.Distance > 5.0f && item.Distance < static_cast<float>(g_Menu.loot_max_dist)) {
-                        const std::string& id = item.Name; // e.g. Item_Weapon_AK47_C
+                        const std::string& id = item.Name;
 
-                        // --- 1. WEAPONS: ASSAULT RIFLES ---
-                        if      (id == skCrypt("Item_Weapon_HK416_C")) { if(g_Menu.loot_weapon_hk416) { should_draw = true; col = IM_COL32(0, 255, 255, 255); } }
-                        else if (id == skCrypt("Item_Weapon_AK47_C"))  { if(g_Menu.loot_weapon_ak47)  { should_draw = true; col = IM_COL32(0, 255, 255, 255); } }
-                        else if (id == skCrypt("Item_Weapon_BerylM762_C")) { if(g_Menu.loot_weapon_beryl) { should_draw = true; col = IM_COL32(255, 120, 0, 255); } }
-                        else if (id == skCrypt("Item_Weapon_SCAR-L_C")) { if(g_Menu.loot_weapon_scar)  { should_draw = true; col = IM_COL32(0, 255, 255, 255); } }
-                        else if (id == skCrypt("Item_Weapon_AUG_C"))    { if(g_Menu.loot_weapon_aug)   { should_draw = true; col = IM_COL32(255, 255, 255, 255); } }
-                        else if (id == skCrypt("Item_Weapon_Groza_C"))  { if(g_Menu.loot_weapon_groza) { should_draw = true; col = IM_COL32(255, 100, 0, 255); } }
-                        else if (id == skCrypt("Item_Weapon_ACE32_C"))  { if(g_Menu.loot_weapon_ace32) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_FAMASG2_C")) { if(g_Menu.loot_weapon_famas) { should_draw = true; col = IM_COL32(255, 100, 0, 255); } }
-                        else if (id == skCrypt("Item_Weapon_G36C_C"))   { if(g_Menu.loot_weapon_g36c)  { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_QBZ95_C"))  { if(g_Menu.loot_weapon_qbz)   { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_K2_C"))     { if(g_Menu.loot_weapon_k2)    { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_Mk47Mutant_C")) { if(g_Menu.loot_weapon_mutant) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_M16A4_C"))  { if(g_Menu.loot_weapon_m16)   { should_draw = true; } }
-
-                        // --- 2. WEAPONS: SNIPERS & DMRS ---
-                        else if (id == skCrypt("Item_Weapon_AWM_C"))    { if(g_Menu.loot_weapon_awm)   { should_draw = true; col = IM_COL32(255, 0, 0, 255); } }
-                        else if (id == skCrypt("Item_Weapon_M24_C"))    { if(g_Menu.loot_weapon_m24)   { should_draw = true; col = IM_COL32(255, 150, 0, 255); } }
-                        else if (id == skCrypt("Item_Weapon_Kar98k_C")) { if(g_Menu.loot_weapon_kar98) { should_draw = true; col = IM_COL32(255, 150, 0, 255); } }
-                        else if (id == skCrypt("Item_Weapon_Mosin_C"))  { if(g_Menu.loot_weapon_mosin) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_Win1894_C")) { if(g_Menu.loot_weapon_win94) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_Mk14_C"))   { if(g_Menu.loot_weapon_mk14)  { should_draw = true; col = IM_COL32(255, 0, 255, 255); } }
-                        else if (id == skCrypt("Item_Weapon_FNFal_C"))  { if(g_Menu.loot_weapon_slr)   { should_draw = true; col = IM_COL32(0, 255, 200, 255); } }
-                        else if (id == skCrypt("Item_Weapon_SKS_C"))    { if(g_Menu.loot_weapon_sks)   { should_draw = true; col = IM_COL32(0, 255, 200, 255); } }
-                        else if (id == skCrypt("Item_Weapon_Mk12_C"))   { if(g_Menu.loot_weapon_mk12)  { should_draw = true; col = IM_COL32(0, 255, 200, 255); } }
-                        else if (id == skCrypt("Item_Weapon_Dragunov_C")) { if(g_Menu.loot_weapon_dragunov) { should_draw = true; col = IM_COL32(255, 0, 255, 255); } }
-                        else if (id == skCrypt("Item_Weapon_Mini14_C")) { if(g_Menu.loot_weapon_mini14) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_QBU88_C"))  { if(g_Menu.loot_weapon_qbu)   { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_VSS_C"))    { if(g_Menu.loot_weapon_vss)   { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_L6_C"))     { if(g_Menu.loot_weapon_lynx)  { should_draw = true; col = IM_COL32(255, 0, 0, 255); } }
-
-                        // --- 3. WEAPONS: SMG & LMG ---
-                        else if (id == skCrypt("Item_Weapon_P90_C"))    { if(g_Menu.loot_weapon_p90)   { should_draw = true; col = IM_COL32(255, 255, 0, 255); } }
-                        else if (id == skCrypt("Item_Weapon_UMP_C"))    { if(g_Menu.loot_weapon_ump)   { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_Vector_C")) { if(g_Menu.loot_weapon_vector){ should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_UZI_C"))    { if(g_Menu.loot_weapon_uzi)   { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_MP5K_C"))   { if(g_Menu.loot_weapon_mp5)   { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_MP9_C"))    { if(g_Menu.loot_weapon_mp9)   { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_JS9_C"))    { if(g_Menu.loot_weapon_js9)   { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_BizonPP19_C")) { if(g_Menu.loot_weapon_bizon) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_Thompson_C")) { if(g_Menu.loot_weapon_thompson) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_MG3_C"))    { if(g_Menu.loot_weapon_mg3)   { should_draw = true; col = IM_COL32(255, 100, 0, 255); } }
-                        else if (id == skCrypt("Item_Weapon_M249_C"))   { if(g_Menu.loot_weapon_m249)  { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_DP28_C"))   { if(g_Menu.loot_weapon_dp28)  { should_draw = true; } }
-
-                        // --- 4. WEAPONS: SHOTGUNS & HANDGUNS ---
-                        else if (id == skCrypt("Item_Weapon_DP12_C"))   { if(g_Menu.loot_weapon_dp12)  { should_draw = true; col = IM_COL32(0, 255, 0, 255); } }
-                        else if (id == skCrypt("Item_Weapon_Saiga12_C")) { if(g_Menu.loot_weapon_s12k)  { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_OriginS12_C")) { if(g_Menu.loot_weapon_saiga) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_Berreta686_C")) { if(g_Menu.loot_weapon_db)  { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_Winchester_C")) { if(g_Menu.loot_weapon_s1897) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_Sawnoff_C")) { if(g_Menu.loot_weapon_sawedoff) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_DesertEagle_C")) { if(g_Menu.loot_weapon_deagle) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_vz61Skorpion_C")) { if(g_Menu.loot_weapon_skorpion) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_M1911_C"))  { if(g_Menu.loot_weapon_m1911) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_M9_C"))     { if(g_Menu.loot_weapon_p92)   { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_G18_C"))    { if(g_Menu.loot_weapon_p18c)  { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_Rhino_C"))  { if(g_Menu.loot_weapon_rhino) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_NagantM1895_C")) { if(g_Menu.loot_weapon_nagant) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_StunGun_C")) { if(g_Menu.loot_weapon_stungun) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_FlareGun_C")) { if(g_Menu.loot_weapon_flare) { should_draw = true; col = IM_COL32(255, 80, 40, 255); } }
-                        else if (id == skCrypt("Item_Weapon_Crossbow_C")) { if(g_Menu.loot_weapon_crossbow) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_PanzerFaust100M_C") || id.find(skCrypt("PanzerFaust")) != std::string::npos) { if(g_Menu.loot_weapon_panzer) { should_draw = true; col = IM_COL32(255, 120, 0, 255); } }
-                        else if (id == skCrypt("Item_Weapon_M79_C")) { if(g_Menu.loot_weapon_m79) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_Pan_C")) { if(g_Menu.loot_weapon_pan) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_Cowbar_C")) { if(g_Menu.loot_weapon_crowbar) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_Machete_C")) { if(g_Menu.loot_weapon_machete) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_Sickle_C")) { if(g_Menu.loot_weapon_sickle) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_Pickaxe_C")) { if(g_Menu.loot_weapon_pickaxe) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_SpikeTrap_C")) { if(g_Menu.loot_weapon_spike) { should_draw = true; } }
-
-                        // --- 5. AMMO: INDIVIDUAL FILTERS ---
-                        else if (id == skCrypt("Item_Ammo_556mm_C"))    { if(g_Menu.loot_ammo_556) { should_draw = true; col = IM_COL32(100, 255, 100, 220); } }
-                        else if (id == skCrypt("Item_Ammo_762mm_C"))    { if(g_Menu.loot_ammo_762) { should_draw = true; col = IM_COL32(255, 120, 100, 220); } }
-                        else if (id == skCrypt("Item_Ammo_300Magnum_C")) { if(g_Menu.loot_ammo_300) { should_draw = true; col = IM_COL32(255, 0, 0, 255); } }
-                        else if (id == skCrypt("Item_Ammo_9mm_C"))      { if(g_Menu.loot_ammo_9mm) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Ammo_45ACP_C"))    { if(g_Menu.loot_ammo_45)  { should_draw = true; } }
-                        else if (id == skCrypt("Item_Ammo_12Guage_C"))  { if(g_Menu.loot_ammo_12g) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Ammo_12GuageSlug_C")) { if(g_Menu.loot_ammo_slug) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Ammo_57mm_C"))     { if(g_Menu.loot_ammo_57)  { should_draw = true; } }
-                        else if (id == skCrypt("Item_Ammo_40mm_C"))     { if(g_Menu.loot_ammo_40)  { should_draw = true; } }
-                        else if (id == skCrypt("Item_Ammo_Bolt_C"))     { if(g_Menu.loot_ammo_bolt) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Ammo_Flare_C"))    { if(g_Menu.loot_ammo_flare) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Ammo_Mortar_C"))   { if(g_Menu.loot_ammo_mortar) { should_draw = true; } }
-
-                        // --- 6. ATTACHMENTS: SCOPES ---
-                        else if (id.find(skCrypt("DotSight")) != std::string::npos) { if(g_Menu.loot_scope_reddot) { should_draw = true; } }
-                        else if (id.find(skCrypt("Holosight")) != std::string::npos) { if(g_Menu.loot_scope_holo) { should_draw = true; } }
-                        else if (id.find(skCrypt("Aimpoint")) != std::string::npos) { if(g_Menu.loot_scope_2x) { should_draw = true; } }
-                        else if (id.find(skCrypt("Scope3x")) != std::string::npos) { if(g_Menu.loot_scope_3x) { should_draw = true; } }
-                        else if (id.find(skCrypt("ACOG")) != std::string::npos) { if(g_Menu.loot_scope_4x) { should_draw = true; } }
-                        else if (id.find(skCrypt("Scope6x")) != std::string::npos) { if(g_Menu.loot_scope_6x) { should_draw = true; } }
-                        else if (id.find(skCrypt("CQBSS")) != std::string::npos) { if(g_Menu.loot_scope_8x) { should_draw = true; col = IM_COL32(255, 0, 255, 255); } }
-                        else if (id.find(skCrypt("PM2")) != std::string::npos) { if(g_Menu.loot_scope_15x) { should_draw = true; col = IM_COL32(255, 0, 255, 255); } }
-                        else if (id.find(skCrypt("Thermal")) != std::string::npos) { if(g_Menu.loot_scope_thermal) { should_draw = true; col = IM_COL32(255, 0, 255, 255); } }
-
-                        // --- 7. ATTACHMENTS: MUZZLES ---
-                        else if (id.find(skCrypt("Compensator")) != std::string::npos) { if(g_Menu.loot_muzzle_comp) { should_draw = true; } }
-                        else if (id.find(skCrypt("FlashHider")) != std::string::npos) { if(g_Menu.loot_muzzle_flash) { should_draw = true; } }
-                        else if (id.find(skCrypt("Suppressor")) != std::string::npos) { if(g_Menu.loot_muzzle_supp) { should_draw = true; col = IM_COL32(0, 255, 0, 255); } }
-                        else if (id.find(skCrypt("Choke")) != std::string::npos) { if(g_Menu.loot_muzzle_choke) { should_draw = true; } }
-
-                        // --- 8. ATTACHMENTS: GRIPS & STOCKS ---
-                        else if (id.find(skCrypt("AngledForeGrip")) != std::string::npos) { if(g_Menu.loot_grip_angled) { should_draw = true; } }
-                        else if (id.find(skCrypt("HalfGrip")) != std::string::npos) { if(g_Menu.loot_grip_half) { should_draw = true; } }
-                        else if (id.find(skCrypt("ThumbGrip")) != std::string::npos) { if(g_Menu.loot_grip_thumb) { should_draw = true; } }
-                        else if (id.find(skCrypt("Lightweight")) != std::string::npos) { if(g_Menu.loot_grip_light) { should_draw = true; } }
-                        else if (id.find(skCrypt("Foregrip")) != std::string::npos) { if(g_Menu.loot_grip_vertical) { should_draw = true; } }
-                        else if (id.find(skCrypt("Stock_AR_Heavy")) != std::string::npos) { if(g_Menu.loot_stock_heavy) { should_draw = true; } }
-                        else if (id.find(skCrypt("CheekPad")) != std::string::npos) { if(g_Menu.loot_stock_cheek) { should_draw = true; } }
-
-                        // --- 9. ATTACHMENTS: MAGAZINES ---
-                        else if (id.find(skCrypt("ExtendedQuickDraw")) != std::string::npos) { if(g_Menu.loot_mag_ext_quick) { should_draw = true; } }
-                        else if (id.find(skCrypt("Extended_")) != std::string::npos) { if(g_Menu.loot_mag_ext) { should_draw = true; } }
-                        else if (id.find(skCrypt("QuickDraw_")) != std::string::npos) { if(g_Menu.loot_mag_quick) { should_draw = true; } }
-
-                        // --- 10. THROWABLES & TACTICAL ---
-                        else if (id == skCrypt("Item_Weapon_Grenade_C")) { if(g_Menu.loot_throw_frag) { should_draw = true; col = IM_COL32(255, 50, 50, 255); } }
-                        else if (id == skCrypt("Item_Weapon_SmokeBomb_C")) { if(g_Menu.loot_throw_smoke) { should_draw = true; col = IM_COL32(200, 200, 200, 255); } }
-                        else if (id == skCrypt("Item_Weapon_FlashBang_C")) { if(g_Menu.loot_throw_flash) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_Molotov_C")) { if(g_Menu.loot_throw_molotov) { should_draw = true; col = IM_COL32(255, 150, 0, 255); } }
-                        else if (id == skCrypt("Item_Weapon_C4_C"))      { if(g_Menu.loot_throw_c4)    { should_draw = true; col = IM_COL32(255, 0, 0, 255); } }
-                        else if (id == skCrypt("Item_Weapon_StickyGrenade_C")) { if(g_Menu.loot_throw_sticky) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_BluezoneGrenade_C")) { if(g_Menu.loot_throw_bz) { should_draw = true; col = IM_COL32(0, 100, 255, 255); } }
-                        else if (id == skCrypt("Item_Weapon_DecoyGrenade_C")) { if(g_Menu.loot_throw_decoy) { should_draw = true; } }
-
-                        // --- 11. GEAR & TACTICAL UTILITY ---
+                        if (TryResolveWeaponLoot(id, g_Menu, col, should_draw)) {}
+                        else if (TryResolveAmmoLoot(id, g_Menu, col, should_draw)) {}
+                        else if (TryResolveAttachmentLoot(id, g_Menu, col, should_draw)) {}
+                        else if (TryResolveThrowableLoot(id, g_Menu, col, should_draw)) {}
                         else if (TryResolveGearOrUtilityLoot(id, g_Menu, col, should_draw)) {}
-
-                        // --- 12. RECOVERY: MEDS & BOOSTS ---
-                        else if (id == skCrypt("Item_Heal_MedKit_C") || id == skCrypt("Item_Heal_FirstAid_C")) { if(g_Menu.loot_meds_healing) { should_draw = true; col = IM_COL32(100, 255, 100, 255); } }
-                        else if (id.find(skCrypt("Item_Boost")) != std::string::npos) { if(g_Menu.loot_meds_boosts) { should_draw = true; col = IM_COL32(255, 255, 0, 255); } }
-
-                        // --- 13. SPECIAL: GHILLIE & KEYS & REPAIR ---
-                        else if (id == skCrypt("Item_Ghillie_01_C")) { if(g_Menu.loot_ghillie_arctic) { should_draw = true; col = IM_COL32(255, 255, 255, 255); } }
-                        else if (id == skCrypt("Item_Ghillie_02_C")) { if(g_Menu.loot_ghillie_desert) { should_draw = true; col = IM_COL32(255, 200, 100, 255); } }
-                        else if (id == skCrypt("Item_Ghillie_03_C")) { if(g_Menu.loot_ghillie_jungle) { should_draw = true; col = IM_COL32(0, 255, 0, 255); } }
-                        else if (id == skCrypt("Item_Ghillie_04_C")) { if(g_Menu.loot_ghillie_forest) { should_draw = true; } }
-                        else if (id == skCrypt("Item_Ghillie_05_C")) { if(g_Menu.loot_ghillie_mossy)  { should_draw = true; } }
-                        else if (id == skCrypt("Item_Ghillie_06_C")) { if(g_Menu.loot_ghillie_brown)  { should_draw = true; } }
+                        else if (TryResolveRecoveryLoot(id, g_Menu, col, should_draw)) {}
+                        else if (TryResolveSpecialLoot(id, g_Menu, col, should_draw)) {}
                         else if (TryResolveKeyOrRepairLoot(id, g_Menu, col, should_draw)) {}
-
-                        // --- 14. CATCH-ALL & IMPORTANT ---
                         else if (g_Menu.loot_weapon_all || item.IsImportant) should_draw = true;
                     }
                 }

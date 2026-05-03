@@ -227,7 +227,7 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     ImGui::TextDisabled("%s", Lang.HeaderDangerScan);
     ImGui::SliderFloat(Lang.Distance, &maxDistance, 5.0f, 400.0f, skCrypt("%.0f m"));
     DrawFlickTargetCombo(Lang.Target, &targetPart);
-    ImGui::SliderFloat(Lang.AimFOV, &categoryFov, 1.0f, 100.0f, skCrypt("%.0f"));
+    ImGui::SliderFloat(Lang.AimFOV, &categoryFov, 1.0f, 20.0f, skCrypt("%.0f"));
     ImGui::Checkbox(Lang.FOVCircle, &fovCircle);
     ImGui::SliderFloat(Lang.Speed, &moveSpeed, 0.0f, 100.0f, skCrypt("%.0f"));
     ImGui::SliderFloat(Lang.Smoothness, &smoothness, 0.0f, 100.0f, skCrypt("%.0f"));
@@ -267,6 +267,7 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     ImGui::Checkbox(Lang.GrenadeLine, &g_Menu.esp_grenade_prediction);
     ImGui::Checkbox(Lang.Projectiles, &g_Menu.esp_projectile_tracer);
     ImGui::Checkbox(Lang.ThreatWarning, &g_Menu.esp_threat_warning);
+    ImGui::Checkbox(skCrypt("Ping Aim Targeting"), &g_Menu.ping_aim_enabled);
     
     ImGui::Separator();
     ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), skCrypt("HEAVY WEAPON - MORTAR"));

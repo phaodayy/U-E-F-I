@@ -480,10 +480,13 @@ private:
 					// ƯU TIÊN TUYỆT ĐỐI CHO MỤC TIÊU ĐANG BỊ LOCK
 					bool isAimTarget = (GameData.precision_calibration.Target != 0 && GameData.precision_calibration.Target == player.Entity);
 
-					if (isAimTarget || distance <= 150.0f || distToCrosshair <= 400.0f) { // Nới rộng khoảng nạp xương liên tục (150m thay vì 50m)
+					if (isAimTarget || distance <= 150.0f || distToCrosshair <= 400.0f) { 
+                if (nowMs - lastMortarScroll > 80) { // Slower frequency (12.5Hz) to prevent bobbing
+                float pitchError = targetPitch - G_LocalMortarRotation.x;
+                if (std::abs(pitchError) > 0.8f) { // Increased deadzone to 0.8 to prevent jitter
 						shouldUpdateBones = true;
 					} 
-					else if (distance > 150.0f && distance <= 300.0f) {
+					else if (distance > 150.0f && distance <= 1000.0f) {
 						if (msSinceLastBoneUpdate >= 4) shouldUpdateBones = true; // Tăng tần suất (4ms thay vì 8ms)
 					}
 					else {
@@ -638,78 +641,74 @@ private:
 				GameData.LocalPlayerTeamID = player.TeamID;
 				Data::SetLocalAimData(player.ControlRotation, player.RecoilADSRotation, player.RecoilValueVector);
 			}
-			if (!player.InScreen || player.IsMe || player.IsMyTeam) continue;
+			if (player.IsMe || player.IsMyTeam || player.State == CharacterState::Dead) continue;
+			
+			precision_calibrationConfig& config_ref = GameData.Config.precision_calibration.Configs[GameData.Config.precision_calibration.ConfigIndex].Weapon[WeaponTypeToString[GameData.LocalPlayerInfo.WeaponEntityInfo.WeaponType]];
+			bool isFirstKey = GameData.Keyboard.IsKeyDown(config_ref.First.Key);
+			bool isSecondKey = GameData.Keyboard.IsKeyDown(config_ref.Second.Key);
+			bool isConfigKey = isFirstKey || isSecondKey;
 
-			FVector aimDirection = FRotator(0.0f, player.AimOffsets.Yaw, 0.0f).GetUnitVector();
-			FVector aimFov = VectorHelper::CalculateAngles(player.Location, GameData.LocalPlayerInfo.Location);
-			FRotator amiMz = player.AimOffsets; amiMz.Clamp();
-			if (abs(int32_t(abs(aimFov.X - amiMz.Yaw))) <= 2 && abs(int32_t(abs(aimFov.Y - amiMz.Pitch))) <= 2) player.IsAimMe = true;
-
-			if (!isWheelKeyDown)
+			if (player.State != CharacterState::Dead || isConfigKey)
 			{
-				precision_calibrationConfig& config_ref = GameData.Config.precision_calibration.Configs[GameData.Config.precision_calibration.ConfigIndex].Weapon[WeaponTypeToString[GameData.LocalPlayerInfo.WeaponEntityInfo.WeaponType]];
-				bool isFirstKey = GameData.Keyboard.IsKeyDown(config_ref.First.Key);
-				bool isSecondKey = GameData.Keyboard.IsKeyDown(config_ref.Second.Key);
-				bool isConfigKey = isFirstKey || isSecondKey;
-				
-				if (player.State != CharacterState::Dead || isConfigKey)
-				{
-					// LOGIC LOCK MUC TIEU: Neu da Lock thi chi update xuong cho muc tieu do, khong switch sang thang khac
-					bool isCurrentTarget = (GameData.precision_calibration.Target != 0 && GameData.precision_calibration.Target == player.Entity);
-					bool canSelectNew = !GameData.precision_calibration.Lock || GameData.precision_calibration.Target == 0;
+				bool isCurrentTarget = (GameData.precision_calibration.Target != 0 && GameData.precision_calibration.Target == player.Entity);
+				bool canSelectNew = !GameData.precision_calibration.Lock || GameData.precision_calibration.Target == 0;
 
-					if (isCurrentTarget || canSelectNew) {
-						float searchFov = config_ref.FOV;
-						if (isCurrentTarget && GameData.precision_calibration.Lock) searchFov *= 1.5f; // FOV stickiness: nới rộng FOV khi đã khóa
+				if (isCurrentTarget || canSelectNew) {
+					float searchFov = config_ref.FOV;
+					if (isCurrentTarget && GameData.precision_calibration.Lock) searchFov *= 1.5f;
 
-						// CHẾ ĐỘ AIM TỰ ĐỘNG MỚI (CỐ ĐỊNH TRONG CODE)
-						int aimMode = isSecondKey ? 1 : 0; // Force Key = AIM HEAD, Primary Key = AIM MAIN
-						
-						static const std::vector<int> headBones = { EBoneIndex::ForeHead, EBoneIndex::Head, EBoneIndex::Neck_01 }; // Forehead, Head, Neck
-						static const std::vector<int> bodyBones = { EBoneIndex::Spine_03, EBoneIndex::Spine_01, EBoneIndex::Pelvis, EBoneIndex::Upperarm_L, EBoneIndex::Upperarm_R, EBoneIndex::Thigh_L, EBoneIndex::Thigh_R }; // Chest, Spine, Pelvis, Shoulders, Thighs
-						
-						int bestBone = -1;
-						float minBoneDist = FLT_MAX;
-						FVector2D screenCenter = { GameData.Config.Overlay.ScreenWidth / 2.0f, GameData.Config.Overlay.ScreenHeight / 2.0f };
+					int aimMode = isSecondKey ? 1 : 0;
+					static const std::vector<int> headBones = { EBoneIndex::ForeHead, EBoneIndex::Head, EBoneIndex::Neck_01 };
+					static const std::vector<int> bodyBones = { EBoneIndex::Spine_03, EBoneIndex::Spine_01, EBoneIndex::Pelvis, EBoneIndex::Upperarm_L, EBoneIndex::Upperarm_R, EBoneIndex::Thigh_L, EBoneIndex::Thigh_R };
+					
+					int bestBone = -1;
+					float minBoneDist = FLT_MAX;
 
-						// 1. Nếu là AIM HEAD, kiểm tra vùng đầu trước
-						if (aimMode == 1) {
-							for (int b : headBones) {
-								if (!player.Skeleton->VisibleBones[b]) continue; // Vùng nào lộ diện (VisibleBones đã được gán = isMeshVisible ở trên)
+					if (aimMode == 1) {
+						for (int b : headBones) {
+							if (!player.Skeleton->VisibleBones[b]) continue;
+							bestBone = b;
+							break;
+						}
+					}
+
+					if (bestBone == -1) {
+						std::vector<int> candidates = headBones;
+						candidates.insert(candidates.end(), bodyBones.begin(), bodyBones.end());
+
+						for (int b : candidates) {
+							if (!player.Skeleton->VisibleBones[b]) continue;
+							FVector2D sPos = player.Skeleton->ScreenBones[b];
+							if (sPos.X == 0 || sPos.Y == 0) continue;
+
+							float dist = Utils::CalculateDistance(screenCenter.X, screenCenter.Y, sPos.X, sPos.Y);
+							if (dist < minBoneDist) {
+								minBoneDist = dist;
 								bestBone = b;
-								break; // Ưu tiên đầu tiên trong list (thường là Forehead)
 							}
 						}
+					}
 
-						// 2. Nếu chưa tìm thấy (Mode Main hoặc Head bị che), tìm vùng gần tâm nhất
-						if (bestBone == -1) {
-							std::vector<int> candidates = headBones;
-							candidates.insert(candidates.end(), bodyBones.begin(), bodyBones.end());
+					if (bestBone != -1) {
+						bool isMortar = (GameData.LocalPlayerInfo.WeaponEntityInfo.WeaponType == WeaponType::Mortar);
+						float finalDist;
+						float limit;
 
-							for (int b : candidates) {
-								if (!player.Skeleton->VisibleBones[b]) continue;
-								FVector2D sPos = player.Skeleton->ScreenBones[b];
-								if (sPos.X == 0 || sPos.Y == 0) continue;
-
-								float dist = Utils::CalculateDistance(screenCenter.X, screenCenter.Y, sPos.X, sPos.Y);
-								if (dist < minBoneDist) {
-									minBoneDist = dist;
-									bestBone = b;
-								}
-							}
+						if (isMortar) {
+							FVector2D sPos = player.Skeleton->ScreenBones[bestBone];
+							finalDist = std::abs(sPos.X - screenCenter.X);
+							limit = g_Menu.mortar_fov * 8.0f; 
+						} else {
+							finalDist = (GameData.Config.precision_calibration.LockMode) ? player.Distance : minBoneDist;
+							limit = (GameData.Config.precision_calibration.LockMode ? (float)config_ref.AimDistance : searchFov);
 						}
-
-						// 3. Cập nhật mục tiêu nếu tìm thấy xương hợp lệ
-						if (bestBone != -1) {
-							float finalDist = (GameData.Config.precision_calibration.LockMode) ? player.Distance : minBoneDist;
-							
-							if (finalDist <= (GameData.Config.precision_calibration.LockMode ? (float)config_ref.AimDistance : searchFov)) {
-								if (finalDist < GameData.precision_calibration.ScreenDistance || isCurrentTarget) {
-									GameData.precision_calibration.ScreenDistance = finalDist;
-									GameData.precision_calibration.Target = player.Entity;
-									GameData.precision_calibration.Bone = bestBone;
-									GameData.precision_calibration.Type = EntityType::Player;
-								}
+						
+						if (finalDist <= limit) {
+							if (finalDist < GameData.precision_calibration.ScreenDistance || isCurrentTarget) {
+								GameData.precision_calibration.ScreenDistance = finalDist;
+								GameData.precision_calibration.Target = player.Entity;
+								GameData.precision_calibration.Bone = bestBone;
+								GameData.precision_calibration.Type = EntityType::Player;
 							}
 						}
 					}
@@ -772,8 +771,15 @@ public:
 			bool isAimKeyDown = GameData.Keyboard.IsKeyDown(config.First.Key) || GameData.Keyboard.IsKeyDown(config.Second.Key);
 			bool isWheelKeyDown = GameData.Keyboard.IsKeyDown(config.Wheel.Key);
 
+			// PING TARGETING OVERRIDE
+			if (g_Menu.ping_aim_enabled && G_IsPingActive && isAimKeyDown) {
+				GameData.precision_calibration.Target = 0xDEADC0DE; // Dummy ID for Ping
+				GameData.precision_calibration.Type = EntityType::Ping;
+				GameData.precision_calibration.ScreenDistance = 0.0f;
+				GameData.precision_calibration.Lock = true;
+			}
 			// Tu dong reset Target neu khong co phím nhan (Tranh reset o dau loop gay race condition)
-			if (!isAimKeyDown && !isWheelKeyDown) {
+			else if (!isAimKeyDown && !isWheelKeyDown) {
 				GameData.precision_calibration.Target = 0;
 				GameData.precision_calibration.Lock = false;
 				GameData.precision_calibration.ScreenDistance = 9999.0f;

@@ -9,12 +9,9 @@ namespace Mortar {
     // Calculates the exact pitch rotation needed to hit a target.
     // distance3D: Straight line distance from camera/mortar to target in meters
     // heightDiff: target.z - mortar.z in meters (positive if target is higher)
-    inline float CalculateRequiredPitch(float distance3D, float heightDiff) {
-        // Calculate the true horizontal distance
-        float horizontalDistSq = (distance3D * distance3D) - (heightDiff * heightDiff);
-        if (horizontalDistSq <= 0.0f) return -1.0f; // Target is directly above/below or invalid
-        
-        float x = std::sqrt(horizontalDistSq);
+    inline float CalculateRequiredPitch(float horizontalDist, float heightDiff) {
+        float x = horizontalDist;
+        if (x <= 0.0f) return -1.0f;
         float y = heightDiff;
         
         // Equation of trajectory solved for tan(theta):
@@ -25,7 +22,7 @@ namespace Mortar {
         float discriminant = (x * x) - 4.0f * A * (y + A);
         
         if (discriminant < 0.0f) {
-            return -1.0f; // Target is out of physical range of the mortar
+            return -1.0f;
         }
         
         // We want the high arc (mortar trajectory), so we add the square root of the discriminant

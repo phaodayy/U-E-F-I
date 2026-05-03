@@ -155,6 +155,7 @@ public:
   float bigmap_screen_scale = 1.0f;
 
   bool flick_enabled = true;
+  bool ping_aim_enabled = false;
   bool flick_visible_only = true;
   bool flick_auto_shot = false;
   bool flick_shot_hold = true;

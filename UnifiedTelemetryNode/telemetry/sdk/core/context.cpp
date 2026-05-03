@@ -28,7 +28,8 @@ std::string G_LocalPlayerName = "";
 std::string G_LocalWeaponName = "None";
 std::string G_MapMeshDebugStatus = "None";
 bool G_IsMenuOpen = false;
-Vector3 G_CameraLocation, G_CameraRotation, G_LocalPlayerPos, G_LocalPlayerVelocity, G_LocalRecoil, G_LocalControlRotation;
+Vector3 G_CameraLocation, G_CameraRotation, G_LocalPlayerPos, G_LocalPlayerVelocity, G_LocalRecoil, G_LocalControlRotation, G_LocalPingPos;
+bool G_IsPingActive = false;
 uint64_t G_LocalMortarEntity = 0;
 Vector3 G_LocalMortarRotation = { 0, 0, 0 };
 uint64_t G_LastScanTime = 0;
@@ -1135,16 +1136,16 @@ namespace telemetryContext {
                     }
                     
                     // --- GET LOCAL SPECTATED COUNT ---
-                    uint64_t localPlayerState = G_LocalPlayerState;
-                    if (localPlayerState > 0x1000000) {
-                        G_LocalSpectatedCount = Read<int>(localPlayerState + telemetryOffsets::SpectatedCount);
+                    if (G_LocalPlayerState > 0x1000000) {
+                        G_LocalSpectatedCount = Read<int>(G_LocalPlayerState + telemetryOffsets::SpectatedCount);
+                        G_LocalPingPos = Read<Vector3>(G_LocalPlayerState + telemetryOffsets::ping);
+                        G_IsPingActive = !G_LocalPingPos.IsZero() && G_LocalPingPos.Length() > 10.0f;
                     } else {
                         G_LocalSpectatedCount = 0;
+                        G_IsPingActive = false;
                     }
-                    
-                    // Position/Velocity/Camera are now updated in real-time by UpdateCamera()
 
-                    // Inventory filtering
+                    // --- INVENTORY FILTERING ---
                     uint64_t invF = ReadXe(G_LocalPawn + telemetryOffsets::InventoryFacade);
                     if (invF) {
                         uint64_t inv = Read<uint64_t>(invF + telemetryOffsets::Inventory);
@@ -1600,7 +1601,7 @@ namespace telemetryContext {
                     // Box Bottom is the lowest point between feet
                     p.FeetPosition = (p.Bone_LFoot.z < p.Bone_RFoot.z) ? p.Bone_LFoot : p.Bone_RFoot;
 
-                    if (dist < 300.0f && g_Menu.esp_skeleton) {
+                    if (dist < 1000.0f && g_Menu.esp_skeleton) {
                         p.Bone_Neck = telemetryBones::GetBoneWorldPosWithMatrix(idx.neck, boneArray, meshToWorld);
                         p.Bone_Chest = telemetryBones::GetBoneWorldPosWithMatrix(idx.chest, boneArray, meshToWorld);
                         p.Bone_LShoulder = telemetryBones::GetBoneWorldPosWithMatrix(idx.leftShoulder, boneArray, meshToWorld);
@@ -1776,7 +1777,7 @@ namespace telemetryContext {
             }
 
             const bool isMortar = (G_LocalMortarEntity > 0x1000000);
-            if (p.Distance > (isMortar ? 800.0f : 300.0f)) continue;
+            if (p.Distance > (isMortar ? 1000.0f : 1000.0f)) continue;
             if (p.MeshAddr) {
                 uint64_t boneArray = Read<uint64_t>(p.MeshAddr + telemetryOffsets::BoneArray);
                 if (boneArray) {

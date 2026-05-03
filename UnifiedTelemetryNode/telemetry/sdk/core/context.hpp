@@ -72,7 +72,8 @@ extern uint64_t G_UWorld, G_GameInstance, G_PersistentLevel, G_LocalPlayer, G_Pl
 extern std::string G_LocalWeaponName;
 extern std::string G_MapMeshDebugStatus;
 extern bool G_IsMenuOpen;
-extern Vector3 G_CameraLocation, G_CameraRotation, G_LocalPlayerPos, G_LocalPlayerVelocity, G_LocalRecoil, G_LocalControlRotation;
+extern Vector3 G_CameraLocation, G_CameraRotation, G_LocalPlayerPos, G_LocalPlayerVelocity, G_LocalRecoil, G_LocalControlRotation, G_LocalPingPos;
+extern bool G_IsPingActive;
 extern uint64_t G_LocalMortarEntity;
 extern Vector3 G_LocalMortarRotation;
 extern uint64_t G_LastScanTime;

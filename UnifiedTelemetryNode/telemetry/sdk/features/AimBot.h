@@ -1074,7 +1074,7 @@ public:
                 continue;
             }
 
-            if (GameData.precision_calibration.Target == 0) {
+            if (GameData.precision_calibration.Target == 0 && GameData.precision_calibration.Type != EntityType::Ping) {
                 if (GameData.precision_calibration.Lock) {
                     Utils::Log(1, "[AIM] Target lost, unlocking.");
                     GameData.precision_calibration.Lock = false;
@@ -1082,54 +1082,59 @@ public:
                 continue;
             }
 
-            // TOI UU: Dung Pointer de tranh copy struct Player nang
-            Player* playerPtr = Data::GetPlayersItemPtr(GameData.precision_calibration.Target);
-            if (!playerPtr || playerPtr->Entity == 0 || playerPtr->Health <= 0) {
-                GameData.precision_calibration.Target = 0;
-                GameData.precision_calibration.Lock = false;
-                continue;
-            }
-            Player& player = *playerPtr;
-
-            if (!GameData.precision_calibration.Lock) {
-                Utils::Log(1, "[AIM] Locking onto target: %s", player.Name.c_str());
-            }
-            GameData.precision_calibration.Lock = true;
-
-            // SỬ DỤNG XƯƠNG ĐÃ ĐƯỢC CHỌN TỰ ĐỘNG TỪ PLAYERS.H
-            int aimBone = GameData.precision_calibration.Bone;
-            if (g_isMortars) aimBone = 1; // Always aim for Pelvis when using Mortar
-            else if (aimBone <= 0) aimBone = 15; 
-
-
-            // Kiểm tra vật cản nếu bật VisibleCheck
-            if (config.VisibleCheck && !player.IsVisible) {
-                GameData.precision_calibration.Lock = false;
-                continue;
-            }
-
-            FVector targetPos = player.Skeleton->LocationBones[aimBone];
-
             // 4. LAY DU LIEU CAMERA DONG BO (Tu CameraCache 0xA30, 0xA10)
             CameraData camera = Data::GetCamera();
             FVector cameraLocation = camera.Location;
             FRotator currentRotation = camera.Rotation; // Sử dụng Camera Rotation làm gốc tham chiếu hiện tại
             float cameraFOV = camera.FOV <= 0.0f ? 90.0f : camera.FOV;
 
-            // PREDICTION
-            float initialSpeed = g_currentWeaponData.TrajectoryConfigs.InitialSpeed;
-            float gravityZ = g_currentWeaponData.TrajectoryGravityZ;
+            FVector targetPos;
+            if (GameData.precision_calibration.Type == EntityType::Ping) {
+                targetPos = G_LocalPingPos;
+                GameData.precision_calibration.Lock = true;
+            } else {
+                // TOI UU: Dung Pointer de tranh copy struct Player nang
+                Player* playerPtr = Data::GetPlayersItemPtr(GameData.precision_calibration.Target);
+                if (!playerPtr || playerPtr->Entity == 0 || (GameData.precision_calibration.Type != EntityType::Wheel && playerPtr->Health <= 0)) {
+                    GameData.precision_calibration.Target = 0;
+                    GameData.precision_calibration.Lock = false;
+                    continue;
+                }
+                Player& player = *playerPtr;
 
-            if (config.Prediction && initialSpeed > 100.0f) {
-                FVector safeVelocity = player.Velocity;
-                if (safeVelocity.Length() > 4000.0f) safeVelocity = {0,0,0};
-                targetPos = GetAdvancedPrediction(cameraLocation, targetPos, safeVelocity, initialSpeed, gravityZ);
+                if (!GameData.precision_calibration.Lock) {
+                    Utils::Log(1, "[AIM] Locking onto target: %s", player.Name.c_str());
+                }
+                GameData.precision_calibration.Lock = true;
+
+                // SỬ DỤNG XƯƠNG ĐÃ ĐƯỢC CHỌN TỰ ĐỘNG TỪ PLAYERS.H
+                int aimBone = GameData.precision_calibration.Bone;
+                if (g_isMortars) aimBone = 1; // Always aim for Pelvis when using Mortar
+                else if (aimBone <= 0) aimBone = 15; 
+
+                // Kiểm tra vật cản nếu bật VisibleCheck
+                if (config.VisibleCheck && !player.IsVisible) {
+                    GameData.precision_calibration.Lock = false;
+                    continue;
+                }
+
+                targetPos = player.Skeleton->LocationBones[aimBone];
+
+                // PREDICTION
+                float initialSpeed = g_currentWeaponData.TrajectoryConfigs.InitialSpeed;
+                float gravityZ = g_currentWeaponData.TrajectoryGravityZ;
+
+                if (config.Prediction && initialSpeed > 100.0f) {
+                    FVector safeVelocity = player.Velocity;
+                    if (safeVelocity.Length() > 4000.0f) safeVelocity = { 0,0,0 };
+                    targetPos = GetAdvancedPrediction(cameraLocation, targetPos, safeVelocity, initialSpeed, gravityZ);
+                }
             }
 
             FRotator targetRotation = (targetPos - cameraLocation).GetDirectionRotator();
             if (g_isMortars) {
                 float horizontalDist = std::sqrt(std::pow(targetPos.x - cameraLocation.x, 2) + std::pow(targetPos.y - cameraLocation.y, 2)) / 100.0f; 
-                double mPitch = Mortar::GetPitch(horizontalDist, (targetPos.z - cameraLocation.z) / 100.0f);
+                double mPitch = Mortar::CalculateRequiredPitch(horizontalDist, (targetPos.z - cameraLocation.z) / 100.0f);
                 if (mPitch > 0) targetRotation.Pitch = -static_cast<float>(mPitch);
             }
 

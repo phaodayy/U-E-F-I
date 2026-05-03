@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <iostream>
 #include <map>
@@ -27,7 +27,8 @@ enum class EntityType
 	Map,
 	Other,
 	Wheel,
-	key
+	key,
+	Ping
 };
 
 enum class WeaponType
