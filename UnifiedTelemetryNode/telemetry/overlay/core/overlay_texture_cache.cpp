@@ -194,23 +194,6 @@ bool LoadTextureFromAssetFolders(const char* folder, const std::string& asset,
         LoadTextureFromFile(path3.c_str(), outSrv, outWidth, outHeight, outFrames);
 }
 
-std::string AnimatedPathFor(const char* filename) {
-    if (!filename) return {};
-    std::string path(filename);
-    std::string lower = path;
-    for (char& c : lower) {
-        c = ToLowerAscii(c);
-        if (c == '\\') c = '/';
-    }
-
-    const std::string needle = skCrypt("assets/");
-    const std::size_t pos = lower.find(needle);
-    if (pos == std::string::npos) return {};
-
-    path.replace(pos, needle.size(), skCrypt("AssetsAnimated/"));
-    return path;
-}
-
 bool DecodeTextureFromFile(const char* filename, ID3D11ShaderResourceView** outSrv,
                            int* outWidth, int* outHeight, int* outFrames, bool animatedSheet) {
     if (!g_device || !outSrv || !outWidth || !outHeight) return false;
@@ -277,13 +260,6 @@ bool DecodeTextureFromFile(const char* filename, ID3D11ShaderResourceView** outS
 bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** outSrv,
                          int* outWidth, int* outHeight, int* outFrames) {
     if (outFrames) *outFrames = 1;
-
-    const std::string animatedPath = AnimatedPathFor(filename);
-    if (!animatedPath.empty() &&
-        DecodeTextureFromFile(animatedPath.c_str(), outSrv, outWidth, outHeight, outFrames, true)) {
-        return true;
-    }
-
     return DecodeTextureFromFile(filename, outSrv, outWidth, outHeight, outFrames, false);
 }
 

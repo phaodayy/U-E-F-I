@@ -38,16 +38,11 @@ void DrawFlickWeaponTile(const FlickWeaponTile& item, const ImVec2& tileSize, co
     TextureInfo* icon = GetPreviewIcon(item.folder, item.asset);
     const float iconTargetSize = 42.0f;
     if (icon && icon->SRV && icon->Width > 0 && icon->Height > 0) {
-        OverlayAssetAnimation::DrawOptions anim{};
-        anim.hovered = hovered;
-        anim.selected = *item.enabled;
-        anim.important = *item.enabled;
-        anim.strength = hovered || *item.enabled ? 1.18f : 0.86f;
-        OverlayAssetAnimation::DrawAnimatedImage(tileDraw, icon,
+        OverlayAssetAnimation::DrawStaticImage(tileDraw, icon,
             ImVec2(tileMin.x + tileSize.x * 0.5f, tileMin.y + 8.0f + iconTargetSize * 0.5f),
             iconTargetSize,
             IM_COL32(255, 255, 255, *item.enabled ? 255 : 226),
-            anim);
+            1.0f);
     }
 
     ImVec4 textClip(tileMin.x + 6.0f, tileMin.y + 56.0f, tileMax.x - 6.0f, tileMax.y - 6.0f);

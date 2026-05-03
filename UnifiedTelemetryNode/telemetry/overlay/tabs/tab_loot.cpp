@@ -41,16 +41,11 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         const float iconTargetSize = 38.0f;
 
         if (icon && icon->SRV && icon->Width > 0 && icon->Height > 0) {
-            OverlayAssetAnimation::DrawOptions anim{};
-            anim.hovered = hovered;
-            anim.selected = *item.enabled;
-            anim.important = *item.enabled;
-            anim.strength = hovered || *item.enabled ? 1.18f : 0.86f;
-            OverlayAssetAnimation::DrawAnimatedImage(tileDraw, icon,
+            OverlayAssetAnimation::DrawStaticImage(tileDraw, icon,
                 ImVec2(tileMin.x + tileSize.x * 0.5f, tileMin.y + 6.0f + iconTargetSize * 0.5f),
                 iconTargetSize,
                 IM_COL32(255, 255, 255, *item.enabled ? 255 : 226),
-                anim);
+                1.0f);
         } else {
             ImVec2 iconMin(tileMin.x + (tileSize.x - iconTargetSize) * 0.5f, tileMin.y + 6.0f);
             ImVec2 iconMax(iconMin.x + iconTargetSize, iconMin.y + iconTargetSize);
@@ -130,13 +125,6 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
     ImGui::SliderFloat(skCrypt("Item Icon Size"), &g_Menu.item_icon_size, 12.0f, 48.0f, skCrypt("%.0f px"));
     ImGui::SliderFloat(skCrypt("Group Icon Size"), &g_Menu.item_group_icon_size, 10.0f, 38.0f, skCrypt("%.0f px"));
     ImGui::SliderFloat(skCrypt("Loot Text Size"), &g_Menu.loot_distance_font_size, 8.0f, 20.0f, skCrypt("%.1f px"));
-    ImGui::Checkbox(skCrypt("Animated Assets"), &g_Menu.asset_animation_enabled);
-    ImGui::SameLine();
-    ImGui::Checkbox(skCrypt("Glow"), &g_Menu.asset_animation_glow);
-    ImGui::SameLine();
-    ImGui::Checkbox(skCrypt("Shine"), &g_Menu.asset_animation_shine);
-    ImGui::SliderFloat(skCrypt("Anim Strength"), &g_Menu.asset_animation_strength, 0.0f, 2.0f, skCrypt("%.2f"));
-    ImGui::SliderFloat(skCrypt("Anim Speed"), &g_Menu.asset_animation_speed, 0.10f, 3.0f, skCrypt("%.2f"));
     ImGui::Separator();
     ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), Lang.HeaderGearFilter);
     VisualLootTile gearTiles[] = {

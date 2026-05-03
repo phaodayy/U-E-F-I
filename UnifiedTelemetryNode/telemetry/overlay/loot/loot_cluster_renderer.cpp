@@ -78,10 +78,7 @@ void DrawScaledIcon(ImDrawList* draw, TextureInfo* icon, const ImVec2& center,
                     bool important = false) {
     if (!icon || !icon->SRV || icon->Width <= 0 || icon->Height <= 0) return;
 
-    OverlayAssetAnimation::DrawOptions anim{};
-    anim.important = important;
-    anim.strength = important ? 1.18f : 0.92f;
-    OverlayAssetAnimation::DrawAnimatedImage(draw, icon, center, targetSize, tint, anim);
+    OverlayAssetAnimation::DrawStaticImage(draw, icon, center, targetSize, tint, 1.0f);
 }
 
 void DrawDistance(ImDrawList* draw, const ImVec2& center, float y, float distance, ImU32 color, float fontSize) {
