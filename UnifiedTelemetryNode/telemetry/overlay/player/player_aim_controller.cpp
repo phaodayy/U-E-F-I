@@ -296,10 +296,14 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
     else if (dt_esp > 0.10f) dt_esp = 0.10f;
 
     PlayerData* bestTarget = nullptr;
+    ItemData* bestItemTarget = nullptr;
+    Vector3 bestTargetWorldPos = { 0, 0, 0 };
+    float bestTargetDistance = 0.0f;
     Vector2 bestScreenPos = { 0, 0 };
     float bestDist = 1000000000.0f;
 
     const bool isMortarActive = (G_LocalMortarEntity > 0x1000000) || (MacroEngine::current_weapon_name.find(skCrypt("mortar")) != std::string::npos);
+    const float actualRenderDist = isMortarActive ? 800.0f : (float)render_distance;
 
     const bool flickWeaponAllowed = isMortarActive || IsFlickWeaponEnabled(*this, MacroEngine::current_weapon_name);
     const bool canFlick = is_authenticated && !showmenu && flickWeaponAllowed;
@@ -329,22 +333,49 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
     const bool flickFollowMode = (activeBehaviorMode == 1);
     const float flickMoveSpeed = FlickWeaponCatalog::MoveSpeedForWeapon(
         flick_category_move_speed, MacroEngine::current_weapon_name);
-    const float activeFlickFov = isMortarActive ? 180.0f : FlickWeaponCatalog::FovForWeapon(
+    const float activeFlickFov = isMortarActive ? mortar_fov : FlickWeaponCatalog::FovForWeapon(
         flick_category_fov, MacroEngine::current_weapon_name, flick_fov);
-    const int activeKey = isMortarActive ? flick_key : FlickWeaponCatalog::IntForWeapon(
+    const int activeKey = isMortarActive ? mortar_aim_key : FlickWeaponCatalog::IntForWeapon(
         flick_category_key, MacroEngine::current_weapon_name, flick_key, 0, 0xFE);
     const bool flickKeyDown = activeKey != 0 && telemetryMemory::IsKeyDown(activeKey);
+    
+    static uint64_t lockedPlayerActor = 0;
+    static Vector3 lockedItemPos = {0, 0, 0};
+    static bool isLocked = false;
+    
+    if (!flickKeyDown || !isMortarActive) {
+        isLocked = false;
+        lockedPlayerActor = 0;
+        lockedItemPos = {0, 0, 0};
+    }
+    
+    const bool shouldScanTargets = (canFlick && flickKeyDown) || (isMortarActive && is_authenticated && !showmenu);
 
-    if (canFlick && activeFovCircle) {
+    if ((canFlick && activeFovCircle) || isMortarActive) {
         ImVec4 col = ImGui::ColorConvertU32ToFloat4(ImColor(g_Menu.flick_fov_circle_color[0], g_Menu.flick_fov_circle_color[1], g_Menu.flick_fov_circle_color[2], g_Menu.flick_fov_circle_color[3]));
-        draw->AddCircle(ImVec2(ScreenCenterX, ScreenCenterY), activeFlickFov * 8.0f, ImColor(col), 64, 1.5f);
+        float fovPx = activeFlickFov * 8.0f;
+        if (isMortarActive) {
+            // Draw vertical strip lines
+            draw->AddLine(ImVec2(ScreenCenterX - fovPx, 0), ImVec2(ScreenCenterX - fovPx, ScreenHeight), ImColor(col), 1.5f);
+            draw->AddLine(ImVec2(ScreenCenterX + fovPx, 0), ImVec2(ScreenCenterX + fovPx, ScreenHeight), ImColor(col), 1.5f);
+            // Draw subtle fill
+            draw->AddRectFilled(ImVec2(ScreenCenterX - fovPx, 0), ImVec2(ScreenCenterX + fovPx, ScreenHeight), ImColor(col.x, col.y, col.z, col.w * 0.15f));
+        } else {
+            draw->AddCircle(ImVec2(ScreenCenterX, ScreenCenterY), fovPx, ImColor(col), 64, 1.5f);
+        }
     }
 
 
     for (const auto& player_ref : localPlayers) {
         auto& player = const_cast<PlayerData&>(player_ref);
 
-        if (player.Distance > render_distance) continue;
+        if (player.Distance > actualRenderDist) continue;
+        
+        if (isMortarActive && isLocked) {
+            if (lockedPlayerActor != 0 && player.ActorPtr != lockedPlayerActor) continue;
+            if (lockedPlayerActor == 0) continue; // Locked to an item, skip all players
+        }
+        
         if (player.IsTeammate) {
             if (!g_Menu.esp_show_teammates) continue;
         } else {
@@ -369,9 +400,10 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
         delta.z += drop;
 
 
-        if (canFlick && flickKeyDown && !player.IsTeammate && player.Health > 0.0f && player.Distance <= activeMaxDist) {
-            if (!activeVisibleOnly || player.IsVisible) {
-                const float fovLimit = activeFlickFov * 8.0f;
+        if (shouldScanTargets && !player.IsTeammate && player.Health > 0.0f && player.Distance <= activeMaxDist) {
+            if (!activeVisibleOnly || player.IsVisible || isMortarActive) {
+                // For mortar, we use horizontal strip, so we pass a huge radial FOV to builder but filter manually
+                const float fovLimit = isMortarActive ? 5000.0f : (activeFlickFov * 8.0f);
                 FlickTargetCandidate target{};
                 if (activeTargetPart > 0) {
                     target = BuildFlickTargetFromSelectedBone(
@@ -381,10 +413,23 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
                     target = BuildFlickTargetFromEspBox(
                         player, delta, ScreenCenterX, ScreenCenterY, fovLimit);
                 }
-                if (target.valid && target.selectDist < bestDist) {
-                    bestDist = target.selectDist;
-                    bestTarget = &player;
-                    bestScreenPos = target.aim;
+
+                if (target.valid) {
+                    float selectionMetric = target.selectDist; // radial for normal
+                    if (isMortarActive) {
+                        float xDist = std::abs(target.aim.x - ScreenCenterX);
+                        if (xDist > (activeFlickFov * 8.0f)) continue; // Horizontal strip filter
+                        selectionMetric = xDist; // Prioritize closest to center X
+                    }
+
+                    if (selectionMetric < bestDist) {
+                        bestDist = selectionMetric;
+                        bestTarget = &player;
+                        bestItemTarget = nullptr;
+                        bestTargetWorldPos = player.Position;
+                        bestTargetDistance = player.Distance;
+                        bestScreenPos = target.aim;
+                    }
                 }
             }
         }
@@ -393,6 +438,49 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
             RenderSinglePlayerEsp(draw, player, delta, local_feet_s, hasLocalS, ScreenCenterX, ScreenHeight);
         }
     }
+
+    // --- ITEM SCAN FOR MORTAR (VEHICLES & AIRDROPS) ---
+    if (shouldScanTargets && isMortarActive) {
+        std::lock_guard<std::mutex> lock(CachedItemsMutex);
+        for (const auto& item_ref : CachedItems) {
+            auto& item = const_cast<ItemData&>(item_ref);
+            if (item.RenderType == ItemRenderType::Vehicle || item.RenderType == ItemRenderType::AirDrop) {
+                if (item.Distance > activeMaxDist) continue;
+                
+                if (isLocked) {
+                    if (!lockedItemPos.IsZero() && item.Position.Distance(lockedItemPos) > 50.0f) continue;
+                    if (lockedItemPos.IsZero()) continue; // Locked to a player, skip all items
+                }
+                
+                Vector2 screen;
+                if (telemetryContext::WorldToScreen(item.Position, screen)) {
+                    const float fovPx = activeFlickFov * 8.0f;
+                    float selectionMetric = 0.0f;
+
+                    if (isMortarActive) {
+                        float xDist = std::abs(screen.x - ScreenCenterX);
+                        if (xDist > fovPx) continue;
+                        selectionMetric = xDist;
+                    } else {
+                        const float dx = screen.x - ScreenCenterX;
+                        const float dy = screen.y - ScreenCenterY;
+                        selectionMetric = std::sqrt(dx * dx + dy * dy);
+                        if (selectionMetric > fovPx) continue;
+                    }
+                    
+                    if (selectionMetric < bestDist) {
+                        bestDist = selectionMetric;
+                        bestTarget = nullptr; 
+                        bestItemTarget = &item;
+                        bestTargetWorldPos = item.Position;
+                        bestTargetDistance = item.Distance;
+                        bestScreenPos = screen;
+                    }
+                }
+            }
+        }
+    }
+    // -------------------------------------------------
 
     static bool lastFlickKeyDown = false;
     static PendingFlickAction pendingFlick;
@@ -405,13 +493,32 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
     const bool justPressed = flickKeyDown && !lastFlickKeyDown;
     lastFlickKeyDown = flickKeyDown;
 
+    if (isMortarActive && justPressed) {
+        if (bestTarget != nullptr) {
+            isLocked = true;
+            lockedPlayerActor = bestTarget->ActorPtr;
+            lockedItemPos = {0, 0, 0};
+        } else if (bestItemTarget != nullptr) {
+            isLocked = true;
+            lockedPlayerActor = 0;
+            lockedItemPos = bestItemTarget->Position;
+        }
+    }
+
+    // --- MORTAR AIMBOT TARGET VISUALS ---
+    if (isMortarActive && (bestTarget != nullptr || bestItemTarget != nullptr)) {
+        if (bestScreenPos.x > 0 && bestScreenPos.y > 0) {
+            draw->AddLine(ImVec2(ScreenCenterX, ScreenCenterY), ImVec2(bestScreenPos.x, bestScreenPos.y), ImColor(255, 0, 50, 200), 1.5f);
+            draw->AddCircleFilled(ImVec2(bestScreenPos.x, bestScreenPos.y), 4.0f, ImColor(255, 0, 50, 255));
+        }
+    }
+
     // --- MORTAR AIMBOT CALIBRATION ---
-    if (isMortarActive && canFlick && flickKeyDown && bestTarget) {
-        float adjustedDistance = Mortar::getDistance(bestTarget->Distance, (bestTarget->Position.z - G_LocalPlayerPos.z) / 100.0f);
+    if (isMortarActive && canFlick && flickKeyDown && (bestTarget != nullptr || bestItemTarget != nullptr)) {
+        float heightDiff = (bestTargetWorldPos.z - G_LocalPlayerPos.z) / 100.0f; // Convert cm to m
+        float targetPitch = Mortar::CalculateRequiredPitch(bestTargetDistance, heightDiff);
         
-        if (adjustedDistance >= 110.0f && adjustedDistance <= 750.0f) {
-            auto result = Mortar::FindClosestPitch(adjustedDistance);
-            float targetPitch = result.first;
+        if (targetPitch >= 0.0f) {
 
             // Horizontal Auto Calibration (Yaw)
             if (lastFollowMoveAt == 0 || nowMs - lastFollowMoveAt >= 10) {
@@ -427,9 +534,9 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
 
             // Vertical Auto Calibration (Pitch via MouseWheel)
             static ULONGLONG lastMortarScroll = 0;
-            if (nowMs - lastMortarScroll > 30) { // Limit scroll frequency to 33Hz
+            if (nowMs - lastMortarScroll > 40) { // Limit scroll frequency to 25Hz to allow game to catch up
                 float pitchError = targetPitch - G_LocalMortarRotation.x;
-                if (std::abs(pitchError) > 0.1f) {
+                if (std::abs(pitchError) > 0.5f) { // Increased deadzone to 0.5 to prevent back-and-forth jitter
                     // WHEEL_DELTA is 120. If we need to increase pitch, we scroll UP (120).
                     int scrollAmount = (pitchError > 0.0f) ? 120 : -120;
                     telemetryMemory::MouseWheel(scrollAmount);
@@ -439,6 +546,9 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
         }
         
         // Skip normal flick aim when mortaring
+        return;
+    } else if (isMortarActive) {
+        // Still skip normal flick aim even if key not pressed
         return;
     }
     // ---------------------------------

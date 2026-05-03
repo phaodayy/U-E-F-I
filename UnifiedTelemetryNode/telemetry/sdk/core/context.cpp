@@ -1775,7 +1775,8 @@ namespace telemetryContext {
                 ReadWeaponAmmo(p.WeaponPtr, p);
             }
 
-            if (p.Distance > 300.0f) continue;
+            const bool isMortar = (G_LocalMortarEntity > 0x1000000);
+            if (p.Distance > (isMortar ? 800.0f : 300.0f)) continue;
             if (p.MeshAddr) {
                 uint64_t boneArray = Read<uint64_t>(p.MeshAddr + telemetryOffsets::BoneArray);
                 if (boneArray) {

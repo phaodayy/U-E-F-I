@@ -207,6 +207,8 @@ public:
   bool flick_weapon_mk14 = true;
   bool flick_weapon_dragunov = true;
 
+  int mortar_aim_key = VK_RBUTTON;
+  float mortar_fov = 10.0f;
   bool aimbot_enabled = false;
   bool aimbot_visible_only = true;
   bool aimbot_draw_fov = true;

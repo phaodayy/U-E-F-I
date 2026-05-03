@@ -216,11 +216,14 @@ void DrawPlayerTeamBadge(ImDrawList* draw, const ImVec2& min, float size,
 void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
     const Vector3& delta, const Vector2& local_feet_s, bool hasLocalS,
     float ScreenCenterX, float ScreenHeight) {            if (esp_toggle) {
+                const bool isMortarActive = (G_LocalMortarEntity > 0x1000000);
+                const float actualRenderDist = isMortarActive ? 800.0f : (float)g_Menu.render_distance;
+                
                 float alphaMult = 1.0f;
                 if (g_Menu.esp_distance_lod) {
-                    float fadeStart = (float)g_Menu.render_distance * 0.65f;
+                    float fadeStart = actualRenderDist * 0.65f;
                     if (player.Distance > fadeStart) {
-                        alphaMult = 1.0f - ((player.Distance - fadeStart) / ((float)g_Menu.render_distance - fadeStart));
+                        alphaMult = 1.0f - ((player.Distance - fadeStart) / (actualRenderDist - fadeStart));
                         if (alphaMult < 0.15f) alphaMult = 0.15f;
                     }
                 }
@@ -796,7 +799,7 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                     }
                 } else {
                     // --- 4. ADVANCED OFF-SCREEN INDICATORS ---
-                    if (g_Menu.esp_offscreen && !player.IsTeammate && player.Distance < g_Menu.render_distance) {
+                    if (g_Menu.esp_offscreen && !player.IsTeammate && player.Distance < actualRenderDist) {
                         float dx = player.Position.x - G_CameraLocation.x;
                         float dy = player.Position.y - G_CameraLocation.y;
 
@@ -810,7 +813,7 @@ void OverlayMenu::RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player,
                         // --- DISTANCE-BASED COLORING ---
                         ImU32 arrowCol;
                         if (g_Menu.offscreen_color_mode == 1) { // Distance Gradient
-                            float t = player.Distance / g_Menu.render_distance;
+                            float t = player.Distance / actualRenderDist;
                             if (t > 1.0f) t = 1.0f;
 
                             float r = (g_Menu.offscreen_near_color[0] * (1.0f - t) + g_Menu.offscreen_far_color[0] * t) * 255.0f;

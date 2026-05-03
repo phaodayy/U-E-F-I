@@ -87,6 +87,8 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["flick_target_part"] = flick_target_part;
         j["flick_key"] = flick_key;
         j["flick_key2"] = flick_key2;
+        j["mortar_aim_key"] = mortar_aim_key;
+        j["mortar_fov"] = mortar_fov;
         j["flick_weapon_s686"] = flick_weapon_s686;
         j["flick_weapon_s12k"] = flick_weapon_s12k;
         j["flick_weapon_s1897"] = flick_weapon_s1897;

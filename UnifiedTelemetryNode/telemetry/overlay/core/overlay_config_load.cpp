@@ -211,6 +211,8 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("flick_target_part")) flick_target_part = j["flick_target_part"];
             if (j.contains("flick_key")) flick_key = j["flick_key"];
             if (j.contains("flick_key2")) flick_key2 = j["flick_key2"];
+            if (j.contains("mortar_aim_key")) mortar_aim_key = j["mortar_aim_key"];
+            if (j.contains("mortar_fov")) mortar_fov = j["mortar_fov"];
             if (j.contains("flick_weapon_s686")) flick_weapon_s686 = j["flick_weapon_s686"];
             if (j.contains("flick_weapon_s12k")) flick_weapon_s12k = j["flick_weapon_s12k"];
             if (j.contains("flick_weapon_s1897")) flick_weapon_s1897 = j["flick_weapon_s1897"];

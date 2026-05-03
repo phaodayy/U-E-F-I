@@ -274,6 +274,12 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     ImGui::Checkbox(Lang.ThreatWarning, &g_Menu.esp_threat_warning);
     
     ImGui::Separator();
+    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), skCrypt("HEAVY WEAPON - MORTAR"));
+    DrawKeyCombo(skCrypt("Mortar Aim Key"), &g_Menu.mortar_aim_key);
+    OverlayHotkeys::DrawKeyBind(skCrypt("Capture Aim Key"), &g_Menu.mortar_aim_key, g_Menu.waiting_for_key);
+    ImGui::SliderFloat(skCrypt("Mortar FOV Strip"), &g_Menu.mortar_fov, 1.0f, 20.0f, skCrypt("%.0f"));
+    
+    ImGui::Separator();
     ImGui::Spacing();
 
     ImGui::EndChild();
