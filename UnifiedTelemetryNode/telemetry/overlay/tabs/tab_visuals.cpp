@@ -39,8 +39,6 @@ void OverlayMenu::RenderTabVisuals(ImVec2 windowSize) {
     ImGui::SameLine();
     if (ImGui::Button(skCrypt("Loot"), ImVec2(70, 24))) OverlayPresets::Apply(g_Menu, OverlayPresets::Preset::Loot);
     if (ImGui::Button(skCrypt("Combat"), ImVec2(70, 24))) OverlayPresets::Apply(g_Menu, OverlayPresets::Preset::Combat);
-    ImGui::SameLine();
-    if (ImGui::Button(skCrypt("Debug"), ImVec2(70, 24))) OverlayPresets::Apply(g_Menu, OverlayPresets::Preset::Debug);
     ImGui::Separator();
     ImGui::TextDisabled("%s", Lang.ShowcaseRankLayout);
     ImGui::Checkbox(Lang.Rank, &g_Menu.esp_rank);

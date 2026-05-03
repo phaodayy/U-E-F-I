@@ -1,6 +1,10 @@
 #include "../core/overlay_menu.hpp"
+#include "../core/overlay_presets.hpp"
 #include "../../sdk/Utils/MacroEngine.h"
+#include "../../sdk/Utils/SendInputMacro.h"
+#include "../../sdk/core/console_log.hpp"
 #include "../../sdk/core/context.hpp"
+#include <iostream>
 #include <protec/skCrypt.h>
 #include <vector>
 #include <mutex>
@@ -32,6 +36,24 @@ void OverlayMenu::RenderTabAdmin(ImVec2 windowSize) {
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), skCrypt("ADMIN SYSTEM EXPLORER - LIVE ACTOR BUFFER"));
     ImGui::Separator();
 
+    if (ImGui::Button(skCrypt("Apply Debug Preset"), ImVec2(180, 28))) {
+        OverlayPresets::Apply(g_Menu, OverlayPresets::Preset::Debug);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(skCrypt("Test SendInput Y"), ImVec2(180, 28))) {
+        const bool ok1 = SendInputMacro::Move(0, 35);
+        const bool ok2 = SendInputMacro::Move(0, -35);
+        UTN_DEV_LOG(std::cout << "[DEV][MACRO][TEST] SendInput Y test ok="
+            << ((ok1 && ok2) ? 1 : 0)
+            << " err=" << SendInputMacro::LastErrorCode()
+            << " convention=dy+down_dy-up"
+            << std::endl);
+    }
+    ImGui::Spacing();
+
+    ImGui::Checkbox(skCrypt("Loot Resolver Debug"), &debug_loot_resolver);
+    ImGui::SameLine();
+    ImGui::TextDisabled(skCrypt("(Draw unresolved loot/entity resolver diagnostics)"));
     ImGui::Checkbox(skCrypt("SHOW DEBUG ACTOR ESP IN WORLD"), &debug_actor_esp);
     ImGui::SameLine();
     ImGui::TextDisabled(skCrypt("(Use this to find class names for missing items)"));

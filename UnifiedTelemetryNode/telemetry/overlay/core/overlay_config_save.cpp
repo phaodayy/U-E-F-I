@@ -292,6 +292,7 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["lw_m16"] = loot_weapon_m16; j["lw_mutant"] = loot_weapon_mutant;
         j["lw_qbz"] = loot_weapon_qbz; j["lw_scar"] = loot_weapon_scar;
         j["lw_famas"] = loot_weapon_famas; j["lw_awm"] = loot_weapon_awm;
+        j["lw_lynx"] = loot_weapon_lynx;
         j["lw_kar98"] = loot_weapon_kar98; j["lw_m24"] = loot_weapon_m24;
         j["lw_mosin"] = loot_weapon_mosin; j["lw_win94"] = loot_weapon_win94;
         j["lw_dragunov"] = loot_weapon_dragunov; j["lw_mini14"] = loot_weapon_mini14;
@@ -304,12 +305,17 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["lw_uzi"] = loot_weapon_uzi; j["lw_vector"] = loot_weapon_vector;
         j["lw_js9"] = loot_weapon_js9; j["lw_dp28"] = loot_weapon_dp28;
         j["lw_m249"] = loot_weapon_m249; j["lw_mg3"] = loot_weapon_mg3;
+        j["lw_db"] = loot_weapon_db; j["lw_s12k"] = loot_weapon_s12k;
+        j["lw_s1897"] = loot_weapon_s1897; j["lw_sawedoff"] = loot_weapon_sawedoff;
         j["lw_dp12"] = loot_weapon_dp12; j["lw_saiga"] = loot_weapon_saiga;
-        j["lw_deagle"] = loot_weapon_deagle; j["lw_m1911"] = loot_weapon_m1911;
+        j["lw_deagle"] = loot_weapon_deagle; j["lw_p18c"] = loot_weapon_p18c;
+        j["lw_m1911"] = loot_weapon_m1911;
         j["lw_p92"] = loot_weapon_p92; j["lw_skorpion"] = loot_weapon_skorpion;
         j["lw_nagant"] = loot_weapon_nagant; j["lw_rhino"] = loot_weapon_rhino;
         j["lw_stungun"] = loot_weapon_stungun;
-        j["lw_pan"] = loot_weapon_pan; j["lw_flare"] = loot_weapon_flare;
+        j["lw_pan"] = loot_weapon_pan; j["lw_crowbar"] = loot_weapon_crowbar;
+        j["lw_machete"] = loot_weapon_machete; j["lw_sickle"] = loot_weapon_sickle;
+        j["lw_pickaxe"] = loot_weapon_pickaxe; j["lw_flare"] = loot_weapon_flare;
         j["lw_crossbow"] = loot_weapon_crossbow; j["lw_panzer"] = loot_weapon_panzer;
         j["lw_spike"] = loot_weapon_spike; j["lw_m79"] = loot_weapon_m79;
 

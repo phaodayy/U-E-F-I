@@ -137,6 +137,8 @@ public:
   float minimap_fire_flash_ms = 420.0f;
   float minimap_ray_width = 1.1f;
   bool bigmap_show_names = true;
+  bool bigmap_show_team_id = true;
+  bool bigmap_show_distance = true;
   bool bigmap_show_direction = true;
   bool bigmap_name_background = true;
   bool bigmap_show_legend = true;
@@ -457,6 +459,7 @@ public:
   bool loot_weapon_famas = true;
 
   bool loot_weapon_awm = true;
+  bool loot_weapon_lynx = true;
   bool loot_weapon_kar98 = true;
   bool loot_weapon_m24 = true;
   bool loot_weapon_mosin = true;
@@ -494,9 +497,12 @@ public:
 
   bool loot_weapon_db = true; 
   bool loot_weapon_s12k = true;
+  bool loot_weapon_s1897 = true;
+  bool loot_weapon_sawedoff = true;
   bool loot_weapon_dp12 = true;
   bool loot_weapon_saiga = true;
   bool loot_weapon_deagle = true;
+  bool loot_weapon_p18c = true;
   bool loot_weapon_m1911 = true;
   bool loot_weapon_p92 = true;
   bool loot_weapon_skorpion = true;
@@ -505,6 +511,10 @@ public:
   bool loot_weapon_stungun = true;
 
   bool loot_weapon_pan = true;
+  bool loot_weapon_crowbar = true;
+  bool loot_weapon_machete = true;
+  bool loot_weapon_sickle = true;
+  bool loot_weapon_pickaxe = true;
   bool loot_weapon_spike = true;
   bool loot_weapon_m79 = true;
   bool loot_weapon_flare = true;

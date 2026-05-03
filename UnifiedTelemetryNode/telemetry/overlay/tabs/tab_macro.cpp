@@ -1,8 +1,5 @@
 #include "../core/overlay_menu.hpp"
 #include "../translation/translation.hpp"
-#include "../../sdk/Utils/SendInputMacro.h"
-#include "../../sdk/core/console_log.hpp"
-#include <iostream>
 #include <protec/skCrypt.h>
 
 void OverlayMenu::RenderTabMacro(ImVec2 windowSize) {
@@ -37,15 +34,6 @@ void OverlayMenu::RenderTabMacro(ImVec2 windowSize) {
     // Col 3: Utils
     BeginGlassCard(skCrypt("##MacroCol3"), Lang.HeaderEngineUtils, ImVec2(totalWidth / 3.0f - 20, 0));
     if (ImGui::Button(Lang.RescanAttach, ImVec2(-1, 35))) { /* Rescan */ }
-    if (ImGui::Button(skCrypt("Test SendInput Y"), ImVec2(-1, 35))) {
-        const bool ok1 = SendInputMacro::Move(0, 35);
-        const bool ok2 = SendInputMacro::Move(0, -35);
-        UTN_DEV_LOG(std::cout << "[DEV][MACRO][TEST] SendInput Y test ok="
-            << ((ok1 && ok2) ? 1 : 0)
-            << " err=" << SendInputMacro::LastErrorCode()
-            << " convention=dy+down_dy-up"
-            << std::endl);
-    }
     ImGui::TextDisabled("%s", Lang.MacroStatusPreview);
     DrawDisplayOnlyOption(Lang.ShowcaseInputProfile);
     DrawDisplayOnlyOption(Lang.ShowcaseHotkeyMatrix);

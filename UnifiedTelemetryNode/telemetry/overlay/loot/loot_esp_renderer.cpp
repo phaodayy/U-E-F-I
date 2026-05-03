@@ -353,6 +353,89 @@ void DrawHeldThrowablePrediction(ImDrawList* draw) {
     }
 }
 
+bool ApplyLootDraw(bool enabled, ImU32 drawColor, ImU32& col, bool& shouldDraw) {
+    if (enabled) {
+        shouldDraw = true;
+        col = drawColor;
+    }
+    return true;
+}
+
+bool TryResolveGearOrUtilityLoot(const std::string& id, const OverlayMenu& menu, ImU32& col, bool& shouldDraw) {
+    const ImU32 utilityColor = IM_COL32(0, 190, 255, 255);
+    const ImU32 lv2Color = IM_COL32(0, 200, 255, 255);
+    const ImU32 lv3Color = IM_COL32(255, 0, 255, 255);
+
+    if (id == skCrypt("Item_Back_BlueBlocker")) {
+        return ApplyLootDraw(menu.loot_utility_jammer, IM_COL32(0, 255, 255, 255), col, shouldDraw);
+    }
+    if (id == skCrypt("Item_Weapon_Drone_C")) {
+        return ApplyLootDraw(menu.loot_utility_drone, IM_COL32(0, 255, 255, 255), col, shouldDraw);
+    }
+    if (id == skCrypt("Item_Weapon_Spotter_Scope_C")) {
+        return ApplyLootDraw(menu.loot_utility_scope, IM_COL32(0, 255, 255, 255), col, shouldDraw);
+    }
+    if (id == skCrypt("Item_Bluechip_C")) {
+        return ApplyLootDraw(menu.loot_utility_bluechip, utilityColor, col, shouldDraw);
+    }
+    if (id == skCrypt("Item_Revival_Transmitter_C")) {
+        return ApplyLootDraw(menu.loot_utility_vtransmitter, utilityColor, col, shouldDraw);
+    }
+    if (id == skCrypt("Item_BulletproofShield_C")) {
+        return ApplyLootDraw(menu.loot_utility_shield, utilityColor, col, shouldDraw);
+    }
+
+    const bool lv1 = id.find(skCrypt("Lv1")) != std::string::npos;
+    const bool lv2 = id.find(skCrypt("Lv2")) != std::string::npos;
+    const bool lv3 = id.find(skCrypt("Lv3")) != std::string::npos;
+    const ImU32 gearColor = lv3 ? lv3Color : lv2Color;
+
+    if (id.find(skCrypt("Item_Head")) != std::string::npos || id.find(skCrypt("Helmet")) != std::string::npos) {
+        return ApplyLootDraw((lv1 && menu.loot_helmet_lv1) || (lv2 && menu.loot_helmet_lv2) || (lv3 && menu.loot_helmet_lv3),
+            gearColor, col, shouldDraw);
+    }
+    if (id.find(skCrypt("Item_Armor")) != std::string::npos || id.find(skCrypt("Vest")) != std::string::npos) {
+        return ApplyLootDraw((lv1 && menu.loot_armor_lv1) || (lv2 && menu.loot_armor_lv2) || (lv3 && menu.loot_armor_lv3),
+            gearColor, col, shouldDraw);
+    }
+    if (id.find(skCrypt("Item_Back")) != std::string::npos) {
+        return ApplyLootDraw((lv1 && menu.loot_backpack_lv1) || (lv2 && menu.loot_backpack_lv2) || (lv3 && menu.loot_backpack_lv3),
+            gearColor, col, shouldDraw);
+    }
+
+    return false;
+}
+
+bool TryResolveKeyOrRepairLoot(const std::string& id, const OverlayMenu& menu, ImU32& col, bool& shouldDraw) {
+    const ImU32 keyColor = IM_COL32(255, 215, 0, 255);
+    const ImU32 repairColor = IM_COL32(0, 255, 0, 255);
+
+    if (id.find(skCrypt("Tiger_Key")) != std::string::npos) return ApplyLootDraw(menu.loot_key_taego, keyColor, col, shouldDraw);
+    if (id.find(skCrypt("DihorOtok_Key")) != std::string::npos) return ApplyLootDraw(menu.loot_key_vikendi, keyColor, col, shouldDraw);
+    if (id.find(skCrypt("Chimera_Key")) != std::string::npos) return ApplyLootDraw(menu.loot_key_chimera, keyColor, col, shouldDraw);
+    if (id.find(skCrypt("Heaven_Key")) != std::string::npos) return ApplyLootDraw(menu.loot_key_haven, keyColor, col, shouldDraw);
+    if (id.find(skCrypt("Secuity_Keycard")) != std::string::npos || id.find(skCrypt("Security_Keycard")) != std::string::npos) {
+        return ApplyLootDraw(menu.loot_key_security, keyColor, col, shouldDraw);
+    }
+    if (id.find(skCrypt("SecretRoom")) != std::string::npos || id.find(skCrypt("BTSecretRoom")) != std::string::npos) {
+        return ApplyLootDraw(menu.loot_key_secret, keyColor, col, shouldDraw);
+    }
+    if (id.find(skCrypt("Key")) != std::string::npos || id.find(skCrypt("Keycard")) != std::string::npos) {
+        return ApplyLootDraw(menu.loot_key_security || menu.loot_key_secret || menu.loot_key_taego ||
+            menu.loot_key_vikendi || menu.loot_key_chimera || menu.loot_key_haven, keyColor, col, shouldDraw);
+    }
+
+    if (id.find(skCrypt("Armor_Repair_Kit")) != std::string::npos) return ApplyLootDraw(menu.loot_repair_armor, repairColor, col, shouldDraw);
+    if (id.find(skCrypt("Helmet_Repair_Kit")) != std::string::npos) return ApplyLootDraw(menu.loot_repair_helmet, repairColor, col, shouldDraw);
+    if (id.find(skCrypt("Vehicle_Repair_Kit")) != std::string::npos) return ApplyLootDraw(menu.loot_repair_vehicle, repairColor, col, shouldDraw);
+    if (id.find(skCrypt("Repair_Kit")) != std::string::npos) {
+        return ApplyLootDraw(menu.loot_repair_armor || menu.loot_repair_helmet || menu.loot_repair_vehicle,
+            repairColor, col, shouldDraw);
+    }
+
+    return false;
+}
+
 } // namespace
 
 void OverlayMenu::RenderLootEsp(ImDrawList* draw) {
@@ -364,21 +447,28 @@ void OverlayMenu::RenderLootEsp(ImDrawList* draw) {
 
             struct VehicleDrawKey {
                 std::string IconName;
+                Vector3 Position;
                 Vector2 Screen;
+                float Distance = 0.0f;
             };
             std::vector<VehicleDrawKey> seenVehicles;
-            auto HasDuplicateVehicle = [&](const std::string& iconName, const Vector2& screen) {
-                constexpr float kDuplicateRadiusSq = 36.0f * 36.0f;
+            auto HasDuplicateVehicle = [&](const Vector3& position, const Vector2& screen, float distance) {
+                constexpr float kDuplicateScreenRadiusSq = 120.0f * 120.0f;
+                constexpr float kDuplicateWorldRadiusCm = 1600.0f;
+                constexpr float kDuplicateDistanceMeters = 8.0f;
                 for (const auto& seen : seenVehicles) {
-                    if (seen.IconName != iconName) continue;
                     const float dx = seen.Screen.x - screen.x;
                     const float dy = seen.Screen.y - screen.y;
-                    if ((dx * dx) + (dy * dy) <= kDuplicateRadiusSq) return true;
+                    if ((dx * dx) + (dy * dy) > kDuplicateScreenRadiusSq) continue;
+                    if (std::fabs(seen.Distance - distance) <= kDuplicateDistanceMeters ||
+                        seen.Position.Distance(position) <= kDuplicateWorldRadiusCm) {
+                        return true;
+                    }
                 }
                 return false;
             };
-            auto MarkVehicleSeen = [&](const std::string& iconName, const Vector2& screen) {
-                seenVehicles.push_back({ iconName, screen });
+            auto MarkVehicleSeen = [&](const std::string& iconName, const Vector3& position, const Vector2& screen, float distance) {
+                seenVehicles.push_back({ iconName, position, screen, distance });
             };
 
             std::vector<LootClusterRenderer::Entry> lootEntries;
@@ -436,7 +526,7 @@ void OverlayMenu::RenderLootEsp(ImDrawList* draw) {
                         else if (id == skCrypt("Item_Weapon_Mini14_C")) { if(g_Menu.loot_weapon_mini14) { should_draw = true; } }
                         else if (id == skCrypt("Item_Weapon_QBU88_C"))  { if(g_Menu.loot_weapon_qbu)   { should_draw = true; } }
                         else if (id == skCrypt("Item_Weapon_VSS_C"))    { if(g_Menu.loot_weapon_vss)   { should_draw = true; } }
-                        else if (id == skCrypt("Item_Weapon_L6_C"))     { if(g_Menu.loot_weapon_all)   { should_draw = true; col = IM_COL32(255, 0, 0, 255); } }
+                        else if (id == skCrypt("Item_Weapon_L6_C"))     { if(g_Menu.loot_weapon_lynx)  { should_draw = true; col = IM_COL32(255, 0, 0, 255); } }
 
                         // --- 3. WEAPONS: SMG & LMG ---
                         else if (id == skCrypt("Item_Weapon_P90_C"))    { if(g_Menu.loot_weapon_p90)   { should_draw = true; col = IM_COL32(255, 255, 0, 255); } }
@@ -457,12 +547,26 @@ void OverlayMenu::RenderLootEsp(ImDrawList* draw) {
                         else if (id == skCrypt("Item_Weapon_Saiga12_C")) { if(g_Menu.loot_weapon_s12k)  { should_draw = true; } }
                         else if (id == skCrypt("Item_Weapon_OriginS12_C")) { if(g_Menu.loot_weapon_saiga) { should_draw = true; } }
                         else if (id == skCrypt("Item_Weapon_Berreta686_C")) { if(g_Menu.loot_weapon_db)  { should_draw = true; } }
+                        else if (id == skCrypt("Item_Weapon_Winchester_C")) { if(g_Menu.loot_weapon_s1897) { should_draw = true; } }
+                        else if (id == skCrypt("Item_Weapon_Sawnoff_C")) { if(g_Menu.loot_weapon_sawedoff) { should_draw = true; } }
                         else if (id == skCrypt("Item_Weapon_DesertEagle_C")) { if(g_Menu.loot_weapon_deagle) { should_draw = true; } }
                         else if (id == skCrypt("Item_Weapon_vz61Skorpion_C")) { if(g_Menu.loot_weapon_skorpion) { should_draw = true; } }
                         else if (id == skCrypt("Item_Weapon_M1911_C"))  { if(g_Menu.loot_weapon_m1911) { should_draw = true; } }
                         else if (id == skCrypt("Item_Weapon_M9_C"))     { if(g_Menu.loot_weapon_p92)   { should_draw = true; } }
+                        else if (id == skCrypt("Item_Weapon_G18_C"))    { if(g_Menu.loot_weapon_p18c)  { should_draw = true; } }
                         else if (id == skCrypt("Item_Weapon_Rhino_C"))  { if(g_Menu.loot_weapon_rhino) { should_draw = true; } }
                         else if (id == skCrypt("Item_Weapon_NagantM1895_C")) { if(g_Menu.loot_weapon_nagant) { should_draw = true; } }
+                        else if (id == skCrypt("Item_Weapon_StunGun_C")) { if(g_Menu.loot_weapon_stungun) { should_draw = true; } }
+                        else if (id == skCrypt("Item_Weapon_FlareGun_C")) { if(g_Menu.loot_weapon_flare) { should_draw = true; col = IM_COL32(255, 80, 40, 255); } }
+                        else if (id == skCrypt("Item_Weapon_Crossbow_C")) { if(g_Menu.loot_weapon_crossbow) { should_draw = true; } }
+                        else if (id == skCrypt("Item_Weapon_PanzerFaust100M_C") || id.find(skCrypt("PanzerFaust")) != std::string::npos) { if(g_Menu.loot_weapon_panzer) { should_draw = true; col = IM_COL32(255, 120, 0, 255); } }
+                        else if (id == skCrypt("Item_Weapon_M79_C")) { if(g_Menu.loot_weapon_m79) { should_draw = true; } }
+                        else if (id == skCrypt("Item_Weapon_Pan_C")) { if(g_Menu.loot_weapon_pan) { should_draw = true; } }
+                        else if (id == skCrypt("Item_Weapon_Cowbar_C")) { if(g_Menu.loot_weapon_crowbar) { should_draw = true; } }
+                        else if (id == skCrypt("Item_Weapon_Machete_C")) { if(g_Menu.loot_weapon_machete) { should_draw = true; } }
+                        else if (id == skCrypt("Item_Weapon_Sickle_C")) { if(g_Menu.loot_weapon_sickle) { should_draw = true; } }
+                        else if (id == skCrypt("Item_Weapon_Pickaxe_C")) { if(g_Menu.loot_weapon_pickaxe) { should_draw = true; } }
+                        else if (id == skCrypt("Item_Weapon_SpikeTrap_C")) { if(g_Menu.loot_weapon_spike) { should_draw = true; } }
 
                         // --- 5. AMMO: INDIVIDUAL FILTERS ---
                         else if (id == skCrypt("Item_Ammo_556mm_C"))    { if(g_Menu.loot_ammo_556) { should_draw = true; col = IM_COL32(100, 255, 100, 220); } }
@@ -496,11 +600,11 @@ void OverlayMenu::RenderLootEsp(ImDrawList* draw) {
                         else if (id.find(skCrypt("Choke")) != std::string::npos) { if(g_Menu.loot_muzzle_choke) { should_draw = true; } }
 
                         // --- 8. ATTACHMENTS: GRIPS & STOCKS ---
-                        else if (id.find(skCrypt("Foregrip")) != std::string::npos) { if(g_Menu.loot_grip_vertical) { should_draw = true; } }
                         else if (id.find(skCrypt("AngledForeGrip")) != std::string::npos) { if(g_Menu.loot_grip_angled) { should_draw = true; } }
                         else if (id.find(skCrypt("HalfGrip")) != std::string::npos) { if(g_Menu.loot_grip_half) { should_draw = true; } }
                         else if (id.find(skCrypt("ThumbGrip")) != std::string::npos) { if(g_Menu.loot_grip_thumb) { should_draw = true; } }
                         else if (id.find(skCrypt("Lightweight")) != std::string::npos) { if(g_Menu.loot_grip_light) { should_draw = true; } }
+                        else if (id.find(skCrypt("Foregrip")) != std::string::npos) { if(g_Menu.loot_grip_vertical) { should_draw = true; } }
                         else if (id.find(skCrypt("Stock_AR_Heavy")) != std::string::npos) { if(g_Menu.loot_stock_heavy) { should_draw = true; } }
                         else if (id.find(skCrypt("CheekPad")) != std::string::npos) { if(g_Menu.loot_stock_cheek) { should_draw = true; } }
 
@@ -519,10 +623,8 @@ void OverlayMenu::RenderLootEsp(ImDrawList* draw) {
                         else if (id == skCrypt("Item_Weapon_BluezoneGrenade_C")) { if(g_Menu.loot_throw_bz) { should_draw = true; col = IM_COL32(0, 100, 255, 255); } }
                         else if (id == skCrypt("Item_Weapon_DecoyGrenade_C")) { if(g_Menu.loot_throw_decoy) { should_draw = true; } }
 
-                        // --- 11. GEAR: ARMOR & HELMETS & PACKS ---
-                        else if (id.find(skCrypt("Lv3")) != std::string::npos) { if(g_Menu.loot_armor_lv3 || g_Menu.loot_helmet_lv3 || g_Menu.loot_backpack_lv3) { should_draw = true; col = IM_COL32(255, 0, 255, 255); } }
-                        else if (id.find(skCrypt("Lv2")) != std::string::npos) { if(g_Menu.loot_armor_lv2 || g_Menu.loot_helmet_lv2 || g_Menu.loot_backpack_lv2) { should_draw = true; col = IM_COL32(0, 200, 255, 255); } }
-                        else if (id == skCrypt("Item_Back_BlueBlocker")) { if(g_Menu.loot_utility_jammer) { should_draw = true; col = IM_COL32(0, 255, 255, 255); } }
+                        // --- 11. GEAR & TACTICAL UTILITY ---
+                        else if (TryResolveGearOrUtilityLoot(id, g_Menu, col, should_draw)) {}
 
                         // --- 12. RECOVERY: MEDS & BOOSTS ---
                         else if (id == skCrypt("Item_Heal_MedKit_C") || id == skCrypt("Item_Heal_FirstAid_C")) { if(g_Menu.loot_meds_healing) { should_draw = true; col = IM_COL32(100, 255, 100, 255); } }
@@ -535,8 +637,7 @@ void OverlayMenu::RenderLootEsp(ImDrawList* draw) {
                         else if (id == skCrypt("Item_Ghillie_04_C")) { if(g_Menu.loot_ghillie_forest) { should_draw = true; } }
                         else if (id == skCrypt("Item_Ghillie_05_C")) { if(g_Menu.loot_ghillie_mossy)  { should_draw = true; } }
                         else if (id == skCrypt("Item_Ghillie_06_C")) { if(g_Menu.loot_ghillie_brown)  { should_draw = true; } }
-                        else if (id.find(skCrypt("Key")) != std::string::npos || id.find(skCrypt("Keycard")) != std::string::npos) { if(g_Menu.loot_key_security || g_Menu.loot_key_secret) { should_draw = true; col = IM_COL32(255, 215, 0, 255); } }
-                        else if (id.find(skCrypt("Repair_Kit")) != std::string::npos) { if(g_Menu.loot_repair_armor || g_Menu.loot_repair_helmet) { should_draw = true; col = IM_COL32(0, 255, 0, 255); } }
+                        else if (TryResolveKeyOrRepairLoot(id, g_Menu, col, should_draw)) {}
 
                         // --- 14. CATCH-ALL & IMPORTANT ---
                         else if (g_Menu.loot_weapon_all || item.IsImportant) should_draw = true;
@@ -551,7 +652,7 @@ void OverlayMenu::RenderLootEsp(ImDrawList* draw) {
                         const std::string vehicleResolverName =
                             item.ClassName.empty() ? item.Name : item.ClassName;
                         resolvedIconName = VehicleResolver::Resolve(vehicleResolverName).IconName;
-                        duplicateVehicle = HasDuplicateVehicle(resolvedIconName, itemScreen);
+                        duplicateVehicle = HasDuplicateVehicle(item.Position, itemScreen, item.Distance);
                     }
 
                     if (g_Menu.debug_loot_resolver) {
@@ -570,7 +671,7 @@ void OverlayMenu::RenderLootEsp(ImDrawList* draw) {
                         if (g_Menu.esp_icons) {
                            if (item.RenderType == ItemRenderType::Vehicle) {
                                if (duplicateVehicle) continue;
-                               MarkVehicleSeen(resolvedIconName, itemScreen);
+                               MarkVehicleSeen(resolvedIconName, item.Position, itemScreen, item.Distance);
                                icon = OverlayTextures::GetVehicleIcon(resolvedIconName);
                                iconSize = g_Menu.vehicle_icon_size;
                            } else {
@@ -578,7 +679,7 @@ void OverlayMenu::RenderLootEsp(ImDrawList* draw) {
                            }
                         } else if (item.RenderType == ItemRenderType::Vehicle) {
                             if (duplicateVehicle) continue;
-                            MarkVehicleSeen(resolvedIconName, itemScreen);
+                            MarkVehicleSeen(resolvedIconName, item.Position, itemScreen, item.Distance);
                             iconSize = g_Menu.vehicle_icon_size;
                         }
 

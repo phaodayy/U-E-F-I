@@ -55,6 +55,8 @@ void OverlayMenu::RenderTabRadar(ImVec2 windowSize) {
     BeginGlassCard(skCrypt("##MapBig"), Lang.ShowcaseMapLayers, ImVec2(totalWidth / 4.0f - 15.0f, 0));
     ImGui::Checkbox(Lang.EnableBigMap, &bigmap_enabled);
     ImGui::Checkbox(Lang.NameRadar, &bigmap_show_names);
+    ImGui::Checkbox(Lang.TeamID, &bigmap_show_team_id);
+    ImGui::Checkbox(Lang.Distance, &bigmap_show_distance);
     ImGui::Checkbox(Lang.DirectionRadar, &bigmap_show_direction);
     ImGui::Checkbox(Lang.NameBackground, &bigmap_name_background);
     ImGui::Checkbox(Lang.ShowcaseRadarLegend, &bigmap_show_legend);

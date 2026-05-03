@@ -208,9 +208,6 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
     if (ImGui::Button(skCrypt("Combat"), ImVec2(-1, 28))) {
         OverlayPresets::Apply(g_Menu, OverlayPresets::Preset::Combat);
     }
-    if (ImGui::Button(skCrypt("Debug"), ImVec2(-1, 28))) {
-        OverlayPresets::Apply(g_Menu, OverlayPresets::Preset::Debug);
-    }
 
     ImGui::Spacing();
     if (ImGui::Button(skCrypt("RELOAD ENTITY ALIASES"), ImVec2(-1, 30))) {

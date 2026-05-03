@@ -61,14 +61,14 @@ void DrawOutlinedText(ImDrawList* draw, const ImVec2& pos, ImU32 color,
 }
 
 void DrawTeamMarker(ImDrawList* draw, float x, float y, int teamID,
-                    ImU32 color, float radius, float fillAlpha = 0.86f,
+                    ImU32 color, float radius, bool showTeamID, float fillAlpha = 0.86f,
                     float fontSize = 0.0f) {
     draw->AddCircle(ImVec2(x, y), radius + 1.8f, IM_COL32(0, 0, 0, 105), 20, 1.0f);
     draw->AddCircleFilled(ImVec2(x, y), radius, WithAlpha(color, fillAlpha), 20);
     draw->AddCircle(ImVec2(x, y), radius, IM_COL32(0, 0, 0, 205), 20, 1.0f);
     draw->AddCircle(ImVec2(x, y), radius - 1.0f, IM_COL32(255, 255, 255, 60), 20, 0.5f);
 
-    if (teamID <= 0) return;
+    if (!showTeamID || teamID <= 0) return;
     char teamText[16];
     sprintf_s(teamText, "%d", teamID % 100);
     const float textFontSize = fontSize > 0.0f ? fontSize : std::clamp(radius * 1.35f, 8.0f, 14.0f);
@@ -133,12 +133,31 @@ void DrawBigMapName(ImDrawList* draw, const OverlayMenu& menu, const PlayerData&
     DrawOutlinedText(draw, textPos, IM_COL32(255, 255, 255, 240), name, fontSize, 155);
 }
 
+void DrawBigMapDistance(ImDrawList* draw, const OverlayMenu& menu, const PlayerData& player,
+                        float x, float y) {
+    if (!menu.bigmap_show_distance) return;
+
+    char distText[32];
+    sprintf_s(distText, "[%.0fm]", player.Distance);
+    const float fontSize = std::clamp(menu.bigmap_name_font_size * 0.9f, 8.0f, 20.0f);
+    const ImVec2 textSize = TextSize(distText, fontSize);
+    
+    float verticalOffset = menu.bigmap_marker_size + 4.0f;
+    if (menu.bigmap_show_names && !player.Name.empty()) {
+        verticalOffset += std::clamp(menu.bigmap_name_font_size, 9.0f, 22.0f) + 2.0f;
+    }
+
+    const ImVec2 textPos(x - textSize.x * 0.5f, y + verticalOffset);
+    DrawOutlinedText(draw, textPos, IM_COL32(200, 235, 255, 220), distText, fontSize, 140);
+}
+
 void DrawBigMapMarker(ImDrawList* draw, const OverlayMenu& menu, const PlayerData& player,
                       float x, float y) {
     DrawBigMapDirection(draw, menu, player, x, y);
     DrawTeamMarker(draw, x, y, player.TeamID, GetTeamColor(menu, player.TeamID),
-        menu.bigmap_marker_size, menu.bigmap_marker_alpha, menu.bigmap_name_font_size * 0.82f);
+        menu.bigmap_marker_size, menu.bigmap_show_team_id, menu.bigmap_marker_alpha, menu.bigmap_name_font_size * 0.82f);
     DrawBigMapName(draw, menu, player, x, y);
+    DrawBigMapDistance(draw, menu, player, x, y);
 }
 
 struct BigMapRect {
@@ -750,7 +769,7 @@ void Draw(ImDrawList* draw, OverlayMenu& menu, const std::vector<PlayerData>& pl
         DrawMiniMapAimRay(draw, menu, player, ImVec2(clampedX, clampedY), mapDiv, worldRange,
             miniLeft, miniTop, miniRight, miniBottom);
         DrawTeamMarker(draw, clampedX, clampedY, player.TeamID,
-            GetTeamColor(menu, player.TeamID), menu.radar_dot_size);
+            GetTeamColor(menu, player.TeamID), menu.radar_dot_size, false);
     }
 
     if (menu.show_radar_center) {
