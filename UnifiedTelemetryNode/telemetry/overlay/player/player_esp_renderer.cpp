@@ -91,7 +91,7 @@ void DrawNameplateChip(ImDrawList* draw, const ImVec2& pos, const char* text, fl
 
     const ImVec2 textSz = TextSize(text, fontSize);
     const ImVec2 chipMin(pos.x, pos.y);
-    const ImVec2 chipMax(pos.x + textSz.x + 14.0f, pos.y + textSz.y + 5.0f);
+    const ImVec2 chipMax(pos.x + textSz.x + 12.0f, pos.y + textSz.y + 5.0f);
     const float bgAlpha = std::clamp(g_Menu.esp_text_bg_alpha, 0.0f, 0.58f);
     const ImU32 bg = warning ?
         IM_COL32(42, 20, 8, AlphaByte((bgAlpha + 0.12f) * alphaMult)) :
@@ -99,10 +99,8 @@ void DrawNameplateChip(ImDrawList* draw, const ImVec2& pos, const char* text, fl
     draw->AddRectFilled(ImVec2(chipMin.x + 1.0f, chipMin.y + 1.0f),
         ImVec2(chipMax.x + 1.0f, chipMax.y + 1.0f), IM_COL32(0, 0, 0, AlphaByte(0.12f * alphaMult)), 4.0f);
     draw->AddRectFilled(chipMin, chipMax, bg, 4.0f);
-    draw->AddRectFilled(ImVec2(chipMin.x, chipMin.y), ImVec2(chipMin.x + 3.0f, chipMax.y),
-        WithAlpha(accentColor, alphaMult), 4.0f, ImDrawFlags_RoundCornersLeft);
     draw->AddRect(chipMin, chipMax, WithAlpha(accentColor, 0.34f * alphaMult), 4.0f, 0, 1.0f);
-    DrawOutlinedText(draw, ImVec2(pos.x + 8.0f, pos.y + 2.0f), textColor, text, fontSize, alphaMult);
+    DrawOutlinedText(draw, ImVec2(pos.x + 6.0f, pos.y + 2.0f), textColor, text, fontSize, alphaMult);
 }
 
 ImVec2 AmmoBadgeSize(int ammo, int ammoMax, float fontSize) {
@@ -193,16 +191,15 @@ void DrawPlayerTeamBadge(ImDrawList* draw, const ImVec2& min, float size,
 
     const ImVec2 center(min.x + size * 0.5f, min.y + size * 0.5f);
     const float radius = size * 0.5f;
-    const int alphaByte = static_cast<int>(220.0f * alpha);
-    /*
-    draw->AddCircleFilled(ImVec2(center.x + 1.0f, center.y + 1.0f), radius, IM_COL32(0, 0, 0, alphaByte));
-    draw->AddCircleFilled(center, radius, fillColor, 20);
-    draw->AddCircle(center, radius - 1.0f, IM_COL32(255, 255, 255, static_cast<int>(90.0f * alpha)), 20, 1.0f);
-    */
+    draw->AddCircleFilled(ImVec2(center.x + 1.0f, center.y + 1.0f), radius + 1.0f,
+        IM_COL32(0, 0, 0, AlphaByte(0.45f * alpha)), 24);
+    draw->AddCircleFilled(center, radius, WithAlpha(fillColor, 0.42f * alpha), 24);
+    draw->AddCircle(center, radius - 0.5f, WithAlpha(fillColor, 0.95f * alpha), 24, 1.6f);
+    draw->AddCircle(center, radius - 2.2f, IM_COL32(255, 255, 255, AlphaByte(0.20f * alpha)), 24, 1.0f);
 
     char teamText[16] = {};
     sprintf_s(teamText, "%d", teamID % 100);
-    const float fontSize = (std::max)(8.0f, size * 0.62f);
+    const float fontSize = (std::max)(8.0f, size * 0.58f);
     const ImVec2 textSize = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, teamText);
     const ImVec2 textPos(center.x - textSize.x * 0.5f, center.y - textSize.y * 0.5f);
     draw->AddText(ImGui::GetFont(), fontSize, ImVec2(textPos.x + 1.0f, textPos.y + 1.0f),

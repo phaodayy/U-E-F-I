@@ -1,5 +1,6 @@
 #include "../core/overlay_menu.hpp"
 #include "../translation/translation.hpp"
+#include "../../sdk/Utils/MacroEngine.h"
 #include <protec/skCrypt.h>
 
 void OverlayMenu::RenderTabMacro(ImVec2 windowSize) {
@@ -23,6 +24,21 @@ void OverlayMenu::RenderTabMacro(ImVec2 windowSize) {
     // Col 2: Settings
     BeginGlassCard(skCrypt("##MacroCol2"), Lang.HeaderPrecisionSettings, ImVec2(totalWidth / 3.0f - 20, 0));
     ImGui::SliderFloat(Lang.MacroStrength, &g_Menu.macro_recoil_strength, 1.0f, 100.0f, skCrypt("%.0f")); 
+    g_Menu.macro_scope_auto = true;
+    g_Menu.macro_scope_fov_compensation = false;
+    ImGui::TextDisabled(skCrypt("Auto Scope Detect: ON"));
+    ImGui::TextDisabled(skCrypt("FOV Scope Compensation: OFF"));
+    ImGui::TextDisabled(skCrypt("Detected: %s"), Translation::GetAttachmentName(0, MacroEngine::current_scope));
+    ImGui::Separator();
+    ImGui::SliderFloat(skCrypt("RedDot"), &g_Menu.macro_scope_scale_reddot, 1.0f, 300.0f, skCrypt("%.0f%%"));
+    ImGui::SliderFloat(skCrypt("Holo"), &g_Menu.macro_scope_scale_holo, 1.0f, 300.0f, skCrypt("%.0f%%"));
+    ImGui::SliderFloat(skCrypt("2x"), &g_Menu.macro_scope_scale_2x, 1.0f, 300.0f, skCrypt("%.0f%%"));
+    ImGui::SliderFloat(skCrypt("3x"), &g_Menu.macro_scope_scale_3x, 1.0f, 300.0f, skCrypt("%.0f%%"));
+    ImGui::SliderFloat(skCrypt("4x"), &g_Menu.macro_scope_scale_4x, 1.0f, 300.0f, skCrypt("%.0f%%"));
+    ImGui::SliderFloat(skCrypt("6x"), &g_Menu.macro_scope_scale_6x, 1.0f, 300.0f, skCrypt("%.0f%%"));
+    ImGui::SliderFloat(skCrypt("8x"), &g_Menu.macro_scope_scale_8x, 1.0f, 300.0f, skCrypt("%.0f%%"));
+    ImGui::SliderFloat(skCrypt("15x"), &g_Menu.macro_scope_scale_15x, 1.0f, 300.0f, skCrypt("%.0f%%"));
+    ImGui::Separator();
     ImGui::Checkbox(Lang.ShowMacroOSD, &g_Menu.show_macro_overlay);
     ImGui::ColorEdit4(Lang.OsdColor, g_Menu.macro_overlay_color, ImGuiColorEditFlags_NoInputs);
     ImGui::Separator();

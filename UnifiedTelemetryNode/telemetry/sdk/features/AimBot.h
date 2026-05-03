@@ -1143,7 +1143,11 @@ public:
 
             float mouseXSensitivity = 0.02f; 
             float mouseYSensitivity = 0.02f;
-            float fovRatio = 90.0f / cameraFOV;
+            
+            // Linear FOV Scaling: Giảm lực kéo cho các ống ngắm lớn (tránh bị kéo xuống đất)
+            // Sử dụng 80.0f làm chuẩn
+
+            float fovRatio = 80.0f / (cameraFOV > 0.0f ? cameraFOV : 80.0f);
 
             // Áp dụng Tốc độ X và Tốc độ Y từ Menu (XSpeed, YSpeed)
             float moveX = (deltaRotation.Yaw / mouseXSensitivity) * fovRatio * (config.XSpeed / 100.0f);

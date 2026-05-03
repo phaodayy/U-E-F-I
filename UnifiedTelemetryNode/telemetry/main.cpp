@@ -880,23 +880,17 @@ bool DownloadLoaderConfig() {
     auto it = responseJson.find(skCrypt("config"));
     if (it == responseJson.end() || !it->is_object() || it->empty()) return true;
 
-    std::ofstream out(AppPaths::SettingsConfigPath(), std::ios::trunc);
-    if (!out.is_open()) return false;
-    out << it->dump(2);
-    return true;
+    DeleteFileA(AppPaths::SettingsConfigPath().c_str());
+    return g_Menu.LoadConfigJsonString(it->dump(), skCrypt("loader-cloud"));
 }
 
 bool UploadLoaderConfig() {
     if (global_account_token.empty()) return false;
 
-    std::ifstream in(AppPaths::SettingsConfigPath());
-    if (!in.is_open()) {
-        in.clear();
-        in.open(skCrypt("dataMacro\\Config\\settings.json"));
-    }
-    if (!in.is_open()) return false;
+    const std::string configText = g_Menu.BuildConfigJsonString(false);
+    if (configText.empty()) return false;
 
-    nlohmann::json configJson = nlohmann::json::parse(in, nullptr, false);
+    nlohmann::json configJson = nlohmann::json::parse(configText, nullptr, false);
     if (configJson.is_discarded() || !configJson.is_object()) return false;
 
     nlohmann::json requestJson;
@@ -911,6 +905,7 @@ bool UploadLoaderConfig() {
     std::string code = JsonStringValue(responseJson, skCrypt("config_code"));
     if (!code.empty()) global_config_code = code;
     SaveLoaderSessionFile();
+    DeleteFileA(AppPaths::SettingsConfigPath().c_str());
     return JsonStringValue(responseJson, skCrypt("status")) == skCrypt("OK");
 }
 
@@ -939,8 +934,8 @@ bool ImportLoaderConfigCode(const std::string& code) {
 
     auto it = responseJson.find(skCrypt("config"));
     if (it != responseJson.end() && it->is_object()) {
-        std::ofstream out(AppPaths::SettingsConfigPath(), std::ios::trunc);
-        if (out.is_open()) out << it->dump(2);
+        g_Menu.LoadConfigJsonString(it->dump(), skCrypt("loader-cloud-import"));
+        DeleteFileA(AppPaths::SettingsConfigPath().c_str());
     }
 
     SaveLoaderSessionFile();

@@ -505,12 +505,13 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
     const int activeKey = isMortarActive ? mortar_aim_key : FlickWeaponCatalog::IntForWeapon(
         flick_category_key, MacroEngine::current_weapon_name, flick_key, 0, 0xFE);
     const bool flickKeyDown = activeKey != 0 && telemetryMemory::IsKeyDown(activeKey);
+    const bool lockFlickTarget = isMortarActive || g_Menu.flick_lock_target;
     
     static uint64_t lockedPlayerActor = 0;
     static Vector3 lockedItemPos = {0, 0, 0};
     static bool isLocked = false;
     
-    if (!flickKeyDown || !isMortarActive) {
+    if (!flickKeyDown || !lockFlickTarget || !canFlick) {
         isLocked = false;
         lockedPlayerActor = 0;
         lockedItemPos = {0, 0, 0};
@@ -538,7 +539,7 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
 
         if (player.Distance > actualRenderDist) continue;
         
-        if (isMortarActive && isLocked) {
+        if (lockFlickTarget && isLocked) {
             if (lockedPlayerActor != 0 && player.ActorPtr != lockedPlayerActor) continue;
             if (lockedPlayerActor == 0) continue; // Locked to an item, skip all players
         }
@@ -644,7 +645,7 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
     const bool justPressed = flickKeyDown && !lastFlickKeyDown;
     lastFlickKeyDown = flickKeyDown;
 
-    if (isMortarActive && justPressed) {
+    if (lockFlickTarget && justPressed) {
         if (bestTarget != nullptr) {
             isLocked = true;
             lockedPlayerActor = bestTarget->ActorPtr;

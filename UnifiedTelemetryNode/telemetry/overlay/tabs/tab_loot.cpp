@@ -164,7 +164,11 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { skCrypt("Jamr"), skCrypt("Backpack"), skCrypt("Item_Back_BlueBlocker"), &g_Menu.loot_utility_jammer },
         { skCrypt("BlueC"), skCrypt("Utility"), skCrypt("Item_Bluechip_C"), &g_Menu.loot_utility_bluechip },
         { skCrypt("Trans"), skCrypt("Utility"), skCrypt("Item_Revival_Transmitter_C"), &g_Menu.loot_utility_vtransmitter },
-        { skCrypt("Shld"), skCrypt("Utility"), skCrypt("Item_BulletproofShield_C"), &g_Menu.loot_utility_shield }
+        { skCrypt("Shld"), skCrypt("Utility"), skCrypt("Item_BulletproofShield_C"), &g_Menu.loot_utility_shield },
+        { skCrypt("EPick"), skCrypt("Utility"), skCrypt("Item_EmergencyPickup_C"), &g_Menu.loot_utility_emergency },
+        { skCrypt("Gas"), skCrypt("Utility"), skCrypt("Item_JerryCan_C"), &g_Menu.loot_utility_jerrycan },
+        { skCrypt("AED"), skCrypt("Utility"), skCrypt("Item_Tiger_SelfRevive_C"), &g_Menu.loot_utility_selfrevive },
+        { skCrypt("Revive"), skCrypt("Utility"), skCrypt("InstantRevivalKit_C"), &g_Menu.loot_utility_instantrevive }
     };
     DrawMasterToggle(tacticalTiles, IM_ARRAYSIZE(tacticalTiles), skCrypt("Tactical"));
     DrawVisualLootGrid(tacticalTiles, IM_ARRAYSIZE(tacticalTiles), 3);
@@ -176,6 +180,8 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), skCrypt("MEDICINES"));
     VisualLootTile medTiles[] = {
         { Lang.Healing, skCrypt("Medicine"), skCrypt("Item_Heal_FirstAid_C"), &g_Menu.loot_meds_healing },
+        { skCrypt("Band"), skCrypt("Medicine"), skCrypt("Item_Heal_Bandage_C"), &g_Menu.loot_meds_bandage },
+        { skCrypt("Battle"), skCrypt("Medicine"), skCrypt("Item_Heal_BattleReadyKit_C"), &g_Menu.loot_meds_battle_ready },
         { Lang.Boosters, skCrypt("Medicine"), skCrypt("Item_Boost_EnergyDrink_C"), &g_Menu.loot_meds_boosts }
     };
     DrawMasterToggle(medTiles, IM_ARRAYSIZE(medTiles), skCrypt("Meds"));
@@ -204,13 +210,20 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { skCrypt("Flash"), skCrypt("Attachment/Muzzle"), skCrypt("Item_Attach_Weapon_Muzzle_FlashHider_Large_C"), &g_Menu.loot_muzzle_flash },
         { skCrypt("Supp"), skCrypt("Attachment/Muzzle"), skCrypt("Item_Attach_Weapon_Muzzle_Suppressor_Large_C"), &g_Menu.loot_muzzle_supp },
         { skCrypt("Choke"), skCrypt("Attachment/Muzzle"), skCrypt("Item_Attach_Weapon_Muzzle_Choke_C"), &g_Menu.loot_muzzle_choke },
+        { skCrypt("Brake"), skCrypt("Attachment/Muzzle"), skCrypt("Item_Attach_Weapon_Muzzle_AR_MuzzleBrake_C"), &g_Menu.loot_muzzle_brake },
+        { skCrypt("Duck"), skCrypt("Attachment/Muzzle"), skCrypt("Item_Attach_Weapon_Muzzle_Duckbill_C"), &g_Menu.loot_muzzle_duckbill },
         { skCrypt("Vert"), skCrypt("Attachment/Grip"), skCrypt("Item_Attach_Weapon_Lower_Foregrip_C"), &g_Menu.loot_grip_vertical },
         { skCrypt("Angle"), skCrypt("Attachment/Grip"), skCrypt("Item_Attach_Weapon_Lower_AngledForeGrip_C"), &g_Menu.loot_grip_angled },
         { skCrypt("Half"), skCrypt("Attachment/Grip"), skCrypt("Item_Attach_Weapon_Lower_HalfGrip_C"), &g_Menu.loot_grip_half },
         { skCrypt("Thumb"), skCrypt("Attachment/Grip"), skCrypt("Item_Attach_Weapon_Lower_ThumbGrip_C"), &g_Menu.loot_grip_thumb },
         { skCrypt("Light"), skCrypt("Attachment/Grip"), skCrypt("Item_Attach_Weapon_Lower_LightweightForeGrip_C"), &g_Menu.loot_grip_light },
+        { skCrypt("Laser"), skCrypt("Attachment/Grip"), skCrypt("Item_Attach_Weapon_Lower_LaserPointer_C"), &g_Menu.loot_grip_laser },
+        { skCrypt("Quiv"), skCrypt("Attachment/Grip"), skCrypt("Item_Attach_Weapon_Lower_QuickDraw_Large_Crossbow_C"), &g_Menu.loot_grip_crossbow_quiver },
         { skCrypt("Heavy"), skCrypt("Attachment/Stock"), skCrypt("Item_Attach_Weapon_Stock_AR_HeavyStock_C"), &g_Menu.loot_stock_heavy },
+        { skCrypt("Tac"), skCrypt("Attachment/Stock"), skCrypt("Item_Attach_Weapon_Stock_AR_Composite_C"), &g_Menu.loot_stock_tactical },
         { skCrypt("Cheek"), skCrypt("Attachment/Stock"), skCrypt("Item_Attach_Weapon_Stock_SniperRifle_CheekPad_C"), &g_Menu.loot_stock_cheek },
+        { skCrypt("Loops"), skCrypt("Attachment/Stock"), skCrypt("Item_Attach_Weapon_Stock_SniperRifle_BulletLoops_C"), &g_Menu.loot_stock_bullet_loops },
+        { skCrypt("UZI St"), skCrypt("Attachment/Stock"), skCrypt("Item_Attach_Weapon_Stock_UZI_C"), &g_Menu.loot_stock_uzi },
         { skCrypt("Ext"), skCrypt("Attachment/Mag"), skCrypt("Item_Attach_Weapon_Magazine_Extended_Large_C"), &g_Menu.loot_mag_ext },
         { skCrypt("Quick"), skCrypt("Attachment/Mag"), skCrypt("Item_Attach_Weapon_Magazine_QuickDraw_Large_C"), &g_Menu.loot_mag_quick },
         { skCrypt("ExtQ"), skCrypt("Attachment/Mag"), skCrypt("Item_Attach_Weapon_Magazine_ExtendedQuickDraw_Large_C"), &g_Menu.loot_mag_ext_quick }
@@ -236,7 +249,8 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { skCrypt("40mm"), skCrypt("Ammo"), skCrypt("Item_Ammo_40mm_C"), &g_Menu.loot_ammo_40 },
         { skCrypt("Bolt"), skCrypt("Ammo"), skCrypt("Item_Ammo_Bolt_C"), &g_Menu.loot_ammo_bolt },
         { skCrypt("Flare"), skCrypt("Ammo"), skCrypt("Item_Ammo_Flare_C"), &g_Menu.loot_ammo_flare },
-        { skCrypt("Mortar"), skCrypt("Ammo"), skCrypt("Item_Ammo_Mortar_C"), &g_Menu.loot_ammo_mortar }
+        { skCrypt("Mortar"), skCrypt("Ammo"), skCrypt("Item_Ammo_Mortar_C"), &g_Menu.loot_ammo_mortar },
+        { skCrypt("Zip"), skCrypt("Ammo"), skCrypt("Item_Ammo_ZiplinegunHook_C"), &g_Menu.loot_ammo_zipline }
     };
     DrawMasterToggle(ammoTiles, IM_ARRAYSIZE(ammoTiles), skCrypt("Ammo"));
     DrawVisualLootGrid(ammoTiles, IM_ARRAYSIZE(ammoTiles), 3);
@@ -249,7 +263,9 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { skCrypt("Tiger"), skCrypt("Key"), skCrypt("Item_Tiger_Key_C"), &g_Menu.loot_key_taego },
         { skCrypt("Vikn"), skCrypt("Key"), skCrypt("Item_DihorOtok_Key_C"), &g_Menu.loot_key_vikendi },
         { skCrypt("Chim"), skCrypt("Key"), skCrypt("Item_Chimera_Key_C"), &g_Menu.loot_key_chimera },
-        { skCrypt("Havn"), skCrypt("Key"), skCrypt("Item_Heaven_Key_C"), &g_Menu.loot_key_haven }
+        { skCrypt("Havn"), skCrypt("Key"), skCrypt("Item_Heaven_Key_C"), &g_Menu.loot_key_haven },
+        { skCrypt("Coin"), skCrypt("Key"), skCrypt("Item_Neon_Coin_C"), &g_Menu.loot_key_neon_coin },
+        { skCrypt("Gold"), skCrypt("Key"), skCrypt("Item_Neon_Gold_C"), &g_Menu.loot_key_neon_gold }
     };
     DrawMasterToggle(keyTiles, IM_ARRAYSIZE(keyTiles), skCrypt("Keys"));
     DrawVisualLootGrid(keyTiles, IM_ARRAYSIZE(keyTiles), 3);
@@ -264,6 +280,8 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { skCrypt("C4"), skCrypt("Gun/Throw"), skCrypt("Item_Weapon_C4_C"), &g_Menu.loot_throw_c4 },
         { skCrypt("Stky"), skCrypt("Gun/Throw"), skCrypt("Item_Weapon_StickyGrenade_C"), &g_Menu.loot_throw_sticky },
         { skCrypt("BZ"), skCrypt("Gun/Throw"), skCrypt("Item_Weapon_BluezoneGrenade_C"), &g_Menu.loot_throw_bz },
+        { skCrypt("BZ2"), skCrypt("Gun/Throw"), skCrypt("Item_Weapon_BZGrenade_C"), &g_Menu.loot_throw_bz },
+        { skCrypt("War"), skCrypt("Gun/Throw"), skCrypt("Item_Weapon_Grenade_Warmode_C"), &g_Menu.loot_throw_frag },
         { skCrypt("Dcy"), skCrypt("Gun/Throw"), skCrypt("Item_Weapon_DecoyGrenade_C"), &g_Menu.loot_throw_decoy }
     };
     DrawMasterToggle(throwTiles, IM_ARRAYSIZE(throwTiles), skCrypt("Throws"));
@@ -360,7 +378,12 @@ void OverlayMenu::RenderTabLoot(ImVec2 windowSize) {
         { skCrypt("Flare"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_FlareGun_C"), &g_Menu.loot_weapon_flare },
         { skCrypt("Cross"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_Crossbow_C"), &g_Menu.loot_weapon_crossbow },
         { skCrypt("Panzer"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_PanzerFaust100M_C"), &g_Menu.loot_weapon_panzer },
+        { skCrypt("Mortar"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_Mortar_C"), &g_Menu.loot_weapon_mortar },
         { skCrypt("M79"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_M79_C"), &g_Menu.loot_weapon_m79 },
+        { skCrypt("ZipGun"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_Ziplinegun_C"), &g_Menu.loot_weapon_zipline },
+        { skCrypt("TacBag"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_TacPack_C"), &g_Menu.loot_weapon_tacpack },
+        { skCrypt("Trauma"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_TraumaBag_C"), &g_Menu.loot_weapon_trauma },
+        { skCrypt("Repair"), skCrypt("Gun/Special"), skCrypt("Item_Weapon_IntegratedRepair_C"), &g_Menu.loot_weapon_integrated_repair },
         { skCrypt("Pan"), skCrypt("Gun/Melee"), skCrypt("Item_Weapon_Pan_C"), &g_Menu.loot_weapon_pan },
         { skCrypt("Crowbar"), skCrypt("Gun/Melee"), skCrypt("Item_Weapon_Cowbar_C"), &g_Menu.loot_weapon_crowbar },
         { skCrypt("Machete"), skCrypt("Gun/Melee"), skCrypt("Item_Weapon_Machete_C"), &g_Menu.loot_weapon_machete },

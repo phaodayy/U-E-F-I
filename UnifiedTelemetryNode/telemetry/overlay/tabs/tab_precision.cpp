@@ -212,6 +212,7 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     ImGui::Checkbox(Lang.AimVisible, &visibleOnly);
     ImGui::Checkbox(Lang.FlickAutoShot, &flickAutoShot);
     ImGui::Checkbox(Lang.HoldUntilShot, &shotHold);
+    ImGui::Checkbox(skCrypt("Lock Flick Target"), &g_Menu.flick_lock_target);
     
     ImGui::Spacing();
     ImGui::TextUnformatted(Lang.FlickMode);

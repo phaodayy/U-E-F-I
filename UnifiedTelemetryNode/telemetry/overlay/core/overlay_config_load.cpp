@@ -7,9 +7,20 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 namespace {
+
+float LoadMacroScopePercent(const nlohmann::json& j, const char* key, float currentValue) {
+    if (!j.contains(key) || !j[key].is_number()) {
+        return currentValue;
+    }
+
+    const float raw = j[key].get<float>();
+    const float percent = raw <= 2.0f ? raw * 100.0f : raw;
+    return std::clamp(percent, 1.0f, 300.0f);
+}
 
 void ApplyModernVisualDefaults(OverlayMenu& menu) {
     menu.esp_box_type = 1;
@@ -49,18 +60,11 @@ void ApplyModernVisualDefaults(OverlayMenu& menu) {
 
 } // namespace
 
-void OverlayMenu::LoadConfig(const char* path) {
+bool OverlayMenu::LoadConfigJsonString(const std::string& jsonText, const char* sourceLabel) {
+    nlohmann::json j = nlohmann::json::parse(jsonText, nullptr, false);
+    if (j.is_discarded() || !j.is_object()) return false;
+
     try {
-        const std::string resolvedPath = AppPaths::RuntimePath(path ? path : "");
-        std::ifstream file(resolvedPath);
-        if (!file.is_open() && path) {
-            file.clear();
-            file.open(path);
-        }
-        if (file.is_open()) {
-            nlohmann::json j;
-            file >> j;
-            file.close();
 
             if (j.contains("esp_toggle")) esp_toggle = j["esp_toggle"];
             if (j.contains("esp_icons")) esp_icons = j["esp_icons"];
@@ -101,6 +105,7 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("flick_visible_only")) flick_visible_only = j["flick_visible_only"];
             if (j.contains("flick_auto_shot")) flick_auto_shot = j["flick_auto_shot"];
             if (j.contains("flick_shot_hold")) flick_shot_hold = j["flick_shot_hold"];
+            if (j.contains("flick_lock_target")) flick_lock_target = j["flick_lock_target"];
             if (j.contains("flick_return")) flick_return = j["flick_return"];
             if (j.contains("flick_behavior_mode")) {
                 flick_behavior_mode = j["flick_behavior_mode"];
@@ -389,6 +394,18 @@ void OverlayMenu::LoadConfig(const char* path) {
                 macro_recoil_strength = std::clamp(MacroEngine::global_multiplier * 50.0f, 1.0f, 100.0f);
             }
 
+            macro_scope_auto = true;
+            if (j.contains("macro_scope_override")) macro_scope_override = std::clamp(j["macro_scope_override"].get<int>(), 0, 8);
+            macro_scope_fov_compensation = false;
+            macro_scope_scale_reddot = LoadMacroScopePercent(j, "macro_scope_scale_reddot", macro_scope_scale_reddot);
+            macro_scope_scale_holo = LoadMacroScopePercent(j, "macro_scope_scale_holo", macro_scope_scale_holo);
+            macro_scope_scale_2x = LoadMacroScopePercent(j, "macro_scope_scale_2x", macro_scope_scale_2x);
+            macro_scope_scale_3x = LoadMacroScopePercent(j, "macro_scope_scale_3x", macro_scope_scale_3x);
+            macro_scope_scale_4x = LoadMacroScopePercent(j, "macro_scope_scale_4x", macro_scope_scale_4x);
+            macro_scope_scale_6x = LoadMacroScopePercent(j, "macro_scope_scale_6x", macro_scope_scale_6x);
+            macro_scope_scale_8x = LoadMacroScopePercent(j, "macro_scope_scale_8x", macro_scope_scale_8x);
+            macro_scope_scale_15x = LoadMacroScopePercent(j, "macro_scope_scale_15x", macro_scope_scale_15x);
+
             if (j.contains("macro_overlay_color") && j["macro_overlay_color"].is_array() && j["macro_overlay_color"].size() == 4) {
                 for (int i = 0; i < 4; i++) macro_overlay_color[i] = j["macro_overlay_color"][i];
             }
@@ -469,6 +486,8 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("loot_helmet_lv3")) loot_helmet_lv3 = j["loot_helmet_lv3"];
             if (j.contains("loot_meds_boosts")) loot_meds_boosts = j["loot_meds_boosts"];
             if (j.contains("loot_meds_healing")) loot_meds_healing = j["loot_meds_healing"];
+            if (j.contains("loot_meds_bandage")) loot_meds_bandage = j["loot_meds_bandage"];
+            if (j.contains("loot_meds_battle_ready")) loot_meds_battle_ready = j["loot_meds_battle_ready"];
             if (j.contains("loot_ammo_all")) loot_ammo_all = j["loot_ammo_all"];
             if (j.contains("loot_ammo_high")) loot_ammo_high = j["loot_ammo_high"];
             if (j.contains("loot_scopes_all")) loot_scopes_all = j["loot_scopes_all"];
@@ -495,6 +514,7 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("loot_ammo_bolt")) loot_ammo_bolt = j["loot_ammo_bolt"];
             if (j.contains("loot_ammo_flare")) loot_ammo_flare = j["loot_ammo_flare"];
             if (j.contains("loot_ammo_mortar")) loot_ammo_mortar = j["loot_ammo_mortar"];
+            if (j.contains("loot_ammo_zipline")) loot_ammo_zipline = j["loot_ammo_zipline"];
 
             if (j.contains("loot_key_security")) loot_key_security = j["loot_key_security"];
             if (j.contains("loot_key_secret")) loot_key_secret = j["loot_key_secret"];
@@ -502,6 +522,8 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("loot_key_vikendi")) loot_key_vikendi = j["loot_key_vikendi"];
             if (j.contains("loot_key_chimera")) loot_key_chimera = j["loot_key_chimera"];
             if (j.contains("loot_key_haven")) loot_key_haven = j["loot_key_haven"];
+            if (j.contains("loot_key_neon_coin")) loot_key_neon_coin = j["loot_key_neon_coin"];
+            if (j.contains("loot_key_neon_gold")) loot_key_neon_gold = j["loot_key_neon_gold"];
 
             if (j.contains("loot_scope_reddot")) loot_scope_reddot = j["loot_scope_reddot"];
             if (j.contains("loot_scope_holo")) loot_scope_holo = j["loot_scope_holo"];
@@ -516,13 +538,20 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("loot_muzzle_flash")) loot_muzzle_flash = j["loot_muzzle_flash"];
             if (j.contains("loot_muzzle_supp")) loot_muzzle_supp = j["loot_muzzle_supp"];
             if (j.contains("loot_muzzle_choke")) loot_muzzle_choke = j["loot_muzzle_choke"];
+            if (j.contains("loot_muzzle_brake")) loot_muzzle_brake = j["loot_muzzle_brake"];
+            if (j.contains("loot_muzzle_duckbill")) loot_muzzle_duckbill = j["loot_muzzle_duckbill"];
             if (j.contains("loot_grip_vertical")) loot_grip_vertical = j["loot_grip_vertical"];
             if (j.contains("loot_grip_angled")) loot_grip_angled = j["loot_grip_angled"];
             if (j.contains("loot_grip_half")) loot_grip_half = j["loot_grip_half"];
             if (j.contains("loot_grip_thumb")) loot_grip_thumb = j["loot_grip_thumb"];
             if (j.contains("loot_grip_light")) loot_grip_light = j["loot_grip_light"];
+            if (j.contains("loot_grip_laser")) loot_grip_laser = j["loot_grip_laser"];
+            if (j.contains("loot_grip_crossbow_quiver")) loot_grip_crossbow_quiver = j["loot_grip_crossbow_quiver"];
             if (j.contains("loot_stock_heavy")) loot_stock_heavy = j["loot_stock_heavy"];
             if (j.contains("loot_stock_cheek")) loot_stock_cheek = j["loot_stock_cheek"];
+            if (j.contains("loot_stock_tactical")) loot_stock_tactical = j["loot_stock_tactical"];
+            if (j.contains("loot_stock_bullet_loops")) loot_stock_bullet_loops = j["loot_stock_bullet_loops"];
+            if (j.contains("loot_stock_uzi")) loot_stock_uzi = j["loot_stock_uzi"];
             if (j.contains("loot_mag_ext")) loot_mag_ext = j["loot_mag_ext"];
             if (j.contains("loot_mag_quick")) loot_mag_quick = j["loot_mag_quick"];
             if (j.contains("loot_mag_ext_quick")) loot_mag_ext_quick = j["loot_mag_ext_quick"];
@@ -596,6 +625,11 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("lw_panzer")) loot_weapon_panzer = j["lw_panzer"];
             if (j.contains("lw_spike")) loot_weapon_spike = j["lw_spike"];
             if (j.contains("lw_m79")) loot_weapon_m79 = j["lw_m79"];
+            if (j.contains("lw_mortar")) loot_weapon_mortar = j["lw_mortar"];
+            if (j.contains("lw_zipline")) loot_weapon_zipline = j["lw_zipline"];
+            if (j.contains("lw_tacpack")) loot_weapon_tacpack = j["lw_tacpack"];
+            if (j.contains("lw_trauma")) loot_weapon_trauma = j["lw_trauma"];
+            if (j.contains("lw_integrated_repair")) loot_weapon_integrated_repair = j["lw_integrated_repair"];
 
             if (j.contains("loot_throw_frag")) loot_throw_frag = j["loot_throw_frag"];
             if (j.contains("loot_throw_smoke")) loot_throw_smoke = j["loot_throw_smoke"];
@@ -621,6 +655,10 @@ void OverlayMenu::LoadConfig(const char* path) {
             if (j.contains("loot_utility_bluechip")) loot_utility_bluechip = j["loot_utility_bluechip"];
             if (j.contains("loot_utility_vtransmitter")) loot_utility_vtransmitter = j["loot_utility_vtransmitter"];
             if (j.contains("loot_utility_shield")) loot_utility_shield = j["loot_utility_shield"];
+            if (j.contains("loot_utility_emergency")) loot_utility_emergency = j["loot_utility_emergency"];
+            if (j.contains("loot_utility_jerrycan")) loot_utility_jerrycan = j["loot_utility_jerrycan"];
+            if (j.contains("loot_utility_selfrevive")) loot_utility_selfrevive = j["loot_utility_selfrevive"];
+            if (j.contains("loot_utility_instantrevive")) loot_utility_instantrevive = j["loot_utility_instantrevive"];
 
             if (j.contains("loot_vehicle_uaz")) loot_vehicle_uaz = j["loot_vehicle_uaz"];
             if (j.contains("loot_vehicle_dacia")) loot_vehicle_dacia = j["loot_vehicle_dacia"];
@@ -652,7 +690,25 @@ void OverlayMenu::LoadConfig(const char* path) {
                 ApplyModernVisualDefaults(*this);
             }
 
-            UTN_DEV_LOG(std::cout << "[DEV] Loaded Config from: " << path << std::endl);
+            UTN_DEV_LOG(std::cout << "[DEV] Loaded Config from: " << (sourceLabel ? sourceLabel : "cloud-json") << std::endl);
+            return true;
+    } catch (...) {}
+    return false;
+}
+
+void OverlayMenu::LoadConfig(const char* path) {
+    try {
+        const std::string resolvedPath = AppPaths::RuntimePath(path ? path : "");
+        std::ifstream file(resolvedPath);
+        if (!file.is_open() && path) {
+            file.clear();
+            file.open(path);
         }
+        if (!file.is_open()) return;
+
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        file.close();
+        LoadConfigJsonString(buffer.str(), resolvedPath.c_str());
     } catch (...) {}
 }

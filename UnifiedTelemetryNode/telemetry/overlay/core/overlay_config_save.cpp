@@ -8,7 +8,7 @@
 #include <iostream>
 #include <string>
 
-void OverlayMenu::SaveConfig(const char* path) {
+std::string OverlayMenu::BuildConfigJsonString(bool pretty) {
     try {
         nlohmann::json j;
         j["visual_style_version"] = 2;
@@ -52,6 +52,7 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["flick_auto_shot"] = flick_auto_shot;
         j["flick_shot_hold"] = flick_shot_hold;
         j["flick_behavior_mode"] = flick_behavior_mode;
+        j["flick_lock_target"] = flick_lock_target;
         j["flick_follow_auto_shot"] = flick_follow_auto_shot;
         
         FlickWeaponCatalog::EnsureCategoryDefaults(flick_category_enabled);
@@ -204,6 +205,19 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["macro_ads_only"] = macro_ads_only;
         j["macro_recoil_strength"] = macro_recoil_strength;
         j["macro_global_multiplier"] = MacroEngine::global_multiplier;
+        macro_scope_auto = true;
+        macro_scope_fov_compensation = false;
+        j["macro_scope_auto"] = true;
+        j["macro_scope_override"] = macro_scope_override;
+        j["macro_scope_fov_compensation"] = false;
+        j["macro_scope_scale_reddot"] = macro_scope_scale_reddot;
+        j["macro_scope_scale_holo"] = macro_scope_scale_holo;
+        j["macro_scope_scale_2x"] = macro_scope_scale_2x;
+        j["macro_scope_scale_3x"] = macro_scope_scale_3x;
+        j["macro_scope_scale_4x"] = macro_scope_scale_4x;
+        j["macro_scope_scale_6x"] = macro_scope_scale_6x;
+        j["macro_scope_scale_8x"] = macro_scope_scale_8x;
+        j["macro_scope_scale_15x"] = macro_scope_scale_15x;
         j["macro_overlay_color"] = { macro_overlay_color[0], macro_overlay_color[1], macro_overlay_color[2], macro_overlay_color[3] };
 
         j["esp_vehicles"] = esp_vehicles;
@@ -236,6 +250,8 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["loot_helmet_lv3"] = loot_helmet_lv3;
         j["loot_meds_boosts"] = loot_meds_boosts;
         j["loot_meds_healing"] = loot_meds_healing;
+        j["loot_meds_bandage"] = loot_meds_bandage;
+        j["loot_meds_battle_ready"] = loot_meds_battle_ready;
         j["loot_ammo_all"] = loot_ammo_all;
         j["loot_ammo_high"] = loot_ammo_high;
         j["loot_scopes_all"] = loot_scopes_all;
@@ -257,10 +273,13 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["loot_ammo_40"] = loot_ammo_40;
         j["loot_ammo_bolt"] = loot_ammo_bolt; j["loot_ammo_flare"] = loot_ammo_flare;
         j["loot_ammo_mortar"] = loot_ammo_mortar;
+        j["loot_ammo_zipline"] = loot_ammo_zipline;
 
         j["loot_key_security"] = loot_key_security; j["loot_key_secret"] = loot_key_secret;
         j["loot_key_taego"] = loot_key_taego; j["loot_key_vikendi"] = loot_key_vikendi;
         j["loot_key_chimera"] = loot_key_chimera; j["loot_key_haven"] = loot_key_haven;
+        j["loot_key_neon_coin"] = loot_key_neon_coin;
+        j["loot_key_neon_gold"] = loot_key_neon_gold;
 
         j["loot_scope_reddot"] = loot_scope_reddot; j["loot_scope_holo"] = loot_scope_holo;
         j["loot_scope_2x"] = loot_scope_2x; j["loot_scope_3x"] = loot_scope_3x;
@@ -269,10 +288,17 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["loot_scope_thermal"] = loot_scope_thermal;
         j["loot_muzzle_comp"] = loot_muzzle_comp; j["loot_muzzle_flash"] = loot_muzzle_flash;
         j["loot_muzzle_supp"] = loot_muzzle_supp; j["loot_muzzle_choke"] = loot_muzzle_choke;
+        j["loot_muzzle_brake"] = loot_muzzle_brake;
+        j["loot_muzzle_duckbill"] = loot_muzzle_duckbill;
         j["loot_grip_vertical"] = loot_grip_vertical; j["loot_grip_angled"] = loot_grip_angled;
         j["loot_grip_half"] = loot_grip_half; j["loot_grip_thumb"] = loot_grip_thumb;
         j["loot_grip_light"] = loot_grip_light; j["loot_stock_heavy"] = loot_stock_heavy;
+        j["loot_grip_laser"] = loot_grip_laser;
+        j["loot_grip_crossbow_quiver"] = loot_grip_crossbow_quiver;
         j["loot_stock_cheek"] = loot_stock_cheek; j["loot_mag_ext"] = loot_mag_ext;
+        j["loot_stock_tactical"] = loot_stock_tactical;
+        j["loot_stock_bullet_loops"] = loot_stock_bullet_loops;
+        j["loot_stock_uzi"] = loot_stock_uzi;
         j["loot_mag_quick"] = loot_mag_quick; j["loot_mag_ext_quick"] = loot_mag_ext_quick;
 
         j["loot_throw_frag"] = loot_throw_frag; j["loot_throw_smoke"] = loot_throw_smoke;
@@ -318,6 +344,11 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["lw_pickaxe"] = loot_weapon_pickaxe; j["lw_flare"] = loot_weapon_flare;
         j["lw_crossbow"] = loot_weapon_crossbow; j["lw_panzer"] = loot_weapon_panzer;
         j["lw_spike"] = loot_weapon_spike; j["lw_m79"] = loot_weapon_m79;
+        j["lw_mortar"] = loot_weapon_mortar;
+        j["lw_zipline"] = loot_weapon_zipline;
+        j["lw_tacpack"] = loot_weapon_tacpack;
+        j["lw_trauma"] = loot_weapon_trauma;
+        j["lw_integrated_repair"] = loot_weapon_integrated_repair;
 
         j["loot_ghillie_arctic"] = loot_ghillie_arctic;
         j["loot_ghillie_desert"] = loot_ghillie_desert;
@@ -335,6 +366,10 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["loot_utility_bluechip"] = loot_utility_bluechip;
         j["loot_utility_vtransmitter"] = loot_utility_vtransmitter;
         j["loot_utility_shield"] = loot_utility_shield;
+        j["loot_utility_emergency"] = loot_utility_emergency;
+        j["loot_utility_jerrycan"] = loot_utility_jerrycan;
+        j["loot_utility_selfrevive"] = loot_utility_selfrevive;
+        j["loot_utility_instantrevive"] = loot_utility_instantrevive;
 
         j["loot_vehicle_uaz"] = loot_vehicle_uaz;
         j["loot_vehicle_dacia"] = loot_vehicle_dacia;
@@ -391,12 +426,20 @@ void OverlayMenu::SaveConfig(const char* path) {
         };
         j["esp_multilayer_nameplate"] = esp_multilayer_nameplate;
 
-        const std::string resolvedPath = AppPaths::RuntimePath(path ? path : "settings.json");
-        std::ofstream file(resolvedPath);
-        if (file.is_open()) {
-            file << j.dump(4);
-            file.close();
-            UTN_DEV_LOG(std::cout << "[DEV] Saved Config to: " << resolvedPath << std::endl);
-        }
+        return pretty ? j.dump(4) : j.dump();
     } catch (...) {}
+    return {};
+}
+
+void OverlayMenu::SaveConfig(const char* path) {
+    const std::string jsonText = BuildConfigJsonString(true);
+    if (jsonText.empty()) return;
+
+    const std::string resolvedPath = AppPaths::RuntimePath(path ? path : "settings.json");
+    std::ofstream file(resolvedPath);
+    if (file.is_open()) {
+        file << jsonText;
+        file.close();
+        UTN_DEV_LOG(std::cout << "[DEV] Saved Config to: " << resolvedPath << std::endl);
+    }
 }

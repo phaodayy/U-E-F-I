@@ -892,7 +892,8 @@ public:
 
         auto& sens = global_config[skCrypt("sensitivity")];
         std::string key = skCrypt("none");
-        switch (current_scope)
+        const int sensScope = g_Menu.macro_scope_auto ? current_scope : std::clamp(g_Menu.macro_scope_override, 0, 8);
+        switch (sensScope)
         {
         case 1: key = skCrypt("reddot"); break;
         case 2: key = skCrypt("holosight"); break;
@@ -928,6 +929,41 @@ public:
             }
         }
         return baseSens;
+    }
+
+    static int GetEffectiveScope()
+    {
+        if (!g_Menu.macro_scope_auto)
+        {
+            return std::clamp(g_Menu.macro_scope_override, 0, 8);
+        }
+        return current_scope;
+    }
+
+    static float GetMenuScopeScale()
+    {
+        auto percentToScale = [](const float percent) {
+            return std::clamp(percent, 1.0f, 300.0f) / 100.0f;
+        };
+
+        switch (GetEffectiveScope())
+        {
+        case 1: return percentToScale(g_Menu.macro_scope_scale_reddot);
+        case 2: return percentToScale(g_Menu.macro_scope_scale_holo);
+        case 3: return percentToScale(g_Menu.macro_scope_scale_2x);
+        case 4: return percentToScale(g_Menu.macro_scope_scale_3x);
+        case 5: return percentToScale(g_Menu.macro_scope_scale_4x);
+        case 6: return percentToScale(g_Menu.macro_scope_scale_6x);
+        case 7: return percentToScale(g_Menu.macro_scope_scale_8x);
+        case 8: return percentToScale(g_Menu.macro_scope_scale_15x);
+        default: return 1.0f;
+        }
+    }
+
+    static float GetScopeFovCompensation(const float currentFOV)
+    {
+        (void)currentFOV;
+        return 1.0f;
     }
 
     static float CategorySustainPull()
@@ -1207,22 +1243,28 @@ public:
 
             const float sens = GetSensMultiplier();
             
+            // Linear FOV Scaling for Recoil: Tránh bị kéo xuống đất khi dùng ống ngắm lớn
+            // Sử dụng 80.0f (RedDot) làm chuẩn theo phản hồi người dùng
+            const float scopeScale = GetMenuScopeScale();
+            const float fovRatio = GetScopeFovCompensation(currentFOV);
+            const float recoilScale = scopeScale * fovRatio;
+
             // Re-enabled menu settings with 0-100 scale interpretation
             // multiplier and pitchGain now act as percentages (0-100)
             float strengthY = (g_Menu.macro_recoil_strength / 100.0f) * profile.multiplier * profile.pitchGain;
             
-            float moveY = pitchDelta * 50.0f * strengthY * sens * res_scale_y * p_m;
+            float moveY = pitchDelta * 50.0f * strengthY * sens * res_scale_y * p_m * recoilScale;
             float moveX = 0.0f; 
 
             // Combined with Vector Recoil
             float vecDelta = recoilVec.y - last_vec_y;
             if (std::abs(vecDelta) < 10.0f && std::abs(vecDelta) > 0.001f) {
-                moveY += vecDelta * 1.2f * strengthY * sens; 
+                moveY += vecDelta * 1.2f * strengthY * sens * recoilScale; 
             }
             last_vec_y = recoilVec.y;
 
             const float totalPitch = (std::max)(NormalizeAngle(recoilRot.Pitch - angle_anchor_pitch), 0.0f);
-            const float targetMovedY = totalPitch * 50.0f * strengthY * sens * res_scale_y * p_m;
+            const float targetMovedY = totalPitch * 50.0f * strengthY * sens * res_scale_y * p_m * recoilScale;
             const float catchupY = targetMovedY - angle_moved_y;
             if (catchupY > 0.15f)
             {
@@ -1239,7 +1281,7 @@ public:
                 {
                     ramp += std::clamp((static_cast<float>(sprayMs - 1100) / 900.0f) * 1.80f, 0.0f, 1.80f);
                 }
-                sustainFloorY = sustainBase * ramp * strengthY * sens * res_scale_y * p_m;
+                sustainFloorY = sustainBase * ramp * strengthY * sens * res_scale_y * p_m * recoilScale;
                 if (moveY < sustainFloorY)
                 {
                     moveY = sustainFloorY;
@@ -1284,8 +1326,7 @@ public:
             // Step 2: SingleStep limit (Visuals.cpp:2981) - Final clamp
             float MovePerTimeY = isSR ? profile.srMaxStepY : (isDMR ? profile.dmrMaxStepY : profile.arMaxStepY);
             
-            float fovRatio = 80.0f / (currentFOV > 0.0f ? currentFOV : 80.0f);
-            MovePerTimeY *= fovRatio;
+            MovePerTimeY *= std::clamp(recoilScale, 0.15f, 1.0f);
 
             if (isInVehicle) {
                 MovePerTimeY *= 2.0f;

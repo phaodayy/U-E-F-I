@@ -160,6 +160,7 @@ public:
   bool flick_auto_shot = false;
   bool flick_shot_hold = true;
   bool flick_return = true;
+  bool flick_lock_target = false;
   int flick_behavior_mode = 1;
   bool flick_fov_circle = true;
   float flick_fov_circle_color[4] = { 0.0f, 0.70f, 1.0f, 0.40f };
@@ -254,6 +255,17 @@ public:
   bool macro_ads_only = true;
   bool show_macro_overlay = true;
   float macro_recoil_strength = 50.0f;
+  bool macro_scope_auto = true;
+  int macro_scope_override = 0;
+  bool macro_scope_fov_compensation = false;
+  float macro_scope_scale_reddot = 100.0f;
+  float macro_scope_scale_holo = 100.0f;
+  float macro_scope_scale_2x = 82.0f;
+  float macro_scope_scale_3x = 68.0f;
+  float macro_scope_scale_4x = 54.0f;
+  float macro_scope_scale_6x = 42.0f;
+  float macro_scope_scale_8x = 34.0f;
+  float macro_scope_scale_15x = 25.0f;
   float macro_overlay_color[4] = { 0.0f, 1.0f, 0.8f, 1.0f };
   int* waiting_for_key = nullptr;
 
@@ -373,6 +385,8 @@ public:
   bool loot_ghillie_brown = true;
   bool loot_meds_boosts = true;
   bool loot_meds_healing = true;
+  bool loot_meds_bandage = true;
+  bool loot_meds_battle_ready = true;
   bool loot_utility_all = true;
   bool loot_utility_drone = true;
   bool loot_utility_scope = true;
@@ -383,6 +397,10 @@ public:
   bool loot_utility_bluechip = true;
   bool loot_utility_vtransmitter = true;
   bool loot_utility_shield = true;
+  bool loot_utility_emergency = true;
+  bool loot_utility_jerrycan = true;
+  bool loot_utility_selfrevive = true;
+  bool loot_utility_instantrevive = true;
   bool loot_utility = true;
   bool loot_repair = true;
 
@@ -398,6 +416,7 @@ public:
   bool loot_ammo_bolt = true;
   bool loot_ammo_flare = true;
   bool loot_ammo_mortar = true;
+  bool loot_ammo_zipline = true;
 
   bool loot_key_secret = true;
   bool loot_key_chimera = true;
@@ -405,6 +424,8 @@ public:
   bool loot_key_haven = true;
   bool loot_key_security = true;
   bool loot_key_taego = true;
+  bool loot_key_neon_coin = true;
+  bool loot_key_neon_gold = true;
 
   bool loot_scope_reddot = true;
   bool loot_scope_holo = true;
@@ -420,14 +441,21 @@ public:
   bool loot_muzzle_flash = true;
   bool loot_muzzle_supp = true;
   bool loot_muzzle_choke = true;
+  bool loot_muzzle_brake = true;
+  bool loot_muzzle_duckbill = true;
 
   bool loot_grip_vertical = true;
   bool loot_grip_angled = true;
   bool loot_grip_half = true;
   bool loot_grip_thumb = true;
   bool loot_grip_light = true;
+  bool loot_grip_laser = true;
+  bool loot_grip_crossbow_quiver = true;
   bool loot_stock_heavy = true;
   bool loot_stock_cheek = true;
+  bool loot_stock_tactical = true;
+  bool loot_stock_bullet_loops = true;
+  bool loot_stock_uzi = true;
 
   bool loot_mag_ext = true;
   bool loot_mag_quick = true;
@@ -521,6 +549,11 @@ public:
   bool loot_weapon_flare = true;
   bool loot_weapon_crossbow = true;
   bool loot_weapon_panzer = true;
+  bool loot_weapon_mortar = true;
+  bool loot_weapon_zipline = true;
+  bool loot_weapon_tacpack = true;
+  bool loot_weapon_trauma = true;
+  bool loot_weapon_integrated_repair = true;
 
   bool loot_vehicle_uaz = true;
   bool loot_vehicle_dacia = true;
@@ -546,8 +579,10 @@ public:
   void RenderFrame();
   void Doprecision_calibration();
   void Shutdown();
+  std::string BuildConfigJsonString(bool pretty = false);
   void SaveConfig(const char *path);
   void LoadConfig(const char *path);
+  bool LoadConfigJsonString(const std::string& jsonText, const char* sourceLabel = nullptr);
   void RenderLootEsp(ImDrawList* draw);
   void RenderSinglePlayerEsp(ImDrawList* draw, PlayerData& player, const Vector3& delta,
                              const Vector2& local_feet_s, bool hasLocalS,

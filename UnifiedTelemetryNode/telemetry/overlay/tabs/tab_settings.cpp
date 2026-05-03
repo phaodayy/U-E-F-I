@@ -153,7 +153,6 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
 
     if (ImGui::Button(saveLabel, ImVec2(-1, 35))) {
         cloud_save_last_time = currentTime;
-        g_Menu.SaveConfig("dataMacro/Config/settings.json");
         extern bool UploadLoaderConfig();
         UploadLoaderConfig();
     }
@@ -165,9 +164,7 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
     ImGui::InputText(skCrypt("##ImportCode"), import_buf, sizeof(import_buf));
     if (ImGui::Button(Lang.ImportCloud, ImVec2(-1, 35))) {
         extern bool ImportLoaderConfigCode(const std::string& code);
-        if (ImportLoaderConfigCode(import_buf)) {
-            g_Menu.LoadConfig("dataMacro/Config/settings.json");
-        }
+        ImportLoaderConfigCode(import_buf);
     }
 
     ImGui::Spacing();
@@ -175,9 +172,7 @@ void OverlayMenu::RenderTabSettings(ImVec2 windowSize) {
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.2f, 0.2f, 0.6f));
     if (ImGui::Button(skCrypt("RESET ALL SETTINGS"), ImVec2(-1, 35))) {
         extern bool ImportLoaderConfigCode(const std::string& code);
-        if (ImportLoaderConfigCode(skCrypt("CFG-3Y4K4U2K6R216M4L"))) {
-            g_Menu.LoadConfig("dataMacro/Config/settings.json");
-        }
+        ImportLoaderConfigCode(skCrypt("CFG-3Y4K4U2K6R216M4L"));
     }
     ImGui::PopStyleColor(2);
 
