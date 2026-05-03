@@ -430,6 +430,8 @@ inline void FillVietnamese(Strings& s) {
     s.FOVCircle = (const char*)u8"Vòng tròn FOV";
     s.FOVColor = (const char*)u8"Màu vòng tròn FOV";
     s.FlickAutoShot = (const char*)u8"Tự bắn sau khi Flick";
+    s.ShotDelay = (const char*)u8"Độ trễ bắn";
+    s.Jitter = (const char*)u8"Độ rung mục tiêu";
     s.Target = (const char*)u8"Vùng ngắm";
     s.MasterToggleOn = (const char*)u8"BẬT";
     s.MasterToggleOff = (const char*)u8"TẮT";

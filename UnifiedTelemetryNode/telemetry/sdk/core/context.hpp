@@ -38,6 +38,7 @@ struct PlayerData {
     float BackpackDurability = 0.0f;
     uint64_t LastShotTimeMs = 0;
     int SpectatedCount = 0;
+
     std::string WeaponName = "";
     bool IsGroggy = false;
     bool IsVisible = false;
@@ -53,6 +54,8 @@ struct PlayerData {
     PlayerGender Gender = PlayerGender::Male;
     Vector3 RecoilADSRotation = { 0, 0, 0 };
     Vector3 RecoilValueVector = { 0, 0, 0 };
+    Vector3 MortarRotation = { 0, 0, 0 };
+    uint64_t MortarEntity = 0;
     uint64_t ActorPtr = 0;
     uint64_t WeaponPtr = 0;
     uintptr_t MeshAddr = 0;
@@ -70,6 +73,8 @@ extern std::string G_LocalWeaponName;
 extern std::string G_MapMeshDebugStatus;
 extern bool G_IsMenuOpen;
 extern Vector3 G_CameraLocation, G_CameraRotation, G_LocalPlayerPos, G_LocalPlayerVelocity, G_LocalRecoil, G_LocalControlRotation;
+extern uint64_t G_LocalMortarEntity;
+extern Vector3 G_LocalMortarRotation;
 extern uint64_t G_LastScanTime;
 struct RadarData {
     bool IsMiniMapVisible = false;

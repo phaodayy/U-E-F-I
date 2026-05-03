@@ -176,9 +176,13 @@ public:
   std::unordered_map<std::string, bool> flick_category_fov_circle;
   std::unordered_map<std::string, float> flick_category_fov;
   std::unordered_map<std::string, float> flick_category_max_dist;
+  std::unordered_map<std::string, float> flick_category_shot_delay;
+  std::unordered_map<std::string, float> flick_category_jitter;
   int flick_selected_category = 0;
   float flick_fov = 100.0f;
   float flick_max_dist = 400.0f;
+  float flick_shot_delay = 0.0f;
+  float flick_jitter = 0.0f;
   int flick_target_part = 3;
   int flick_key = VK_RBUTTON;
   int flick_key2 = 0;

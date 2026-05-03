@@ -237,6 +237,16 @@ namespace telemetryMemory {
         }
     }
 
+    inline bool MouseWheel(int amount) {
+        if (amount == 0) return true;
+        std::lock_guard<std::mutex> lock(g_MouseMutex);
+        INPUT input{};
+        input.type = INPUT_MOUSE;
+        input.mi.mouseData = static_cast<DWORD>(amount);
+        input.mi.dwFlags = MOUSEEVENTF_WHEEL;
+        return SendInput(1, &input, sizeof(INPUT)) == 1;
+    }
+
     inline bool AttachToGameStealthily(uint32_t pid) {
         query_process_data_packet output = {};
         if (telemetryHyperProcess::QueryProcessData(pid, &output)) {

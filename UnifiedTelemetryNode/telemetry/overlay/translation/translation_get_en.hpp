@@ -434,6 +434,8 @@ inline void FillEnglish(Strings& s) {
             s.FOVCircle = skCrypt("FOV Circle");
             s.FOVColor = skCrypt("FOV Circle Color");
             s.FlickAutoShot = skCrypt("Auto Shot After Flick");
+            s.ShotDelay = skCrypt("Shot Delay");
+            s.Jitter = skCrypt("Target Jitter");
             s.Target = skCrypt("Target Bone");
             s.MasterToggleOn = skCrypt("ON");
             s.MasterToggleOff = skCrypt("OFF");

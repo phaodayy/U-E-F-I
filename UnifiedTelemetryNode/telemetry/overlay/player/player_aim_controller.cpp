@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <protec/skCrypt.h>
+#include "../../sdk/features/Mortar.h"
 
 namespace {
 
@@ -298,7 +299,9 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
     Vector2 bestScreenPos = { 0, 0 };
     float bestDist = 1000000000.0f;
 
-    const bool flickWeaponAllowed = IsFlickWeaponEnabled(*this, MacroEngine::current_weapon_name);
+    const bool isMortarActive = (G_LocalMortarEntity > 0x1000000) || (MacroEngine::current_weapon_name.find(skCrypt("mortar")) != std::string::npos);
+
+    const bool flickWeaponAllowed = isMortarActive || IsFlickWeaponEnabled(*this, MacroEngine::current_weapon_name);
     const bool canFlick = is_authenticated && !showmenu && flickWeaponAllowed;
     const bool activeVisibleOnly = FlickWeaponCatalog::BoolForWeapon(
         flick_category_visible_only, MacroEngine::current_weapon_name, flick_visible_only);
@@ -312,19 +315,23 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
         flick_category_behavior_mode, MacroEngine::current_weapon_name, flick_behavior_mode, 0, 1);
     const int activeTargetPart = FlickWeaponCatalog::IntForWeapon(
         flick_category_target_part, MacroEngine::current_weapon_name, flick_target_part, 0, 15);
-    const float activeMaxDist = FlickWeaponCatalog::FloatForWeapon(
+    const float activeMaxDist = isMortarActive ? 800.0f : FlickWeaponCatalog::FloatForWeapon(
         flick_category_max_dist, MacroEngine::current_weapon_name, flick_max_dist, 5.0f, 400.0f);
     const float activeSmoothness = FlickWeaponCatalog::SmoothnessForWeapon(
         flick_category_smoothness, MacroEngine::current_weapon_name, flick_smoothness);
     const bool activeFovCircle = FlickWeaponCatalog::BoolForWeapon(
         flick_category_fov_circle, MacroEngine::current_weapon_name, flick_fov_circle);
+    const float activeShotDelay = FlickWeaponCatalog::FloatForWeapon(
+        flick_category_shot_delay, MacroEngine::current_weapon_name, flick_shot_delay, 0.0f, 1000.0f);
+    const float activeJitter = FlickWeaponCatalog::FloatForWeapon(
+        flick_category_jitter, MacroEngine::current_weapon_name, flick_jitter, 0.0f, 20.0f);
 
     const bool flickFollowMode = (activeBehaviorMode == 1);
     const float flickMoveSpeed = FlickWeaponCatalog::MoveSpeedForWeapon(
         flick_category_move_speed, MacroEngine::current_weapon_name);
-    const float activeFlickFov = FlickWeaponCatalog::FovForWeapon(
+    const float activeFlickFov = isMortarActive ? 180.0f : FlickWeaponCatalog::FovForWeapon(
         flick_category_fov, MacroEngine::current_weapon_name, flick_fov);
-    const int activeKey = FlickWeaponCatalog::IntForWeapon(
+    const int activeKey = isMortarActive ? flick_key : FlickWeaponCatalog::IntForWeapon(
         flick_category_key, MacroEngine::current_weapon_name, flick_key, 0, 0xFE);
     const bool flickKeyDown = activeKey != 0 && telemetryMemory::IsKeyDown(activeKey);
 
@@ -398,6 +405,44 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
     const bool justPressed = flickKeyDown && !lastFlickKeyDown;
     lastFlickKeyDown = flickKeyDown;
 
+    // --- MORTAR AIMBOT CALIBRATION ---
+    if (isMortarActive && canFlick && flickKeyDown && bestTarget) {
+        float adjustedDistance = Mortar::getDistance(bestTarget->Distance, (bestTarget->Position.z - G_LocalPlayerPos.z) / 100.0f);
+        
+        if (adjustedDistance >= 110.0f && adjustedDistance <= 750.0f) {
+            auto result = Mortar::FindClosestPitch(adjustedDistance);
+            float targetPitch = result.first;
+
+            // Horizontal Auto Calibration (Yaw)
+            if (lastFollowMoveAt == 0 || nowMs - lastFollowMoveAt >= 10) {
+                float errorX = bestScreenPos.x - ScreenCenterX;
+                long moveX = std::lround(errorX * 0.5f); // Smooth mortar panning
+                moveX = ClampMouseDelta(moveX, 50); // Limit speed
+                
+                if (moveX != 0) {
+                    telemetryMemory::MoveMouse(moveX, 0);
+                }
+                lastFollowMoveAt = nowMs;
+            }
+
+            // Vertical Auto Calibration (Pitch via MouseWheel)
+            static ULONGLONG lastMortarScroll = 0;
+            if (nowMs - lastMortarScroll > 30) { // Limit scroll frequency to 33Hz
+                float pitchError = targetPitch - G_LocalMortarRotation.x;
+                if (std::abs(pitchError) > 0.1f) {
+                    // WHEEL_DELTA is 120. If we need to increase pitch, we scroll UP (120).
+                    int scrollAmount = (pitchError > 0.0f) ? 120 : -120;
+                    telemetryMemory::MouseWheel(scrollAmount);
+                }
+                lastMortarScroll = nowMs;
+            }
+        }
+        
+        // Skip normal flick aim when mortaring
+        return;
+    }
+    // ---------------------------------
+
     auto resetFollowShot = []() {
         if (followShotDown) {
             telemetryMemory::MoveMouse(0, 0, 0x0002);
@@ -415,6 +460,13 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
     ProcessPendingFlick(pendingFlick, canFlick && flickKeyDown, nowMs);
 
     if (canFlick && justPressed && bestTarget) {
+        if (activeJitter > 0.05f) {
+            float rx = (static_cast<float>(rand() % 1001) / 500.0f - 1.0f) * activeJitter;
+            float ry = (static_cast<float>(rand() % 1001) / 500.0f - 1.0f) * activeJitter;
+            bestScreenPos.x += rx;
+            bestScreenPos.y += ry;
+        }
+
         const float errorX = bestScreenPos.x - ScreenCenterX;
         const float errorY = bestScreenPos.y - ScreenCenterY;
         const long moveX = std::lround(errorX * flickMoveSpeed);
@@ -432,7 +484,7 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
         pendingFlick.shouldReturn = !flickFollowMode;
         pendingFlick.moveX = moveX;
         pendingFlick.moveY = moveY;
-        pendingFlick.shotDownAt = nowMs + static_cast<ULONGLONG>(settleMs);
+        pendingFlick.shotDownAt = nowMs + static_cast<ULONGLONG>(settleMs) + static_cast<ULONGLONG>(activeShotDelay);
         pendingFlick.shotUpAt = pendingFlick.shotDownAt + static_cast<ULONGLONG>(shotHoldMs);
         pendingFlick.returnAt = activeFlickAutoShot ? pendingFlick.shotUpAt + 2 : nowMs + static_cast<ULONGLONG>(settleMs);
     }

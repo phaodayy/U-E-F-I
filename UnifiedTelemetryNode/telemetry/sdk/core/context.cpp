@@ -25,10 +25,12 @@ using namespace telemetryMemory;
 FGameData GameData; 
 uint64_t G_UWorld = 0, G_GameInstance = 0, G_PersistentLevel = 0, G_LocalPlayer = 0, G_PlayerController = 0, G_LocalPawn = 0, G_LocalPlayerState = 0, G_LocalHUD = 0, G_GameState = 0;
 std::string G_LocalPlayerName = "";
-std::string G_LocalWeaponName = "";
-std::string G_MapMeshDebugStatus = "";
+std::string G_LocalWeaponName = "None";
+std::string G_MapMeshDebugStatus = "None";
 bool G_IsMenuOpen = false;
-Vector3 G_CameraLocation = { 0, 0, 0 }, G_CameraRotation = { 0, 0, 0 }, G_LocalPlayerPos = { 0, 0, 0 }, G_LocalPlayerVelocity = { 0, 0, 0 }, G_LocalRecoil = { 0, 0, 0 }, G_LocalControlRotation = { 0, 0, 0 };
+Vector3 G_CameraLocation, G_CameraRotation, G_LocalPlayerPos, G_LocalPlayerVelocity, G_LocalRecoil, G_LocalControlRotation;
+uint64_t G_LocalMortarEntity = 0;
+Vector3 G_LocalMortarRotation = { 0, 0, 0 };
 uint64_t G_LastScanTime = 0;
 RadarData G_Radar;
 std::vector<PlayerData> G_Players;
@@ -1119,6 +1121,19 @@ namespace telemetryContext {
                     inGame = true;
                     UpdateLocalWeaponName();
                     
+                    std::string localPawnNameStr = FNameUtils::GetNameFast(telemetryOffsets::DecryptCIndex(Read<uint32_t>(G_LocalPawn + telemetryOffsets::ObjID)));
+                    if (localPawnNameStr.find(skCrypt("Mortar")) != std::string::npos) {
+                        G_LocalMortarEntity = G_LocalPawn;
+                        G_LocalMortarRotation = Read<Vector3>(G_LocalMortarEntity + telemetryOffsets::MortarRotation);
+                    } else {
+                        G_LocalMortarEntity = Read<uint64_t>(G_LocalPawn + telemetryOffsets::MortarEntity);
+                        if (G_LocalMortarEntity > 0x1000000) {
+                            G_LocalMortarRotation = Read<Vector3>(G_LocalMortarEntity + telemetryOffsets::MortarRotation);
+                        } else {
+                            G_LocalMortarRotation = {0, 0, 0};
+                        }
+                    }
+                    
                     // --- GET LOCAL SPECTATED COUNT ---
                     uint64_t localPlayerState = G_LocalPlayerState;
                     if (localPlayerState > 0x1000000) {
@@ -1487,6 +1502,8 @@ namespace telemetryContext {
 
                 PlayerData p{};
                 p.ActorPtr = actor; p.MeshAddr = mesh; p.Position = pos; p.Distance = dist; p.IsBot = isBotClass;
+                p.MortarEntity = Read<uint64_t>(actor + telemetryOffsets::MortarEntity);
+                p.MortarRotation = Read<Vector3>(actor + telemetryOffsets::MortarRotation);
                 
                 p.Name = ReadActorCharacterName(actor);
                 

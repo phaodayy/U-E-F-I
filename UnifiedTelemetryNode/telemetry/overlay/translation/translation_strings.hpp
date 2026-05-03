@@ -317,6 +317,8 @@ namespace Translation {
     const char* FOVCircle;
     const char* FOVColor;
     const char* FlickAutoShot;
+    const char* ShotDelay;
+    const char* Jitter;
         const char* Target;
         const char* MasterToggleOn;
         const char* MasterToggleOff;

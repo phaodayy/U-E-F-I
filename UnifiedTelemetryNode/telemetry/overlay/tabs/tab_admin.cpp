@@ -1,4 +1,5 @@
 #include "../core/overlay_menu.hpp"
+#include "../../sdk/Utils/MacroEngine.h"
 #include "../../sdk/core/context.hpp"
 #include <protec/skCrypt.h>
 #include <vector>
@@ -7,6 +8,26 @@
 void OverlayMenu::RenderTabAdmin(ImVec2 windowSize) {
     extern std::vector<DebugActorData> G_DebugActors;
     extern std::mutex G_DebugActorsMutex;
+
+    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), skCrypt("MORTAR AIMBOT - LIVE DEBUG INFO"));
+    ImGui::Separator();
+    
+    bool isMortarActive = (G_LocalMortarEntity > 0x1000000) || (MacroEngine::current_weapon_name.find(skCrypt("mortar")) != std::string::npos);
+    ImGui::Text("Is Mortar Active: "); ImGui::SameLine();
+    if (isMortarActive) ImGui::TextColored(ImVec4(0, 1, 0, 1), "TRUE"); else ImGui::TextColored(ImVec4(1, 0, 0, 1), "FALSE");
+    
+    ImGui::Text("G_LocalPawn Address: 0x%llX", G_LocalPawn);
+    
+    std::string localPawnName = "None";
+    if (G_LocalPawn > 0x1000000) {
+        localPawnName = FNameUtils::GetNameFast(telemetryOffsets::DecryptCIndex(telemetryMemory::Read<uint32_t>(G_LocalPawn + telemetryOffsets::ObjID)));
+    }
+    ImGui::Text("G_LocalPawn Name: %s", localPawnName.c_str());
+    
+    ImGui::Text("G_LocalMortarEntity: 0x%llX", G_LocalMortarEntity);
+    ImGui::Text("Mortar Pitch (X): %.2f", G_LocalMortarRotation.x);
+    ImGui::Text("MacroEngine Weapon: %s", MacroEngine::current_weapon_name.c_str());
+    ImGui::Spacing();
 
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), skCrypt("ADMIN SYSTEM EXPLORER - LIVE ACTOR BUFFER"));
     ImGui::Separator();

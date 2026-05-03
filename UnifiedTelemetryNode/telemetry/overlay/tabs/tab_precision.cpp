@@ -140,6 +140,8 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     FlickWeaponCatalog::EnsureCategoryFloatDefaults(g_Menu.flick_category_max_dist, g_Menu.flick_max_dist);
     FlickWeaponCatalog::EnsureCategoryMoveSpeedDefaults(g_Menu.flick_category_move_speed);
     FlickWeaponCatalog::EnsureCategoryFovDefaults(g_Menu.flick_category_fov, g_Menu.flick_fov);
+    FlickWeaponCatalog::EnsureCategoryShotDelayDefaults(g_Menu.flick_category_shot_delay, g_Menu.flick_shot_delay);
+    FlickWeaponCatalog::EnsureCategoryJitterDefaults(g_Menu.flick_category_jitter, g_Menu.flick_jitter);
 
     const auto& categories = FlickWeaponCatalog::Categories();
     g_Menu.flick_selected_category = std::clamp(
@@ -198,6 +200,8 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     float& categoryFov = g_Menu.flick_category_fov[selectedCategory.key];
     float& maxDistance = g_Menu.flick_category_max_dist[selectedCategory.key];
     float& smoothness = g_Menu.flick_category_smoothness[selectedCategory.key];
+    float& shotDelay = g_Menu.flick_category_shot_delay[selectedCategory.key];
+    float& jitter = g_Menu.flick_category_jitter[selectedCategory.key];
     bool& fovCircle = g_Menu.flick_category_fov_circle[selectedCategory.key];
 
     ImGui::TextColored(ImVec4(0.0f, 0.7f, 1.0f, 1.0f), "%s", selectedCategory.label);
@@ -232,6 +236,8 @@ void OverlayMenu::RenderTabPrecision(ImVec2 windowSize) {
     ImGui::Checkbox(Lang.FOVCircle, &fovCircle);
     ImGui::SliderFloat(Lang.Speed, &moveSpeed, 0.0f, 100.0f, skCrypt("%.0f"));
     ImGui::SliderFloat(Lang.Smoothness, &smoothness, 0.0f, 100.0f, skCrypt("%.0f"));
+    ImGui::SliderFloat(Lang.ShotDelay, &shotDelay, 0.0f, 1000.0f, skCrypt("%.0f ms"));
+    ImGui::SliderFloat(Lang.Jitter, &jitter, 0.0f, 20.0f, skCrypt("%.1f"));
 
     ImGui::Separator();
     TextureInfo* preview = GetPreviewIcon(selectedCategory.folder, selectedCategory.asset);

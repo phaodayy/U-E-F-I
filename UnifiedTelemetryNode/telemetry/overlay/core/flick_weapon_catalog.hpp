@@ -171,6 +171,22 @@ inline void EnsureCategorySmoothnessDefaults(std::unordered_map<std::string, flo
     }
 }
 
+inline void EnsureCategoryShotDelayDefaults(std::unordered_map<std::string, float>& values, float default_val = 0.0f) {
+    for (const auto& category : Categories()) {
+        if (values.find(category.key) == values.end()) {
+            values[category.key] = default_val;
+        }
+    }
+}
+
+inline void EnsureCategoryJitterDefaults(std::unordered_map<std::string, float>& values, float default_val = 0.0f) {
+    for (const auto& category : Categories()) {
+        if (values.find(category.key) == values.end()) {
+            values[category.key] = default_val;
+        }
+    }
+}
+
 inline const Weapon* FindWeapon(const std::string& weapon_name) {
     for (const auto& weapon : All()) {
         if (weapon_name == weapon.key) return &weapon;
