@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <atomic>
 #include <cctype>
 #include <cmath>
 #include <filesystem>
@@ -40,6 +41,7 @@ public:
     static inline WeaponCategory current_category = CAT_NONE;
     static inline int bullet_index = 0;
     static inline ULONGLONG last_fire_time = 0;
+    static inline ULONGLONG spray_start_time = 0;
 
     static inline int current_scope = 0;
     static inline int current_muzzle = 0;
@@ -112,6 +114,8 @@ public:
     static inline ULONGLONG last_debug_gate_tick = 0;
     static inline ULONGLONG last_debug_sendinput_tick = 0;
     static inline bool last_debug_macro_enabled = false;
+    static inline std::atomic<ULONGLONG> flick_motion_until{0};
+    static inline std::atomic<bool> flick_shot_held{false};
 
     static inline std::string external_base_path = "";
     static inline bool prefer_external_data = true;
@@ -122,6 +126,29 @@ public:
 
     static inline std::unordered_map<std::string, fs::file_time_type> weapon_write_times;
     static inline ULONGLONG last_weapon_check_tick = 0;
+
+    static void NotifyFlickMotion(int blockMs = 35)
+    {
+        const ULONGLONG until = GetTickCount64() + static_cast<ULONGLONG>((std::max)(blockMs, 0));
+        ULONGLONG current = flick_motion_until.load(std::memory_order_relaxed);
+        while (until > current &&
+            !flick_motion_until.compare_exchange_weak(current, until, std::memory_order_relaxed, std::memory_order_relaxed))
+        {
+        }
+    }
+
+    static void NotifyFlickShotState(bool down)
+    {
+        flick_shot_held.store(down, std::memory_order_relaxed);
+        if (!down) NotifyFlickMotion(25);
+    }
+
+    static bool ShouldYieldForFlick(ULONGLONG now, bool userFireHeld)
+    {
+        return !userFireHeld &&
+            !flick_shot_held.load(std::memory_order_relaxed) &&
+            now < flick_motion_until.load(std::memory_order_relaxed);
+    }
 
     static bool FileExists(const std::string& path)
     {
@@ -492,12 +519,12 @@ public:
         if (name.find(skCrypt("Item_Weapon_")) == 0) name.erase(0, 12);
         if (name.find(skCrypt("_C")) != std::string::npos) name.erase(name.find(skCrypt("_C")));
 
-        if (name == skCrypt("HK416")) return skCrypt("m416");
+        if (name == skCrypt("HK416") || name == skCrypt("DuncansHK416") || name == skCrypt("Duncans_M416")) return skCrypt("m416");
         if (name == skCrypt("BerylM762")) return skCrypt("m762");
-        if (name == skCrypt("AK47")) return skCrypt("akm");
+        if (name == skCrypt("AK47") || name == skCrypt("LunchmeatsAK47") || name == skCrypt("Lunchmeats_AK47")) return skCrypt("akm");
         if (name == skCrypt("SCAR-L")) return skCrypt("scar-l");
-        if (name == skCrypt("FNFal") || name == skCrypt("MadsFNFal")) return skCrypt("slr");
-        if (name == skCrypt("QBU88") || name == skCrypt("MadsQBU88")) return skCrypt("qbu");
+        if (name == skCrypt("FNFal") || name == skCrypt("MadsFNFal") || name == skCrypt("Mads_FNFal")) return skCrypt("slr");
+        if (name == skCrypt("QBU88") || name == skCrypt("MadsQBU88") || name == skCrypt("Mads_QBU88")) return skCrypt("qbu");
         if (name == skCrypt("G36C")) return skCrypt("g36c");
         if (name == skCrypt("Mk14")) return skCrypt("mk14");
         if (name == skCrypt("L6")) return skCrypt("lynx");
@@ -513,8 +540,10 @@ public:
         if (name == skCrypt("Saiga12")) return skCrypt("s12k");
         if (name == skCrypt("Winchester")) return skCrypt("s1897");
         if (name == skCrypt("DP12")) return skCrypt("dbs");
-        if (name == skCrypt("OriginS12")) return skCrypt("o12");
+        if (name == skCrypt("OriginS12") || name == skCrypt("Origin12") || name == skCrypt("Origins12")) return skCrypt("o12");
         if (name == skCrypt("Win1894")) return skCrypt("win94");
+        if (name == skCrypt("JuliesKar98k")) return skCrypt("kar98k");
+        if (name == skCrypt("JuliesM24")) return skCrypt("m24");
         std::transform(name.begin(), name.end(), name.begin(), ::tolower);
         return name;
     }
@@ -901,6 +930,18 @@ public:
         return baseSens;
     }
 
+    static float CategorySustainPull()
+    {
+        switch (current_category)
+        {
+        case CAT_AR: return 1.25f;
+        case CAT_SMG: return 1.00f;
+        case CAT_LMG: return 1.40f;
+        case CAT_DMR: return 0.65f;
+        default: return 0.0f;
+        }
+    }
+
     static void ForceScan()
     {
         TryHotReloadConfig();
@@ -965,27 +1006,18 @@ public:
         last_recoil_yaw = 0.0f;
         last_vec_y = 0.0f;
         bullet_index = 0;
+        spray_start_time = 0;
     }
 
     static void Update()
     {
         const ULONGLONG updateNow = GetTickCount64();
-        /*
-        if (macro_enabled != last_debug_macro_enabled ||
-            (macro_enabled && updateNow - last_debug_state_tick > 2000))
-        {
-            last_debug_state_tick = updateNow;
-            last_debug_macro_enabled = macro_enabled;
-            std::cout << "[MACRO][STATE] enabled=" << (macro_enabled ? 1 : 0)
-                << " pawn=" << (G_LocalPawn ? 1 : 0)
-                << " input=SendInput"
-                << " weapon=" << current_weapon_name
-                << " category=" << static_cast<int>(current_category)
-                << " ads_only=" << (ads_only ? 1 : 0)
-                << " humanize=" << (macro_humanize ? 1 : 0)
-                << std::endl;
-        }
-        */
+
+        // Sync settings from menu FIRST so it can wake up from disabled state
+        macro_enabled = g_Menu.macro_enabled;
+        macro_humanize = g_Menu.macro_humanize;
+        ads_only = g_Menu.macro_ads_only;
+        global_multiplier = g_Menu.macro_recoil_strength / 50.0f;
 
         if (!G_LocalPawn || !macro_enabled)
         {
@@ -1065,19 +1097,28 @@ public:
         uint8_t characterState = telemetryMemory::Read<uint8_t>(G_LocalPawn + telemetry_config::offsets::CharacterState);
         bool isSwimming = (characterState == 4); // Standard UE4 Swim state
 
+        const bool rightButtonHeld = telemetryMemory::IsKeyDown(VK_RBUTTON);
         bool isScoping = true;
         if (ads_only)
         {
-            isScoping = anim ? telemetryMemory::Read<bool>(anim + telemetry_config::offsets::bIsScoping_CP) : false;
+            const bool scopedByAnim = anim ? telemetryMemory::Read<bool>(anim + telemetry_config::offsets::bIsScoping_CP) : false;
+            isScoping = scopedByAnim || rightButtonHeld;
         }
 
         const bool manualFire = telemetryMemory::IsKeyDown(VK_LBUTTON);
-        const bool fireHeld = (manualFire || trigger_firing) &&
+        const bool flickFire = flick_shot_held.load(std::memory_order_relaxed);
+        const bool uiBlocking = G_IsMenuOpen || g_Menu.showmenu || telemetryMemory::IsKeyDown(VK_TAB) || telemetryMemory::IsKeyDown(VK_ESCAPE);
+        if (ShouldYieldForFlick(now, manualFire || trigger_firing))
+        {
+            ResetAngleState();
+            return;
+        }
+
+        const bool fireHeld = (manualFire || trigger_firing || flickFire) &&
             isScoping &&
-            !hasCursor &&
+            !(hasCursor && (G_IsMenuOpen || g_Menu.showmenu)) &&
             !isReloading &&
-            !telemetryMemory::IsKeyDown(VK_TAB) &&
-            !telemetryMemory::IsKeyDown(VK_ESCAPE);
+            !uiBlocking;
 
         /*
         if (macro_enabled && now - last_debug_gate_tick > 1000)
@@ -1137,14 +1178,17 @@ public:
             if (!angle_anchor_valid)
             {
                 angle_anchor_valid = true;
+                spray_start_time = now;
                 angle_anchor_yaw = recoilRot.Yaw;
                 angle_anchor_pitch = recoilRot.Pitch;
-                last_recoil_pitch = 0.0f; // Start from 0 to capture first shot recoil
-                last_recoil_yaw = 0.0f;
+                last_recoil_pitch = recoilRot.Pitch;
+                last_recoil_yaw = recoilRot.Yaw;
+                last_vec_y = recoilVec.y;
                 angle_moved_x = 0.0f;
                 angle_moved_y = 0.0f;
                 pixel_remainder_x = 0.0f;
                 pixel_remainder_y = 0.0f;
+                return;
             }
 
             float pitchDelta = NormalizeAngle(recoilRot.Pitch - last_recoil_pitch);
@@ -1165,7 +1209,7 @@ public:
             
             // Re-enabled menu settings with 0-100 scale interpretation
             // multiplier and pitchGain now act as percentages (0-100)
-            float strengthY = (g_Menu.macro_recoil_strength / 100.0f);
+            float strengthY = (g_Menu.macro_recoil_strength / 100.0f) * profile.multiplier * profile.pitchGain;
             
             float moveY = pitchDelta * 50.0f * strengthY * sens * res_scale_y * p_m;
             float moveX = 0.0f; 
@@ -1176,6 +1220,32 @@ public:
                 moveY += vecDelta * 1.2f * strengthY * sens; 
             }
             last_vec_y = recoilVec.y;
+
+            const float totalPitch = (std::max)(NormalizeAngle(recoilRot.Pitch - angle_anchor_pitch), 0.0f);
+            const float targetMovedY = totalPitch * 50.0f * strengthY * sens * res_scale_y * p_m;
+            const float catchupY = targetMovedY - angle_moved_y;
+            if (catchupY > 0.15f)
+            {
+                moveY = (std::max)(moveY, catchupY * 0.55f);
+            }
+
+            const ULONGLONG sprayMs = spray_start_time ? (now - spray_start_time) : 0;
+            float sustainFloorY = 0.0f;
+            const float sustainBase = CategorySustainPull();
+            if (sustainBase > 0.0f && sprayMs > 90)
+            {
+                float ramp = std::clamp(1.0f + (static_cast<float>(sprayMs - 90) / 900.0f) * 0.60f, 1.0f, 1.60f);
+                if (sprayMs > 1100)
+                {
+                    ramp += std::clamp((static_cast<float>(sprayMs - 1100) / 900.0f) * 1.80f, 0.0f, 1.80f);
+                }
+                sustainFloorY = sustainBase * ramp * strengthY * sens * res_scale_y * p_m;
+                if (moveY < sustainFloorY)
+                {
+                    moveY = sustainFloorY;
+                }
+            }
+            ++bullet_index;
 
             if (macro_humanize)
             {
@@ -1204,6 +1274,11 @@ public:
                     moveX /= dynamicSmoothing;
                     moveY /= dynamicSmoothing;
                 }
+            }
+
+            if (sustainFloorY > 0.0f && moveY < sustainFloorY)
+            {
+                moveY = sustainFloorY;
             }
 
             // Step 2: SingleStep limit (Visuals.cpp:2981) - Final clamp

@@ -202,6 +202,7 @@ void OverlayMenu::SaveConfig(const char* path) {
         j["macro_enabled"] = macro_enabled;
         j["macro_humanize"] = macro_humanize;
         j["macro_ads_only"] = macro_ads_only;
+        j["macro_recoil_strength"] = macro_recoil_strength;
         j["macro_global_multiplier"] = MacroEngine::global_multiplier;
         j["macro_overlay_color"] = { macro_overlay_color[0], macro_overlay_color[1], macro_overlay_color[2], macro_overlay_color[3] };
 

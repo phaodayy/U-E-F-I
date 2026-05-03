@@ -381,7 +381,13 @@ void OverlayMenu::LoadConfig(const char* path) {
                 macro_ads_only = j["macro_ads_only"];
                 MacroEngine::ads_only = macro_ads_only;
             }
-            if (j.contains("macro_global_multiplier")) MacroEngine::global_multiplier = j["macro_global_multiplier"];
+            if (j.contains("macro_recoil_strength")) {
+                macro_recoil_strength = std::clamp(j["macro_recoil_strength"].get<float>(), 1.0f, 100.0f);
+                MacroEngine::global_multiplier = macro_recoil_strength / 50.0f;
+            } else if (j.contains("macro_global_multiplier")) {
+                MacroEngine::global_multiplier = j["macro_global_multiplier"];
+                macro_recoil_strength = std::clamp(MacroEngine::global_multiplier * 50.0f, 1.0f, 100.0f);
+            }
 
             if (j.contains("macro_overlay_color") && j["macro_overlay_color"].is_array() && j["macro_overlay_color"].size() == 4) {
                 for (int i = 0; i < 4; i++) macro_overlay_color[i] = j["macro_overlay_color"][i];

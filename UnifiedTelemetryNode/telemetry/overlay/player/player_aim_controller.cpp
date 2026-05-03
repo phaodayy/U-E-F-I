@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include <protec/skCrypt.h>
 #include "../../sdk/features/Mortar.h"
@@ -52,6 +53,167 @@ long ClampMouseDelta(long value, long limit) {
     return value;
 }
 
+struct BallisticProfile {
+    float muzzleSpeed = 850.0f;
+    float gravity = 9.8f;
+    float dropScale = 0.32f;
+    float maxDropCm = 90.0f;
+    float leadScale = 1.0f;
+};
+
+struct AimMotionTrack {
+    Vector3 position{0.0f, 0.0f, 0.0f};
+    Vector3 velocity{0.0f, 0.0f, 0.0f};
+    ULONGLONG tick = 0;
+    bool valid = false;
+};
+
+std::unordered_map<uint64_t, AimMotionTrack> g_AimMotionTracks;
+ULONGLONG g_LastAimMotionPrune = 0;
+
+bool IsReasonableAimVelocity(const Vector3& velocity) {
+    const float speed = velocity.Length();
+    return std::isfinite(speed) && speed > 5.0f && speed < 120000.0f;
+}
+
+Vector3 EstimateAimVelocity(const PlayerData& player, ULONGLONG now) {
+    Vector3 gameVelocity = IsReasonableAimVelocity(player.Velocity) ? player.Velocity : Vector3{0.0f, 0.0f, 0.0f};
+    Vector3 observedVelocity{0.0f, 0.0f, 0.0f};
+    bool hasObserved = false;
+
+    if (player.ActorPtr != 0 && !player.Position.IsZero()) {
+        AimMotionTrack& track = g_AimMotionTracks[player.ActorPtr];
+        if (!track.valid) {
+            track.position = player.Position;
+            track.velocity = gameVelocity;
+            track.tick = now;
+            track.valid = true;
+        } else if (now > track.tick) {
+            const float dt = static_cast<float>(now - track.tick) / 1000.0f;
+            const Vector3 moved = player.Position - track.position;
+            const float movedLen = moved.Length();
+
+            if (dt >= 0.035f && dt <= 0.75f && movedLen < 4500.0f) {
+                observedVelocity = moved * (1.0f / dt);
+                observedVelocity.z *= 0.25f;
+                if (IsReasonableAimVelocity(observedVelocity)) {
+                    hasObserved = true;
+                    if (IsReasonableAimVelocity(track.velocity)) {
+                        observedVelocity = (track.velocity * 0.55f) + (observedVelocity * 0.45f);
+                    }
+                }
+                track.position = player.Position;
+                track.velocity = hasObserved ? observedVelocity : gameVelocity;
+                track.tick = now;
+            } else if (dt > 0.75f || movedLen >= 4500.0f) {
+                track.position = player.Position;
+                track.velocity = gameVelocity;
+                track.tick = now;
+            }
+        }
+
+        if (!hasObserved && IsReasonableAimVelocity(track.velocity)) {
+            observedVelocity = track.velocity;
+            hasObserved = true;
+        }
+    }
+
+    if (now - g_LastAimMotionPrune > 3000) {
+        g_LastAimMotionPrune = now;
+        for (auto it = g_AimMotionTracks.begin(); it != g_AimMotionTracks.end(); ) {
+            if (now - it->second.tick > 5000) it = g_AimMotionTracks.erase(it);
+            else ++it;
+        }
+    }
+
+    if (hasObserved && IsReasonableAimVelocity(gameVelocity)) {
+        return (gameVelocity * 0.55f) + (observedVelocity * 0.45f);
+    }
+    if (hasObserved) return observedVelocity;
+    return gameVelocity;
+}
+
+BallisticProfile GetBallisticProfile(const std::string& weaponName) {
+    BallisticProfile profile{};
+
+    if (weaponName == skCrypt("vss")) {
+        profile.muzzleSpeed = 330.0f;
+        profile.dropScale = 0.55f;
+        profile.maxDropCm = 135.0f;
+    } else if (weaponName == skCrypt("win94") || weaponName == skCrypt("win1894")) {
+        profile.muzzleSpeed = 760.0f;
+    } else if (weaponName == skCrypt("kar98k") || weaponName == skCrypt("mosin") || weaponName == skCrypt("mosinnagant")) {
+        profile.muzzleSpeed = 760.0f;
+    } else if (weaponName == skCrypt("m24")) {
+        profile.muzzleSpeed = 790.0f;
+    } else if (weaponName == skCrypt("awm")) {
+        profile.muzzleSpeed = 945.0f;
+        profile.dropScale = 0.26f;
+        profile.maxDropCm = 75.0f;
+    } else if (weaponName == skCrypt("lynx") || weaponName == skCrypt("l6")) {
+        profile.muzzleSpeed = 990.0f;
+        profile.dropScale = 0.24f;
+        profile.maxDropCm = 70.0f;
+    } else if (weaponName == skCrypt("mini14")) {
+        profile.muzzleSpeed = 990.0f;
+        profile.dropScale = 0.26f;
+    } else if (weaponName == skCrypt("qbu") || weaponName == skCrypt("qbu88") || weaponName == skCrypt("mk12")) {
+        profile.muzzleSpeed = 930.0f;
+        profile.dropScale = 0.28f;
+    } else if (weaponName == skCrypt("sks")) {
+        profile.muzzleSpeed = 800.0f;
+        profile.dropScale = 0.34f;
+    } else if (weaponName == skCrypt("slr") || weaponName == skCrypt("fnfal") || weaponName == skCrypt("madsfnfal")) {
+        profile.muzzleSpeed = 840.0f;
+        profile.dropScale = 0.32f;
+    } else if (weaponName == skCrypt("mk14")) {
+        profile.muzzleSpeed = 853.0f;
+        profile.dropScale = 0.31f;
+    } else if (weaponName == skCrypt("dragunov")) {
+        profile.muzzleSpeed = 830.0f;
+        profile.dropScale = 0.32f;
+    } else if (weaponName.find(skCrypt("panzer")) != std::string::npos) {
+        profile.muzzleSpeed = 115.0f;
+        profile.gravity = 15.0f;
+        profile.dropScale = 0.70f;
+        profile.maxDropCm = 500.0f;
+        profile.leadScale = 0.85f;
+    } else if (weaponName == skCrypt("s686") || weaponName == skCrypt("berreta686") ||
+        weaponName == skCrypt("s1897") || weaponName == skCrypt("winchester")) {
+        profile.muzzleSpeed = 360.0f;
+        profile.dropScale = 0.20f;
+        profile.maxDropCm = 35.0f;
+    } else if (weaponName == skCrypt("s12k") || weaponName == skCrypt("saiga12") ||
+        weaponName == skCrypt("dbs") || weaponName == skCrypt("dp12") ||
+        weaponName == skCrypt("o12") || weaponName == skCrypt("origin12") || weaponName == skCrypt("origins12")) {
+        profile.muzzleSpeed = 420.0f;
+        profile.dropScale = 0.18f;
+        profile.maxDropCm = 35.0f;
+    }
+
+    return profile;
+}
+
+Vector3 BuildAimPredictionDelta(const PlayerData& player, const std::string& weaponName, float dtEsp, bool mortarMode, ULONGLONG now) {
+    const BallisticProfile profile = GetBallisticProfile(weaponName);
+    const float bulletTime = player.Distance / (std::max)(profile.muzzleSpeed, 10.0f);
+    const float predictionTime = std::clamp(bulletTime + dtEsp, 0.0f, mortarMode ? 4.0f : 1.4f);
+
+    Vector3 delta{0.0f, 0.0f, 0.0f};
+    const Vector3 aimVelocity = EstimateAimVelocity(player, now);
+    if (IsReasonableAimVelocity(aimVelocity)) {
+        delta = aimVelocity * (predictionTime * profile.leadScale);
+    }
+
+    if (!mortarMode) {
+        const float rawDropCm = 0.5f * profile.gravity * bulletTime * bulletTime * 100.0f * profile.dropScale;
+        const float distanceLimitedDrop = std::clamp(player.Distance * 0.16f, 12.0f, profile.maxDropCm);
+        delta.z += std::clamp(rawDropCm, 0.0f, distanceLimitedDrop);
+    }
+
+    return delta;
+}
+
 int GetFlickSettleDelayMs(long moveX, long moveY) {
     const long largestMove = (std::max)(AbsLong(moveX), AbsLong(moveY));
     return std::clamp(35 + static_cast<int>(largestMove / 24), 40, 85);
@@ -78,9 +240,11 @@ void CancelPendingFlick(PendingFlickAction& pending) {
     if (!pending.active) return;
     if (pending.shotDown) {
         telemetryMemory::MoveMouse(0, 0, 0x0002);
+        MacroEngine::NotifyFlickShotState(false);
     }
     if (pending.shouldReturn && (pending.moveX != 0 || pending.moveY != 0)) {
         telemetryMemory::MoveMouse(-pending.moveX, -pending.moveY);
+        MacroEngine::NotifyFlickMotion(45);
     }
     pending = {};
 }
@@ -95,12 +259,14 @@ void ProcessPendingFlick(PendingFlickAction& pending, bool canContinue, ULONGLON
 
     if (pending.shouldClick && !pending.shotDown && now >= pending.shotDownAt) {
         telemetryMemory::MoveMouse(0, 0, 0x0001);
+        MacroEngine::NotifyFlickShotState(true);
         pending.shotDown = true;
         return;
     }
 
     if (pending.shotDown && now >= pending.shotUpAt) {
         telemetryMemory::MoveMouse(0, 0, 0x0002);
+        MacroEngine::NotifyFlickShotState(false);
         pending.shotDown = false;
         if (!pending.shouldReturn) {
             pending = {};
@@ -110,6 +276,7 @@ void ProcessPendingFlick(PendingFlickAction& pending, bool canContinue, ULONGLON
 
     if (!pending.shotDown && pending.shouldReturn && now >= pending.returnAt) {
         telemetryMemory::MoveMouse(-pending.moveX, -pending.moveY);
+        MacroEngine::NotifyFlickMotion(45);
         pending = {};
         return;
     }
@@ -382,23 +549,7 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
             if (!g_Menu.esp_show_enemies) continue;
         }
 
-        float muzzleSpeed = 850.0f; 
-        float gravity = 9.8f;
-        if (MacroEngine::current_weapon_name == skCrypt("vss")) { muzzleSpeed = 330.0f; gravity = 9.8f; }
-        else if (MacroEngine::current_weapon_name.find(skCrypt("awm")) != std::string::npos) { muzzleSpeed = 945.0f; gravity = 9.8f; }
-        else if (MacroEngine::current_weapon_name.find(skCrypt("panzer")) != std::string::npos) { muzzleSpeed = 115.0f; gravity = 15.0f; } // Panzerfaust has more drop
-        
-        const float bulletTime = player.Distance / (std::max)(muzzleSpeed, 10.0f);
-        const float predictionTime = bulletTime + dt_esp;
-        
-        // Target Prediction (Velocity)
-        Vector3 delta = player.Velocity * predictionTime;
-        
-        // Bullet Drop Compensation (Gravity)
-        // 0.5 * g * t^2
-        float drop = 0.5f * gravity * (bulletTime * bulletTime) * 100.0f; // Convert m to cm (assuming game units are cm)
-        delta.z += drop;
-
+        Vector3 delta = BuildAimPredictionDelta(player, MacroEngine::current_weapon_name, dt_esp, isMortarActive, GetTickCount64());
 
         if (shouldScanTargets && !player.IsTeammate && player.Health > 0.0f && player.Distance <= activeMaxDist) {
             if (!activeVisibleOnly || player.IsVisible || isMortarActive) {
@@ -426,7 +577,7 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
                         bestDist = selectionMetric;
                         bestTarget = &player;
                         bestItemTarget = nullptr;
-                        bestTargetWorldPos = player.Position;
+                        bestTargetWorldPos = player.Position + delta;
                         bestTargetDistance = player.Distance;
                         bestScreenPos = target.aim;
                     }
@@ -435,7 +586,7 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
         }
 
         if (is_authenticated && esp_toggle) {
-            RenderSinglePlayerEsp(draw, player, delta, local_feet_s, hasLocalS, ScreenCenterX, ScreenHeight);
+            RenderSinglePlayerEsp(draw, player, Vector3{0.0f, 0.0f, 0.0f}, local_feet_s, hasLocalS, ScreenCenterX, ScreenHeight);
         }
     }
 
@@ -528,6 +679,7 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
                 
                 if (moveX != 0) {
                     telemetryMemory::MoveMouse(moveX, 0);
+                    MacroEngine::NotifyFlickMotion(20);
                 }
                 lastFollowMoveAt = nowMs;
             }
@@ -556,6 +708,7 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
     auto resetFollowShot = []() {
         if (followShotDown) {
             telemetryMemory::MoveMouse(0, 0, 0x0002);
+            MacroEngine::NotifyFlickShotState(false);
         }
         followShotDown = false;
         followShotUpAt = 0;
@@ -581,12 +734,13 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
         const float errorY = bestScreenPos.y - ScreenCenterY;
         const long moveX = std::lround(errorX * flickMoveSpeed);
         const long moveY = std::lround(errorY * flickMoveSpeed);
+        const int settleMs = GetFlickSettleDelayMs(moveX, moveY);
 
         CancelPendingFlick(pendingFlick);
         resetFollowShot();
         telemetryMemory::MoveMouse(moveX, moveY);
+        MacroEngine::NotifyFlickMotion(settleMs + static_cast<int>(activeShotDelay) + 20);
 
-        const int settleMs = GetFlickSettleDelayMs(moveX, moveY);
         const int shotHoldMs = GetFlickShotHoldMs(MacroEngine::current_weapon_name, activeShotHold);
 
         pendingFlick.active = true;
@@ -614,6 +768,7 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
 
             if (moveX != 0 || moveY != 0) {
                 telemetryMemory::MoveMouse(moveX, moveY);
+                MacroEngine::NotifyFlickMotion(18);
                 lastFollowMoveAt = nowMs;
             }
         }
@@ -632,12 +787,14 @@ void OverlayMenu::RenderPlayersAndAim(ImDrawList* draw, std::vector<PlayerData>&
 
         if (followShotDown && nowMs >= followShotUpAt) {
             telemetryMemory::MoveMouse(0, 0, 0x0002);
+            MacroEngine::NotifyFlickShotState(false);
             followShotDown = false;
             nextFollowShotAt = nowMs + shotGapMs;
         }
 
         if (!followShotDown && (nextFollowShotAt == 0 || nowMs >= nextFollowShotAt)) {
             telemetryMemory::MoveMouse(0, 0, 0x0001);
+            MacroEngine::NotifyFlickShotState(true);
             followShotDown = true;
             followShotUpAt = nowMs + static_cast<ULONGLONG>(shotHoldMs);
         }
